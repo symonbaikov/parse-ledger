@@ -1,0 +1,181 @@
+import {
+  Controller,
+  Get,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+  Post,
+  Patch,
+} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { PermissionsService } from './services/permissions.service';
+import { UpdateUserDto } from './dto/update-user.dto';
+import {
+  UpdatePermissionsDto,
+  AddPermissionDto,
+  RemovePermissionDto,
+} from './dto/update-permissions.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
+import { Permission } from '../../common/enums/permissions.enum';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { User, UserRole } from '../../entities/user.entity';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { ChangeEmailDto } from './dto/change-email.dto';
+
+@Controller('users')
+@UseGuards(JwtAuthGuard)
+export class UsersController {
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly permissionsService: PermissionsService,
+  ) {}
+
+  @Get()
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.USER_VIEW_ALL)
+  async findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.usersService.findAll(
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+  }
+
+  @Get('me')
+  async getProfile(@CurrentUser() user: User): Promise<User> {
+    return this.usersService.getProfile(user.id);
+  }
+
+  @Get(':id')
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: User,
+  ): Promise<User> {
+    // Users can only view their own profile unless they're admin
+    if (currentUser.role !== UserRole.ADMIN && currentUser.id !== id) {
+      return this.usersService.getProfile(currentUser.id);
+    }
+
+    return this.usersService.findOne(id);
+  }
+
+  @Put(':id')
+  async update(
+    @Param('id') id: string,
+    @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() currentUser: User,
+  ): Promise<User> {
+    return this.usersService.update(id, updateUserDto, currentUser);
+  }
+
+  @Delete(':id')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.USER_MANAGE)
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() currentUser: User,
+  ): Promise<{ message: string }> {
+    await this.usersService.remove(id, currentUser);
+    return { message: 'User deleted successfully' };
+  }
+
+  @Get(':id/permissions')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.USER_MANAGE)
+  async getUserPermissions(@Param('id') id: string) {
+    const user = await this.usersService.findOne(id);
+    const permissions = this.permissionsService.getUserPermissions(user);
+    return {
+      userId: id,
+      role: user.role,
+      customPermissions: user.permissions || [],
+      allPermissions: permissions,
+    };
+  }
+
+  @Put(':id/permissions')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.USER_MANAGE)
+  async updatePermissions(
+    @Param('id') id: string,
+    @Body() dto: UpdatePermissionsDto,
+  ) {
+    const user = await this.permissionsService.updateUserPermissions(id, dto.permissions);
+    return {
+      userId: id,
+      permissions: user.permissions,
+      message: 'Permissions updated successfully',
+    };
+  }
+
+  @Post(':id/permissions/add')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.USER_MANAGE)
+  async addPermission(@Param('id') id: string, @Body() dto: AddPermissionDto) {
+    const user = await this.permissionsService.addPermission(id, dto.permission);
+    return {
+      userId: id,
+      permissions: user.permissions,
+      message: 'Permission added successfully',
+    };
+  }
+
+  @Post(':id/permissions/remove')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.USER_MANAGE)
+  async removePermission(@Param('id') id: string, @Body() dto: RemovePermissionDto) {
+    const user = await this.permissionsService.removePermission(id, dto.permission);
+    return {
+      userId: id,
+      permissions: user.permissions,
+      message: 'Permission removed successfully',
+    };
+  }
+
+  @Post(':id/permissions/reset')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.USER_MANAGE)
+  async resetPermissions(@Param('id') id: string) {
+    const user = await this.permissionsService.resetPermissions(id);
+    return {
+      userId: id,
+      permissions: user.permissions,
+      message: 'Permissions reset to role defaults',
+    };
+  }
+
+  @Patch('me/email')
+  async changeEmail(
+    @CurrentUser() currentUser: User,
+    @Body() dto: ChangeEmailDto,
+  ) {
+    const updatedUser = await this.usersService.changeEmail(
+      currentUser.id,
+      dto,
+    );
+
+    const { passwordHash, ...safeUser } = updatedUser;
+
+    return {
+      user: safeUser,
+      message: 'Email updated successfully',
+    };
+  }
+
+  @Patch('me/password')
+  async changePassword(
+    @CurrentUser() currentUser: User,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    await this.usersService.changePassword(currentUser.id, dto);
+    return { message: 'Password updated successfully' };
+  }
+}
+
