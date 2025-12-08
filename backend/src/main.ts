@@ -19,12 +19,6 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
 
-  // Serve frontend static files
-  const publicPath = path.join(__dirname, 'public');
-  if (fs.existsSync(publicPath)) {
-    app.useStaticAssets(publicPath);
-  }
-
   // Global prefix for API versioning
   app.setGlobalPrefix('api/v1');
 
