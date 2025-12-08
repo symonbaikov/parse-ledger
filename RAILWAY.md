@@ -2,7 +2,22 @@
 
 ## Overview
 
-This guide explains how to deploy FinFlow to Railway.
+This guide explains how to deploy FinFlow to Railway. The application consists of a NestJS backend and Next.js frontend served together from a single container.
+
+## Architecture
+
+```
+Railway Project
+├── Backend Service (Node.js/NestJS + Next.js Frontend)
+│   ├── Dockerfile (builds frontend + backend)
+│   ├── Runs API on /api/v1
+│   ├── Serves frontend on /
+│   └── Runs on port 3001
+├── PostgreSQL Service
+│   └── Auto-provisioned database
+└── Redis Service
+    └── Auto-provisioned cache
+```
 
 ## Prerequisites
 
@@ -85,25 +100,38 @@ Copy the output to JWT_SECRET and JWT_REFRESH_SECRET environment variables in Ra
 
 ### 6. Configure Deployment
 
-Railway will automatically use the `Dockerfile` and `railway.json` for configuration.
+Railway will automatically use the `Dockerfile` at the root and `railway.json` for configuration.
 
 Key settings:
-- **Build Command**: Handled by Dockerfile
+- **Build Command**: Handled by Dockerfile (builds frontend and backend)
 - **Start Command**: `node backend/dist/main.js`
 - **Port**: 3001
 
-### 7. Run Database Migrations
+The Dockerfile:
+1. Builds the Next.js frontend with `output: "standalone"`
+2. Builds the NestJS backend
+3. Copies frontend static files to backend's public folder
+4. Runs the backend which serves both API and frontend
+
+### 7. Verify Deployment
+
+After deployment, verify everything works:
+
+- **Frontend**: `https://<your-railway-domain>/`
+- **API**: `https://<your-railway-domain>/api/v1`
+- **API Docs**: `https://<your-railway-domain>/api/docs`
+- **Health Check**: `https://<your-railway-domain>/api/v1/health`
+
+### 8. Run Database Migrations
 
 After first deployment, run migrations:
 
 ```bash
 # Via Railway CLI
 railway exec npm --prefix backend run migration:run
-
-# Or manually in Railway dashboard using the Redis/Postgres plugin
 ```
 
-### 8. Create Admin User (Optional)
+### 9. Create Admin User (Optional)
 
 ```bash
 railway exec npm --prefix backend run create-admin
@@ -112,25 +140,26 @@ railway exec npm --prefix backend run create-admin
 ## Deployment Architecture
 
 ```
-Railway Project
-├── Backend Service (Node.js/NestJS)
-│   ├── Dockerfile (builds from root)
+Railway Project (Single Service)
+├── Backend Service (Node.js/NestJS + Next.js Frontend)
+│   ├── Dockerfile (builds both frontend and backend)
+│   ├── Serves Frontend on / (Next.js standalone)
+│   ├── Serves API on /api/v1
+│   ├── Swagger Docs on /api/docs
 │   └── Runs on port 3001
 ├── PostgreSQL Service
-│   └── Auto-provisioned database
+│   └── Auto-provisioned database (finflow)
 └── Redis Service
     └── Auto-provisioned cache
 ```
 
-## Frontend Deployment
+## Frontend Integration
 
-For the Next.js frontend, deploy separately:
+The frontend is built and served from the same container as the backend:
 
-1. Create a new Railway project or add to existing
-2. Point to `frontend/` directory
-3. Set build command: `npm run build`
-4. Set start command: `npm start`
-5. Set PORT: 3000
+1. **Build Process**: The Dockerfile builds Next.js with `output: "standalone"` mode
+2. **Serving**: The backend (main.ts) serves static files and fallback to frontend for client routes
+3. **API Integration**: Frontend makes API calls to `/api/v1` (same origin)
 
 ## Monitoring & Logs
 

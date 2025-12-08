@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as express from 'express';
 
 async function bootstrap() {
   // Ensure uploads directory exists
@@ -18,6 +19,18 @@ async function bootstrap() {
   }
 
   const app = await NestFactory.create(AppModule);
+
+  // Serve frontend static files
+  const frontendPath = path.join(__dirname, '..', '..', '..', 'frontend', '.next', 'standalone');
+  const publicPath = path.join(__dirname, 'public');
+  
+  if (fs.existsSync(publicPath)) {
+    app.use(express.static(publicPath));
+  }
+  
+  if (fs.existsSync(frontendPath)) {
+    app.use(express.static(frontendPath));
+  }
 
   // Global prefix for API versioning
   app.setGlobalPrefix('api/v1');
@@ -59,9 +72,21 @@ async function bootstrap() {
     swaggerOptions: { persistAuthorization: true },
   });
 
+  // Fallback to frontend for client-side routes
+  app.use((req: any, res: any, next: any) => {
+    if (!req.path.startsWith('/api') && !req.path.startsWith('/_')) {
+      res.sendFile(path.join(frontendPath, 'index.html'), (err: any) => {
+        if (err) next();
+      });
+    } else {
+      next();
+    }
+  });
+
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}/api/v1`);
+  console.log(`Application is running on: http://localhost:${port}`);
+  console.log(`API: http://localhost:${port}/api/v1`);
   console.log(`Swagger docs: http://localhost:${port}/api/docs`);
 }
 
