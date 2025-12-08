@@ -4,7 +4,6 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as express from 'express';
 
 async function bootstrap() {
   // Ensure uploads directory exists
@@ -21,15 +20,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   // Serve frontend static files
-  const frontendPath = path.join(__dirname, '..', '..', '..', 'frontend', '.next', 'standalone');
   const publicPath = path.join(__dirname, 'public');
-  
   if (fs.existsSync(publicPath)) {
-    app.use(express.static(publicPath));
-  }
-  
-  if (fs.existsSync(frontendPath)) {
-    app.use(express.static(frontendPath));
+    app.useStaticAssets(publicPath);
   }
 
   // Global prefix for API versioning
@@ -70,17 +63,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: { persistAuthorization: true },
-  });
-
-  // Fallback to frontend for client-side routes
-  app.use((req: any, res: any, next: any) => {
-    if (!req.path.startsWith('/api') && !req.path.startsWith('/_')) {
-      res.sendFile(path.join(frontendPath, 'index.html'), (err: any) => {
-        if (err) next();
-      });
-    } else {
-      next();
-    }
   });
 
   const port = process.env.PORT || 3001;

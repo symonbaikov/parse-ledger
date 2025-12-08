@@ -9,27 +9,18 @@ COPY package*.json ./
 COPY backend ./backend
 COPY frontend ./frontend
 
-# Build frontend
-WORKDIR /app/frontend
-RUN npm install --production=false
-RUN npm run build
-
-# Install dependencies for backend
+# Install and build backend dependencies
 WORKDIR /app/backend
 RUN npm install --production=false
 
 # Build backend
 RUN npm run build
 
-# Copy frontend build to backend public folder
-RUN mkdir -p dist/public && cp -r /app/frontend/.next/standalone/public dist/public || true
-RUN mkdir -p dist/public && cp -r /app/frontend/public dist/public || true
-
-# Set working directory to backend
-WORKDIR /app/backend
+# Set working directory back to app root
+WORKDIR /app
 
 # Expose port
 EXPOSE 3001
 
 # Start the backend
-CMD ["node", "dist/main.js"]
+CMD ["node", "backend/dist/main.js"]
