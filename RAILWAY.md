@@ -31,11 +31,14 @@ Railway will automatically detect:
 In Railway dashboard, add these variables to your backend service:
 
 ```
-# JWT Secrets (REQUIRED - generate new ones!)
-JWT_SECRET=<generate-with: openssl rand -base64 32>
-JWT_REFRESH_SECRET=<generate-with: openssl rand -base64 32>
+# JWT Secrets (REQUIRED - Generate new ones!)
+# Generate with: openssl rand -base64 32
+JWT_SECRET=<generate-with-openssl>
+JWT_REFRESH_SECRET=<generate-with-openssl>
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_EXPIRES_IN=7d
 
-# Database (Railway auto-generates, but set explicitly if needed)
+# Database (Railway auto-generates, but verify these match)
 DATABASE_URL=postgresql://${{Postgres.PGUSER}}:${{Postgres.PGPASSWORD}}@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/finflow
 
 # Redis
@@ -51,10 +54,21 @@ FRONTEND_URL=https://<your-frontend-domain>
 # Optional - Google Sheets OAuth
 GOOGLE_CLIENT_ID=<your-google-client-id>
 GOOGLE_CLIENT_SECRET=<your-google-client-secret>
+GOOGLE_REDIRECT_URI=https://<your-backend-domain>/api/v1/auth/google/callback
 
 # Optional - Telegram Bot
 TELEGRAM_BOT_TOKEN=<your-telegram-bot-token>
 ```
+
+**⚠️ IMPORTANT: JWT_SECRET and JWT_REFRESH_SECRET must be set!**
+
+Generate strong secrets:
+```bash
+openssl rand -base64 32
+```
+
+Copy the output to JWT_SECRET and JWT_REFRESH_SECRET environment variables in Railway.
+
 
 ### 4. Add PostgreSQL Service
 
