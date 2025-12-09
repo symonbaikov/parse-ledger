@@ -12,7 +12,7 @@ Railway Project
 │   ├── Dockerfile (builds frontend + backend)
 │   ├── Runs API on /api/v1
 │   ├── Serves frontend on /
-│   └── Runs on port 3001
+│   └── Frontend listens on $PORT (default 3000) and proxies API to internal $API_PORT (default 3001)
 ├── PostgreSQL Service
 │   └── Auto-provisioned database
 └── Redis Service
@@ -63,7 +63,8 @@ REDIS_PASSWORD=${{Redis.REDIS_PASSWORD}}
 
 # Application
 NODE_ENV=production
-PORT=3001
+PORT=3000                     # Frontend/entry port (Railway may override)
+API_PORT=3001                 # Internal backend port
 FRONTEND_URL=https://<your-frontend-domain>
 
 # Optional - Google Sheets OAuth
@@ -104,14 +105,14 @@ Railway will automatically use the `Dockerfile` at the root and `railway.json` f
 
 Key settings:
 - **Build Command**: Handled by Dockerfile (builds frontend and backend)
-- **Start Command**: `node backend/dist/main.js`
-- **Port**: 3001
+- **Start Command**: `./scripts/start.sh` (runs frontend and backend together)
+- **Port**: `$PORT` for the frontend (defaults to 3000), backend runs internally on `$API_PORT` (defaults to 3001)
+- **API Proxy**: `API_PROXY_TARGET` build arg/env should point to the backend host/port (defaults to `http://127.0.0.1:3001`)
 
 The Dockerfile:
 1. Builds the Next.js frontend with `output: "standalone"`
 2. Builds the NestJS backend
-3. Copies frontend static files to backend's public folder
-4. Runs the backend which serves both API and frontend
+3. Starts both processes: Next.js listens on `$PORT` and proxies `/api/*` to the backend on `$API_PORT`
 
 ### 7. Verify Deployment
 
@@ -146,7 +147,7 @@ Railway Project (Single Service)
 │   ├── Serves Frontend on / (Next.js standalone)
 │   ├── Serves API on /api/v1
 │   ├── Swagger Docs on /api/docs
-│   └── Runs on port 3001
+│   └── Frontend listens on $PORT (default 3000) and proxies API to internal $API_PORT (default 3001)
 ├── PostgreSQL Service
 │   └── Auto-provisioned database (finflow)
 └── Redis Service

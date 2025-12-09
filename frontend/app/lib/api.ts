@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1',
+  baseURL: apiBaseUrl,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -65,7 +67,6 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-
 
 
 
