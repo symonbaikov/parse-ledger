@@ -14,8 +14,7 @@ export const getDatabaseConfig = (
     synchronize: false,
     logging: !isProd,
     migrations: [isProd ? 'dist/migrations/*.js' : 'src/migrations/*.ts'],
-    migrationsRun: true, // Auto-run migrations on startup
-    migrationsTransactionMode: 'each',
+    migrationsRun: false, // Don't auto-run to avoid conflicts
   };
 };
 
