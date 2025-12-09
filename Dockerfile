@@ -16,7 +16,7 @@ COPY backend ./backend
 COPY frontend ./frontend
 
 # Build frontend with API proxy baked in
-ARG API_PORT=3001
+ARG API_PORT=4000
 ENV API_PORT=${API_PORT}
 ARG API_PROXY_TARGET=http://127.0.0.1:${API_PORT}
 ENV API_PROXY_TARGET=${API_PROXY_TARGET}
@@ -32,7 +32,7 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV API_PORT=3001
+ENV API_PORT=4000
 ENV HOSTNAME=0.0.0.0
 
 # Backend runtime files

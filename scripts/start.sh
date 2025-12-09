@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-API_PORT="${API_PORT:-3001}"
+API_PORT="${API_PORT:-4000}"
 FRONTEND_PORT="${PORT:-3000}"
 
 echo "Starting backend on port ${API_PORT}"

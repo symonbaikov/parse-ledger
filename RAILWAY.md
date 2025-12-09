@@ -12,7 +12,7 @@ Railway Project
 │   ├── Dockerfile (builds frontend + backend)
 │   ├── Runs API on /api/v1
 │   ├── Serves frontend on /
-│   └── Frontend listens on $PORT (default 3000) and proxies API to internal $API_PORT (default 3001)
+│   └── Frontend listens on $PORT (default 3000) and proxies API to internal $API_PORT (default 4000)
 ├── PostgreSQL Service
 │   └── Auto-provisioned database
 └── Redis Service
@@ -64,7 +64,7 @@ REDIS_PASSWORD=${{Redis.REDIS_PASSWORD}}
 # Application
 NODE_ENV=production
 PORT=3000                     # Frontend/entry port (Railway may override)
-API_PORT=3001                 # Internal backend port
+API_PORT=4000                 # Internal backend port (keep different from $PORT)
 FRONTEND_URL=https://<your-frontend-domain>
 
 # Optional - Google Sheets OAuth
@@ -106,8 +106,8 @@ Railway will automatically use the `Dockerfile` at the root and `railway.json` f
 Key settings:
 - **Build Command**: Handled by Dockerfile (builds frontend and backend)
 - **Start Command**: `./scripts/start.sh` (runs frontend and backend together)
-- **Port**: `$PORT` for the frontend (defaults to 3000), backend runs internally on `$API_PORT` (defaults to 3001)
-- **API Proxy**: `API_PROXY_TARGET` build arg/env should point to the backend host/port (defaults to `http://127.0.0.1:3001`)
+- **Port**: `$PORT` for the frontend (defaults to 3000), backend runs internally on `$API_PORT` (defaults to 4000)
+- **API Proxy**: `API_PROXY_TARGET` build arg/env should point to the backend host/port (defaults to `http://127.0.0.1:4000`)
 
 The Dockerfile:
 1. Builds the Next.js frontend with `output: "standalone"`
@@ -147,7 +147,7 @@ Railway Project (Single Service)
 │   ├── Serves Frontend on / (Next.js standalone)
 │   ├── Serves API on /api/v1
 │   ├── Swagger Docs on /api/docs
-│   └── Frontend listens on $PORT (default 3000) and proxies API to internal $API_PORT (default 3001)
+│   └── Frontend listens on $PORT (default 3000) and proxies API to internal $API_PORT (default 4000)
 ├── PostgreSQL Service
 │   └── Auto-provisioned database (finflow)
 └── Redis Service
@@ -183,7 +183,7 @@ The frontend is built and served from the same container as the backend:
 
 ### Port binding issues
 
-- Ensure PORT is set to 3001 (or change in code)
+- Ensure the frontend listens on `$PORT` (Railway provides it) and backend uses a different `$API_PORT` (default 4000)
 - Check no other services are using same port
 
 ### Redis connection errors
