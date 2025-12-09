@@ -54,6 +54,30 @@ interface ShareDialogProps {
   onLinksUpdate: () => void;
 }
 
+const getPermissionLabel = (permission: string) => {
+  switch (permission) {
+    case 'view':
+      return 'Просмотр';
+    case 'download':
+      return 'Просмотр и скачивание';
+    case 'edit':
+      return 'Полный доступ';
+    default:
+      return permission;
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'active':
+      return 'Активна';
+    case 'expired':
+      return 'Истекла';
+    default:
+      return status;
+  }
+};
+
 /**
  * Dialog for creating and managing shared links
  */
@@ -226,9 +250,9 @@ export default function ShareDialog({
                 <ListItemText
                   primary={
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
-                      <Chip label={link.permission} size="small" color="primary" />
+                      <Chip label={getPermissionLabel(link.permission)} size="small" color="primary" />
                       <Chip
-                        label={link.status}
+                        label={getStatusLabel(link.status)}
                         size="small"
                         color={link.status === 'active' ? 'success' : 'error'}
                       />

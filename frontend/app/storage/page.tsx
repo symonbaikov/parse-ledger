@@ -197,6 +197,36 @@ export default function StoragePage() {
     return colors[status.toLowerCase()] || 'default';
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'Завершено';
+      case 'processing':
+        return 'Обрабатывается';
+      case 'error':
+        return 'Ошибка';
+      case 'uploaded':
+        return 'Загружено';
+      default:
+        return status;
+    }
+  };
+
+  const getPermissionLabel = (permission?: string | null) => {
+    switch ((permission || '').toLowerCase()) {
+      case 'owner':
+        return 'Владелец';
+      case 'editor':
+        return 'Редактор';
+      case 'viewer':
+        return 'Просмотр';
+      case 'downloader':
+        return 'Скачивание';
+      default:
+        return 'Доступ';
+    }
+  };
+
   const filteredFiles = files.filter((file) =>
     file.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     file.bankName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -304,7 +334,7 @@ export default function StoragePage() {
                   <TableCell>{formatFileSize(file.fileSize)}</TableCell>
                   <TableCell>
                     <Chip
-                      label={file.status}
+                      label={getStatusLabel(file.status)}
                       size="small"
                       color={getStatusColor(file.status)}
                     />
@@ -359,7 +389,7 @@ export default function StoragePage() {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={file.isOwner ? 'Владелец' : file.permissionType || 'Доступ'}
+                      label={file.isOwner ? 'Владелец' : getPermissionLabel(file.permissionType)}
                       size="small"
                       color={file.isOwner ? 'success' : 'default'}
                       variant={file.isOwner ? 'filled' : 'outlined'}

@@ -95,7 +95,7 @@ function CallbackContent() {
             label="Лист (опционально)"
             value={worksheetName}
             onChange={(e) => setWorksheetName(e.target.value)}
-            placeholder="Sheet1"
+            placeholder="Лист1"
           />
           <Button variant="contained" onClick={handleSubmit} disabled={loading || !code}>
             {loading ? <CircularProgress size={20} /> : 'Сохранить подключение'}

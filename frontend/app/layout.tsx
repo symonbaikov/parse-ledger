@@ -4,11 +4,14 @@ import './globals.css';
 import { Providers } from './providers';
 import Navigation from './components/Navigation';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin', 'cyrillic'] });
 
 export const metadata: Metadata = {
-  title: 'FinFlow - Bank Statements Processing',
-  description: 'System for automatic bank statements processing',
+  title: 'FinFlow — Обработка банковских выписок',
+  description: 'Система автоматической обработки банковских выписок',
+  icons: {
+    icon: '/images/logo.png',
+  },
 };
 
 export default function RootLayout({
@@ -17,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ru">
       <body className={inter.className}>
         <Providers>
           <Navigation />

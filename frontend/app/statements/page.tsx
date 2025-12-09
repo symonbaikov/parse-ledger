@@ -92,7 +92,7 @@ export default function StatementsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this statement?')) {
+    if (!confirm('Вы уверены, что хотите удалить эту выписку?')) {
       return;
     }
 
@@ -114,6 +114,21 @@ export default function StatementsPage() {
         return 'error';
       default:
         return 'default';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Завершено';
+      case 'processing':
+        return 'Обрабатывается';
+      case 'error':
+        return 'Ошибка';
+      case 'uploaded':
+        return 'Загружено';
+      default:
+        return status;
     }
   };
 
@@ -269,7 +284,7 @@ export default function StatementsPage() {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={statement.status}
+                          label={getStatusLabel(statement.status)}
                           color={
                             getStatusColor(statement.status) as
                               | 'success'
@@ -362,7 +377,7 @@ export default function StatementsPage() {
                   height: '100%',
                   border: 'none',
                 }}
-                title="File preview"
+                title="Предпросмотр файла"
               />
             </Box>
           )}

@@ -71,6 +71,19 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
     return colors[type] || 'default';
   };
 
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case 'INCOME':
+        return 'Приход';
+      case 'EXPENSE':
+        return 'Расход';
+      case 'TRANSFER':
+        return 'Перевод';
+      default:
+        return type;
+    }
+  };
+
   const filteredTransactions = transactions.filter(
     tx =>
       tx.counterpartyName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -161,13 +174,13 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
                       ? tx.exchangeRate.toLocaleString('ru-RU', { minimumFractionDigits: 2 })
                       : '—'}
                   </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={tx.transactionType}
-                      size="small"
-                      color={getTypeColor(tx.transactionType)}
-                    />
-                  </TableCell>
+                <TableCell>
+                  <Chip
+                    label={getTypeLabel(tx.transactionType)}
+                    size="small"
+                    color={getTypeColor(tx.transactionType)}
+                  />
+                </TableCell>
                   <TableCell>
                     {tx.category?.name ? (
                       <Chip label={tx.category.name} size="small" variant="outlined" />
@@ -198,5 +211,4 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
     </Box>
   );
 }
-
 

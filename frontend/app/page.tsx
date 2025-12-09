@@ -55,10 +55,10 @@ export default function Home() {
           FinFlow
         </Typography>
         <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 4, opacity: 0.9 }}>
-          Professional Bank Statements Processing System
+          Профессиональная система обработки банковских выписок
         </Typography>
         <Typography variant="body1" sx={{ mb: 6, fontSize: '1.2rem', opacity: 0.8 }}>
-          Automate your financial workflow with precision and speed.
+          Автоматизируйте финансовые процессы с точностью и скоростью.
         </Typography>
         <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
           <Button
@@ -74,7 +74,7 @@ export default function Home() {
               py: 1.5,
             }}
           >
-            Sign In
+            Войти
           </Button>
           <Button
             variant="outlined"
@@ -89,7 +89,7 @@ export default function Home() {
               py: 1.5,
             }}
           >
-            Sign Up
+            Зарегистрироваться
           </Button>
         </Box>
       </Container>

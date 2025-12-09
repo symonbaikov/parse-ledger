@@ -185,6 +185,7 @@ export default function TelegramSettingsPage() {
                 placeholder="Например, 123456789"
                 value={chatId}
                 onChange={(e) => setChatId(e.target.value)}
+                helperText="Введите chatId, который показывает бот"
               />
               <TextField
                 fullWidth
@@ -279,9 +280,7 @@ export default function TelegramSettingsPage() {
                   )}
                   {reports.map((report) => (
                     <TableRow key={report.id} hover>
-                      <TableCell sx={{ textTransform: 'capitalize' }}>
-                        {report.reportType}
-                      </TableCell>
+                      <TableCell>{reportTypeLabel(report.reportType)}</TableCell>
                       <TableCell>{formatDate(report.reportDate)}</TableCell>
                       <TableCell>{report.chatId}</TableCell>
                       <TableCell>
@@ -328,6 +327,17 @@ function getStatusColor(status: ReportStatus) {
       return 'error';
     default:
       return 'default';
+  }
+}
+
+function reportTypeLabel(type: ReportType) {
+  switch (type) {
+    case 'daily':
+      return 'Ежедневный';
+    case 'monthly':
+      return 'Месячный';
+    default:
+      return 'Пользовательский';
   }
 }
 

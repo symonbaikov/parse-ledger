@@ -28,6 +28,19 @@ interface SharedFileAccess {
   canDownload: boolean;
 }
 
+const getPermissionLabel = (permission: string) => {
+  switch (permission) {
+    case 'view':
+      return 'Просмотр';
+    case 'download':
+      return 'Просмотр и скачивание';
+    case 'edit':
+      return 'Редактирование';
+    default:
+      return permission;
+  }
+};
+
 /**
  * Public page for accessing shared files
  */
@@ -175,7 +188,7 @@ export default function SharedFilePage() {
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <Chip label="Общий доступ" size="small" color="info" />
           <Chip label={statement.bankName} size="small" variant="outlined" />
-          <Chip label={`Права: ${permission}`} size="small" />
+          <Chip label={`Права: ${getPermissionLabel(permission)}`} size="small" />
           {canDownload && (
             <Button
               variant="contained"
@@ -256,4 +269,3 @@ export default function SharedFilePage() {
     </Container>
   );
 }
-

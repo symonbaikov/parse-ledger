@@ -52,7 +52,7 @@ export default function RegisterPage() {
       window.location.href = '/';
     } catch (err: any) {
       setError(
-        err.response?.data?.error?.message || 'Failed to register. Please try again.',
+        err.response?.data?.error?.message || 'Не удалось зарегистрироваться. Попробуйте ещё раз.',
       );
     } finally {
       setLoading(false);
@@ -119,10 +119,10 @@ export default function RegisterPage() {
           </Box>
 
           <Typography component="h1" variant="h4" gutterBottom fontWeight="bold" color="text.primary">
-            Create Account
+            Создайте аккаунт
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-            Join FinFlow today
+            Присоединяйтесь к FinFlow
           </Typography>
 
           {error && (
@@ -137,7 +137,7 @@ export default function RegisterPage() {
               required
               fullWidth
               id="name"
-              label="Full Name"
+              label="Полное имя"
               name="name"
               autoComplete="name"
               autoFocus
@@ -152,7 +152,7 @@ export default function RegisterPage() {
               required
               fullWidth
               id="email"
-              label="Email Address"
+              label="Email"
               name="email"
               autoComplete="email"
               value={formData.email}
@@ -166,13 +166,13 @@ export default function RegisterPage() {
               required
               fullWidth
               name="password"
-              label="Password"
+              label="Пароль"
               type="password"
               id="password"
               autoComplete="new-password"
               value={formData.password}
               onChange={handleChange}
-              helperText="Minimum 8 characters"
+              helperText="Минимум 8 символов"
               InputProps={{
                 sx: { borderRadius: 2, bgcolor: 'background.default' }
               }}
@@ -181,7 +181,7 @@ export default function RegisterPage() {
               margin="normal"
               fullWidth
               id="company"
-              label="Company (Optional)"
+              label="Компания (опционально)"
               name="company"
               value={formData.company}
               onChange={handleChange}
@@ -198,11 +198,11 @@ export default function RegisterPage() {
               sx={{ py: 1.5, borderRadius: 2, fontSize: '1rem', textTransform: 'none', boxShadow: 'none' }}
               disabled={loading}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign Up'}
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Зарегистрироваться'}
             </Button>
             <Box textAlign="center" sx={{ mt: 3 }}>
               <Link href="/login" variant="body2" sx={{ textDecoration: 'none', fontWeight: 500 }}>
-                Already have an account? Sign In
+                Уже есть аккаунт? Войти
               </Link>
             </Box>
           </Box>
@@ -269,15 +269,14 @@ export default function RegisterPage() {
 
         <Box sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 4 }}>
           <Typography variant="h2" fontWeight="bold" gutterBottom>
-            Join FinFlow
+            Присоединяйтесь к FinFlow
           </Typography>
           <Typography variant="h5" sx={{ opacity: 0.8, maxWidth: 500 }}>
-            Start automating your financial workflow today
+            Автоматизируйте финансы уже сегодня
           </Typography>
         </Box>
       </Grid>
     </Grid>
   );
 }
-
 

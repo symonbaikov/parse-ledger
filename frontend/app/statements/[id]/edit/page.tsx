@@ -121,7 +121,7 @@ export default function EditStatementPage() {
       setStatement(statementRes.data);
       setTransactions(transactionsRes.data.data || transactionsRes.data);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to load data');
+      setError(err.response?.data?.error?.message || 'Не удалось загрузить данные');
     } finally {
       setLoading(false);
     }
@@ -180,7 +180,7 @@ export default function EditStatementPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to save transaction');
+      setError(err.response?.data?.error?.message || 'Не удалось сохранить транзакцию');
     }
   };
 
@@ -190,7 +190,7 @@ export default function EditStatementPage() {
   };
 
   const handleDelete = async (transactionId: string) => {
-    if (!confirm('Are you sure you want to delete this transaction?')) {
+    if (!confirm('Вы уверены, что хотите удалить эту транзакцию?')) {
       return;
     }
 
@@ -200,13 +200,13 @@ export default function EditStatementPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to delete transaction');
+      setError(err.response?.data?.error?.message || 'Не удалось удалить транзакцию');
     }
   };
 
   const handleBulkUpdate = async () => {
     if (selectedRows.size === 0) {
-      setError('Please select at least one transaction');
+      setError('Выберите хотя бы одну транзакцию');
       return;
     }
 
@@ -224,7 +224,7 @@ export default function EditStatementPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to update transactions');
+      setError(err.response?.data?.error?.message || 'Не удалось обновить транзакции');
     } finally {
       setSaving(false);
     }
@@ -232,11 +232,11 @@ export default function EditStatementPage() {
 
   const handleBulkDelete = async () => {
     if (selectedRows.size === 0) {
-      setError('Please select at least one transaction');
+      setError('Выберите хотя бы одну транзакцию');
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedRows.size} transactions?`)) {
+    if (!confirm(`Вы уверены, что хотите удалить ${selectedRows.size} транзакций?`)) {
       return;
     }
 
@@ -250,7 +250,7 @@ export default function EditStatementPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Failed to delete transactions');
+      setError(err.response?.data?.error?.message || 'Не удалось удалить транзакции');
     } finally {
       setSaving(false);
     }
@@ -420,13 +420,13 @@ export default function EditStatementPage() {
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
           <Button startIcon={<ArrowBack />} onClick={() => router.back()}>
-            Back
+            Назад
           </Button>
           <Typography variant="h5" component="h1" sx={{ mt: 2 }}>
-            Edit Statement: {statement?.fileName}
+            Редактирование выписки: {statement?.fileName}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {statement?.totalTransactions} transactions
+            {statement?.totalTransactions} транзакций
           </Typography>
         </Box>
         {selectedRows.size > 0 && (
@@ -437,7 +437,7 @@ export default function EditStatementPage() {
               disabled={saving}
               startIcon={saving ? <CircularProgress size={20} /> : <Save />}
             >
-              Save Selected ({selectedRows.size})
+              Сохранить выбранные ({selectedRows.size})
             </Button>
             <Button
               variant="outlined"
@@ -446,7 +446,7 @@ export default function EditStatementPage() {
               disabled={saving}
               startIcon={<Delete />}
             >
-              Delete Selected
+              Удалить выбранные
             </Button>
           </Box>
         )}
@@ -460,7 +460,7 @@ export default function EditStatementPage() {
 
       {success && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(false)}>
-          Changes saved successfully!
+          Изменения успешно сохранены!
         </Alert>
       )}
 
@@ -480,16 +480,16 @@ export default function EditStatementPage() {
                     Общая информация
                   </Typography>
                   <Typography variant="body2">
-                    Банк: {statement.parsingDetails.detectedBank || 'N/A'}
+                    Банк: {statement.parsingDetails.detectedBank || '—'}
                   </Typography>
                   <Typography variant="body2">
-                    Формат: {statement.parsingDetails.detectedFormat || 'N/A'}
+                    Формат: {statement.parsingDetails.detectedFormat || '—'}
                   </Typography>
                   <Typography variant="body2">
-                    Парсер: {statement.parsingDetails.parserUsed || 'N/A'}
+                    Парсер: {statement.parsingDetails.parserUsed || '—'}
                   </Typography>
                   <Typography variant="body2">
-                    Время обработки: {statement.parsingDetails.processingTime ? `${statement.parsingDetails.processingTime}ms` : 'N/A'}
+                    Время обработки: {statement.parsingDetails.processingTime ? `${statement.parsingDetails.processingTime}ms` : '—'}
                   </Typography>
                 </Box>
 
@@ -499,16 +499,16 @@ export default function EditStatementPage() {
                       Извлеченные метаданные
                     </Typography>
                     <Typography variant="body2">
-                      Счет: {statement.parsingDetails.metadataExtracted.accountNumber || 'N/A'}
+                      Счет: {statement.parsingDetails.metadataExtracted.accountNumber || '—'}
                     </Typography>
                     <Typography variant="body2">
-                      Период: {statement.parsingDetails.metadataExtracted.dateFrom ? new Date(statement.parsingDetails.metadataExtracted.dateFrom).toLocaleDateString('ru-RU') : 'N/A'} - {statement.parsingDetails.metadataExtracted.dateTo ? new Date(statement.parsingDetails.metadataExtracted.dateTo).toLocaleDateString('ru-RU') : 'N/A'}
+                      Период: {statement.parsingDetails.metadataExtracted.dateFrom ? new Date(statement.parsingDetails.metadataExtracted.dateFrom).toLocaleDateString('ru-RU') : '—'} - {statement.parsingDetails.metadataExtracted.dateTo ? new Date(statement.parsingDetails.metadataExtracted.dateTo).toLocaleDateString('ru-RU') : '—'}
                     </Typography>
                     <Typography variant="body2">
-                      Остаток на начало: {statement.parsingDetails.metadataExtracted.balanceStart || 'N/A'}
+                      Остаток на начало: {statement.parsingDetails.metadataExtracted.balanceStart || '—'}
                     </Typography>
                     <Typography variant="body2">
-                      Остаток на конец: {statement.parsingDetails.metadataExtracted.balanceEnd || 'N/A'}
+                      Остаток на конец: {statement.parsingDetails.metadataExtracted.balanceEnd || '—'}
                     </Typography>
                   </Box>
                 )}
@@ -518,10 +518,10 @@ export default function EditStatementPage() {
                     Статистика парсинга
                   </Typography>
                   <Typography variant="body2">
-                    Найдено транзакций: {statement.parsingDetails.transactionsFound ?? 'N/A'}
+                    Найдено транзакций: {statement.parsingDetails.transactionsFound ?? '—'}
                   </Typography>
                   <Typography variant="body2">
-                    Создано транзакций: {statement.parsingDetails.transactionsCreated ?? 'N/A'}
+                    Создано транзакций: {statement.parsingDetails.transactionsCreated ?? '—'}
                   </Typography>
                   {statement.parsingDetails.totalLinesProcessed && (
                     <Typography variant="body2">

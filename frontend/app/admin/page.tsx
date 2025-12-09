@@ -129,6 +129,19 @@ export default function AdminPage() {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Завершено';
+      case 'processing':
+        return 'Обрабатывается';
+      case 'error':
+        return 'Ошибка';
+      default:
+        return status;
+    }
+  };
+
   const filteredStatements = statements.filter(
     s =>
       s.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -199,7 +212,7 @@ export default function AdminPage() {
                         <TableCell>{statement.bankName}</TableCell>
                         <TableCell>
                           <Chip
-                            label={statement.status}
+                            label={getStatusLabel(statement.status)}
                             color={
                               getStatusColor(statement.status) as
                                 | 'success'

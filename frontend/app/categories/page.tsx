@@ -121,7 +121,7 @@ export default function CategoriesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this category?')) {
+    if (!confirm('Вы уверены, что хотите удалить эту категорию?')) {
       return;
     }
 
@@ -137,10 +137,10 @@ export default function CategoriesPage() {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h5" component="h1">
-          Categories
+          Категории
         </Typography>
         <Button variant="contained" startIcon={<Add />} onClick={() => handleOpenDialog()}>
-          Add Category
+          Добавить категорию
         </Button>
       </Box>
 
@@ -148,10 +148,10 @@ export default function CategoriesPage() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Color</TableCell>
-              <TableCell>Actions</TableCell>
+              <TableCell>Название</TableCell>
+              <TableCell>Тип</TableCell>
+              <TableCell>Цвет</TableCell>
+              <TableCell>Действия</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -160,7 +160,7 @@ export default function CategoriesPage() {
                 <TableCell>{category.name}</TableCell>
                 <TableCell>
                   <Chip
-                    label={category.type}
+                    label={category.type === 'income' ? 'Доход' : 'Расход'}
                     color={category.type === 'income' ? 'success' : 'error'}
                     size="small"
                   />
@@ -195,37 +195,37 @@ export default function CategoriesPage() {
 
       <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {editingCategory ? 'Edit Category' : 'Create Category'}
+          {editingCategory ? 'Редактировать категорию' : 'Создать категорию'}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
             <TextField
-              label="Name"
+              label="Название"
               fullWidth
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             />
             <FormControl fullWidth>
-              <InputLabel>Type</InputLabel>
+              <InputLabel>Тип</InputLabel>
               <Select
                 value={formData.type}
                 onChange={(e) =>
                   setFormData({ ...formData, type: e.target.value as 'income' | 'expense' })
                 }
               >
-                <MenuItem value="income">Income</MenuItem>
-                <MenuItem value="expense">Expense</MenuItem>
+                <MenuItem value="income">Доход</MenuItem>
+                <MenuItem value="expense">Расход</MenuItem>
               </Select>
             </FormControl>
             <TextField
-              label="Color"
+              label="Цвет"
               type="color"
               fullWidth
               value={formData.color}
               onChange={(e) => setFormData({ ...formData, color: e.target.value })}
             />
             <TextField
-              label="Icon (optional)"
+              label="Иконка (опционально)"
               fullWidth
               value={formData.icon}
               onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
@@ -233,17 +233,15 @@ export default function CategoriesPage() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
+          <Button onClick={handleCloseDialog}>Отмена</Button>
           <Button onClick={handleSave} variant="contained">
-            Save
+            Сохранить
           </Button>
         </DialogActions>
       </Dialog>
     </Container>
   );
 }
-
-
 
 
 

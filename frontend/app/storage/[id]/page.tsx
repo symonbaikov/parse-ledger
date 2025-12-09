@@ -198,6 +198,36 @@ export default function FileDetailsPage() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
+  const getPermissionLabel = (permission?: string | null) => {
+    switch ((permission || '').toLowerCase()) {
+      case 'owner':
+        return 'Владелец';
+      case 'editor':
+        return 'Редактор';
+      case 'viewer':
+        return 'Просмотр';
+      case 'downloader':
+        return 'Скачивание';
+      default:
+        return 'Доступ';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return 'Завершено';
+      case 'processing':
+        return 'Обрабатывается';
+      case 'error':
+        return 'Ошибка';
+      case 'uploaded':
+        return 'Загружено';
+      default:
+        return status;
+    }
+  };
+
   if (loading) {
     return (
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -235,12 +265,12 @@ export default function FileDetailsPage() {
               variant="outlined"
             />
             <Chip
-              label={statement.status}
+              label={getStatusLabel(statement.status)}
               size="small"
               color="success"
             />
             <Chip
-              label={isOwner ? 'Владелец' : userPermission || 'Доступ'}
+              label={isOwner ? 'Владелец' : getPermissionLabel(userPermission)}
               size="small"
               color={isOwner ? 'success' : 'default'}
               variant={isOwner ? 'filled' : 'outlined'}

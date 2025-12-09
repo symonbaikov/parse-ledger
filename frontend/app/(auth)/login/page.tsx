@@ -46,7 +46,7 @@ export default function LoginPage() {
       window.location.href = '/';
     } catch (err: any) {
       setError(
-        err.response?.data?.error?.message || 'Failed to login. Please try again.',
+        err.response?.data?.error?.message || 'Не удалось выполнить вход. Попробуйте ещё раз.',
       );
     } finally {
       setLoading(false);
@@ -113,10 +113,10 @@ export default function LoginPage() {
           </Box>
 
           <Typography component="h1" variant="h4" gutterBottom fontWeight="bold" color="text.primary">
-            Welcome Back
+            С возвращением
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-            Sign in to continue to FinFlow
+            Войдите, чтобы продолжить работу в FinFlow
           </Typography>
 
           {error && (
@@ -131,7 +131,7 @@ export default function LoginPage() {
               required
               fullWidth
               id="email"
-              label="Email Address"
+              label="Email"
               name="email"
               autoComplete="email"
               autoFocus
@@ -147,7 +147,7 @@ export default function LoginPage() {
               required
               fullWidth
               name="password"
-              label="Password"
+              label="Пароль"
               type="password"
               id="password"
               autoComplete="current-password"
@@ -166,11 +166,11 @@ export default function LoginPage() {
               sx={{ py: 1.5, borderRadius: 2, fontSize: '1rem', textTransform: 'none', boxShadow: 'none' }}
               disabled={loading}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
+              {loading ? <CircularProgress size={24} color="inherit" /> : 'Войти'}
             </Button>
             <Box textAlign="center" sx={{ mt: 3 }}>
               <Link href="/register" variant="body2" sx={{ textDecoration: 'none', fontWeight: 500 }}>
-                Don't have an account? Sign Up
+                Нет аккаунта? Зарегистрируйтесь
               </Link>
             </Box>
           </Box>
@@ -240,12 +240,10 @@ export default function LoginPage() {
             FinFlow
           </Typography>
           <Typography variant="h5" sx={{ opacity: 0.8, maxWidth: 500 }}>
-            Professional Bank Statements Processing System
+            Платформа для обработки банковских выписок
           </Typography>
         </Box>
       </Grid>
     </Grid>
   );
 }
-
-

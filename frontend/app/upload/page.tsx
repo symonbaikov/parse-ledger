@@ -73,7 +73,7 @@ export default function UploadPage() {
       if (url) {
         window.location.href = url;
       } else {
-        setError('Не удалось получить ссылку для авторизации Google');
+      setError('Не удалось получить ссылку для авторизации Google');
       }
     } catch (err: any) {
       setError(err.response?.data?.error?.message || 'Не удалось начать авторизацию Google');
@@ -110,7 +110,7 @@ export default function UploadPage() {
 
     const totalFiles = files.length + validFiles.length;
     if (totalFiles > 2) {
-      setError('Maximum 2 files allowed');
+      setError('Максимум 2 файла можно загрузить за раз');
       return;
     }
 
@@ -155,7 +155,7 @@ export default function UploadPage() {
       }, 2000);
     } catch (err: any) {
       setError(
-        err.response?.data?.error?.message || 'Failed to upload files. Please try again.',
+        err.response?.data?.error?.message || 'Не удалось загрузить файлы. Попробуйте снова.',
       );
     } finally {
       setUploading(false);
@@ -187,14 +187,14 @@ export default function UploadPage() {
 
         <Box sx={{ mb: 3 }}>
           <FormControl fullWidth>
-            <InputLabel>Google Sheet (опционально)</InputLabel>
+            <InputLabel>Google Таблица (опционально)</InputLabel>
             <Select
               value={googleSheetId}
               onChange={(e) => setGoogleSheetId(e.target.value)}
-              label="Google Sheet (опционально)"
+              label="Google Таблица (опционально)"
             >
               <MenuItem value="">
-                <em>Без синхронизации с Google Sheets</em>
+                <em>Без синхронизации с Google Таблицами</em>
               </MenuItem>
               {googleSheets.map((sheet) => (
                 <MenuItem key={sheet.id} value={sheet.id}>
@@ -204,7 +204,7 @@ export default function UploadPage() {
             </Select>
           </FormControl>
           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            Выберите Google Sheet для автоматической синхронизации транзакций. Если не выбран, данные будут сохранены только в системе.
+            Выберите Google Таблицу для автоматической синхронизации транзакций. Если не выбрана, данные будут сохранены только в системе.
           </Typography>
           {googleSheets.length === 0 && (
             <Box sx={{ mt: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
@@ -212,7 +212,7 @@ export default function UploadPage() {
                 Нет подключенных таблиц.
               </Typography>
               <Button variant="outlined" size="small" onClick={startGoogleOauth} disabled={oauthLoading}>
-                {oauthLoading ? 'Открытие...' : 'Подключить Google Sheets'}
+                {oauthLoading ? 'Открытие...' : 'Подключить Google Таблицы'}
               </Button>
             </Box>
           )}
@@ -246,10 +246,10 @@ export default function UploadPage() {
           <label htmlFor="file-upload">
             <CloudUpload sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
             <Typography variant="h6" gutterBottom>
-              Drag and drop files here or click to select
+              Перетащите файлы сюда или нажмите, чтобы выбрать
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Supported formats: PDF, XLSX, XLS, CSV, JPG, PNG (Max 2 files, 10MB each)
+              Поддерживаемые форматы: PDF, XLSX, XLS, CSV, JPG, PNG (до 2 файлов, каждый до 10 МБ)
             </Typography>
           </label>
         </Box>
@@ -257,7 +257,7 @@ export default function UploadPage() {
         {files.length > 0 && (
           <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" gutterBottom>
-              Selected Files ({files.length}/2):
+              Выбранные файлы ({files.length}/2):
             </Typography>
             <List>
               {files.map((file, index) => (
@@ -278,7 +278,7 @@ export default function UploadPage() {
                   </ListItemIcon>
                   <ListItemText
                     primary={file.name}
-                    secondary={`${(file.size / 1024 / 1024).toFixed(2)} MB`}
+                    secondary={`${(file.size / 1024 / 1024).toFixed(2)} МБ`}
                   />
                 </ListItem>
               ))}
