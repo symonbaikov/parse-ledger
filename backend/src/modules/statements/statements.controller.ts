@@ -13,11 +13,13 @@ import {
   HttpCode,
   HttpStatus,
   Res,
+  Patch,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { StatementsService } from './statements.service';
 import { UploadStatementDto } from './dto/upload-statement.dto';
+import { UpdateStatementDto } from './dto/update-statement.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -112,6 +114,17 @@ export class StatementsController {
   @RequirePermission(Permission.STATEMENT_VIEW)
   async findOne(@Param('id') id: string, @CurrentUser() user: User) {
     return this.statementsService.findOne(id, user.id);
+  }
+
+  @Patch(':id')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.STATEMENT_EDIT)
+  async update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateStatementDto,
+    @CurrentUser() user: User,
+  ) {
+    return this.statementsService.updateMetadata(id, user.id, updateDto);
   }
 
   @Delete(':id')

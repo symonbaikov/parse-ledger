@@ -15,6 +15,7 @@ import { calculateFileHash } from '../../common/utils/file-hash.util';
 import { getFileTypeFromMime } from '../../common/utils/file-validator.util';
 import { AuditLog, AuditAction } from '../../entities/audit-log.entity';
 import { StatementProcessingService } from '../parsing/services/statement-processing.service';
+import { UpdateStatementDto } from './dto/update-statement.dto';
 
 @Injectable()
 export class StatementsService {
@@ -110,6 +111,54 @@ export class StatementsService {
     }
 
     return statement;
+  }
+
+  async updateMetadata(
+    id: string,
+    userId: string,
+    updateDto: UpdateStatementDto,
+  ): Promise<Statement> {
+    const statement = await this.findOne(id, userId);
+
+    if (updateDto.balanceStart !== undefined) {
+      statement.balanceStart =
+        updateDto.balanceStart === null ? null : Number(updateDto.balanceStart);
+    }
+
+    if (updateDto.balanceEnd !== undefined) {
+      statement.balanceEnd = updateDto.balanceEnd === null ? null : Number(updateDto.balanceEnd);
+    }
+
+    if (updateDto.statementDateFrom !== undefined) {
+      statement.statementDateFrom = updateDto.statementDateFrom
+        ? new Date(updateDto.statementDateFrom)
+        : null;
+    }
+
+    if (updateDto.statementDateTo !== undefined) {
+      statement.statementDateTo = updateDto.statementDateTo
+        ? new Date(updateDto.statementDateTo)
+        : null;
+    }
+
+    if (statement.parsingDetails) {
+      statement.parsingDetails = {
+        ...statement.parsingDetails,
+        metadataExtracted: {
+          ...(statement.parsingDetails.metadataExtracted || {}),
+          balanceStart: statement.balanceStart ?? undefined,
+          balanceEnd: statement.balanceEnd ?? undefined,
+          dateFrom: statement.statementDateFrom
+            ? statement.statementDateFrom.toISOString().split('T')[0]
+            : undefined,
+          dateTo: statement.statementDateTo
+            ? statement.statementDateTo.toISOString().split('T')[0]
+            : undefined,
+        },
+      };
+    }
+
+    return this.statementRepository.save(statement);
   }
 
   async remove(id: string, userId: string): Promise<void> {

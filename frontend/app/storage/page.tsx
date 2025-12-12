@@ -22,6 +22,8 @@ import {
   MenuItem,
   FormControl,
   Select,
+  Popover,
+  Divider,
 } from '@mui/material';
 import {
   Visibility as ViewIcon,
@@ -78,6 +80,13 @@ export default function StoragePage() {
   const [selectedFile, setSelectedFile] = useState<StorageFile | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
+  const [filters, setFilters] = useState({
+    status: '',
+    bank: '',
+    categoryId: '',
+    ownership: '',
+  });
 
   useEffect(() => {
     loadFiles();
@@ -193,6 +202,8 @@ export default function StoragePage() {
       processing: 'warning',
       error: 'error',
       uploaded: 'info',
+      parsed: 'success',
+      validated: 'info',
     };
     return colors[status.toLowerCase()] || 'default';
   };
@@ -207,6 +218,8 @@ export default function StoragePage() {
         return 'Ошибка';
       case 'uploaded':
         return 'Загружено';
+      case 'parsed':
+        return 'Распарсено';
       default:
         return status;
     }
@@ -227,12 +240,53 @@ export default function StoragePage() {
     }
   };
 
-  const filteredFiles = files.filter((file) =>
-    file.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    file.bankName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    file.metadata?.accountNumber?.includes(searchQuery) ||
-    file.category?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const bankOptions = Array.from(new Set(files.map((f) => f.bankName).filter(Boolean)));
+  const statusOptions = Array.from(new Set(files.map((f) => f.status).filter(Boolean)));
+
+  const filteredFiles = files.filter((file) => {
+    const normalizedBank = (file.bankName || '').toLowerCase();
+    const normalizedCategoryName = (file.category?.name || '').toLowerCase();
+    const normalizedAccount = (file.metadata?.accountNumber || '').toLowerCase();
+
+    const matchesSearch =
+      file.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      normalizedBank.includes(searchQuery.toLowerCase()) ||
+      normalizedAccount.includes(searchQuery.toLowerCase()) ||
+      normalizedCategoryName.includes(searchQuery.toLowerCase());
+
+    const matchesStatus = !filters.status || file.status === filters.status;
+    const matchesBank = !filters.bank || file.bankName === filters.bank;
+    const matchesCategory = !filters.categoryId || file.categoryId === filters.categoryId;
+    const matchesOwnership =
+      !filters.ownership ||
+      (filters.ownership === 'owned' ? file.isOwner : !file.isOwner);
+
+    return matchesSearch && matchesStatus && matchesBank && matchesCategory && matchesOwnership;
+  });
+
+  const handleFilterChange = (field: keyof typeof filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleOpenFilters = (event: React.MouseEvent<HTMLElement>) => {
+    setFilterAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseFilters = () => {
+    setFilterAnchorEl(null);
+  };
+
+  const handleResetFilters = () => {
+    setFilters({
+      status: '',
+      bank: '',
+      categoryId: '',
+      ownership: '',
+    });
+  };
+
+  const filtersApplied =
+    !!filters.status || !!filters.bank || !!filters.categoryId || !!filters.ownership;
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -261,9 +315,10 @@ export default function StoragePage() {
           }}
         />
         <Button
-          variant="outlined"
+          variant={filtersApplied ? 'contained' : 'outlined'}
           startIcon={<FilterIcon />}
           sx={{ minWidth: '150px' }}
+          onClick={handleOpenFilters}
         >
           Фильтры
         </Button>
@@ -288,13 +343,13 @@ export default function StoragePage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={9} align="center">
                   Загрузка...
                 </TableCell>
               </TableRow>
             ) : filteredFiles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} align="center">
+                <TableCell colSpan={9} align="center">
                   Файлы не найдены
                 </TableCell>
               </TableRow>
@@ -472,6 +527,107 @@ export default function StoragePage() {
           </>
         )}
       </Menu>
+
+      <Popover
+        open={Boolean(filterAnchorEl)}
+        anchorEl={filterAnchorEl}
+        onClose={handleCloseFilters}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{ paper: { sx: { p: 2, width: 320 } } }}
+      >
+        <Typography variant="subtitle1" sx={{ mb: 1 }}>
+          Фильтры
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <FormControl size="small" fullWidth>
+            <Typography variant="caption" sx={{ mb: 0.5, color: 'text.secondary' }}>
+              Статус
+            </Typography>
+            <Select
+              value={filters.status}
+              onChange={(e) => handleFilterChange('status', e.target.value as string)}
+              displayEmpty
+            >
+              <MenuItem value="">
+                <em>Все</em>
+              </MenuItem>
+              {statusOptions.map((status) => (
+                <MenuItem key={status} value={status}>
+                  {getStatusLabel(status)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" fullWidth>
+            <Typography variant="caption" sx={{ mb: 0.5, color: 'text.secondary' }}>
+              Банк
+            </Typography>
+            <Select
+              value={filters.bank}
+              onChange={(e) => handleFilterChange('bank', e.target.value as string)}
+              displayEmpty
+            >
+              <MenuItem value="">
+                <em>Все</em>
+              </MenuItem>
+              {bankOptions.map((bank) => (
+                <MenuItem key={bank} value={bank}>
+                  {bank}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" fullWidth>
+            <Typography variant="caption" sx={{ mb: 0.5, color: 'text.secondary' }}>
+              Категория
+            </Typography>
+            <Select
+              value={filters.categoryId}
+              onChange={(e) => handleFilterChange('categoryId', e.target.value as string)}
+              displayEmpty
+            >
+              <MenuItem value="">
+                <em>Все</em>
+              </MenuItem>
+              {categories.map((cat) => (
+                <MenuItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl size="small" fullWidth>
+            <Typography variant="caption" sx={{ mb: 0.5, color: 'text.secondary' }}>
+              Тип доступа
+            </Typography>
+            <Select
+              value={filters.ownership}
+              onChange={(e) => handleFilterChange('ownership', e.target.value as string)}
+              displayEmpty
+            >
+              <MenuItem value="">
+                <em>Все</em>
+              </MenuItem>
+              <MenuItem value="owned">Мои файлы</MenuItem>
+              <MenuItem value="shared">Доступные мне</MenuItem>
+            </Select>
+          </FormControl>
+
+          <Divider />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+            <Button variant="text" color="inherit" onClick={handleResetFilters}>
+              Сбросить
+            </Button>
+            <Button variant="contained" onClick={handleCloseFilters}>
+              Применить
+            </Button>
+          </Box>
+        </Box>
+      </Popover>
     </Container>
   );
 }
