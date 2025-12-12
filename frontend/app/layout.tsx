@@ -14,6 +14,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { Toaster } from 'react-hot-toast';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -27,8 +29,38 @@ export default function RootLayout({
           <main className="min-h-screen">
             {children}
           </main>
+          <Toaster 
+            position="top-right" 
+            toastOptions={{
+              className: '',
+              style: {
+                border: '1px solid #713200',
+                padding: '16px',
+                color: '#713200',
+              },
+              success: {
+                style: {
+                  border: '1px solid #E0E0E0',
+                  background: '#F0F9F4',
+                  color: '#155724',
+                },
+                iconTheme: {
+                  primary: '#155724',
+                  secondary: '#F0F9F4',
+                },
+              },
+              error: {
+                style: {
+                  border: '1px solid #E0E0E0',
+                  background: '#FEF2F2',
+                  color: '#991B1B',
+                },
+              },
+            }}
+          />
         </Providers>
       </body>
     </html>
   );
 }
+

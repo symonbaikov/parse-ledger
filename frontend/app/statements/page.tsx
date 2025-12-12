@@ -2,41 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Container,
-  Paper,
-  Typography,
-  Box,
-  Button,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogActions,
-  Avatar,
-  Tooltip,
-  CircularProgress,
-} from '@mui/material';
-import {
-  Edit,
-  Delete,
-  CloudUpload,
-  Refresh,
-  PictureAsPdf,
-  Description,
-  Download,
-  Visibility,
-  Close,
-} from '@mui/icons-material';
+import { 
+  UploadCloud, 
+  FileText, 
+  Eye, 
+  Download, 
+  Trash2, 
+  RefreshCw, 
+  MoreHorizontal,
+  X,
+  File,
+  CheckCircle2,
+  AlertCircle,
+  Clock,
+  Loader2
+} from 'lucide-react';
+import toast from 'react-hot-toast';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
+import ConfirmModal from '@/app/components/ConfirmModal';
 
 interface Statement {
   id: string;
@@ -55,6 +39,11 @@ export default function StatementsPage() {
   const [statements, setStatements] = useState<Statement[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingFile, setViewingFile] = useState<string | null>(null);
+  const [fileViewUrl, setFileViewUrl] = useState<string | null>(null);
+  
+  // Delete Modal State
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [statementToDelete, setStatementToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -67,81 +56,88 @@ export default function StatementsPage() {
       setLoading(true);
       const response = await apiClient.get('/statements');
       const statementsData = response.data.data || response.data;
-      // Ensure fileType is included (handle both camelCase and snake_case)
       const statementsWithFileType = Array.isArray(statementsData)
         ? statementsData.map((stmt: Statement & { file_type?: string }) => ({
             ...stmt,
-            fileType: stmt.fileType || stmt.file_type || 'pdf', // fallback to pdf if not present
+            fileType: stmt.fileType || stmt.file_type || 'pdf',
           }))
         : statementsData;
       setStatements(statementsWithFileType);
     } catch (error) {
       console.error('Failed to load statements:', error);
+      toast.error('Не удалось загрузить список выписок');
     } finally {
       setLoading(false);
     }
   };
 
   const handleReprocess = async (id: string) => {
+    const toastId = toast.loading('Запуск обработки...');
     try {
       await apiClient.post(`/statements/${id}/reprocess`);
       await loadStatements();
+      toast.success('Обработка запущена успешно', { id: toastId });
     } catch (error) {
       console.error('Failed to reprocess statement:', error);
+      toast.error('Ошибка при запуске обработки', { id: toastId });
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Вы уверены, что хотите удалить эту выписку?')) {
-      return;
-    }
+  const confirmDelete = (id: string) => {
+    setStatementToDelete(id);
+    setDeleteModalOpen(true);
+  };
 
+  const handleDelete = async () => {
+    if (!statementToDelete) return;
+
+    const toastId = toast.loading('Удаление...');
     try {
-      await apiClient.delete(`/statements/${id}`);
+      await apiClient.delete(`/statements/${statementToDelete}`);
       await loadStatements();
+      toast.success('Выписка удалена', { id: toastId });
     } catch (error) {
       console.error('Failed to delete statement:', error);
+      toast.error('Ошибка при удалении', { id: toastId });
     }
+    setStatementToDelete(null);
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'success';
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+            <CheckCircle2 size={12} className="mr-1" /> Завершено
+          </span>
+        );
       case 'processing':
-        return 'warning';
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+            <Loader2 size={12} className="mr-1 animate-spin" /> Обработка
+          </span>
+        );
       case 'error':
-        return 'error';
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+            <AlertCircle size={12} className="mr-1" /> Ошибка
+          </span>
+        );
       default:
-        return 'default';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'Завершено';
-      case 'processing':
-        return 'Обрабатывается';
-      case 'error':
-        return 'Ошибка';
-      case 'uploaded':
-        return 'Загружено';
-      default:
-        return status;
+        return (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+            <Clock size={12} className="mr-1" /> {status}
+          </span>
+        );
     }
   };
 
   const getFileIcon = (fileType?: string) => {
-    switch (fileType) {
-      case 'pdf':
-        return <PictureAsPdf />;
-      default:
-        return <Description />;
-    }
+    return <FileText className="text-red-500" size={24} />;
   };
 
   const handleDownloadFile = async (id: string, fileName: string) => {
+    const toastId = toast.loading('Скачивание файла...');
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
@@ -163,13 +159,15 @@ export default function StatementsPage() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+        toast.success('Файл успешно скачан', { id: toastId });
+      } else {
+        throw new Error('Download failed');
       }
     } catch (error) {
       console.error('Failed to download file:', error);
+      toast.error('Не удалось скачать файл', { id: toastId });
     }
   };
-
-  const [fileViewUrl, setFileViewUrl] = useState<string | null>(null);
 
   const handleViewFile = async (id: string) => {
     try {
@@ -203,204 +201,220 @@ export default function StatementsPage() {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-        <Box>
-          <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 600, color: 'primary.main' }}>
-            Банковские выписки
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Управление загруженными выписками и их статусами
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<CloudUpload />}
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header / CTA Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Банковские выписки</h1>
+          <p className="text-secondary mt-1">
+            Управляйте загруженными файлами, отслеживайте статус обработки и экспортируйте данные.
+          </p>
+        </div>
+        <button
           onClick={() => router.push('/upload')}
-          size="large"
-          sx={{ px: 4 }}
+          className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
         >
+          <UploadCloud className="-ml-1 mr-2 h-5 w-5" />
           Загрузить выписку
-        </Button>
-      </Box>
+        </button>
+      </div>
 
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <Paper sx={{ width: '100%', overflow: 'hidden', borderRadius: 3, boxShadow: 3 }}>
-          <TableContainer sx={{ maxHeight: '70vh' }}>
-            <Table stickyHeader aria-label="sticky table">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }} width="80">Превью</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Имя файла</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Статус</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Банк</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Транзакции</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Создано</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Обработано</TableCell>
-                  <TableCell sx={{ fontWeight: 600, bgcolor: 'grey.50' }}>Действия</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {statements.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} align="center">
-                      <Box sx={{ py: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <Description sx={{ fontSize: 64, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
-                        <Typography variant="h6" color="text.secondary">
-                          Нет загруженных выписок
-                        </Typography>
-                        <Button variant="outlined" sx={{ mt: 2 }} onClick={() => router.push('/upload')}>
-                          Загрузить первую выписку
-                        </Button>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  statements.map(statement => (
-                    <TableRow hover role="checkbox" tabIndex={-1} key={statement.id}>
-                      <TableCell>
-                        <Tooltip title="Нажмите для просмотра">
-                          <Avatar
-                            sx={{
-                              bgcolor: statement.fileType === 'pdf' ? 'error.light' : 'primary.light',
-                              cursor: 'pointer',
-                              width: 40,
-                              height: 40,
-                            }}
-                            onClick={() => handleViewFile(statement.id)}
-                          >
-                            {getFileIcon(statement.fileType)}
-                          </Avatar>
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                          {statement.fileName}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={getStatusLabel(statement.status)}
-                          color={
-                            getStatusColor(statement.status) as
-                              | 'success'
-                              | 'warning'
-                              | 'error'
-                              | 'default'
-                          }
-                          size="small"
-                          variant="outlined"
-                          sx={{ fontWeight: 500 }}
-                        />
-                      </TableCell>
-                      <TableCell>{statement.bankName}</TableCell>
-                      <TableCell>{statement.totalTransactions}</TableCell>
-                      <TableCell>{new Date(statement.createdAt).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        {statement.processedAt
-                          ? new Date(statement.processedAt).toLocaleDateString()
-                          : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', gap: 0.5 }}>
-                          <Tooltip title="Просмотреть">
-                            <IconButton size="small" onClick={() => handleViewFile(statement.id)}>
-                              <Visibility fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Скачать">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDownloadFile(statement.id, statement.fileName)}
-                            >
-                              <Download fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Редактировать">
-                            <IconButton
-                              size="small"
-                              onClick={() => router.push(`/statements/${statement.id}/edit`)}
-                            >
-                              <Edit fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          {statement.status === 'error' && (
-                            <Tooltip title="Повторить обработку">
-                              <IconButton size="small" onClick={() => handleReprocess(statement.id)}>
-                                <Refresh fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                          <Tooltip title="Удалить">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDelete(statement.id)}
-                            >
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      )}
-
-      {/* Dialog for viewing file */}
-      <Dialog open={!!viewingFile} onClose={handleCloseView} maxWidth="lg" fullWidth>
-        <DialogTitle>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">
-              {viewingFile && statements.find(s => s.id === viewingFile)?.fileName}
-            </Typography>
-            <IconButton onClick={handleCloseView}>
-              <Close />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          {fileViewUrl && (
-            <Box sx={{ width: '100%', height: '70vh' }}>
-              <iframe
-                src={fileViewUrl}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                }}
-                title="Предпросмотр файла"
-              />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          {viewingFile && (
-            <>
-              <Button
-                startIcon={<Download />}
-                onClick={() => {
-                  const statement = statements.find(s => s.id === viewingFile);
-                  if (statement) {
-                    handleDownloadFile(viewingFile, statement.fileName);
-                  }
-                }}
+      {/* Content Table */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
+           <h2 className="text-lg font-semibold text-gray-900">Все выписки</h2>
+        </div>
+        
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          </div>
+        ) : statements.length === 0 ? (
+          <div className="text-center py-20 px-4">
+            <div className="mx-auto h-16 w-16 text-gray-300 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
+              <File className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">Нет загруженных файлов</h3>
+            <p className="mt-1 text-gray-500">Загрузите свою первую банковскую выписку, чтобы начать работу.</p>
+            <div className="mt-6">
+              <button
+                onClick={() => router.push('/upload')}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
               >
-                Скачать
-              </Button>
-              <Button onClick={handleCloseView}>Закрыть</Button>
-            </>
-          )}
-        </DialogActions>
-      </Dialog>
-    </Container>
+                <UploadCloud className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+                Загрузить файл
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Файл
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Статус
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Банк
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Транзакции
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Дата
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Действия
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {statements.map((statement) => (
+                  <tr key={statement.id} className="hover:bg-gray-50 transition-colors group">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center cursor-pointer" onClick={() => handleViewFile(statement.id)}>
+                        <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded bg-red-50">
+                           {getFileIcon(statement.fileType)}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900 group-hover:text-primary transition-colors">
+                            {statement.fileName}
+                          </div>
+                          <div className="text-xs text-gray-500">PDF Document</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      {getStatusBadge(statement.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900 font-medium capitalize">{statement.bankName}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500">{statement.totalTransactions}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {new Date(statement.createdAt).toLocaleDateString()}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(statement.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleViewFile(statement.id)}
+                          className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary"
+                          title="Просмотреть"
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDownloadFile(statement.id, statement.fileName)}
+                          className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary"
+                          title="Скачать"
+                        >
+                          <Download size={18} />
+                        </button>
+                        {statement.status === 'error' && (
+                          <button
+                            onClick={() => handleReprocess(statement.id)}
+                            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-orange-500"
+                            title="Повторить"
+                          >
+                            <RefreshCw size={18} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => confirmDelete(statement.id)}
+                          className="p-1.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-600"
+                          title="Удалить"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title="Удалить выписку?"
+        message="Вы уверены, что хотите удалить эту выписку? Это действие нельзя отменить, и файл будет удален из хранилища."
+        confirmText="Удалить"
+        cancelText="Отмена"
+        isDestructive={true}
+      />
+
+      {/* File Viewer Modal */}
+      {viewingFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+              <div className="flex items-center">
+                 <div className="mr-3 p-1.5 bg-white rounded shadow-sm border border-gray-100">
+                    <FileText size={20} className="text-red-500" />
+                 </div>
+                 <h3 className="text-lg font-semibold text-gray-900">
+                    {statements.find(s => s.id === viewingFile)?.fileName}
+                 </h3>
+              </div>
+              <button 
+                onClick={handleCloseView}
+                className="p-2 rounded-full hover:bg-gray-200 text-gray-500 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="flex-1 bg-gray-100 relative">
+              {fileViewUrl ? (
+                <iframe
+                  src={fileViewUrl}
+                  className="w-full h-full border-0"
+                  title="Предпросмотр файла"
+                />
+              ) : (
+                <div className="flex justify-center items-center h-full">
+                  <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                </div>
+              )}
+            </div>
+            
+            <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-end space-x-3">
+              <button 
+                onClick={handleCloseView}
+                className="px-4 py-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 font-medium text-sm transition-colors"
+              >
+                Закрыть
+              </button>
+              <button
+                onClick={() => {
+                   const statement = statements.find(s => s.id === viewingFile);
+                   if (statement) {
+                     handleDownloadFile(viewingFile, statement.fileName);
+                   }
+                }}
+                className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary-hover font-medium text-sm shadow-sm flex items-center transition-colors"
+              >
+                <Download size={16} className="mr-2" />
+                Скачать файл
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

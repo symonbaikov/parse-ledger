@@ -2,67 +2,32 @@
 
 import React, { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Box,
-  IconButton,
-  Menu,
-  MenuItem,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  useTheme,
-  useMediaQuery,
-  Container,
-} from '@mui/material';
-import {
-  Description,
-  CloudUpload,
-  Assessment,
-  Category,
-  AdminPanelSettings,
-  Logout,
-  AccountCircle,
-  Menu as MenuIcon,
-  Folder as StorageIcon,
-  Telegram,
-  Settings,
-} from '@mui/icons-material';
+import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
 import { usePermissions } from '../hooks/usePermissions';
-import Link from 'next/link';
+import {
+  FileText,
+  Database,
+  UploadCloud,
+  BarChart,
+  Tags,
+  MessageCircle,
+  Shield,
+  Menu,
+  X,
+  User,
+  LogOut,
+  Settings,
+  ChevronDown
+} from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Navigation() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { isAdmin, hasPermission } = usePermissions();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-
-  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleLogout = async () => {
-    handleClose();
-    await logout();
-  };
-
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
-  };
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   if (!user) {
     return null;
@@ -72,37 +37,37 @@ export default function Navigation() {
     {
       label: 'Выписки',
       path: '/statements',
-      icon: <Description />,
+      icon: <FileText size={20} />,
       permission: 'statement.view',
     },
     {
       label: 'Хранилище',
       path: '/storage',
-      icon: <StorageIcon />,
+      icon: <Database size={20} />,
       permission: 'statement.view',
     },
     {
       label: 'Загрузка',
       path: '/upload',
-      icon: <CloudUpload />,
+      icon: <UploadCloud size={20} />,
       permission: 'statement.upload',
     },
     {
       label: 'Отчёты',
       path: '/reports',
-      icon: <Assessment />,
+      icon: <BarChart size={20} />,
       permission: 'report.view',
     },
     {
       label: 'Категории',
       path: '/categories',
-      icon: <Category />,
+      icon: <Tags size={20} />,
       permission: 'category.view',
     },
     {
       label: 'Telegram',
       path: '/settings/telegram',
-      icon: <Telegram />,
+      icon: <MessageCircle size={20} />,
       permission: 'telegram.view',
     },
   ];
@@ -111,197 +76,157 @@ export default function Navigation() {
     hasPermission(item.permission),
   );
 
-  const drawer = (
-    <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
-      <Typography variant="h6" sx={{ my: 2 }}>
-        FinFlow
-      </Typography>
-      <List>
-        {visibleNavItems.map((item) => (
-          <ListItem key={item.path} disablePadding>
-            <ListItemButton
-              component={Link}
-              href={item.path}
-              selected={pathname === item.path}
-              sx={{
-                textAlign: 'left',
-                color: pathname === item.path ? 'primary.main' : 'inherit',
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  color: pathname === item.path ? 'primary.main' : 'inherit',
-                }}
-              >
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText primary={item.label} />
-            </ListItemButton>
-          </ListItem>
-        ))}
-        {isAdmin && (
-          <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              href="/admin"
-              selected={pathname?.startsWith('/admin')}
-              sx={{
-                textAlign: 'left',
-                color: pathname?.startsWith('/admin')
-                  ? 'primary.main'
-                  : 'inherit',
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  color: pathname?.startsWith('/admin')
-                    ? 'primary.main'
-                    : 'inherit',
-                }}
-              >
-                <AdminPanelSettings />
-              </ListItemIcon>
-              <ListItemText primary="Админ-панель" />
-            </ListItemButton>
-          </ListItem>
-        )}
-      </List>
-    </Box>
-  );
-
   return (
-    <>
-      <AppBar position="sticky" elevation={0} sx={{ bgcolor: 'primary.main' }}>
-        <Container maxWidth="xl">
-          <Toolbar disableGutters>
-            {isMobile && (
-              <IconButton
-                color="inherit"
-                aria-label="open drawer"
-                edge="start"
-                onClick={handleDrawerToggle}
-                sx={{ mr: 2 }}
-              >
-                <MenuIcon />
-              </IconButton>
-            )}
-            <Typography
-              variant="h6"
-              component={Link}
-              href="/"
-              sx={{
-                flexGrow: { xs: 1, md: 0 },
-                mr: 4,
-                textDecoration: 'none',
-                color: 'inherit',
-                fontWeight: 700,
-                letterSpacing: '.1rem',
-              }}
-            >
-              FinFlow
-            </Typography>
-
-            {!isMobile && (
-              <Box sx={{ flexGrow: 1, display: 'flex', gap: 1 }}>
-                {visibleNavItems.map((item) => (
-                  <Button
+    <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-14">
+          <div className="flex items-center">
+            <Link href="/" className="flex-shrink-0 flex items-center">
+              <span className="text-primary text-xl font-bold tracking-tight">FinFlow</span>
+            </Link>
+            
+            {/* Desktop Navigation */}
+            <nav className="hidden md:ml-8 md:flex md:space-x-2">
+              {visibleNavItems.map((item) => {
+                const isActive = pathname === item.path;
+                return (
+                  <Link
                     key={item.path}
-                    color="inherit"
-                    startIcon={item.icon}
-                    component={Link}
                     href={item.path}
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: pathname === item.path ? 700 : 400,
-                      opacity: pathname === item.path ? 1 : 0.8,
-                      '&:hover': { opacity: 1 },
-                    }}
+                    className={`
+                      group inline-flex flex-col items-center justify-center px-3 pt-1 border-b-2 text-xs font-medium min-w-[64px] transition-colors duration-200
+                      ${isActive 
+                        ? 'border-primary text-primary' 
+                        : 'border-transparent text-secondary hover:text-primary'}
+                    `}
                   >
-                    {item.label}
-                  </Button>
-                ))}
-
-                {isAdmin && (
-                  <Button
-                    color="inherit"
-                    startIcon={<AdminPanelSettings />}
-                    component={Link}
-                    href="/admin"
-                    sx={{
-                      textTransform: 'none',
-                      fontWeight: pathname?.startsWith('/admin') ? 700 : 400,
-                      opacity: pathname?.startsWith('/admin') ? 1 : 0.8,
-                      '&:hover': { opacity: 1 },
-                    }}
-                  >
-                    Админ-панель
-                  </Button>
-                )}
-              </Box>
-            )}
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography
-                variant="body2"
-                sx={{ display: { xs: 'none', sm: 'block' } }}
-              >
-                {user.name}
-              </Typography>
-              <IconButton
-                size="large"
-                edge="end"
-                color="inherit"
-                onClick={handleMenu}
-                aria-label="account menu"
-              >
-                <AccountCircle />
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleClose}
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'right',
-                }}
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-              >
-                <MenuItem
-                  onClick={handleClose}
-                  component={Link}
-                  href="/settings/profile"
+                    <span className="mb-1 group-hover:scale-110 transition-transform duration-200">
+                      {item.icon}
+                    </span>
+                    <span className="hidden lg:block">{item.label}</span>
+                  </Link>
+                );
+              })}
+              
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className={`
+                    group inline-flex flex-col items-center justify-center px-3 pt-1 border-b-2 text-xs font-medium min-w-[64px] transition-colors duration-200
+                    ${pathname?.startsWith('/admin')
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-secondary hover:text-primary'}
+                  `}
                 >
-                  <Settings sx={{ mr: 1 }} />
-                  Настройки
-                </MenuItem>
-                <MenuItem onClick={handleLogout}>
-                  <Logout sx={{ mr: 1 }} />
-                  Выйти
-                </MenuItem>
-              </Menu>
-            </Box>
-          </Toolbar>
-        </Container>
-      </AppBar>
-      <nav>
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
-          }}
-          sx={{
-            display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 240 },
-          }}
-        >
-          {drawer}
-        </Drawer>
-      </nav>
-    </>
+                  <span className="mb-1 group-hover:scale-110 transition-transform duration-200">
+                    <Shield size={20} />
+                  </span>
+                  <span className="hidden lg:block">Админка</span>
+                </Link>
+              )}
+            </nav>
+          </div>
+
+          <div className="flex items-center gap-4">
+            {/* User Menu */}
+            <div className="relative ml-3">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex flex-col items-center max-w-xs text-xs font-medium text-secondary hover:text-primary focus:outline-none"
+              >
+                <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                   <User size={16} className="text-gray-500" />
+                </div>
+                <div className="flex items-center mt-1">
+                  <span className="truncate max-w-[80px] hidden sm:block">Профиль</span>
+                  <ChevronDown size={12} className="ml-0.5" />
+                </div>
+              </button>
+
+              {/* Dropdown */}
+              {userMenuOpen && (
+                <div 
+                  className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 focus:outline-none z-50 animate-in fade-in zoom-in-95 duration-100"
+                  onMouseLeave={() => setUserMenuOpen(false)}
+                >
+                   <div className="px-4 py-2 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                   </div>
+                  <Link
+                    href="/settings/profile"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <Settings size={16} className="mr-2" />
+                    Настройки
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      logout();
+                      toast.success('Вы успешно вышли из системы');
+                    }}
+                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <LogOut size={16} className="mr-2" />
+                    Выйти
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="flex items-center md:hidden">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none"
+              >
+                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-gray-200 bg-white">
+          <div className="pt-2 pb-3 space-y-1">
+            {visibleNavItems.map((item) => (
+              <Link
+                key={item.path}
+                href={item.path}
+                className={`
+                  flex items-center pl-3 pr-4 py-2 border-l-4 text-base font-medium
+                  ${pathname === item.path
+                    ? 'bg-blue-50 border-primary text-primary'
+                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'}
+                `}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="mr-3">{item.icon}</span>
+                {item.label}
+              </Link>
+            ))}
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className={`
+                  flex items-center pl-3 pr-4 py-2 border-l-4 text-base font-medium
+                  ${pathname?.startsWith('/admin')
+                    ? 'bg-blue-50 border-primary text-primary'
+                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'}
+                `}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="mr-3"><Shield size={20} /></span>
+                Админ-панель
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+    </header>
   );
 }

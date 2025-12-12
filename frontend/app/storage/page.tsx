@@ -26,13 +26,13 @@ import {
   Divider,
 } from '@mui/material';
 import {
-  Visibility as ViewIcon,
-  Download as DownloadIcon,
-  Share as ShareIcon,
-  MoreVert as MoreIcon,
-  Search as SearchIcon,
-  FilterList as FilterIcon,
-} from '@mui/icons-material';
+  Eye,
+  Download,
+  Share2,
+  MoreVertical,
+  Search,
+  Filter,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { alpha } from '@mui/material/styles';
 import api from '../lib/api';
@@ -309,14 +309,14 @@ export default function StoragePage() {
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon />
+                <Search size={20} className="text-gray-400" />
               </InputAdornment>
             ),
           }}
         />
         <Button
           variant={filtersApplied ? 'contained' : 'outlined'}
-          startIcon={<FilterIcon />}
+          startIcon={<Filter size={20} />}
           sx={{ minWidth: '150px' }}
           onClick={handleOpenFilters}
         >
@@ -452,38 +452,40 @@ export default function StoragePage() {
                   </TableCell>
                   <TableCell>{formatDate(file.createdAt)}</TableCell>
                   <TableCell align="center">
-                    <Tooltip title="Просмотр">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleView(file.id)}
-                      >
-                        <ViewIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Скачать">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDownload(file.id, file.fileName)}
-                      >
-                        <DownloadIcon />
-                      </IconButton>
-                    </Tooltip>
-                    {(file.isOwner || file.canReshare) && (
-                      <Tooltip title="Поделиться">
-                        <IconButton
-                          size="small"
-                          onClick={() => handleShare(file.id)}
+                    <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity">
+                      <Tooltip title="Просмотр">
+                        <button
+                          onClick={() => handleView(file.id)}
+                          className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
                         >
-                          <ShareIcon />
-                        </IconButton>
+                          <Eye size={18} />
+                        </button>
                       </Tooltip>
-                    )}
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleMenuOpen(e, file)}
-                    >
-                      <MoreIcon />
-                    </IconButton>
+                      <Tooltip title="Скачать">
+                        <button
+                          onClick={() => handleDownload(file.id, file.fileName)}
+                          className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
+                        >
+                          <Download size={18} />
+                        </button>
+                      </Tooltip>
+                      {(file.isOwner || file.canReshare) && (
+                        <Tooltip title="Поделиться">
+                          <button
+                            onClick={() => handleShare(file.id)}
+                            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary transition-colors"
+                          >
+                            <Share2 size={18} />
+                          </button>
+                        </Tooltip>
+                      )}
+                      <button
+                        onClick={(e) => handleMenuOpen(e, file)}
+                         className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-gray-900 transition-colors"
+                      >
+                        <MoreVertical size={18} />
+                      </button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

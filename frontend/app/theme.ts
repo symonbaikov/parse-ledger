@@ -3,26 +3,27 @@ import { createTheme } from '@mui/material/styles';
 export const theme = createTheme({
   palette: {
     primary: {
-      main: '#1A237E', // Deep Blue
-      light: '#534bae',
-      dark: '#000051',
+      main: '#0a66c2', // LinkedIn Blue
+      light: '#004182',
+      dark: '#004182',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#009688', // Teal
-      light: '#52c7b8',
-      dark: '#00675b',
+      main: '#666666', // Neutral secondary
+      light: '#8c8c8c',
+      dark: '#404040',
       contrastText: '#ffffff',
     },
     background: {
-      default: '#f5f5f5',
+      default: '#F3F2EF', // LinkedIn warm gray
       paper: '#ffffff',
     },
     text: {
-      primary: '#212121',
-      secondary: '#757575',
+      primary: '#191919',
+      secondary: '#666666',
     },
   },
+
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
