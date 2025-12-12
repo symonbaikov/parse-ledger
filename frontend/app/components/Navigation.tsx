@@ -18,7 +18,8 @@ import {
   User,
   LogOut,
   Settings,
-  ChevronDown
+  ChevronDown,
+  Wallet
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -82,6 +83,7 @@ export default function Navigation() {
         <div className="flex justify-between h-14">
           <div className="flex items-center">
             <Link href="/" className="flex-shrink-0 flex items-center">
+              <Wallet className="h-8 w-8 text-primary mr-2" />
               <span className="text-primary text-xl font-bold tracking-tight">FinFlow</span>
             </Link>
             
