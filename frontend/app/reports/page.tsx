@@ -146,9 +146,10 @@ export default function ReportsPage() {
   const hydrateWithLatestPeriod = async () => {
     try {
       const resp = await apiClient.get('/reports/latest');
-      const latestDate = resp.data?.date;
-      const latestYear = resp.data?.year;
-      const latestMonth = resp.data?.month;
+      const payload = resp.data?.data || resp.data;
+      const latestDate = payload?.date;
+      const latestYear = payload?.year;
+      const latestMonth = payload?.month;
 
       if (latestDate) {
         setDailyDate(latestDate);
@@ -171,9 +172,11 @@ export default function ReportsPage() {
     try {
       const dateToUse = dateOverride || dailyDate || 'latest';
       const response = await apiClient.get(`/reports/daily?date=${dateToUse}`);
-      setDailyReport(response.data);
-      if (!dailyDate && dateToUse !== 'latest') {
-        setDailyDate(dateToUse);
+      const payload = response.data?.data || response.data;
+      setDailyReport(payload);
+      const resolvedDate = payload?.date || dateToUse;
+      if (!dailyDate && resolvedDate && resolvedDate !== 'latest') {
+        setDailyDate(resolvedDate);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Ошибка загрузки отчёта');
@@ -189,7 +192,8 @@ export default function ReportsPage() {
       const yearToUse = yearOverride ?? monthlyYear;
       const monthToUse = monthOverride ?? monthlyMonth;
       const response = await apiClient.get(`/reports/monthly?year=${yearToUse}&month=${monthToUse}`);
-      setMonthlyReport(response.data);
+      const payload = response.data?.data || response.data;
+      setMonthlyReport(payload);
       if (!monthlyYear && yearToUse) setMonthlyYear(yearToUse);
       if (!monthlyMonth && monthToUse) setMonthlyMonth(monthToUse);
     } catch (err: any) {
@@ -208,7 +212,8 @@ export default function ReportsPage() {
         dateTo: customDateTo,
         groupBy: customGroupBy,
       });
-      setCustomReport(response.data);
+      const payload = response.data?.data || response.data;
+      setCustomReport(payload);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Ошибка загрузки отчёта');
     } finally {
@@ -257,12 +262,14 @@ export default function ReportsPage() {
     }
   }, [tab, initialized]);
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | string | null | undefined) => {
+    const numericValue = Number(amount);
+    const safeValue = Number.isFinite(numericValue) ? numericValue : 0;
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
       currency: 'KZT',
       minimumFractionDigits: 0,
-    }).format(amount);
+    }).format(safeValue);
   };
 
   const normalizeSummary = (
