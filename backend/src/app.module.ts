@@ -24,6 +24,7 @@ import {
   AuditLog,
   SharedLink,
   FilePermission,
+  DataEntry,
 } from './entities';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -38,6 +39,7 @@ import { TransactionsModule } from './modules/transactions/transactions.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
+import { DataEntryModule } from './modules/data-entry/data-entry.module';
 
 @Module({
   imports: [
@@ -71,6 +73,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
       AuditLog,
       SharedLink,
       FilePermission,
+      DataEntry,
     ]),
     AuthModule,
     UsersModule,
@@ -85,6 +88,7 @@ import { TelegramModule } from './modules/telegram/telegram.module';
     ReportsModule,
     StorageModule,
     TelegramModule,
+    DataEntryModule,
   ],
   controllers: [AppController],
   providers: [

@@ -6,12 +6,12 @@ export * from './branch.entity';
 export * from './wallet.entity';
 export * from './google-sheet.entity';
 export * from './google-sheet-row.entity';
+export * from './data-entry.entity';
 export * from './telegram-report.entity';
 export * from './parsing-rule.entity';
 export * from './audit-log.entity';
 export * from './shared-link.entity';
 export * from './file-permission.entity';
-
 
 
 

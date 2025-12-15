@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CheckCircle2, ClipboardList, DollarSign, Droplets, TrendingDown, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
 
 type TabKey = 'cash' | 'raw' | 'debit' | 'credit';
 
@@ -39,6 +40,9 @@ export default function DataEntryPage() {
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null,
   );
+  const [saving, setSaving] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const tabMeta: Record<TabKey, { label: string; icon: ReactNode; description: string }> = useMemo(
     () => ({
@@ -89,24 +93,32 @@ export default function DataEntryPage() {
       return;
     }
 
-    const newEntry: Entry = {
-      id: `${tab}-${Date.now()}`,
-      date: payload.date,
-      amount: amountNum,
-      note: payload.note,
-    };
-
-    setEntries((prev) => ({
-      ...prev,
-      [tab]: [newEntry, ...prev[tab]],
-    }));
-
-    setForms((prev) => ({
-      ...prev,
-      [tab]: { ...initialForm },
-    }));
-
-    setStatus({ type: 'success', message: 'Данные сохранены (локально)' });
+    setSaving(true);
+    setError(null);
+    apiClient
+      .post('/data-entry', {
+        type: tab,
+        date: payload.date,
+        amount: amountNum,
+        note: payload.note || undefined,
+      })
+      .then((resp) => {
+        const saved: Entry = resp.data?.data || resp.data;
+        setEntries((prev) => ({
+          ...prev,
+          [tab]: [saved, ...(prev[tab] || [])],
+        }));
+        setForms((prev) => ({
+          ...prev,
+          [tab]: { ...initialForm },
+        }));
+        setStatus({ type: 'success', message: 'Данные сохранены' });
+      })
+      .catch((err) => {
+        const message = err?.response?.data?.message || 'Не удалось сохранить данные';
+        setStatus({ type: 'error', message });
+      })
+      .finally(() => setSaving(false));
   };
 
   const currentForm = forms[activeTab];
@@ -121,6 +133,33 @@ export default function DataEntryPage() {
       return value;
     }
   };
+
+  const loadEntries = (tab: TabKey) => {
+    setLoadingList(true);
+    setError(null);
+    apiClient
+      .get(`/data-entry?type=${tab}&limit=20`)
+      .then((resp) => {
+        const items: Entry[] = resp.data?.items || resp.data?.data?.items || resp.data?.data || [];
+        setEntries((prev) => ({
+          ...prev,
+          [tab]: items,
+        }));
+      })
+      .catch((err) => {
+        const message = err?.response?.data?.message || 'Не удалось загрузить записи';
+        setError(message);
+      })
+      .finally(() => setLoadingList(false));
+  };
+
+  // Load on tab change
+  useEffect(() => {
+    if (!user) return;
+    if ((entries[activeTab] || []).length === 0) {
+      loadEntries(activeTab);
+    }
+  }, [activeTab, user]);
 
   if (loading) {
     return (
@@ -155,16 +194,16 @@ export default function DataEntryPage() {
         </div>
       </div>
 
-      {status && (
+      {(status || error) && (
         <div
           className={`mb-4 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-            status.type === 'success'
+            status?.type === 'success'
               ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
               : 'border-red-200 bg-red-50 text-red-800'
           }`}
         >
           <CheckCircle2 className="h-4 w-4" />
-          <span>{status.message}</span>
+          <span>{status?.message || error}</span>
         </div>
       )}
 
@@ -230,7 +269,8 @@ export default function DataEntryPage() {
           <div className="flex justify-end">
             <button
               onClick={() => handleSubmit(activeTab)}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90"
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:opacity-60"
             >
               Сохранить
             </button>
@@ -244,10 +284,12 @@ export default function DataEntryPage() {
             <Droplets className="h-5 w-5 text-primary" />
             <h3 className="font-semibold text-gray-900">Последние записи — {tabMeta[activeTab].label}</h3>
           </div>
-          <span className="text-xs text-gray-500">Отображаются локально после сохранения</span>
+          <span className="text-xs text-gray-500">Отображаются из базы за последние записи</span>
         </div>
 
-        {currentEntries.length === 0 ? (
+        {loadingList ? (
+          <div className="px-4 py-6 text-sm text-gray-600">Загрузка...</div>
+        ) : currentEntries.length === 0 ? (
           <div className="px-4 py-6 text-sm text-gray-600">Пока нет записей для этой вкладки.</div>
         ) : (
           <div className="divide-y divide-gray-100">
