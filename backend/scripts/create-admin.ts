@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import { User, UserRole } from '../src/entities/user.entity';
 import { Statement } from '../src/entities/statement.entity';
 import { GoogleSheet } from '../src/entities/google-sheet.entity';
+import { GoogleSheetRow } from '../src/entities/google-sheet-row.entity';
 import { TelegramReport } from '../src/entities/telegram-report.entity';
 import { Category } from '../src/entities/category.entity';
 import { Branch } from '../src/entities/branch.entity';
@@ -47,6 +48,7 @@ async function createAdmin() {
       User,
       Statement,
       GoogleSheet,
+      GoogleSheetRow,
       TelegramReport,
       Category,
       Branch,
