@@ -103,7 +103,12 @@ export default function DataEntryPage() {
         note: payload.note || undefined,
       })
       .then((resp) => {
-        const saved: Entry = resp.data?.data || resp.data;
+        const savedRaw: Entry = resp.data?.data || resp.data;
+        const amountNumSafe = Number((savedRaw as any)?.amount);
+        const saved: Entry = {
+          ...savedRaw,
+          amount: Number.isNaN(amountNumSafe) ? 0 : amountNumSafe,
+        };
         setEntries((prev) => ({
           ...prev,
           [tab]: [saved, ...(prev[tab] || [])],
@@ -140,7 +145,15 @@ export default function DataEntryPage() {
     apiClient
       .get(`/data-entry?type=${tab}&limit=20`)
       .then((resp) => {
-        const items: Entry[] = resp.data?.items || resp.data?.data?.items || resp.data?.data || [];
+        const rawItems: Entry[] =
+          resp.data?.items || resp.data?.data?.items || resp.data?.data || [];
+        const items = rawItems.map((item) => {
+          const amountNum = Number((item as any)?.amount);
+          return {
+            ...item,
+            amount: Number.isNaN(amountNum) ? 0 : amountNum,
+          };
+        });
         setEntries((prev) => ({
           ...prev,
           [tab]: items,
@@ -289,7 +302,7 @@ export default function DataEntryPage() {
 
         {loadingList ? (
           <div className="px-4 py-6 text-sm text-gray-600">Загрузка...</div>
-        ) : currentEntries.length === 0 ? (
+          ) : currentEntries.length === 0 ? (
           <div className="px-4 py-6 text-sm text-gray-600">Пока нет записей для этой вкладки.</div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -300,7 +313,9 @@ export default function DataEntryPage() {
                   <p className="text-xs text-gray-600">{entry.note || 'Без комментария'}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-900">{entry.amount.toFixed(2)}</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {Number(entry.amount || 0).toFixed(2)}
+                  </p>
                   <p className="text-xs text-gray-500">Сумма</p>
                 </div>
               </div>
