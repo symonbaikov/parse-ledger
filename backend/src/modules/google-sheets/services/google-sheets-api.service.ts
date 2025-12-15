@@ -49,16 +49,29 @@ export class GoogleSheetsApiService {
    * Refresh access token using refresh token
    */
   async refreshAccessToken(refreshToken: string): Promise<string> {
+    if (!refreshToken || refreshToken.includes('placeholder')) {
+      throw new BadRequestException('Отсутствует валидный refresh token Google');
+    }
+
     try {
       this.oauth2Client.setCredentials({
         refresh_token: refreshToken,
       });
 
-      const { credentials } = await this.oauth2Client.refreshAccessToken();
-      return credentials.access_token || '';
+      const tokenResponse = await (this.oauth2Client as any).refreshToken(refreshToken);
+      const accessToken =
+        (tokenResponse as any)?.tokens?.access_token || (tokenResponse as any)?.access_token;
+      if (!accessToken) {
+        throw new Error('Access token не получен при обновлении');
+      }
+      return accessToken;
     } catch (error) {
       this.logger.error('Error refreshing access token:', error);
-      throw new BadRequestException('Failed to refresh Google access token');
+      throw new BadRequestException(
+        error?.response?.data?.error_description ||
+          error?.message ||
+          'Failed to refresh Google access token',
+      );
     }
   }
 
@@ -387,9 +400,6 @@ export class GoogleSheetsApiService {
     }
   }
 }
-
-
-
 
 
 

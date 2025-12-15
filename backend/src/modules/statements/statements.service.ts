@@ -205,14 +205,32 @@ export class StatementsService {
     return statement;
   }
 
+  private resolveFilePath(rawPath: string): string | null {
+    const candidates = [
+      rawPath,
+      path.isAbsolute(rawPath) ? rawPath : path.join(process.cwd(), rawPath),
+      path.join(process.cwd(), 'dist', rawPath),
+      path.join(process.cwd(), '..', rawPath),
+      path.join(process.cwd(), 'uploads', path.basename(rawPath)),
+    ];
+
+    for (const candidate of candidates) {
+      if (candidate && fs.existsSync(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
   async getFilePath(id: string, userId: string): Promise<string> {
     const statement = await this.findOne(id, userId);
 
-    if (!fs.existsSync(statement.filePath)) {
+    const resolved = this.resolveFilePath(statement.filePath);
+    if (!resolved) {
       throw new NotFoundException('File not found');
     }
 
-    return path.resolve(statement.filePath);
+    return resolved;
   }
 
   async getFileInfo(
@@ -221,7 +239,8 @@ export class StatementsService {
   ): Promise<{ filePath: string; fileName: string; mimeType: string }> {
     const statement = await this.findOne(id, userId);
 
-    if (!fs.existsSync(statement.filePath)) {
+    const resolved = this.resolveFilePath(statement.filePath);
+    if (!resolved) {
       throw new NotFoundException('File not found');
     }
 
@@ -243,7 +262,7 @@ export class StatementsService {
     }
 
     return {
-      filePath: path.resolve(statement.filePath),
+      filePath: resolved,
       fileName: statement.fileName,
       mimeType,
     };

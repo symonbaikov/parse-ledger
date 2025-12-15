@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { CheckCircle2, ClipboardList, DollarSign, Droplets, TrendingDown, TrendingUp } from 'lucide-react';
+import { CheckCircle2, ClipboardList, DollarSign, Droplets, TrendingDown, TrendingUp, Trash2 } from 'lucide-react';
 import { useAuth } from '@/app/hooks/useAuth';
 import apiClient from '@/app/lib/api';
 
@@ -43,6 +43,7 @@ export default function DataEntryPage() {
   const [saving, setSaving] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const tabMeta: Record<TabKey, { label: string; icon: ReactNode; description: string }> = useMemo(
     () => ({
@@ -173,6 +174,24 @@ export default function DataEntryPage() {
       loadEntries(activeTab);
     }
   }, [activeTab, user]);
+
+  const handleDelete = (entryId: string) => {
+    setRemovingId(entryId);
+    apiClient
+      .delete(`/data-entry/${entryId}`)
+      .then(() => {
+        setEntries((prev) => ({
+          ...prev,
+          [activeTab]: (prev[activeTab] || []).filter((e) => e.id !== entryId),
+        }));
+        setStatus({ type: 'success', message: 'Запись удалена' });
+      })
+      .catch((err) => {
+        const message = err?.response?.data?.message || 'Не удалось удалить запись';
+        setStatus({ type: 'error', message });
+      })
+      .finally(() => setRemovingId(null));
+  };
 
   if (loading) {
     return (
@@ -312,11 +331,22 @@ export default function DataEntryPage() {
                   <p className="text-sm font-semibold text-gray-900">{formatDate(entry.date)}</p>
                   <p className="text-xs text-gray-600">{entry.note || 'Без комментария'}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {Number(entry.amount || 0).toFixed(2)}
-                  </p>
-                  <p className="text-xs text-gray-500">Сумма</p>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {Number(entry.amount || 0).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-500">Сумма</p>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(entry.id)}
+                    disabled={removingId === entry.id}
+                    className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                    title="Удалить"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Удалить
+                  </button>
                 </div>
               </div>
             ))}

@@ -50,12 +50,6 @@ export default function Navigation() {
       permission: 'statement.view',
     },
     {
-      label: 'Загрузка',
-      path: '/upload',
-      icon: <UploadCloud size={20} />,
-      permission: 'statement.upload',
-    },
-    {
       label: 'Ввод данных',
       path: '/data-entry',
       icon: <Edit3 size={20} />,

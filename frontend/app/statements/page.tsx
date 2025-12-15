@@ -49,6 +49,10 @@ export default function StatementsPage() {
   >([]);
   const [logLoading, setLogLoading] = useState(false);
   const [logStatementName, setLogStatementName] = useState<string>('');
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -110,6 +114,65 @@ export default function StatementsPage() {
       toast.error('Ошибка при удалении', { id: toastId });
     }
     setStatementToDelete(null);
+  };
+
+  const addFiles = (files: File[]) => {
+    const allowed = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/csv',
+      'image/jpeg',
+      'image/png',
+    ];
+    const filtered = files.filter((f) => allowed.includes(f.type));
+    if (filtered.length === 0) {
+      toast.error('Неподдерживаемый формат файла');
+      return;
+    }
+    setUploadFiles((prev) => [...prev, ...filtered].slice(0, 5));
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    addFiles(Array.from(e.dataTransfer.files));
+  };
+
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      addFiles(Array.from(e.target.files));
+    }
+  };
+
+  const removeUploadFile = (index: number) => {
+    setUploadFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpload = async () => {
+    if (uploadFiles.length === 0) {
+      toast.error('Выберите хотя бы один файл');
+      return;
+    }
+    setUploading(true);
+    setUploadError(null);
+    const formData = new FormData();
+    uploadFiles.forEach((file) => formData.append('files', file));
+
+    try {
+      await apiClient.post('/statements/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Файлы загружены, начата обработка');
+      setUploadFiles([]);
+      setUploadModalOpen(false);
+      await loadStatements();
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Не удалось загрузить файлы';
+      setUploadError(message);
+      toast.error(message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -264,7 +327,7 @@ export default function StatementsPage() {
           </p>
         </div>
         <button
-          onClick={() => router.push('/upload')}
+          onClick={() => setUploadModalOpen(true)}
           className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
         >
           <UploadCloud className="-ml-1 mr-2 h-5 w-5" />
@@ -291,7 +354,7 @@ export default function StatementsPage() {
             <p className="mt-1 text-gray-500">Загрузите свою первую банковскую выписку, чтобы начать работу.</p>
             <div className="mt-6">
               <button
-                onClick={() => router.push('/upload')}
+                onClick={() => setUploadModalOpen(true)}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
               >
                 <UploadCloud className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
@@ -412,6 +475,130 @@ export default function StatementsPage() {
           </div>
         )}
       </div>
+
+      {uploadModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" 
+            onClick={() => {
+              setUploadModalOpen(false);
+              setUploadFiles([]);
+              setUploadError(null);
+            }} 
+          />
+          <div className="relative w-full max-w-lg rounded-3xl bg-white shadow-2xl ring-1 ring-gray-900/5 overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-8 pt-8 pb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Загрузка файлов</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Поддерживаются PDF, Excel, CSV и изображения
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setUploadModalOpen(false);
+                  setUploadFiles([]);
+                  setUploadError(null);
+                }}
+                className="rounded-full p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-8 pb-8">
+              {uploadError && (
+                <div className="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-600 flex items-start gap-3">
+                   <AlertCircle className="h-5 w-5 shrink-0" />
+                   {uploadError}
+                </div>
+              )}
+
+              <div
+                onDrop={handleDrop}
+                onDragOver={(e) => e.preventDefault()}
+                className="group relative rounded-2xl border-2 border-solid border-gray-200 bg-gray-50/50 hover:border-blue-500 transition-all duration-200"
+              >
+                <input
+                  type="file"
+                  multiple
+                  className="absolute inset-0 cursor-pointer opacity-0 z-10"
+                  accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png"
+                  onChange={handleFileInput}
+                />
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                  <div className="mb-4 rounded-full bg-white p-4 shadow-sm ring-1 ring-gray-100 group-hover:scale-110 transition-transform duration-200">
+                    <UploadCloud className="h-8 w-8 text-primary" />
+                  </div>
+                  <p className="text-base font-medium text-gray-900">
+                    Нажмите для выбора 
+                    <span className="font-normal text-gray-500"> или перетащите файлы</span>
+                  </p>
+                  <p className="mt-2 text-xs text-gray-400">
+                    Максимум 5 файлов до 10 МБ каждый
+                  </p>
+                </div>
+              </div>
+
+              {uploadFiles.length > 0 && (
+                <div className="mt-6 flex flex-col gap-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                  {uploadFiles.map((file, idx) => (
+                    <div
+                      key={`${file.name}-${idx}`}
+                      className="flex items-center justify-between rounded-xl border border-gray-100 bg-white p-3 shadow-sm transition-all hover:border-gray-200 hover:shadow-md"
+                    >
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-500">
+                          <FileText size={20} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-gray-900">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {(file.size / 1024 / 1024).toFixed(2)} МБ
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeUploadFile(idx)}
+                        className="rounded-full p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-8 pb-8 pt-2 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setUploadModalOpen(false);
+                  setUploadFiles([]);
+                  setUploadError(null);
+                }}
+                className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+                disabled={uploading}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleUpload}
+                disabled={uploading || uploadFiles.length === 0}
+                className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
+              >
+                {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {uploading ? 'Загрузка...' : 'Загрузить файлы'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         isOpen={deleteModalOpen}

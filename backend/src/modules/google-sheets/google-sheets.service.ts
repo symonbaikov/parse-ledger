@@ -112,6 +112,13 @@ export class GoogleSheetsService {
       throw new BadRequestException('Google Sheet is not active');
     }
 
+    // Basic guard against placeholder tokens to avoid invalid_request
+    if (!sheet.refreshToken || sheet.refreshToken.includes('placeholder')) {
+      throw new BadRequestException(
+        'Отсутствует refresh token Google. Переподключите таблицу через OAuth.',
+      );
+    }
+
     // Verify access
     const hasAccess = await this.googleSheetsApiService.verifyAccess(
       sheet.accessToken,

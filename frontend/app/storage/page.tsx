@@ -12,7 +12,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
   Chip,
   TextField,
   InputAdornment,
@@ -33,6 +32,7 @@ import {
   Search,
   Filter,
 } from 'lucide-react';
+import { Icon } from '@iconify/react';
 import { useRouter } from 'next/navigation';
 import { alpha } from '@mui/material/styles';
 import api from '../lib/api';
@@ -54,6 +54,7 @@ interface StorageFile {
     id: string;
     name: string;
     color?: string;
+    icon?: string;
   } | null;
   metadata?: {
     accountNumber?: string;
@@ -66,6 +67,7 @@ interface CategoryOption {
   id: string;
   name: string;
   color?: string;
+  icon?: string;
 }
 
 /**
@@ -417,6 +419,7 @@ export default function StoragePage() {
                                 bgcolor: selectedCategory.color || 'grey.300',
                                 color: selectedCategory.color ? 'white' : 'inherit',
                               }}
+                              icon={selectedCategory.icon ? <Icon icon={selectedCategory.icon} /> : undefined}
                             />
                           );
                         }}
@@ -429,12 +432,18 @@ export default function StoragePage() {
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                               <Box
                                 sx={{
-                                  width: 12,
-                                  height: 12,
-                                  borderRadius: '50%',
-                                  bgcolor: cat.color || 'grey.400',
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: 1,
+                                  bgcolor: alpha(cat.color || '#9e9e9e', 0.1),
+                                  color: cat.color || '#9e9e9e',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
                                 }}
-                              />
+                              >
+                                <Icon icon={cat.icon || 'mdi:tag'} width={16} height={16} />
+                              </Box>
                               {cat.name}
                             </Box>
                           </MenuItem>
