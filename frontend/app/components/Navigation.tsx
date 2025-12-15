@@ -19,7 +19,9 @@ import {
   LogOut,
   Settings,
   ChevronDown,
-  Wallet
+  Wallet,
+  Plug,
+  Edit3,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -54,6 +56,12 @@ export default function Navigation() {
       permission: 'statement.upload',
     },
     {
+      label: 'Ввод данных',
+      path: '/data-entry',
+      icon: <Edit3 size={20} />,
+      permission: 'statement.upload',
+    },
+    {
       label: 'Отчёты',
       path: '/reports',
       icon: <BarChart size={20} />,
@@ -64,12 +72,6 @@ export default function Navigation() {
       path: '/categories',
       icon: <Tags size={20} />,
       permission: 'category.view',
-    },
-    {
-      label: 'Telegram',
-      path: '/settings/telegram',
-      icon: <MessageCircle size={20} />,
-      permission: 'telegram.view',
     },
   ];
 
@@ -162,6 +164,14 @@ export default function Navigation() {
                   >
                     <Settings size={16} className="mr-2" />
                     Настройки
+                  </Link>
+                  <Link
+                    href="/integrations"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <Plug size={16} className="mr-2" />
+                    Интеграции
                   </Link>
                   <button
                     onClick={() => {

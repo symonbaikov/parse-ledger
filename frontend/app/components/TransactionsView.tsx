@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Paper,
   Table,
@@ -40,6 +40,12 @@ interface Transaction {
 interface TransactionsViewProps {
   transactions: Transaction[];
 }
+
+type ColumnDef = {
+  key: string;
+  label: string;
+  render?: (tx: Transaction) => React.ReactNode;
+};
 
 /**
  * Component for displaying transactions list with search and pagination
@@ -99,6 +105,118 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
     page * rowsPerPage + rowsPerPage,
   );
 
+  const availableColumns: ColumnDef[] = useMemo(() => {
+    const presentKeys = new Set<string>();
+    transactions.forEach(tx => {
+      Object.keys(tx).forEach(key => {
+        if (key === 'id') return;
+        presentKeys.add(key);
+      });
+    });
+
+    const preferredOrder: Array<keyof Transaction> = [
+      'transactionDate',
+      'documentNumber',
+      'counterpartyName',
+      'counterpartyBin',
+      'paymentPurpose',
+      'debit',
+      'credit',
+      'currency',
+      'exchangeRate',
+      'transactionType',
+      'category',
+      'article',
+      'amountForeign',
+      'branch',
+      'wallet',
+    ];
+
+    const labelMap: Record<string, string> = {
+      transactionDate: 'Дата',
+      documentNumber: 'Номер документа',
+      counterpartyName: 'Контрагент',
+      counterpartyBin: 'БИН',
+      paymentPurpose: 'Назначение платежа',
+      debit: 'Дебет',
+      credit: 'Кредит',
+      currency: 'Валюта',
+      exchangeRate: 'Курс',
+      transactionType: 'Тип',
+      category: 'Категория',
+      article: 'Статья',
+      amountForeign: 'Сумма в валюте',
+      branch: 'Филиал',
+      wallet: 'Кошелёк',
+    };
+
+    const renderers: Record<string, (tx: Transaction) => React.ReactNode> = {
+      transactionDate: tx => formatDate(tx.transactionDate),
+      debit: tx => (tx.debit > 0 ? formatAmount(tx.debit, tx.currency) : '—'),
+      credit: tx => (tx.credit > 0 ? formatAmount(tx.credit, tx.currency) : '—'),
+      currency: tx => tx.currency || 'KZT',
+      exchangeRate: tx =>
+        tx.exchangeRate
+          ? tx.exchangeRate.toLocaleString('ru-RU', { minimumFractionDigits: 2 })
+          : '—',
+      transactionType: tx => (
+        <Chip
+          label={getTypeLabel(tx.transactionType)}
+          size="small"
+          color={getTypeColor(tx.transactionType)}
+        />
+      ),
+      category: tx =>
+        tx.category?.name ? <Chip label={tx.category.name} size="small" variant="outlined" /> : '—',
+      branch: tx => tx.branch?.name || '—',
+      wallet: tx => tx.wallet?.name || '—',
+      paymentPurpose: tx => tx.paymentPurpose || '—',
+      counterpartyName: tx => tx.counterpartyName || '—',
+      counterpartyBin: tx => tx.counterpartyBin || '—',
+      documentNumber: tx => tx.documentNumber || '—',
+      amountForeign: tx =>
+        tx.amountForeign
+          ? tx.amountForeign.toLocaleString('ru-RU', { minimumFractionDigits: 2 })
+          : '—',
+    };
+
+    const columns: ColumnDef[] = [];
+
+    preferredOrder.forEach(key => {
+      if (presentKeys.has(key)) {
+        columns.push({
+          key,
+          label: labelMap[key] || key,
+          render: renderers[key],
+        });
+        presentKeys.delete(key);
+      }
+    });
+
+    // Any other keys from backend that we don't know about yet
+    Array.from(presentKeys).forEach(key => {
+      columns.push({
+        key,
+        label: labelMap[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()),
+        render: (tx: Transaction) => {
+          const value = (tx as any)[key];
+          if (value === null || value === undefined || value === '') {
+            return '—';
+          }
+          if (typeof value === 'number') {
+            return value.toLocaleString('ru-RU');
+          }
+          if (typeof value === 'object') {
+            return value.name || JSON.stringify(value);
+          }
+          return value.toString();
+        },
+      });
+    });
+
+    return columns;
+  }, [transactions]);
+
   return (
     <Box>
       {/* Search */}
@@ -123,72 +241,26 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Дата</TableCell>
-              <TableCell>Номер документа</TableCell>
-              <TableCell>Контрагент</TableCell>
-              <TableCell>БИН</TableCell>
-              <TableCell>Назначение платежа</TableCell>
-              <TableCell>Дебет</TableCell>
-              <TableCell>Кредит</TableCell>
-              <TableCell>Валюта</TableCell>
-              <TableCell>Курс</TableCell>
-              <TableCell>Тип</TableCell>
-              <TableCell>Категория</TableCell>
-              <TableCell>Статья</TableCell>
+              {availableColumns.map(col => (
+                <TableCell key={col.key}>{col.label}</TableCell>
+              ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {paginatedTransactions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} align="center">
+                <TableCell colSpan={availableColumns.length || 1} align="center">
                   Транзакции не найдены
                 </TableCell>
               </TableRow>
             ) : (
               paginatedTransactions.map(tx => (
                 <TableRow key={tx.id} hover>
-                  <TableCell>{formatDate(tx.transactionDate)}</TableCell>
-                  <TableCell>{tx.documentNumber || '—'}</TableCell>
-                  <TableCell>{tx.counterpartyName || '—'}</TableCell>
-                  <TableCell>{tx.counterpartyBin || '—'}</TableCell>
-                  <TableCell sx={{ maxWidth: 300 }}>{tx.paymentPurpose || '—'}</TableCell>
-                  <TableCell>
-                    {tx.debit > 0 ? formatAmount(tx.debit, tx.currency) : '—'}
-                    {tx.amountForeign && tx.debit ? (
-                      <Box component="span" sx={{ display: 'block', color: 'text.secondary', fontSize: '0.75rem' }}>
-                        {tx.amountForeign.toLocaleString('ru-RU', { minimumFractionDigits: 2 })}
-                      </Box>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>
-                    {tx.credit > 0 ? formatAmount(tx.credit, tx.currency) : '—'}
-                    {tx.amountForeign && tx.credit ? (
-                      <Box component="span" sx={{ display: 'block', color: 'text.secondary', fontSize: '0.75rem' }}>
-                        {tx.amountForeign.toLocaleString('ru-RU', { minimumFractionDigits: 2 })}
-                      </Box>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>{tx.currency || 'KZT'}</TableCell>
-                  <TableCell>
-                    {tx.exchangeRate
-                      ? tx.exchangeRate.toLocaleString('ru-RU', { minimumFractionDigits: 2 })
-                      : '—'}
-                  </TableCell>
-                <TableCell>
-                  <Chip
-                    label={getTypeLabel(tx.transactionType)}
-                    size="small"
-                    color={getTypeColor(tx.transactionType)}
-                  />
-                </TableCell>
-                  <TableCell>
-                    {tx.category?.name ? (
-                      <Chip label={tx.category.name} size="small" variant="outlined" />
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell>{tx.article || '—'}</TableCell>
+                  {availableColumns.map(col => (
+                    <TableCell key={col.key}>
+                      {col.render ? col.render(tx) : ((tx as any)[col.key] ?? '—').toString()}
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))
             )}
@@ -211,4 +283,3 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
     </Box>
   );
 }
-

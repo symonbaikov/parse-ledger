@@ -34,14 +34,11 @@ export function mapPdfTableRowsToTransactions(
     return [];
   }
 
-  const headerIndex = normalized.findIndex((row) => isHeaderRow(row));
-  if (headerIndex === -1) {
-    return [];
-  }
-
+  const headerIndex = findHeaderIndex(normalized);
   const header = normalized[headerIndex];
-  const columnMap = buildColumnMap(header);
   const dataRows = normalized.slice(headerIndex + 1);
+
+  const columnMap = enhanceColumnMap(buildColumnMap(header), dataRows);
   const stopWords = options?.stopWords?.map((w) => w.toLowerCase()) || DEFAULT_STOP_WORDS;
 
   const transactions: ParsedTransaction[] = [];
@@ -147,77 +144,245 @@ function isHeaderRow(row: string[]): boolean {
   return matches >= 2;
 }
 
-function buildColumnMap(header: string[]): Partial<Record<TableColumnKey, number>> {
-  const map: Partial<Record<TableColumnKey, number>> = {};
+function findHeaderIndex(rows: string[][]): number {
+  // Pick the row with the largest number of non-empty cells as header
+  let bestIndex = 0;
+  let bestFilled = 0;
 
-  header.forEach((cell, index) => {
-    const lower = cell.toLowerCase();
-    if (map.date === undefined && (lower.includes('дата') || lower.includes('date'))) {
-      map.date = index;
-    }
-    if (
-      map.document === undefined &&
-      (lower.includes('номер') || lower.includes('документ') || lower.includes('document'))
-    ) {
-      map.document = index;
-    }
-    if (
-      map.counterparty === undefined &&
-      (lower.includes('контрагент') ||
-        lower.includes('получател') ||
-        lower.includes('платель') ||
-        lower.includes('beneficiary'))
-    ) {
-      map.counterparty = index;
-    }
-    if (map.bin === undefined && (lower.includes('бин') || lower.includes('iin'))) {
-      map.bin = index;
-    }
-    if (
-      map.account === undefined &&
-      (lower.includes('счет') ||
-        lower.includes('счёт') ||
-        lower.includes('account') ||
-        lower.includes('iban') ||
-        lower.includes('iik') ||
-        lower.includes('иик'))
-    ) {
-      map.account = index;
-    }
-    if (
-      map.bank === undefined &&
-      (lower.includes('банк') || lower.includes('bic') || lower.includes('бик'))
-    ) {
-      map.bank = index;
-    }
-    if (map.debit === undefined && (lower.includes('дебет') || lower.includes('debit'))) {
-      map.debit = index;
-    }
-    if (map.credit === undefined && (lower.includes('кредит') || lower.includes('credit'))) {
-      map.credit = index;
-    }
-    if (
-      map.purpose === undefined &&
-      (lower.includes('назнач') || lower.includes('основан') || lower.includes('purpose'))
-    ) {
-      map.purpose = index;
-    }
-    if (map.knp === undefined && (lower.includes('кнп') || lower.includes('knp'))) {
-      map.knp = index;
-    }
-    if (
-      map.currency === undefined &&
-      (lower.includes('валют') ||
-        lower === 'usd' ||
-        lower === 'eur' ||
-        lower === 'kzt' ||
-        lower === 'rub')
-    ) {
-      map.currency = index;
+  rows.forEach((row, idx) => {
+    const filled = row.filter((c) => c && c.trim().length > 0).length;
+    if (filled > bestFilled) {
+      bestFilled = filled;
+      bestIndex = idx;
     }
   });
 
+  return bestIndex;
+}
+
+function buildColumnMap(header: string[]): Partial<Record<TableColumnKey, number>> {
+  const map: Partial<Record<TableColumnKey, number>> = {};
   return map;
+}
+
+function enhanceColumnMap(
+  base: Partial<Record<TableColumnKey, number>>,
+  dataRows: string[][],
+): Partial<Record<TableColumnKey, number>> {
+  const map = { ...base };
+  const columnsCount = dataRows[0]?.length || 0;
+  if (columnsCount === 0) {
+    return map;
+  }
+
+  const columnStats = buildColumnStats(dataRows);
+
+  // Date column by frequency of date regex
+  if (map.date === undefined) {
+    const bestDate = columnStats
+      .filter((c) => c.dateMatches > 0)
+      .sort((a, b) => b.dateMatches - a.dateMatches)[0];
+    if (bestDate) {
+      map.date = bestDate.index;
+    }
+  }
+
+  // BIN / Account / Bank
+  if (map.bin === undefined) {
+    const binCol = columnStats
+      .filter((c) => c.binMatches > 0)
+      .sort((a, b) => b.binMatches - a.binMatches)[0];
+    if (binCol) {
+      map.bin = binCol.index;
+    }
+  }
+
+  if (map.account === undefined) {
+    const accCol = columnStats
+      .filter((c) => c.accountMatches > 0)
+      .sort((a, b) => b.accountMatches - a.accountMatches)[0];
+    if (accCol) {
+      map.account = accCol.index;
+    }
+  }
+
+  if (map.bank === undefined) {
+    const bankCol = columnStats
+      .filter((c) => c.bankMatches > 0)
+      .sort((a, b) => b.bankMatches - a.bankMatches)[0];
+    if (bankCol) {
+      map.bank = bankCol.index;
+    }
+  }
+
+  // Currency
+  if (map.currency === undefined) {
+    const curCol = columnStats
+      .filter((c) => c.currencyMatches > 0)
+      .sort((a, b) => b.currencyMatches - a.currencyMatches)[0];
+    if (curCol) {
+      map.currency = curCol.index;
+    }
+  }
+
+  const used = new Set<number>();
+  Object.values(map).forEach((idx) => {
+    if (typeof idx === 'number') {
+      used.add(idx);
+    }
+  });
+
+  // Document number
+  if (map.document === undefined) {
+    const docCol = columnStats
+      .filter((c) => c.documentMatches > 0 && !used.has(c.index))
+      .sort((a, b) => b.documentMatches - a.documentMatches || a.index - b.index)[0];
+    if (docCol) {
+      map.document = docCol.index;
+      used.add(docCol.index);
+    }
+  }
+
+  // KNP
+  if (map.knp === undefined) {
+    const knpCol = columnStats
+      .filter((c) => c.knpMatches > 0 && !used.has(c.index))
+      .sort((a, b) => b.knpMatches - a.knpMatches || a.index - b.index)[0];
+    if (knpCol) {
+      map.knp = knpCol.index;
+      used.add(knpCol.index);
+    }
+  }
+
+  // Numeric columns for debit/credit
+  const numericColumns = columnStats
+    .filter((c) => c.numericMatches > 0)
+    .sort((a, b) => b.numericMatches - a.numericMatches || a.index - b.index);
+
+  if (map.debit === undefined && numericColumns.length) {
+    const candidate = numericColumns.find((c) => !used.has(c.index));
+    if (candidate) {
+      map.debit = candidate.index;
+      used.add(candidate.index);
+    }
+  }
+  if (map.credit === undefined && numericColumns.length > 1) {
+    const candidate = numericColumns.find((c) => !used.has(c.index));
+    if (candidate) {
+      map.credit = candidate.index;
+      used.add(candidate.index);
+    }
+  }
+
+  // Counterparty / purpose: pick text-heavy columns not already used
+  const textColumns = columnStats
+    .filter((c) => c.textScore > 0)
+    .sort((a, b) => b.textScore - a.textScore || a.index - b.index);
+
+  if (map.counterparty === undefined) {
+    const candidate = textColumns.find((c) => !used.has(c.index));
+    if (candidate) {
+      map.counterparty = candidate.index;
+      used.add(candidate.index);
+    }
+  }
+
+  if (map.purpose === undefined) {
+    const candidate = textColumns.find((c) => !used.has(c.index) && c.textScore > 0);
+    if (candidate) {
+      map.purpose = candidate.index;
+      used.add(candidate.index);
+    }
+  }
+
+  return map;
+}
+
+function buildColumnStats(dataRows: string[][]): Array<{
+  index: number;
+  dateMatches: number;
+  numericMatches: number;
+  textScore: number;
+  binMatches: number;
+  accountMatches: number;
+  bankMatches: number;
+  currencyMatches: number;
+  documentMatches: number;
+  knpMatches: number;
+}> {
+  const columnsCount = dataRows.reduce((max, row) => Math.max(max, row.length), 0);
+  const stats: Array<{
+    index: number;
+    dateMatches: number;
+    numericMatches: number;
+    textScore: number;
+    binMatches: number;
+    accountMatches: number;
+    bankMatches: number;
+    currencyMatches: number;
+    documentMatches: number;
+    knpMatches: number;
+  }> = [];
+
+  for (let i = 0; i < columnsCount; i++) {
+    let dateMatches = 0;
+    let numericMatches = 0;
+    let textScore = 0;
+    let binMatches = 0;
+    let accountMatches = 0;
+    let bankMatches = 0;
+    let currencyMatches = 0;
+    let documentMatches = 0;
+    let knpMatches = 0;
+
+    dataRows.forEach((row) => {
+      const cell = row[i] || '';
+      if (DATE_REGEX.test(cell)) {
+        dateMatches += 1;
+      }
+      if (isAmount(cell)) {
+        numericMatches += 1;
+      }
+      if (cell && !DATE_REGEX.test(cell) && !isAmount(cell)) {
+        textScore += cell.length;
+      }
+
+       // BIN/Account/BIC/Currency detection
+       if (/\b\d{11,12}\b/.test(cell.replace(/\s+/g, ''))) {
+         binMatches += 1;
+       }
+       if (/KZ\d{10,}|[A-Z0-9]{20,}/i.test(cell)) {
+         accountMatches += 1;
+       }
+      if (/[A-Z]{6}[A-Z0-9]{2,5}/.test(cell)) {
+        bankMatches += 1;
+      }
+      if (/\b(USD|EUR|KZT|RUB)\b/i.test(cell)) {
+        currencyMatches += 1;
+      }
+      if (/\b\d{5,}\b/.test(cell) && !DATE_REGEX.test(cell)) {
+        documentMatches += 1;
+      }
+      if (/^\d{3}$/.test(cell) || /кнп/i.test(cell)) {
+        knpMatches += 1;
+      }
+    });
+
+    stats.push({
+      index: i,
+      dateMatches,
+      numericMatches,
+      textScore,
+      binMatches,
+      accountMatches,
+      bankMatches,
+      currencyMatches,
+      documentMatches,
+      knpMatches,
+    });
+  }
+
+  return stats;
 }
 
 function pickDateValue(row: string[], columnMap: Partial<Record<TableColumnKey, number>>): string | null {
@@ -238,12 +403,24 @@ function buildTransactionFromRow(
   columnMap: Partial<Record<TableColumnKey, number>>,
   options?: TableParsingOptions,
 ): ParsedTransaction {
-  const debit =
+  let debit =
     columnMap.debit !== undefined ? normalizeNumber(row[columnMap.debit]) ?? undefined : undefined;
-  const credit =
+  let credit =
     columnMap.credit !== undefined
       ? normalizeNumber(row[columnMap.credit]) ?? undefined
       : undefined;
+
+  // If only one amount was detected, try to infer debit/credit based on sign
+  if (debit === undefined && credit === undefined) {
+    const amounts = row.map((cell) => normalizeNumber(cell)).filter((v) => typeof v === 'number');
+    if (amounts.length === 1) {
+      const value = amounts[0];
+      if (value !== 0) {
+        debit = value > 0 ? value : undefined;
+        credit = value < 0 ? Math.abs(value) : undefined;
+      }
+    }
+  }
 
   const documentNumber = valueAt(row, columnMap.document) || extractDocument(row);
   const bin = valueAt(row, columnMap.bin) || extractBin(row);

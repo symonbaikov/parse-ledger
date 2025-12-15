@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { User } from './user.entity';
 import { Statement } from './statement.entity';
+import { GoogleSheetRow } from './google-sheet-row.entity';
 
 @Entity('google_sheets')
 export class GoogleSheet {
@@ -53,8 +54,10 @@ export class GoogleSheet {
   // Relations
   @OneToMany(() => Statement, (statement) => statement.googleSheet)
   statements: Statement[];
-}
 
+  @OneToMany(() => GoogleSheetRow, (row) => row.googleSheet)
+  rows: GoogleSheetRow[];
+}
 
 
 

@@ -9,13 +9,13 @@ import {
   Download, 
   Trash2, 
   RefreshCw, 
-  MoreHorizontal,
   X,
   File,
   CheckCircle2,
   AlertCircle,
   Clock,
-  Loader2
+  Loader2,
+  Terminal
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '@/app/lib/api';
@@ -31,6 +31,9 @@ interface Statement {
   processedAt?: string;
   bankName: string;
   fileType: string;
+  parsingDetails?: {
+    logEntries?: Array<{ timestamp: string; level: string; message: string }>;
+  };
 }
 
 export default function StatementsPage() {
@@ -40,6 +43,12 @@ export default function StatementsPage() {
   const [loading, setLoading] = useState(true);
   const [viewingFile, setViewingFile] = useState<string | null>(null);
   const [fileViewUrl, setFileViewUrl] = useState<string | null>(null);
+  const [logStatementId, setLogStatementId] = useState<string | null>(null);
+  const [logEntries, setLogEntries] = useState<
+    Array<{ timestamp: string; level: string; message: string }>
+  >([]);
+  const [logLoading, setLogLoading] = useState(false);
+  const [logStatementName, setLogStatementName] = useState<string>('');
   
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -200,6 +209,50 @@ export default function StatementsPage() {
     setViewingFile(null);
   };
 
+  const openLogs = async (id: string, name: string) => {
+    setLogStatementId(id);
+    setLogStatementName(name);
+    setLogLoading(true);
+    try {
+      const res = await apiClient.get(`/statements/${id}`);
+      const details = res.data.parsingDetails || res.data.parsing_details;
+      setLogEntries(details?.logEntries || details?.log_entries || []);
+    } catch (error) {
+      console.error('Failed to load logs:', error);
+      toast.error('Не удалось получить логи обработки');
+    } finally {
+      setLogLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!logStatementId) return;
+    let mounted = true;
+    const tick = async () => {
+      try {
+        const res = await apiClient.get(`/statements/${logStatementId}`);
+        const details = res.data.parsingDetails || res.data.parsing_details;
+        if (mounted) {
+          setLogEntries(details?.logEntries || details?.log_entries || []);
+        }
+      } catch (error) {
+        console.error('Failed to refresh logs:', error);
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [logStatementId]);
+
+  const closeLogs = () => {
+    setLogStatementId(null);
+    setLogEntries([]);
+    setLogStatementName('');
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header / CTA Section */}
@@ -273,7 +326,14 @@ export default function StatementsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {statements.map((statement) => (
-                  <tr key={statement.id} className="hover:bg-gray-50 transition-colors group">
+                  <tr
+                    key={statement.id}
+                    className={`transition-colors group ${
+                      statement.status === 'processing'
+                        ? 'bg-green-50/70 animate-pulse'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center cursor-pointer" onClick={() => handleViewFile(statement.id)}>
                         <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded bg-red-50">
@@ -319,6 +379,13 @@ export default function StatementsPage() {
                           title="Скачать"
                         >
                           <Download size={18} />
+                        </button>
+                        <button
+                          onClick={() => openLogs(statement.id, statement.fileName)}
+                          className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary"
+                          title="Логи обработки"
+                        >
+                          <Terminal size={18} />
                         </button>
                         {statement.status === 'error' && (
                           <button
@@ -411,6 +478,62 @@ export default function StatementsPage() {
                 <Download size={16} className="mr-2" />
                 Скачать файл
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logs modal */}
+      {logStatementId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col">
+            <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+              <div>
+                <div className="text-sm text-gray-500">Логи обработки</div>
+                <div className="text-lg font-semibold text-gray-900">{logStatementName}</div>
+              </div>
+              <button
+                onClick={closeLogs}
+                className="p-2 rounded-full hover:bg-gray-200 text-gray-500 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {logLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                </div>
+              ) : logEntries.length === 0 ? (
+                <div className="py-8 text-center text-gray-500">Логи пока отсутствуют</div>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {logEntries.map((entry, idx) => (
+                    <li key={`${entry.timestamp}-${idx}`} className="px-5 py-3 flex items-start space-x-3">
+                      <div className="text-xs text-gray-400 w-32 shrink-0">
+                        {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </div>
+                      <span
+                        className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full ${
+                          entry.level === 'error'
+                            ? 'bg-red-100 text-red-700'
+                            : entry.level === 'warn'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-blue-100 text-blue-700'
+                        }`}
+                      >
+                        {entry.level}
+                      </span>
+                      <div className="text-sm text-gray-800 whitespace-pre-wrap flex-1">
+                        {entry.message}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-gray-200 bg-white text-sm text-gray-500">
+              Обновляется каждые 3 секунды. Закройте окно, чтобы остановить.
             </div>
           </div>
         </div>

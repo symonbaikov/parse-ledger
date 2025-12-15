@@ -1,22 +1,6 @@
 import * as fs from 'fs';
-const pdfParse = require('pdf-parse');
-const pdf2table = require('pdf2table');
-
-/**
- * Extract text from PDF file using pdf-parse library
- * @param filePath Path to PDF file
- * @returns Promise that resolves to extracted text
- */
-export async function extractTextFromPdf(filePath: string): Promise<string> {
-  try {
-    const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdfParse(dataBuffer);
-    return data.text;
-  } catch (error) {
-    console.error('[PDF Parser] Error extracting text:', error);
-    throw new Error(`Failed to extract text from PDF: ${error.message}`);
-  }
-}
+import * as path from 'path';
+import { spawn, spawnSync } from 'child_process';
 
 export interface PdfTextItem {
   text: string;
@@ -46,168 +30,260 @@ export interface PdfTableRow {
   cells: PdfTableRowCell[];
 }
 
+interface PdfPlumberTable {
+  page: number;
+  data: string[][];
+  structured: PdfTableRow[];
+}
+
+interface PdfPlumberResult {
+  text: string;
+  rows: PdfTextRow[];
+  tables: PdfPlumberTable[];
+}
+
+const parserCache = new Map<string, PdfPlumberResult>();
+let pythonExecutable: string | null = null;
+
 /**
- * Extract text with basic layout information (coordinates) to help rebuild tables.
- * Falls back to raw text extraction if layout parsing fails.
+ * Extract text from PDF file using pdfplumber (Python).
+ */
+export async function extractTextFromPdf(filePath: string): Promise<string> {
+  const parsed = await runPdfPlumber(filePath);
+  return parsed.text || '';
+}
+
+/**
+ * Extract text with layout information (coordinates) using pdfplumber.
  */
 export async function extractTextAndLayoutFromPdf(
   filePath: string,
 ): Promise<{ text: string; rows: PdfTextRow[] }> {
-  const collectedItems: PdfTextItem[] = [];
-  let pageNumber = 0;
-
-  try {
-    const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdfParse(dataBuffer, {
-      pagerender: async (pageData: any) => {
-        pageNumber += 1;
-        const textContent = await pageData.getTextContent({
-          normalizeWhitespace: false,
-          disableCombineTextItems: false,
-        });
-
-        let assembled = '';
-        let lastY: number | null = null;
-
-        textContent.items.forEach((item: any) => {
-          if (!item?.str || !item.transform) {
-            return;
-          }
-
-          const x = item.transform[4];
-          const y = item.transform[5];
-
-          collectedItems.push({
-            text: item.str,
-            x,
-            y,
-            width: item.width || 0,
-            height: item.height || 0,
-            page: pageNumber,
-          });
-
-          if (lastY === null || Math.abs(lastY - y) < 0.5) {
-            assembled += item.str;
-          } else {
-            assembled += '\n' + item.str;
-          }
-          lastY = y;
-        });
-
-        return assembled;
-      },
-    });
-
-    const rows = groupItemsIntoRows(collectedItems);
-
-    return { text: data.text, rows };
-  } catch (error) {
-    console.error('[PDF Parser] Error extracting layout-aware text:', error);
-    // Fall back to simple text extraction
-    return { text: await extractTextFromPdf(filePath), rows: [] };
-  }
-}
-
-function groupItemsIntoRows(items: PdfTextItem[]): PdfTextRow[] {
-  if (!items.length) {
-    return [];
-  }
-
-  const sorted = [...items].sort((a, b) => {
-    if (a.page !== b.page) {
-      return a.page - b.page;
-    }
-    if (b.y !== a.y) {
-      return b.y - a.y;
-    }
-    return a.x - b.x;
-  });
-
-  const rows: PdfTextRow[] = [];
-  const tolerance = 2.5;
-
-  for (const item of sorted) {
-    let row = rows.find(
-      (r) => r.page === item.page && Math.abs(r.y - item.y) < tolerance,
-    );
-
-    if (!row) {
-      row = { page: item.page, y: item.y, items: [], text: '' };
-      rows.push(row);
-    }
-
-    row.items.push(item);
-  }
-
-  rows.forEach((row) => {
-    row.items.sort((a, b) => a.x - b.x);
-    row.text = row.items
-      .map((i) => i.text.trim())
-      .filter((t) => t.length > 0)
-      .join(' ');
-  });
-
-  return rows.sort((a, b) => {
-    if (a.page !== b.page) {
-      return a.page - b.page;
-    }
-    return b.y - a.y;
-  });
+  const parsed = await runPdfPlumber(filePath);
+  return { text: parsed.text || '', rows: parsed.rows || [] };
 }
 
 /**
- * Extract table-like rows from PDF using pdf2table.
+ * Extract table-like rows from PDF using pdfplumber.
  * Returns both simple rows (array of cell values) and structured rows with coordinates.
  */
 export async function extractTablesFromPdf(
   filePath: string,
 ): Promise<{ rows: string[][]; structured: PdfTableRow[] }> {
-  try {
-    const dataBuffer = fs.readFileSync(filePath);
+  const parsed = await runPdfPlumber(filePath);
+  const rows = (parsed.tables || []).flatMap((table) => table.data || []);
+  const structured = (parsed.tables || []).flatMap((table) => table.structured || []);
+  return { rows, structured };
+}
 
-    const { rows, structuredRows } = await new Promise<{
-      rows: string[][];
-      structuredRows: PdfTableRow[];
-    }>((resolve, reject) => {
-      pdf2table.parse(
-        dataBuffer,
-        (err: Error | null, simpleRows: string[][], pages: any[]) => {
-          if (err) {
-            return reject(err);
-          }
+function ensureFileExists(filePath: string) {
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`PDF file not found: ${filePath}`);
+  }
+}
 
-          const structuredRows: PdfTableRow[] = [];
+function resolveScriptPath(): string {
+  const candidates = [
+    path.resolve(__dirname, '..', '..', '..', 'scripts', 'pdfplumber_parser.py'),
+    path.resolve(process.cwd(), 'backend', 'scripts', 'pdfplumber_parser.py'),
+    path.resolve(process.cwd(), 'scripts', 'pdfplumber_parser.py'),
+  ];
 
-          (pages || []).forEach((pageRows: any[], pageIndex: number) => {
-            if (!Array.isArray(pageRows)) {
-              return;
-            }
+  const found = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!found) {
+    throw new Error(
+      'Could not locate pdfplumber_parser.py. Ensure backend/scripts/pdfplumber_parser.py is available at runtime.',
+    );
+  }
 
-            pageRows.forEach((row) => {
-              const cells = Array.isArray(row?.data) ? row.data : [];
-              structuredRows.push({
-                page: pageIndex + 1,
-                y: typeof row?.y === 'number' ? row.y : 0,
-                columns: cells.map((cell: any) => (cell?.text ?? '').toString()),
-                cells: cells.map((cell: any) => ({
-                  text: (cell?.text ?? '').toString(),
-                  x: typeof cell?.x === 'number' ? cell.x : 0,
-                })),
-              });
-            });
-          });
+  return found;
+}
 
-          resolve({
-            rows: simpleRows || [],
-            structuredRows,
-          });
-        },
+function getPythonCandidates(): string[] {
+  const fromEnv = process.env.PDF_PARSER_PYTHON;
+  const backendVenv = path.resolve(process.cwd(), 'backend', '.venv', 'bin', 'python');
+  const rootVenv = path.resolve(process.cwd(), '.venv', 'bin', 'python');
+  const localVenv = path.resolve(__dirname, '..', '..', '..', '.venv', 'bin', 'python');
+
+  const candidates = [
+    fromEnv,
+    backendVenv,
+    rootVenv,
+    localVenv,
+    'python3',
+    'python',
+  ].filter((entry): entry is string => Boolean(entry));
+
+  return Array.from(new Set(candidates));
+}
+
+function resolvePythonExecutable(): string {
+  if (pythonExecutable) {
+    return pythonExecutable;
+  }
+
+  for (const candidate of getPythonCandidates()) {
+    const versionCheck = spawnSync(candidate, ['--version'], { encoding: 'utf8' });
+    if (versionCheck.error || versionCheck.status !== 0) {
+      continue;
+    }
+    const libraryCheck = spawnSync(candidate, ['-c', 'import pdfplumber'], { encoding: 'utf8' });
+    if (!libraryCheck.error && libraryCheck.status === 0) {
+      pythonExecutable = candidate;
+      return candidate;
+    }
+  }
+
+  throw new Error(
+    'Python 3 with pdfplumber is required to parse PDF statements. Install it with "pip install pdfplumber" and ensure python3 is available in PATH.',
+  );
+}
+
+async function runPdfPlumber(filePath: string): Promise<PdfPlumberResult> {
+  ensureFileExists(filePath);
+
+  const cached = parserCache.get(filePath);
+  if (cached) {
+    return cached;
+  }
+
+  const python = resolvePythonExecutable();
+  const scriptPath = resolveScriptPath();
+
+  return new Promise<PdfPlumberResult>((resolve, reject) => {
+    const proc = spawn(python, [scriptPath, filePath]);
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+
+    proc.on('error', (error) => {
+      reject(
+        new Error(
+          `[PDF Parser] Failed to start pdfplumber process: ${error.message}. Is python3 installed?`,
+        ),
       );
     });
 
-    return { rows, structured: structuredRows };
-  } catch (error) {
-    console.error('[PDF Parser] Error extracting tables:', error);
-    return { rows: [], structured: [] };
+    proc.on('close', (code) => {
+      if (code !== 0) {
+        return reject(
+          new Error(
+            `[PDF Parser] pdfplumber exited with code ${code}: ${stderr.trim() || 'no stderr'}`,
+          ),
+        );
+      }
+
+      try {
+        const parsed = JSON.parse(stdout) as Partial<PdfPlumberResult>;
+        const normalized = normalizeResult(parsed);
+        parserCache.set(filePath, normalized);
+        resolve(normalized);
+      } catch (error) {
+        reject(
+          new Error(
+            `[PDF Parser] Could not parse pdfplumber output: ${
+              (error as Error).message
+            }. Output: ${stderr || stdout}`,
+          ),
+        );
+      }
+    });
+  });
+}
+
+function normalizeResult(raw: Partial<PdfPlumberResult>): PdfPlumberResult {
+  return {
+    text: typeof raw?.text === 'string' ? raw.text : '',
+    rows: Array.isArray(raw?.rows) ? raw.rows.map(normalizeRow).filter(Boolean) : [],
+    tables: Array.isArray(raw?.tables)
+      ? raw.tables.map(normalizeTable).filter(Boolean) as PdfPlumberTable[]
+      : [],
+  };
+}
+
+function normalizeRow(row: any): PdfTextRow | null {
+  if (!row) {
+    return null;
   }
+
+  const items = Array.isArray(row.items)
+    ? row.items.map(normalizeItem).filter(Boolean) as PdfTextItem[]
+    : [];
+
+  return {
+    page: Number(row.page) || 1,
+    y: Number(row.y) || 0,
+    text: typeof row.text === 'string' ? row.text : '',
+    items,
+  };
+}
+
+function normalizeItem(item: any): PdfTextItem | null {
+  if (!item || typeof item.text !== 'string' || !item.text.trim()) {
+    return null;
+  }
+
+  return {
+    text: item.text,
+    x: Number(item.x) || 0,
+    y: Number(item.y) || 0,
+    width: Number(item.width) || 0,
+    height: Number(item.height) || 0,
+    page: Number(item.page) || 1,
+  };
+}
+
+function normalizeTable(table: any): PdfPlumberTable | null {
+  if (!table) {
+    return null;
+  }
+
+  const data: string[][] = Array.isArray(table.data)
+    ? table.data.map((row: any[]) => (Array.isArray(row) ? row.map(cleanText) : []))
+    : [];
+
+  const structured: PdfTableRow[] = Array.isArray(table.structured)
+    ? (table.structured.map(normalizeStructuredRow).filter(Boolean) as PdfTableRow[])
+    : [];
+
+  return {
+    page: Number(table.page) || 1,
+    data,
+    structured,
+  };
+}
+
+function normalizeStructuredRow(row: any): PdfTableRow | null {
+  if (!row) {
+    return null;
+  }
+
+  const cells: PdfTableRowCell[] = Array.isArray(row.cells)
+    ? row.cells.map((cell: any) => ({
+        text: cleanText(cell?.text),
+        x: Number(cell?.x) || 0,
+      }))
+    : [];
+
+  return {
+    page: Number(row.page) || 1,
+    y: Number(row.y) || 0,
+    columns: Array.isArray(row.columns) ? row.columns.map(cleanText) : [],
+    cells,
+  };
+}
+
+function cleanText(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return value.toString().replace(/\s+/g, ' ').trim();
 }

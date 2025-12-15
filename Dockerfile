@@ -34,11 +34,17 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV API_PORT=4000
 ENV HOSTNAME=0.0.0.0
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+
+# Install Python + pdfplumber for PDF parsing
+RUN apk add --no-cache python3 py3-pip py3-pillow && \
+    pip3 install --no-cache-dir --break-system-packages pdfplumber
 
 # Backend runtime files
 COPY --from=builder /app/backend/dist ./backend/dist
 COPY --from=builder /app/backend/node_modules ./backend/node_modules
 COPY --from=builder /app/backend/package*.json ./backend/
+COPY --from=builder /app/backend/scripts ./backend/scripts
 
 # Frontend standalone output
 COPY --from=builder /app/frontend/.next/standalone ./frontend

@@ -151,12 +151,18 @@ export class StatementProcessingService {
       addLog('info', `Date range: ${statement.statementDateFrom?.toISOString() || 'N/A'} to ${statement.statementDateTo?.toISOString() || 'N/A'}`);
 
       // Create transactions with classification
+      const majorityCategory = await this.classificationService.determineMajorityCategory(
+        parsedStatement.transactions,
+        statement.userId,
+      );
+
       addLog('info', 'Creating transactions and applying classification...');
       const createStartTime = Date.now();
       const transactions = await this.createTransactions(
         statement,
         parsedStatement.transactions,
         statement.userId,
+        majorityCategory.categoryId,
         addLog,
       );
       const createTime = Date.now() - createStartTime;
@@ -167,6 +173,9 @@ export class StatementProcessingService {
       statement.totalTransactions = transactions.length;
       statement.totalDebit = transactions.reduce((sum, t) => sum + (t.debit ?? 0), 0);
       statement.totalCredit = transactions.reduce((sum, t) => sum + (t.credit ?? 0), 0);
+      if (majorityCategory.categoryId) {
+        statement.categoryId = majorityCategory.categoryId;
+      }
 
       addLog('info', `Totals - Debit: ${statement.totalDebit}, Credit: ${statement.totalCredit}`);
 
@@ -215,6 +224,7 @@ export class StatementProcessingService {
     statement: Statement,
     parsedTransactions: ParsedTransaction[],
     userId: string,
+    defaultCategoryId: string | undefined,
     addLog?: (level: string, message: string) => void,
   ): Promise<Transaction[]> {
     const transactions: Transaction[] = [];
@@ -261,6 +271,9 @@ export class StatementProcessingService {
           tempTransaction,
           userId,
         );
+        if (!classification.categoryId && defaultCategoryId) {
+          classification.categoryId = defaultCategoryId;
+        }
 
         const currency = parsed.currency || statement.currency || 'KZT';
         const exchangeRate = parsed.exchangeRate ?? null;

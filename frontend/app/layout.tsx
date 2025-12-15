@@ -1,10 +1,8 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 import Navigation from './components/Navigation';
-
-const inter = Inter({ subsets: ['latin', 'cyrillic'] });
+import GlobalBreadcrumbs from './components/GlobalBreadcrumbs';
 
 export const metadata: Metadata = {
   title: 'FinFlow — Обработка банковских выписок',
@@ -14,8 +12,6 @@ export const metadata: Metadata = {
   },
 };
 
-import { Toaster } from 'react-hot-toast';
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,44 +19,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className={inter.className}>
+      <body>
         <Providers>
           <Navigation />
-          <main className="min-h-screen">
+          <GlobalBreadcrumbs />
+          <main>
             {children}
           </main>
-          <Toaster 
-            position="top-right" 
-            toastOptions={{
-              className: '',
-              style: {
-                border: '1px solid #713200',
-                padding: '16px',
-                color: '#713200',
-              },
-              success: {
-                style: {
-                  border: '1px solid #E0E0E0',
-                  background: '#F0F9F4',
-                  color: '#155724',
-                },
-                iconTheme: {
-                  primary: '#155724',
-                  secondary: '#F0F9F4',
-                },
-              },
-              error: {
-                style: {
-                  border: '1px solid #E0E0E0',
-                  background: '#FEF2F2',
-                  color: '#991B1B',
-                },
-              },
-            }}
-          />
         </Providers>
       </body>
     </html>
   );
 }
-

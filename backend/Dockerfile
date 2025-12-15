@@ -22,14 +22,20 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Install Python + pdfplumber for PDF parsing
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
+RUN apk add --no-cache python3 py3-pip py3-pillow && \
+  pip3 install --no-cache-dir --break-system-packages pdfplumber
+
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including pdfreader which is needed at runtime)
+# Install all dependencies
 RUN npm ci
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/scripts ./scripts
 
 # Create uploads directory and reports subdirectory
 RUN mkdir -p uploads/reports
@@ -43,4 +49,3 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 
 # Start application
 CMD ["node", "dist/main.js"]
-

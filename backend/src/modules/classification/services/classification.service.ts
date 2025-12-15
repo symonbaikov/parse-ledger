@@ -437,6 +437,7 @@ export class ClassificationService {
     userId: string,
     categoryName: string,
     type: CategoryType = CategoryType.EXPENSE,
+    color?: string,
   ): Promise<string | undefined> {
     let category = await this.categoryRepository.findOne({
       where: { userId, name: categoryName },
@@ -448,10 +449,117 @@ export class ClassificationService {
         name: categoryName,
         type,
         isSystem: false,
+        color,
       });
       category = await this.categoryRepository.save(category);
+    } else if (!category.color && color) {
+      category.color = color;
+      await this.categoryRepository.save(category);
     }
 
     return category?.id;
+  }
+
+  /**
+   * Determine majority category for a statement based on parsed transactions.
+   * Returns existing category if found, otherwise creates one with generated color.
+   */
+  async determineMajorityCategory(
+    transactions: Array<{
+      debit?: number | null;
+      credit?: number | null;
+      paymentPurpose?: string;
+      counterpartyName?: string;
+    }>,
+    userId: string,
+  ): Promise<{ categoryId?: string; type: CategoryType }> {
+    const totalDebit = transactions.reduce((sum, t) => sum + (t.debit ?? 0), 0);
+    const totalCredit = transactions.reduce((sum, t) => sum + (t.credit ?? 0), 0);
+    const type =
+      totalDebit >= totalCredit ? CategoryType.EXPENSE : CategoryType.INCOME;
+
+    const relevant = transactions.filter((t) =>
+      type === CategoryType.EXPENSE ? (t.debit ?? 0) > 0 : (t.credit ?? 0) > 0,
+    );
+
+    const keyword = this.extractDominantKeyword(relevant);
+    const name =
+      keyword && keyword.length > 0
+        ? `${type === CategoryType.EXPENSE ? 'Расходы' : 'Доходы'}: ${keyword}`
+        : type === CategoryType.EXPENSE
+          ? 'Расходы'
+          : 'Доходы';
+
+    const color = this.pickColor(name);
+    const categoryId = await this.ensureCategory(userId, name, type, color);
+    return { categoryId, type };
+  }
+
+  private extractDominantKeyword(
+    transactions: Array<{ paymentPurpose?: string; counterpartyName?: string }>,
+  ): string {
+    const text = transactions
+      .map(
+        (t) =>
+          `${t.paymentPurpose || ''} ${t.counterpartyName || ''}`
+            .replace(/[.,;:()/\\\-\d]+/g, ' ')
+            .toLowerCase(),
+      )
+      .join(' ');
+
+    const stopWords = new Set([
+      'оплата',
+      'платеж',
+      'платежа',
+      'перевод',
+      'перечисление',
+      'за',
+      'и',
+      'в',
+      'на',
+      'по',
+      'заказ',
+      'товар',
+      'услуга',
+      'услуг',
+      'казахстан',
+      'тариф',
+      'счета',
+      'счет',
+      'номер',
+      'период',
+      'месяц',
+      'год',
+    ]);
+
+    const words = text
+      .split(/\s+/)
+      .filter((w) => w.length >= 4 && !stopWords.has(w));
+
+    const freq = new Map<string, number>();
+    words.forEach((w) => freq.set(w, (freq.get(w) || 0) + 1));
+    const top = Array.from(freq.entries()).sort((a, b) => b[1] - a[1])[0];
+    if (!top) return '';
+    return top[0].charAt(0).toUpperCase() + top[0].slice(1);
+  }
+
+  private pickColor(key: string): string {
+    const palette = [
+      '#4F46E5', // indigo
+      '#0EA5E9', // sky
+      '#10B981', // emerald
+      '#F59E0B', // amber
+      '#EF4444', // red
+      '#8B5CF6', // violet
+      '#EC4899', // pink
+      '#22C55E', // green
+      '#F97316', // orange
+      '#14B8A6', // teal
+    ];
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+    }
+    return palette[hash % palette.length];
   }
 }
