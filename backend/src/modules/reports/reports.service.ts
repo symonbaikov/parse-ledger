@@ -38,6 +38,25 @@ export interface StatementsSummaryResponse {
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
 
+  private toDateKey(value: unknown): string {
+    if (typeof value === 'string') {
+      // Postgres DATE columns often come back as 'YYYY-MM-DD'
+      return value.split('T')[0];
+    }
+    if (value instanceof Date) {
+      return value.toISOString().split('T')[0];
+    }
+    try {
+      const asDate = new Date(value as any);
+      if (!Number.isNaN(asDate.getTime())) {
+        return asDate.toISOString().split('T')[0];
+      }
+    } catch {
+      // ignore
+    }
+    return new Date().toISOString().split('T')[0];
+  }
+
   constructor(
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
@@ -623,7 +642,7 @@ export class ReportsService {
     transactions.forEach((t) => {
       const amount = Number(t.amount || 0);
       const abs = Math.abs(amount);
-      const dateKey = t.transactionDate.toISOString().split('T')[0];
+      const dateKey = this.toDateKey(t.transactionDate as any);
       const ts = timeseriesMap.get(dateKey) || { income: 0, expense: 0 };
 
       if (t.transactionType === TransactionType.INCOME) {
