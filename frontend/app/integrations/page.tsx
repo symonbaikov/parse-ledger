@@ -1,7 +1,8 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
-import { CheckCircle2, ExternalLink, FileSpreadsheet, Plug } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Plug } from 'lucide-react';
 
 const integrations = [
   {
@@ -9,7 +10,15 @@ const integrations = [
     name: 'Google Sheets',
     description: 'Отправляйте распарсенные транзакции в выбранную таблицу.',
     badge: 'Доступно',
-    icon: <FileSpreadsheet className="h-6 w-6 text-emerald-600" />,
+    icon: (
+      <Image
+        src="/icons/icons8-google-sheets-48.png"
+        alt="Google Sheets"
+        width={32}
+        height={32}
+        className="rounded"
+      />
+    ),
     actions: [
       { label: 'Подключить', href: '/integrations/google-sheets' },
       { label: 'Документация', href: 'https://support.google.com/docs', external: true },
@@ -21,9 +30,13 @@ const integrations = [
     description: 'Получайте уведомления и отправляйте выписки через бота.',
     badge: 'Скоро',
     icon: (
-      <div className="h-6 w-6 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center font-bold text-xs">
-        TG
-      </div>
+      <Image
+        src="/icons/icons8-telegram-48.png"
+        alt="Telegram"
+        width={32}
+        height={32}
+        className="rounded"
+      />
     ),
     actions: [
       { label: 'Настроить бота', href: '/settings/telegram' },
