@@ -17,6 +17,8 @@ import { AuditLog, AuditAction } from '../../entities/audit-log.entity';
 import { StatementProcessingService } from '../parsing/services/statement-processing.service';
 import { UpdateStatementDto } from './dto/update-statement.dto';
 
+const uploadBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+
 @Injectable()
 export class StatementsService {
   constructor(
@@ -206,7 +208,6 @@ export class StatementsService {
   }
 
   private resolveFilePath(rawPath: string): string | null {
-    const uploadsDirEnv = process.env.UPLOADS_DIR;
     const cwd = process.cwd();
     const dirFromModule = path.resolve(__dirname, '../../..'); // points to backend/dist
     const uploadsFromModule = path.resolve(__dirname, '../../../uploads');
@@ -219,8 +220,8 @@ export class StatementsService {
       path.isAbsolute(rawPath) ? rawPath : path.join(cwd, rawPath),
       path.join(cwd, 'dist', rawPath),
       path.join(cwd, '..', rawPath),
-      uploadsDirEnv ? path.join(uploadsDirEnv, basename) : null,
-      uploadsDirEnv ? path.join(uploadsDirEnv, rawPath) : null,
+      path.join(uploadBaseDir, basename),
+      path.join(uploadBaseDir, rawPath),
       path.join(cwd, 'uploads', basename),
       path.join(cwd, 'uploads', rawPath),
       path.join(dirFromModule, 'uploads', basename),
@@ -288,7 +289,15 @@ export class StatementsService {
     userId: string,
   ): Promise<{ stream: fs.ReadStream; fileName: string; mimeType: string }> {
     const info = await this.getFileInfo(id, userId);
-    const stream = fs.createReadStream(info.filePath);
-    return { stream, fileName: info.fileName, mimeType: info.mimeType };
+    try {
+      const stream = fs.createReadStream(info.filePath);
+      return { stream, fileName: info.fileName, mimeType: info.mimeType };
+    } catch (error: any) {
+      if (error?.code === 'ENOENT') {
+        throw new NotFoundException('File not found on disk');
+      }
+      console.error('Failed to open file stream', error);
+      throw error;
+    }
   }
 }

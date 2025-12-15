@@ -39,6 +39,24 @@ interface Statement {
 // Use the same API base everywhere so prod doesn't fall back to localhost
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '/api/v1').replace(/\/$/, '');
 
+const extractErrorMessage = async (response: Response) => {
+  try {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const payload = await response.json();
+      return (
+        payload?.error?.message ||
+        payload?.message ||
+        (typeof payload === 'string' ? payload : null)
+      );
+    }
+    const text = await response.text();
+    return text?.slice(0, 200) || null;
+  } catch {
+    return null;
+  }
+};
+
 export default function StatementsPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -236,11 +254,12 @@ export default function StatementsPage() {
         document.body.removeChild(a);
         toast.success('Файл успешно скачан', { id: toastId });
       } else {
-        throw new Error('Download failed');
+        const message = await extractErrorMessage(response);
+        throw new Error(message || 'Download failed');
       }
     } catch (error) {
       console.error('Failed to download file:', error);
-      toast.error('Не удалось скачать файл', { id: toastId });
+      toast.error((error as Error).message || 'Не удалось скачать файл', { id: toastId });
     }
   };
 
@@ -261,9 +280,13 @@ export default function StatementsPage() {
         const url = window.URL.createObjectURL(blob);
         setFileViewUrl(url);
         setViewingFile(id);
+      } else {
+        const message = await extractErrorMessage(response);
+        toast.error(message || 'Не удалось открыть файл');
       }
     } catch (error) {
       console.error('Failed to load file:', error);
+      toast.error('Не удалось открыть файл');
     }
   };
 

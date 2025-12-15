@@ -26,6 +26,8 @@ import * as bcrypt from 'bcrypt';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
+const uploadBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+
 /**
  * Storage service for managing file storage, sharing, and permissions
  */
@@ -117,6 +119,32 @@ export class StorageService {
       console.error('Error in getStorageFiles:', error);
       throw error;
     }
+  }
+
+  private async resolveFilePath(rawPath: string): Promise<string> {
+    const basename = path.basename(rawPath);
+    const candidates = [
+      rawPath,
+      path.resolve(rawPath),
+      path.isAbsolute(rawPath) ? rawPath : path.join(process.cwd(), rawPath),
+      path.join(uploadBaseDir, basename),
+      path.join(uploadBaseDir, rawPath),
+      path.join(process.cwd(), 'uploads', basename),
+      path.join(process.cwd(), 'uploads', rawPath),
+      path.join(__dirname, '../../..', 'uploads', basename),
+      path.join(__dirname, '../../..', rawPath),
+    ];
+
+    for (const candidate of candidates) {
+      try {
+        await fs.access(candidate);
+        return candidate;
+      } catch {
+        // continue
+      }
+    }
+
+    throw new NotFoundException('File not found on disk');
   }
 
   /**
@@ -226,13 +254,7 @@ export class StorageService {
     // Check if user has download permission
     await this.checkFileAccess(userId, statementId, 'download');
 
-    // Check if file exists
-    const filePath = path.join(process.cwd(), statement.filePath);
-    try {
-      await fs.access(filePath);
-    } catch {
-      throw new NotFoundException('File not found on disk');
-    }
+    const filePath = await this.resolveFilePath(statement.filePath);
 
     return {
       filePath,
@@ -256,13 +278,7 @@ export class StorageService {
     // Check if user has permission to view
     await this.checkFileAccess(userId, statementId, 'view');
 
-    const filePath = path.join(process.cwd(), statement.filePath);
-
-    try {
-      await fs.access(filePath);
-    } catch {
-      throw new NotFoundException('File not found on disk');
-    }
+    const filePath = await this.resolveFilePath(statement.filePath);
 
     return {
       filePath,
