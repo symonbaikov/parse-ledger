@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import apiClient from '@/app/lib/api';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
 
 interface GoogleSheetConnection {
@@ -74,6 +75,7 @@ export default function GoogleSheetsIntegrationPage() {
     const parsedId = parseSpreadsheetId(sheetUrl);
     if (!parsedId) {
       setError('Укажите ID или ссылку на таблицу');
+      toast.error('Укажите ID или ссылку на таблицу');
       return;
     }
     const finalSheetName = sheetName.trim() || `Sheet ${parsedId.slice(0, 6)}`;
@@ -82,12 +84,13 @@ export default function GoogleSheetsIntegrationPage() {
       setSubmitting(true);
       setError(null);
       setSuccess(null);
-      await apiClient.post('/google-sheets/connect', {
+      const resp = await apiClient.post('/google-sheets/connect', {
         sheetId: parsedId,
         sheetName: finalSheetName,
         worksheetName: worksheetName.trim() || undefined,
       });
       setSuccess('Таблица подключена. Не забудьте настроить Apps Script webhook.');
+      toast.success('Таблица подключена');
       setSheetUrl('');
       setSheetName('');
       setWorksheetName('');
@@ -95,6 +98,7 @@ export default function GoogleSheetsIntegrationPage() {
     } catch (err: any) {
       const message = err?.response?.data?.message || 'Не удалось подключить таблицу';
       setError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -107,10 +111,12 @@ export default function GoogleSheetsIntegrationPage() {
       setSuccess(null);
       await apiClient.put(`/google-sheets/${id}/sync`, {});
       setSuccess('Синхронизация запущена');
+      toast.success('Синхронизация запущена');
       await loadConnections();
     } catch (err: any) {
       const message = err?.response?.data?.message || 'Не удалось синхронизировать';
       setError(message);
+      toast.error(message);
     } finally {
       setSyncingId(null);
     }
@@ -123,10 +129,12 @@ export default function GoogleSheetsIntegrationPage() {
       setSuccess(null);
       await apiClient.delete(`/google-sheets/${id}`);
       setSuccess('Подключение отключено');
+      toast.success('Подключение отключено');
       await loadConnections();
     } catch (err: any) {
       const message = err?.response?.data?.message || 'Не удалось отключить таблицу';
       setError(message);
+      toast.error(message);
     } finally {
       setRemovingId(null);
     }
