@@ -19,6 +19,14 @@ import { UpdateStatementDto } from './dto/update-statement.dto';
 
 const uploadBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 
+const isRegularFile = (filePath: string): boolean => {
+  try {
+    return fs.statSync(filePath).isFile();
+  } catch {
+    return false;
+  }
+};
+
 @Injectable()
 export class StatementsService {
   constructor(
@@ -225,13 +233,13 @@ export class StatementsService {
       path.join(cwd, 'uploads', basename),
       path.join(cwd, 'uploads', rawPath),
       path.join(dirFromModule, 'uploads', basename),
-      uploadsFromModule,
-      uploadsFromModuleUp,
+      path.join(uploadsFromModule, basename),
+      path.join(uploadsFromModuleUp, basename),
       path.join(path.dirname(rawPath), basename),
     ].filter(Boolean) as string[];
 
     for (const candidate of candidates) {
-      if (fs.existsSync(candidate)) {
+      if (isRegularFile(candidate)) {
         return candidate;
       }
     }
@@ -256,9 +264,7 @@ export class StatementsService {
     const statement = await this.findOne(id, userId);
 
     const resolved = this.resolveFilePath(statement.filePath);
-    if (!resolved) {
-      throw new NotFoundException('File not found');
-    }
+    if (!resolved) throw new NotFoundException('File not found on disk');
 
     // Determine MIME type based on file type
     let mimeType = 'application/octet-stream';
@@ -289,15 +295,7 @@ export class StatementsService {
     userId: string,
   ): Promise<{ stream: fs.ReadStream; fileName: string; mimeType: string }> {
     const info = await this.getFileInfo(id, userId);
-    try {
-      const stream = fs.createReadStream(info.filePath);
-      return { stream, fileName: info.fileName, mimeType: info.mimeType };
-    } catch (error: any) {
-      if (error?.code === 'ENOENT') {
-        throw new NotFoundException('File not found on disk');
-      }
-      console.error('Failed to open file stream', error);
-      throw error;
-    }
+    const stream = fs.createReadStream(info.filePath);
+    return { stream, fileName: info.fileName, mimeType: info.mimeType };
   }
 }

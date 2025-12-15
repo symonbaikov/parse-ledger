@@ -137,7 +137,8 @@ export class StorageService {
 
     for (const candidate of candidates) {
       try {
-        await fs.access(candidate);
+        const stat = await fs.stat(candidate);
+        if (!stat.isFile()) continue;
         return candidate;
       } catch {
         // continue

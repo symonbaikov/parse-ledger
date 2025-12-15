@@ -24,6 +24,7 @@ import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { AccessSharedLinkDto } from './dto/access-shared-link.dto';
 import { UpdateFileCategoryDto } from './dto/update-file-category.dto';
 import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * Storage controller for file management, sharing, and permissions
@@ -202,7 +203,10 @@ export class StorageController {
       return;
     }
 
-    const filePath = statement.filePath;
+    const uploadBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+    const filePath = path.isAbsolute(statement.filePath)
+      ? statement.filePath
+      : path.join(uploadBaseDir, path.basename(statement.filePath));
     const fileName = statement.fileName;
     const mimeType = this.getMimeType(statement.fileType);
 
