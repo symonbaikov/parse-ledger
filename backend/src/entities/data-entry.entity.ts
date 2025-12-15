@@ -45,6 +45,9 @@ export class DataEntry {
   @Column({ type: 'text', nullable: true })
   note: string | null;
 
+  @Column({ type: 'varchar', length: 10, default: 'KZT' })
+  currency: string;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

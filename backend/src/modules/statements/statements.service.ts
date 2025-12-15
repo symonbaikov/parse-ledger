@@ -206,16 +206,31 @@ export class StatementsService {
   }
 
   private resolveFilePath(rawPath: string): string | null {
+    const uploadsDirEnv = process.env.UPLOADS_DIR;
+    const cwd = process.cwd();
+    const dirFromModule = path.resolve(__dirname, '../../..'); // points to backend/dist
+    const uploadsFromModule = path.resolve(__dirname, '../../../uploads');
+    const uploadsFromModuleUp = path.resolve(__dirname, '../../../../uploads');
+    const basename = path.basename(rawPath);
+
     const candidates = [
       rawPath,
-      path.isAbsolute(rawPath) ? rawPath : path.join(process.cwd(), rawPath),
-      path.join(process.cwd(), 'dist', rawPath),
-      path.join(process.cwd(), '..', rawPath),
-      path.join(process.cwd(), 'uploads', path.basename(rawPath)),
-    ];
+      path.resolve(rawPath),
+      path.isAbsolute(rawPath) ? rawPath : path.join(cwd, rawPath),
+      path.join(cwd, 'dist', rawPath),
+      path.join(cwd, '..', rawPath),
+      uploadsDirEnv ? path.join(uploadsDirEnv, basename) : null,
+      uploadsDirEnv ? path.join(uploadsDirEnv, rawPath) : null,
+      path.join(cwd, 'uploads', basename),
+      path.join(cwd, 'uploads', rawPath),
+      path.join(dirFromModule, 'uploads', basename),
+      uploadsFromModule,
+      uploadsFromModuleUp,
+      path.join(path.dirname(rawPath), basename),
+    ].filter(Boolean) as string[];
 
     for (const candidate of candidates) {
-      if (candidate && fs.existsSync(candidate)) {
+      if (fs.existsSync(candidate)) {
         return candidate;
       }
     }
@@ -266,5 +281,14 @@ export class StatementsService {
       fileName: statement.fileName,
       mimeType,
     };
+  }
+
+  async getFileStream(
+    id: string,
+    userId: string,
+  ): Promise<{ stream: fs.ReadStream; fileName: string; mimeType: string }> {
+    const info = await this.getFileInfo(id, userId);
+    const stream = fs.createReadStream(info.filePath);
+    return { stream, fileName: info.fileName, mimeType: info.mimeType };
   }
 }

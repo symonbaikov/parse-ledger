@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { CheckCircle2, ClipboardList, DollarSign, Droplets, TrendingDown, TrendingUp, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import { DayPicker } from 'react-day-picker';
+import 'react-day-picker/style.css';
+import { CheckCircle2, ClipboardList, DollarSign, Droplets, TrendingDown, TrendingUp, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '@/app/hooks/useAuth';
 import apiClient from '@/app/lib/api';
 
@@ -11,6 +15,7 @@ interface FormState {
   date: string;
   amount: string;
   note: string;
+  currency: string;
 }
 
 interface Entry {
@@ -18,9 +23,10 @@ interface Entry {
   date: string;
   amount: number;
   note: string;
+  currency?: string;
 }
 
-const initialForm: FormState = { date: '', amount: '', note: '' };
+const initialForm: FormState = { date: '', amount: '', note: '', currency: 'KZT' };
 
 export default function DataEntryPage() {
   const { user, loading } = useAuth();
@@ -44,6 +50,16 @@ export default function DataEntryPage() {
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const currencies = useMemo(
+    () => [
+      { code: 'KZT', label: 'KZT (Казахстан)' },
+      { code: 'USD', label: 'USD (США)' },
+      { code: 'EUR', label: 'EUR (Еврозона)' },
+      { code: 'RUB', label: 'RUB (Россия)' },
+    ],
+    [],
+  );
 
   const tabMeta: Record<TabKey, { label: string; icon: ReactNode; description: string }> = useMemo(
     () => ({
@@ -102,6 +118,7 @@ export default function DataEntryPage() {
         date: payload.date,
         amount: amountNum,
         note: payload.note || undefined,
+        currency: payload.currency || 'KZT',
       })
       .then((resp) => {
         const savedRaw: Entry = resp.data?.data || resp.data;
@@ -109,6 +126,7 @@ export default function DataEntryPage() {
         const saved: Entry = {
           ...savedRaw,
           amount: Number.isNaN(amountNumSafe) ? 0 : amountNumSafe,
+          currency: savedRaw?.currency || 'KZT',
         };
         setEntries((prev) => ({
           ...prev,
@@ -153,6 +171,7 @@ export default function DataEntryPage() {
           return {
             ...item,
             amount: Number.isNaN(amountNum) ? 0 : amountNum,
+            currency: (item as any)?.currency || 'KZT',
           };
         });
         setEntries((prev) => ({
@@ -247,7 +266,10 @@ export default function DataEntryPage() {
             return (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                   setActiveTab(tab);
+                   setCalendarOpen(false); // Close calendar on tab switch
+                }}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
                   isActive
                     ? 'text-primary border-b-2 border-primary bg-primary/5'
@@ -264,88 +286,169 @@ export default function DataEntryPage() {
         <div className="p-4 space-y-4">
           <div className="text-sm text-gray-600">{currentMeta.description}</div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <label className="block">
-              <span className="text-sm font-medium text-gray-700">Дата</span>
-              <input
-                type="date"
-                value={currentForm.date}
-                onChange={(e) => handleChange(activeTab, 'date', e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              />
-            </label>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="relative">
+              <span className="text-sm font-medium text-gray-700 block mb-1">Дата</span>
+              <div 
+                className={`w-full rounded-lg border bg-white px-3 py-2 text-sm flex items-center justify-between cursor-pointer transition-colors ${
+                   calendarOpen ? 'border-primary ring-1 ring-primary' : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setCalendarOpen(!calendarOpen)}
+              >
+                 <span className={currentForm.date ? 'text-gray-900' : 'text-gray-400'}>
+                    {currentForm.date 
+                      ? format(new Date(currentForm.date), 'd MMMM yyyy', { locale: ru }) 
+                      : 'Выберите дату'}
+                 </span>
+                 <CalendarIcon className="h-4 w-4 text-gray-500" />
+              </div>
+
+              {calendarOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-10" 
+                    onClick={() => setCalendarOpen(false)} 
+                  />
+                  <div className="absolute top-full left-0 mt-2 z-20 bg-white rounded-xl shadow-xl border border-gray-200 p-3 animate-in fade-in zoom-in-95 duration-200">
+                     <style>{`
+                       .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #0a66c2; --rdp-background-color: #e3f2fd; margin: 0; }
+                       .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f3f2ef; font-weight: bold; }
+                       .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover { background-color: var(--rdp-accent-color); color: white; font-weight: bold; }
+                       .rdp-head_cell { color: #666; font-weight: 600; font-size: 0.875rem; }
+                       .rdp-caption_label { font-weight: 700; color: #191919; font-size: 1rem; }
+                       .rdp-nav_button { color: #666; }
+                       .rdp-nav_button:hover { background-color: #f3f2ef; color: #0a66c2; }
+                     `}</style>
+                     <DayPicker
+                       mode="single"
+                       selected={currentForm.date ? new Date(currentForm.date) : undefined}
+                       onSelect={(day) => {
+                         if (day) {
+                           handleChange(activeTab, 'date', format(day, 'yyyy-MM-dd'));
+                           setCalendarOpen(false);
+                         }
+                       }}
+                       locale={ru}
+                       className="rounded-lg"
+                     />
+                  </div>
+                </>
+              )}
+            </div>
 
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">Сумма</span>
+              <span className="text-sm font-medium text-gray-700 block mb-1">Сумма</span>
               <input
                 type="number"
                 value={currentForm.amount}
                 onChange={(e) => handleChange(activeTab, 'amount', e.target.value)}
                 placeholder="0.00"
-                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
               />
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-gray-700">Комментарий</span>
+              <span className="text-sm font-medium text-gray-700 block mb-1">Комментарий</span>
               <input
                 type="text"
                 value={currentForm.note}
                 onChange={(e) => handleChange(activeTab, 'note', e.target.value)}
                 placeholder="Например, инкассация / поставщик / склад"
-                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
               />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700 block mb-1">Валюта</span>
+              <div className="mt-1 w-full rounded-lg border border-gray-200 bg-white text-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                <select
+                  className="w-full bg-transparent px-3 py-2 outline-none"
+                  value={currentForm.currency}
+                  onChange={(e) => handleChange(activeTab, 'currency', e.target.value)}
+                >
+                  {currencies.map((cur) => (
+                    <option key={cur.code} value={cur.code}>
+                      {cur.code} — {cur.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {currencies.map((cur) => (
+                  <button
+                    key={cur.code}
+                    type="button"
+                    onClick={() => handleChange(activeTab, 'currency', cur.code)}
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
+                      currentForm.currency === cur.code
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-gray-200 text-gray-700 hover:border-primary'
+                    }`}
+                  >
+                    {cur.code}
+                  </button>
+                ))}
+              </div>
             </label>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex justify-end pt-2">
             <button
               onClick={() => handleSubmit(activeTab)}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
             >
-              Сохранить
+              Сохранить запись
             </button>
           </div>
         </div>
       </div>
 
       <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 bg-gray-50/50 rounded-t-xl">
           <div className="flex items-center gap-2">
             <Droplets className="h-5 w-5 text-primary" />
             <h3 className="font-semibold text-gray-900">Последние записи — {tabMeta[activeTab].label}</h3>
           </div>
-          <span className="text-xs text-gray-500">Отображаются из базы за последние записи</span>
+          <span className="text-xs text-gray-500 font-medium">Отображаются последние записи из базы</span>
         </div>
 
         {loadingList ? (
-          <div className="px-4 py-6 text-sm text-gray-600">Загрузка...</div>
+          <div className="px-4 py-8 text-center text-sm text-gray-500">Загрузка данных...</div>
           ) : currentEntries.length === 0 ? (
-          <div className="px-4 py-6 text-sm text-gray-600">Пока нет записей для этой вкладки.</div>
+          <div className="px-4 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
+             <div className="bg-gray-100 p-3 rounded-full mb-3">
+                <ClipboardList className="h-6 w-6 text-gray-400" />
+             </div>
+             Пока нет записей для этой вкладки
+          </div>
         ) : (
           <div className="divide-y divide-gray-100">
             {currentEntries.map((entry) => (
-              <div key={entry.id} className="px-4 py-3 flex items-center justify-between">
+              <div key={entry.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50/80 transition-colors group">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{formatDate(entry.date)}</p>
-                  <p className="text-xs text-gray-600">{entry.note || 'Без комментария'}</p>
+                  <div className="flex items-center gap-2">
+                     <p className="text-sm font-bold text-gray-900">{format(new Date(entry.date), 'dd.MM.yyyy')}</p>
+                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{tabMeta[activeTab].label}</span>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-0.5">{entry.note || 'Без комментария'}</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {Number(entry.amount || 0).toFixed(2)}
+                    <p className="text-sm font-bold text-gray-900 font-mono">
+                      {Number(entry.amount || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2 })}
                     </p>
-                    <p className="text-xs text-gray-500">Сумма</p>
+                    <div className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold text-right">
+                      {entry.currency || 'KZT'}
+                    </div>
                   </div>
                   <button
                     onClick={() => handleDelete(entry.id)}
                     disabled={removingId === entry.id}
-                    className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-                    title="Удалить"
+                    className="p-2 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                    title="Удалить запись"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Удалить
                   </button>
                 </div>
               </div>

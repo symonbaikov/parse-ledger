@@ -24,6 +24,7 @@ export class DataEntryService {
       date: dto.date,
       amount: dto.amount,
       note: dto.note || null,
+      currency: dto.currency || 'KZT',
     });
     return this.dataEntryRepository.save(entry);
   }

@@ -365,24 +365,24 @@ export default function StatementsPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50/50">
                 <tr>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[40%]">
                     Файл
                   </th>
-                  <th scope="col" className="px-6 py-3 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-[15%]">
                     Статус
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[15%] hidden md:table-cell">
                     Банк
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%] hidden lg:table-cell">
                     Транзакции
                   </th>
-                  <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%]">
                     Дата
                   </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th scope="col" className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%]">
                     Действия
                   </th>
                 </tr>
@@ -391,80 +391,101 @@ export default function StatementsPage() {
                 {statements.map((statement) => (
                   <tr
                     key={statement.id}
-                    className={`transition-colors group ${
+                    className={`transition-all duration-200 group hover:shadow-md hover:bg-white hover:z-10 relative ${
                       statement.status === 'processing'
-                        ? 'bg-green-50/70 animate-pulse'
-                        : 'hover:bg-gray-50'
+                        ? 'bg-blue-50/30'
+                        : ''
                     }`}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center cursor-pointer" onClick={() => handleViewFile(statement.id)}>
-                        <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded bg-red-50">
+                    <td className="px-6 py-5">
+                      <div className="flex items-center cursor-pointer group/file" onClick={() => handleViewFile(statement.id)}>
+                        <div className="flex-shrink-0 h-12 w-12 flex items-center justify-center rounded-xl bg-red-50 text-red-500 group-hover/file:bg-red-100 group-hover/file:scale-110 transition-all duration-200">
                            {getFileIcon(statement.fileType)}
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900 group-hover:text-primary transition-colors">
+                        <div className="ml-4 min-w-0 flex-1">
+                          <div className="text-base font-semibold text-gray-900 truncate group-hover:text-primary transition-colors">
                             {statement.fileName}
                           </div>
-                          <div className="text-xs text-gray-500">PDF Document</div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                              PDF
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {(statement.fileType || 'document').toUpperCase()}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                    <td className="px-6 py-5 text-center whitespace-nowrap">
                       {getStatusBadge(statement.status)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 font-medium capitalize">{statement.bankName}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{statement.totalTransactions}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {new Date(statement.createdAt).toLocaleDateString()}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(statement.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    <td className="px-6 py-5 whitespace-nowrap hidden md:table-cell">
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center mr-3 text-gray-500 font-bold text-xs">
+                          {statement.bankName?.[0]?.toUpperCase() || 'B'}
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 capitalize">{statement.bankName}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end space-x-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                    <td className="px-6 py-5 whitespace-nowrap hidden lg:table-cell">
+                      <div className="text-sm font-medium text-gray-900">
+                        {statement.totalTransactions > 0 ? statement.totalTransactions : '—'} 
+                        <span className="text-gray-400 ml-1 font-normal text-xs">оп.</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="text-smfont-medium text-gray-900">
+                          {new Date(statement.createdAt).toLocaleDateString()}
+                        </span>
+                        <span className="text-xs text-gray-500 mt-0.5">
+                          {new Date(statement.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleViewFile(statement.id)}
-                          className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary"
+                          className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all"
                           title="Просмотреть"
                         >
-                          <Eye size={18} />
+                          <Eye size={20} />
                         </button>
                         <button
                           onClick={() => handleDownloadFile(statement.id, statement.fileName)}
-                          className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary"
+                          className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
                           title="Скачать"
                         >
-                          <Download size={18} />
+                          <Download size={20} />
                         </button>
-                        <button
-                          onClick={() => openLogs(statement.id, statement.fileName)}
-                          className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-primary"
-                          title="Логи обработки"
-                        >
-                          <Terminal size={18} />
-                        </button>
+                        
+                        {(statement.status === 'processing' || statement.status === 'error' || logLoading) && (
+                           <button
+                             onClick={() => openLogs(statement.id, statement.fileName)}
+                             className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all"
+                             title="Логи"
+                           >
+                             <Terminal size={20} />
+                           </button>
+                        )}
+
                         {statement.status === 'error' && (
                           <button
                             onClick={() => handleReprocess(statement.id)}
-                            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-500 hover:text-orange-500"
+                            className="p-2 rounded-lg text-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all"
                             title="Повторить"
                           >
-                            <RefreshCw size={18} />
+                            <RefreshCw size={20} />
                           </button>
                         )}
                         <button
                           onClick={() => confirmDelete(statement.id)}
-                          className="p-1.5 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-600"
+                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all"
                           title="Удалить"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={20} />
                         </button>
                       </div>
                     </td>

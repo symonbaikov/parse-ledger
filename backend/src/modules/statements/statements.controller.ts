@@ -103,10 +103,13 @@ export class StatementsController {
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.STATEMENT_VIEW)
   async viewFile(@Param('id') id: string, @CurrentUser() user: User, @Res() res: Response) {
-    const { filePath, fileName, mimeType } = await this.statementsService.getFileInfo(id, user.id);
+    const { stream, fileName, mimeType } = await this.statementsService.getFileStream(
+      id,
+      user.id,
+    );
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
-    return res.sendFile(filePath);
+    stream.pipe(res);
   }
 
   @Get(':id')

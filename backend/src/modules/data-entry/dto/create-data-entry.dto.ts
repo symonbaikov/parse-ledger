@@ -14,4 +14,8 @@ export class CreateDataEntryDto {
   @IsOptional()
   @IsString()
   note?: string | null;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
 }
