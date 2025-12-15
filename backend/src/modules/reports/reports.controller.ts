@@ -1,7 +1,9 @@
 import {
   Controller,
+  DefaultValuePipe,
   Get,
   Post,
+  ParseIntPipe,
   Query,
   Body,
   Param,
@@ -25,6 +27,16 @@ import * as fs from 'fs';
 @UseGuards(JwtAuthGuard)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
+
+  @Get('statements/summary')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.REPORT_VIEW)
+  async getStatementsSummary(
+    @CurrentUser() user: User,
+    @Query('days', new DefaultValuePipe(30), ParseIntPipe) days?: number,
+  ) {
+    return this.reportsService.getStatementsSummary(user.id, days);
+  }
 
   @Get('daily')
   @UseGuards(PermissionsGuard)

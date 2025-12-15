@@ -37,6 +37,25 @@ type SummaryResponse = {
   }>;
 };
 
+type StatementsSummaryResponse = {
+  totals: {
+    income: number;
+    expense: number;
+    net: number;
+    rows: number;
+  };
+  timeseries: Array<{ date: string; income: number; expense: number }>;
+  categories: Array<{ name: string; amount: number; rows: number }>;
+  counterparties: Array<{ name: string; amount: number; rows: number }>;
+  recent: Array<{
+    id: string;
+    amount: number;
+    category: string | null;
+    counterparty: string | null;
+    updatedAt: string;
+  }>;
+};
+
 type StatementStatus = 'uploaded' | 'processing' | 'parsed' | 'validated' | 'completed' | 'error' | string;
 
 type StatementItem = {
@@ -84,6 +103,8 @@ export default function ReportsPage() {
   const [data, setData] = useState<SummaryResponse | null>(null);
   const [statements, setStatements] = useState<StatementItem[]>([]);
   const [loadingStatements, setLoadingStatements] = useState(false);
+  const [statementSummary, setStatementSummary] = useState<StatementsSummaryResponse | null>(null);
+  const [loadingStatementSummary, setLoadingStatementSummary] = useState(false);
 
   const load = async (daysOverride?: number) => {
     const windowDays = daysOverride ?? days;
@@ -98,6 +119,20 @@ export default function ReportsPage() {
       setError(err?.response?.data?.message || 'Не удалось загрузить отчёт');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStatementSummary = async (daysOverride: number = 30) => {
+    setLoadingStatementSummary(true);
+    setError(null);
+    try {
+      const resp = await apiClient.get(`/reports/statements/summary?days=${daysOverride}`);
+      const payload = resp.data?.data || resp.data;
+      setStatementSummary(payload);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Не удалось загрузить статистику по выпискам');
+    } finally {
+      setLoadingStatementSummary(false);
     }
   };
 
@@ -122,6 +157,7 @@ export default function ReportsPage() {
   useEffect(() => {
     if (tab === 'statements' && statements.length === 0) {
       loadStatements();
+      loadStatementSummary();
     }
   }, [tab]);
 
@@ -485,7 +521,10 @@ export default function ReportsPage() {
         <>
           <div className="flex items-center gap-2">
             <button
-              onClick={loadStatements}
+              onClick={() => {
+                loadStatements();
+                loadStatementSummary();
+              }}
               className="rounded-full border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 hover:border-primary flex items-center gap-2"
             >
               <RefreshCcw className="h-4 w-4" /> Обновить
@@ -514,13 +553,39 @@ export default function ReportsPage() {
             />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+            <InfoCard
+              title="Приход"
+              value={formatCurrency(statementSummary?.totals.income || 0)}
+              accent="green"
+              icon={<ArrowDown className="h-4 w-4 text-emerald-500" />}
+            />
+            <InfoCard
+              title="Расход"
+              value={formatCurrency(statementSummary?.totals.expense || 0)}
+              accent="red"
+              icon={<ArrowUp className="h-4 w-4 text-red-500" />}
+            />
+            <InfoCard
+              title="Чистый поток"
+              value={formatCurrency(statementSummary?.totals.net || 0)}
+              accent={(statementSummary?.totals.net || 0) >= 0 ? 'green' : 'red'}
+              icon={<TrendingUp className="h-4 w-4 text-primary" />}
+            />
+            <InfoCard
+              title="Операции"
+              value={`${statementSummary?.totals.rows || 0}`}
+              icon={<FileText className="h-4 w-4 text-primary" />}
+            />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-gray-900">Динамика загрузок</h3>
                 <span className="text-xs text-gray-500">По датам загрузки</span>
               </div>
-              {loadingStatements ? (
+              {loadingStatements || loadingStatementSummary ? (
                 <div className="h-64 flex items-center justify-center text-gray-500">Загрузка…</div>
               ) : (
                 <ReactECharts
