@@ -27,6 +27,15 @@ const isRegularFile = (filePath: string): boolean => {
   }
 };
 
+const extractUploadsSuffix = (rawPath: string): string | null => {
+  const normalized = rawPath.replace(/\\/g, '/');
+  const marker = '/uploads/';
+  const idx = normalized.lastIndexOf(marker);
+  if (idx === -1) return null;
+  const suffix = normalized.slice(idx + marker.length);
+  return suffix ? suffix : null;
+};
+
 @Injectable()
 export class StatementsService {
   constructor(
@@ -221,6 +230,7 @@ export class StatementsService {
     const uploadsFromModule = path.resolve(__dirname, '../../../uploads');
     const uploadsFromModuleUp = path.resolve(__dirname, '../../../../uploads');
     const basename = path.basename(rawPath);
+    const uploadsSuffix = extractUploadsSuffix(rawPath);
 
     const candidates = [
       rawPath,
@@ -230,8 +240,10 @@ export class StatementsService {
       path.join(cwd, '..', rawPath),
       path.join(uploadBaseDir, basename),
       path.join(uploadBaseDir, rawPath),
+      uploadsSuffix ? path.join(uploadBaseDir, uploadsSuffix) : null,
       path.join(cwd, 'uploads', basename),
       path.join(cwd, 'uploads', rawPath),
+      uploadsSuffix ? path.join(cwd, 'uploads', uploadsSuffix) : null,
       path.join(dirFromModule, 'uploads', basename),
       path.join(uploadsFromModule, basename),
       path.join(uploadsFromModuleUp, basename),

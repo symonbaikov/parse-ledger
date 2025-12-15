@@ -403,7 +403,8 @@ export class TelegramService {
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'telegram');
+    const uploadsBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+    const uploadsDir = path.join(uploadsBaseDir, 'telegram');
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }

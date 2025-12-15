@@ -28,6 +28,15 @@ import * as path from 'path';
 
 const uploadBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 
+const extractUploadsSuffix = (rawPath: string): string | null => {
+  const normalized = rawPath.replace(/\\/g, '/');
+  const marker = '/uploads/';
+  const idx = normalized.lastIndexOf(marker);
+  if (idx === -1) return null;
+  const suffix = normalized.slice(idx + marker.length);
+  return suffix ? suffix : null;
+};
+
 /**
  * Storage service for managing file storage, sharing, and permissions
  */
@@ -123,17 +132,20 @@ export class StorageService {
 
   private async resolveFilePath(rawPath: string): Promise<string> {
     const basename = path.basename(rawPath);
+    const uploadsSuffix = extractUploadsSuffix(rawPath);
     const candidates = [
       rawPath,
       path.resolve(rawPath),
       path.isAbsolute(rawPath) ? rawPath : path.join(process.cwd(), rawPath),
       path.join(uploadBaseDir, basename),
       path.join(uploadBaseDir, rawPath),
+      uploadsSuffix ? path.join(uploadBaseDir, uploadsSuffix) : null,
       path.join(process.cwd(), 'uploads', basename),
       path.join(process.cwd(), 'uploads', rawPath),
+      uploadsSuffix ? path.join(process.cwd(), 'uploads', uploadsSuffix) : null,
       path.join(__dirname, '../../..', 'uploads', basename),
       path.join(__dirname, '../../..', rawPath),
-    ];
+    ].filter(Boolean) as string[];
 
     for (const candidate of candidates) {
       try {

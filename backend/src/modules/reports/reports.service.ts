@@ -453,7 +453,8 @@ export class ReportsService {
   ): Promise<{ filePath: string; fileName: string }> {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const fileName = `report-${timestamp}.${dto.format === ExportFormat.EXCEL ? 'xlsx' : 'csv'}`;
-    const filePath = path.join(process.cwd(), 'uploads', 'reports', fileName);
+    const uploadsBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+    const filePath = path.join(uploadsBaseDir, 'reports', fileName);
 
     // Ensure directory exists
     const dir = path.dirname(filePath);
