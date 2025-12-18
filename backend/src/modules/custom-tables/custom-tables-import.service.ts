@@ -161,7 +161,7 @@ export class CustomTablesImportService {
       const code = (error as any)?.driverError?.code;
       if (code === '42P01' || code === '42703') {
         throw new BadRequestException(
-          'Схема БД не обновлена для Custom Tables. Перезапустите backend (в dev миграции запускаются автоматически) или запустите: `npm -C backend run migration:run`',
+          'Схема БД не обновлена для Custom Tables. Запустите миграции (`npm -C backend run migration:run`) или включите автозапуск миграций (переменная окружения `RUN_MIGRATIONS=true`) и перезапустите backend.',
         );
       }
     }

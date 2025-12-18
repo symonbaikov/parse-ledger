@@ -7,8 +7,9 @@ export const getDatabaseConfig = (
   const nodeEnv = configService.get<string>('NODE_ENV') || 'development';
   const isProd = nodeEnv === 'production';
   const runMigrationsEnv = (configService.get<string>('RUN_MIGRATIONS') || '').toLowerCase();
-  const shouldRunMigrations =
-    runMigrationsEnv === 'true' || (!isProd && runMigrationsEnv !== 'false');
+  // Default to running migrations everywhere unless explicitly disabled.
+  // This prevents production deployments from silently missing new tables/enums.
+  const shouldRunMigrations = runMigrationsEnv !== 'false';
   const migrationsGlob = __filename.endsWith('.ts')
     ? 'src/migrations/*.ts'
     : 'dist/migrations/*.js';

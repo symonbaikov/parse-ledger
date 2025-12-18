@@ -28,8 +28,8 @@ docker-compose up -d
 
 Схема базы управляется миграциями (TypeORM synchronize отключён).
 
-- В `development` миграции запускаются автоматически при старте приложения.
-- В `production` автозапуск выключен по умолчанию — включите `RUN_MIGRATIONS=true` (например, в `docker-compose.yml`) или применяйте миграции вручную.
+- По умолчанию миграции запускаются автоматически при старте приложения.
+- Чтобы отключить автозапуск (например, в `production`), установите `RUN_MIGRATIONS=false` и применяйте миграции вручную.
 
 ```bash
 npm run migration:run
@@ -71,7 +71,6 @@ src/
 API доступно по адресу: `http://localhost:3001/api/v1`
 
 Health check: `GET /api/v1/health`
-
 
 
 

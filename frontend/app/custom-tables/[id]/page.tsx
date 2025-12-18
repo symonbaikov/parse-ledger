@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Maximize2, Minimize2, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import toast from 'react-hot-toast';
 import apiClient from '@/app/lib/api';
@@ -53,6 +53,11 @@ export default function CustomTableDetailPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const tableId = params?.id;
+
+  const [isFullscreen, setIsFullscreen] = useState(true);
+  const [editingMeta, setEditingMeta] = useState(false);
+  const [metaDraft, setMetaDraft] = useState<{ name: string; description: string }>({ name: '', description: '' });
+  const [savingMeta, setSavingMeta] = useState(false);
 
   const [table, setTable] = useState<CustomTable | null>(null);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; color?: string | null; icon?: string | null }>>([]);
@@ -135,6 +140,41 @@ export default function CustomTableDetailPage() {
     }
   }, [authLoading, user, tableId]);
 
+  useEffect(() => {
+    if (!table || editingMeta) return;
+    setMetaDraft({
+      name: table.name || '',
+      description: table.description || '',
+    });
+  }, [table?.id, table?.name, table?.description, editingMeta]);
+
+  useEffect(() => {
+    if (!user) return;
+    if (isFullscreen) {
+      document.body.classList.add('ff-table-fullscreen');
+    } else {
+      document.body.classList.remove('ff-table-fullscreen');
+    }
+    return () => {
+      document.body.classList.remove('ff-table-fullscreen');
+    };
+  }, [isFullscreen, user]);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag && ['input', 'textarea', 'select'].includes(tag)) return;
+      if (target && (target as any).isContentEditable) return;
+      if (event.key === 'Escape') {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isFullscreen]);
+
   const updateCategory = async (nextCategoryId: string) => {
     if (!tableId) return;
     setCategoryId(nextCategoryId);
@@ -147,6 +187,49 @@ export default function CustomTableDetailPage() {
     } catch (error) {
       console.error('Failed to update category:', error);
       toast.error('Не удалось обновить категорию');
+    }
+  };
+
+  const startEditMeta = () => {
+    if (!table) return;
+    setMetaDraft({
+      name: table.name || '',
+      description: table.description || '',
+    });
+    setEditingMeta(true);
+  };
+
+  const cancelEditMeta = () => {
+    setEditingMeta(false);
+    setMetaDraft({
+      name: table?.name || '',
+      description: table?.description || '',
+    });
+  };
+
+  const saveMeta = async () => {
+    if (!tableId) return;
+    const name = metaDraft.name.trim();
+    if (!name) {
+      toast.error('Введите название таблицы');
+      return;
+    }
+    const description = metaDraft.description.trim();
+
+    setSavingMeta(true);
+    try {
+      await apiClient.patch(`/custom-tables/${tableId}`, {
+        name,
+        description: description ? description : null,
+      });
+      setEditingMeta(false);
+      await loadTable();
+      toast.success('Сохранено');
+    } catch (error) {
+      console.error('Failed to update table meta:', error);
+      toast.error('Не удалось сохранить изменения');
+    } finally {
+      setSavingMeta(false);
     }
   };
 
@@ -265,7 +348,13 @@ export default function CustomTableDetailPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div
+      className={
+        isFullscreen
+          ? 'h-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col'
+          : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+      }
+    >
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
@@ -291,9 +380,79 @@ export default function CustomTableDetailPage() {
                 <span className="text-gray-900 font-semibold">T</span>
               )}
             </span>
-            <h1 className="text-2xl font-bold text-gray-900 truncate">{table.name}</h1>
+            {editingMeta ? (
+              <div className="flex items-center gap-2 w-full max-w-[520px]">
+                <input
+                  value={metaDraft.name}
+                  onChange={(e) => setMetaDraft((prev) => ({ ...prev, name: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      saveMeta();
+                    }
+                    if (e.key === 'Escape') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      cancelEditMeta();
+                    }
+                  }}
+                  disabled={savingMeta}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-base font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
+                  placeholder="Название таблицы"
+                />
+                <button
+                  onClick={saveMeta}
+                  disabled={savingMeta || !metaDraft.name.trim()}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-primary text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Сохранить"
+                >
+                  <Save className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={cancelEditMeta}
+                  disabled={savingMeta}
+                  className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Отмена"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="text-2xl font-bold text-gray-900 truncate">{table.name}</h1>
+                <button
+                  onClick={startEditMeta}
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  title="Редактировать название и описание"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              </div>
+            )}
           </div>
-          <p className="text-secondary mt-1">{table.description || '—'}</p>
+          {editingMeta ? (
+            <textarea
+              value={metaDraft.description}
+              onChange={(e) => setMetaDraft((prev) => ({ ...prev, description: e.target.value }))}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  cancelEditMeta();
+                }
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault();
+                  saveMeta();
+                }
+              }}
+              disabled={savingMeta}
+              rows={2}
+              className="mt-2 w-full max-w-[720px] resize-y rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
+              placeholder="Описание (опционально)"
+            />
+          ) : (
+            <p className="text-secondary mt-1">{table.description || '—'}</p>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <div className="text-xs font-semibold text-gray-700">Категория:</div>
             <select
@@ -312,6 +471,14 @@ export default function CustomTableDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsFullscreen((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            title={isFullscreen ? 'Выйти из полноэкранного режима (Esc)' : 'Открыть в полноэкранном режиме'}
+          >
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            {isFullscreen ? 'Выйти' : 'Полный экран'}
+          </button>
           <button
             onClick={() => setNewColumnOpen((v) => !v)}
             className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -375,9 +542,16 @@ export default function CustomTableDetailPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
+      <div className={isFullscreen ? 'flex-1 min-h-0 overflow-hidden' : undefined}>
+        <div
+          className={
+            isFullscreen
+              ? 'h-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-sm'
+              : 'overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm'
+          }
+        >
+          <table className="min-w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
               <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[72px]">#</th>
               {orderedColumns.map((col) => (
@@ -398,8 +572,8 @@ export default function CustomTableDetailPage() {
               ))}
               <th className="px-3 py-2 text-right font-semibold text-gray-700 w-[64px]"></th>
             </tr>
-          </thead>
-          <tbody>
+            </thead>
+            <tbody>
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={orderedColumns.length + 2} className="px-4 py-6 text-center text-gray-500">
@@ -460,11 +634,12 @@ export default function CustomTableDetailPage() {
                 </tr>
               ))
             )}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-center">
+      <div className={isFullscreen ? 'mt-3 flex items-center justify-center' : 'mt-4 flex items-center justify-center'}>
         <button
           onClick={() => loadRows()}
           disabled={!hasMore || loadingRows}

@@ -31,3 +31,18 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Custom Tables: in-app fullscreen mode (hides global navigation/breadcrumbs). */
+body.ff-table-fullscreen {
+  overflow: hidden;
+}
+
+body.ff-table-fullscreen > header,
+body.ff-table-fullscreen > [data-global-breadcrumbs] {
+  display: none;
+}
+
+body.ff-table-fullscreen > main {
+  height: 100vh;
+  overflow: hidden;
+}
