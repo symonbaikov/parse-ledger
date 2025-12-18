@@ -7,6 +7,8 @@ import { Category } from '../../entities/category.entity';
 import { CustomTable, CustomTableSource } from '../../entities/custom-table.entity';
 import { CustomTableColumn, CustomTableColumnType } from '../../entities/custom-table-column.entity';
 import { CustomTableRow } from '../../entities/custom-table-row.entity';
+import { DataEntry, DataEntryType } from '../../entities/data-entry.entity';
+import { DataEntryCustomField } from '../../entities/data-entry-custom-field.entity';
 import { CreateCustomTableDto } from './dto/create-custom-table.dto';
 import { UpdateCustomTableDto } from './dto/update-custom-table.dto';
 import { CreateCustomTableColumnDto } from './dto/create-custom-table-column.dto';
@@ -15,6 +17,8 @@ import { ReorderCustomTableColumnsDto } from './dto/reorder-custom-table-columns
 import { CreateCustomTableRowDto } from './dto/create-custom-table-row.dto';
 import { UpdateCustomTableRowDto } from './dto/update-custom-table-row.dto';
 import { BatchCreateCustomTableRowsDto } from './dto/batch-create-custom-table-rows.dto';
+import { CreateCustomTableFromDataEntryDto, DataEntryToCustomTableScope } from './dto/create-custom-table-from-data-entry.dto';
+import { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
 
 @Injectable()
 export class CustomTablesService {
@@ -29,6 +33,10 @@ export class CustomTablesService {
     private readonly customTableColumnRepository: Repository<CustomTableColumn>,
     @InjectRepository(CustomTableRow)
     private readonly customTableRowRepository: Repository<CustomTableRow>,
+    @InjectRepository(DataEntry)
+    private readonly dataEntryRepository: Repository<DataEntry>,
+    @InjectRepository(DataEntryCustomField)
+    private readonly dataEntryCustomFieldRepository: Repository<DataEntryCustomField>,
     @InjectRepository(AuditLog)
     private readonly auditLogRepository: Repository<AuditLog>,
   ) {}
@@ -204,6 +212,366 @@ export class CustomTablesService {
     }
     await this.log(userId, AuditAction.CUSTOM_TABLE_UPDATE, { tableId: saved.id });
     return saved;
+  }
+
+  async createFromDataEntry(
+    userId: string,
+    dto: CreateCustomTableFromDataEntryDto,
+  ): Promise<{ tableId: string; columnsCreated: number; rowsCreated: number }> {
+    const selectedType =
+      dto.scope === DataEntryToCustomTableScope.TYPE ? dto.type : undefined;
+
+    let entries: DataEntry[];
+    try {
+      entries = await this.dataEntryRepository.find({
+        where: {
+          userId,
+          ...(selectedType ? { type: selectedType } : {}),
+        },
+        order: { date: 'ASC', createdAt: 'ASC' },
+      });
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+
+    if (!entries.length) {
+      throw new BadRequestException('Нет записей во «Ввод данных» для создания таблицы');
+    }
+
+    const typeLabels: Record<DataEntryType, string> = {
+      [DataEntryType.CASH]: 'Наличные',
+      [DataEntryType.RAW]: 'Сырьё',
+      [DataEntryType.DEBIT]: 'Дебет',
+      [DataEntryType.CREDIT]: 'Кредит',
+    };
+
+    const defaultName =
+      selectedType
+        ? `Ввод данных — ${typeLabels[selectedType] || selectedType}`
+        : 'Ввод данных — все';
+    const tableName = dto.name?.trim() || defaultName;
+    const description =
+      dto.description === undefined ? null : dto.description;
+
+    const customFieldMetaByName = new Map<string, { icon: string | null }>();
+    for (const entry of entries) {
+      const name = entry.customFieldName?.trim();
+      if (!name) continue;
+      const icon = entry.customFieldIcon?.trim() || null;
+      const existing = customFieldMetaByName.get(name);
+      if (!existing) {
+        customFieldMetaByName.set(name, { icon });
+      } else if (!existing.icon && icon) {
+        existing.icon = icon;
+      }
+    }
+
+    const maxCustomColumns = 50;
+    if (customFieldMetaByName.size > maxCustomColumns) {
+      throw new BadRequestException(
+        `Слишком много пользовательских колонок (${customFieldMetaByName.size}). Упростите названия или создайте таблицу по одной вкладке (лимит ${maxCustomColumns}).`,
+      );
+    }
+
+    const columnDefs: Array<{
+      id: string;
+      title: string;
+      type: CustomTableColumnType;
+      config?: Record<string, any> | null;
+    }> = [
+      { id: 'date', title: 'Дата', type: CustomTableColumnType.DATE },
+      ...(dto.scope === DataEntryToCustomTableScope.ALL
+        ? [{ id: 'type', title: 'Тип', type: CustomTableColumnType.TEXT }]
+        : []),
+      { id: 'amount', title: 'Сумма', type: CustomTableColumnType.NUMBER },
+      { id: 'currency', title: 'Валюта', type: CustomTableColumnType.TEXT },
+      { id: 'note', title: 'Комментарий', type: CustomTableColumnType.TEXT },
+    ];
+
+    const customNames = Array.from(customFieldMetaByName.keys()).sort((a, b) =>
+      a.localeCompare(b, 'ru'),
+    );
+    for (const name of customNames) {
+      const meta = customFieldMetaByName.get(name);
+      columnDefs.push({
+        id: `custom:${name}`,
+        title: name,
+        type: CustomTableColumnType.TEXT,
+        config: {
+          ...(meta?.icon ? { icon: meta.icon } : {}),
+          source: { kind: 'data_entry_custom_field', name },
+        },
+      });
+    }
+
+    let table: CustomTable;
+    try {
+      table = await this.customTableRepository.save(
+        this.customTableRepository.create({
+          userId,
+          name: tableName,
+          description,
+          source: CustomTableSource.MANUAL,
+          categoryId: null,
+        }),
+      );
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+
+    await this.log(userId, AuditAction.CUSTOM_TABLE_CREATE, {
+      tableId: table.id,
+      source: 'data_entry_export',
+      scope: dto.scope,
+      type: selectedType || null,
+      rowsPlanned: entries.length,
+      customColumns: customNames.length,
+    });
+
+    let createdColumns: CustomTableColumn[];
+    try {
+      createdColumns = await this.customTableColumnRepository.save(
+        columnDefs.map((def, position) =>
+          this.customTableColumnRepository.create({
+            tableId: table.id,
+            key: this.generateColumnKey(),
+            title: def.title,
+            type: def.type,
+            isRequired: false,
+            isUnique: false,
+            position,
+            config: def.config ?? null,
+          }),
+        ),
+      );
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+
+    const keyByDefId = new Map<string, string>();
+    for (let i = 0; i < createdColumns.length; i += 1) {
+      const def = columnDefs[i];
+      const col = createdColumns[i];
+      if (def && col) {
+        keyByDefId.set(def.id, col.key);
+      }
+    }
+
+    const customKeyByName = new Map<string, string>();
+    for (const name of customNames) {
+      const key = keyByDefId.get(`custom:${name}`);
+      if (key) {
+        customKeyByName.set(name, key);
+      }
+    }
+
+    const dateKey = keyByDefId.get('date');
+    const typeKey = keyByDefId.get('type');
+    const amountKey = keyByDefId.get('amount');
+    const currencyKey = keyByDefId.get('currency');
+    const noteKey = keyByDefId.get('note');
+
+    if (!dateKey || !amountKey || !currencyKey || !noteKey) {
+      throw new BadRequestException('Не удалось сформировать колонки таблицы');
+    }
+
+    const rowsToInsert = entries.map((entry, idx) => {
+      const data: Record<string, any> = {};
+      data[dateKey] = entry.date;
+      data[amountKey] = entry.amount;
+      data[currencyKey] = entry.currency || 'KZT';
+      data[noteKey] = entry.note || null;
+
+      if (dto.scope === DataEntryToCustomTableScope.ALL && typeKey) {
+        data[typeKey] = typeLabels[entry.type] || entry.type;
+      }
+
+      const customName = entry.customFieldName?.trim();
+      const customValue = entry.customFieldValue ?? null;
+      if (customName && customValue !== null) {
+        const key = customKeyByName.get(customName);
+        if (key) {
+          data[key] = customValue;
+        }
+      }
+
+      return this.customTableRowRepository.create({
+        tableId: table.id,
+        rowNumber: idx + 1,
+        data,
+      });
+    });
+
+    const chunkSize = 500;
+    for (let i = 0; i < rowsToInsert.length; i += chunkSize) {
+      const chunk = rowsToInsert.slice(i, i + chunkSize);
+      try {
+        await this.customTableRowRepository.save(chunk);
+      } catch (error) {
+        this.throwHelpfulSchemaError(error);
+      }
+    }
+
+    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
+      tableId: table.id,
+      rowsCreated: rowsToInsert.length,
+      scope: dto.scope,
+      type: selectedType || null,
+    });
+
+    return {
+      tableId: table.id,
+      columnsCreated: createdColumns.length,
+      rowsCreated: rowsToInsert.length,
+    };
+  }
+
+  async createFromDataEntryCustomTab(
+    userId: string,
+    dto: CreateCustomTableFromDataEntryCustomTabDto,
+  ): Promise<{ tableId: string; columnsCreated: number; rowsCreated: number }> {
+    let customTab: DataEntryCustomField | null = null;
+    try {
+      customTab = await this.dataEntryCustomFieldRepository.findOne({
+        where: { id: dto.customTabId, userId },
+      });
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+    if (!customTab) {
+      throw new BadRequestException('Пользовательская вкладка не найдена');
+    }
+
+    let entries: DataEntry[];
+    try {
+      entries = await this.dataEntryRepository.find({
+        where: { userId, customTabId: customTab.id },
+        order: { date: 'ASC', createdAt: 'ASC' },
+      });
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+
+    if (!entries.length) {
+      throw new BadRequestException('Нет записей в этой пользовательской вкладке');
+    }
+
+    const tableName = (dto.name?.trim() || customTab.name).slice(0, 120);
+    const description = dto.description === undefined ? null : dto.description;
+
+    let table: CustomTable;
+    try {
+      table = await this.customTableRepository.save(
+        this.customTableRepository.create({
+          userId,
+          name: tableName,
+          description,
+          source: CustomTableSource.MANUAL,
+          categoryId: null,
+        }),
+      );
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+
+    await this.log(userId, AuditAction.CUSTOM_TABLE_CREATE, {
+      tableId: table.id,
+      source: 'data_entry_custom_tab_export',
+      customTabId: customTab.id,
+      rowsPlanned: entries.length,
+    });
+
+    const columnDefs: Array<{
+      id: string;
+      title: string;
+      type: CustomTableColumnType;
+      config?: Record<string, any> | null;
+    }> = [
+      { id: 'date', title: 'Дата', type: CustomTableColumnType.DATE },
+      { id: 'amount', title: 'Сумма', type: CustomTableColumnType.NUMBER },
+      { id: 'currency', title: 'Валюта', type: CustomTableColumnType.TEXT },
+      { id: 'note', title: 'Комментарий', type: CustomTableColumnType.TEXT },
+    ];
+
+    let createdColumns: CustomTableColumn[];
+    try {
+      createdColumns = await this.customTableColumnRepository.save(
+        columnDefs.map((def, position) =>
+          this.customTableColumnRepository.create({
+            tableId: table.id,
+            key: this.generateColumnKey(),
+            title: def.title,
+            type: def.type,
+            isRequired: false,
+            isUnique: false,
+            position,
+            config: {
+              ...(def.config ?? {}),
+              source: {
+                kind: 'data_entry_custom_tab',
+                customTabId: customTab.id,
+              },
+            },
+          }),
+        ),
+      );
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+
+    const keyByDefId = new Map<string, string>();
+    for (let i = 0; i < createdColumns.length; i += 1) {
+      const def = columnDefs[i];
+      const col = createdColumns[i];
+      if (def && col) {
+        keyByDefId.set(def.id, col.key);
+      }
+    }
+
+    const dateKey = keyByDefId.get('date');
+    const amountKey = keyByDefId.get('amount');
+    const currencyKey = keyByDefId.get('currency');
+    const noteKey = keyByDefId.get('note');
+
+    if (!dateKey || !amountKey || !currencyKey || !noteKey) {
+      throw new BadRequestException('Не удалось сформировать колонки таблицы');
+    }
+
+    const rowsToInsert = entries.map((entry, idx) => {
+      const data: Record<string, any> = {};
+      data[dateKey] = entry.date;
+      data[amountKey] = entry.amount;
+      data[currencyKey] = entry.currency || 'KZT';
+      data[noteKey] = entry.note || null;
+      return this.customTableRowRepository.create({
+        tableId: table.id,
+        rowNumber: idx + 1,
+        data,
+      });
+    });
+
+    const chunkSize = 500;
+    for (let i = 0; i < rowsToInsert.length; i += chunkSize) {
+      const chunk = rowsToInsert.slice(i, i + chunkSize);
+      try {
+        await this.customTableRowRepository.save(chunk);
+      } catch (error) {
+        this.throwHelpfulSchemaError(error);
+      }
+    }
+
+    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
+      tableId: table.id,
+      rowsCreated: rowsToInsert.length,
+      source: 'data_entry_custom_tab_export',
+      customTabId: customTab.id,
+    });
+
+    return {
+      tableId: table.id,
+      columnsCreated: createdColumns.length,
+      rowsCreated: rowsToInsert.length,
+    };
   }
 
   async removeTable(userId: string, tableId: string): Promise<void> {

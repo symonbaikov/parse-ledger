@@ -15,6 +15,7 @@ import { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { CustomReportDto, ReportFormat } from './dto/custom-report.dto';
 import { ExportReportDto, ExportFormat } from './dto/export-report.dto';
+import { CustomTablesSummaryDto } from './dto/custom-tables-summary.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
@@ -36,6 +37,13 @@ export class ReportsController {
     @Query('days', new DefaultValuePipe(30), ParseIntPipe) days?: number,
   ) {
     return this.reportsService.getStatementsSummary(user.id, days);
+  }
+
+  @Post('custom-tables/summary')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.REPORT_VIEW)
+  async getCustomTablesSummary(@CurrentUser() user: User, @Body() dto: CustomTablesSummaryDto) {
+    return this.reportsService.getCustomTablesSummary(user.id, dto);
   }
 
   @Get('daily')

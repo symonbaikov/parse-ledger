@@ -1,21 +1,40 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
-import { CheckCircle2, ClipboardList, DollarSign, Droplets, TrendingDown, TrendingUp, Trash2, Calendar as CalendarIcon } from 'lucide-react';
+import { Icon } from '@iconify/react';
+import {
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  ClipboardList,
+  DollarSign,
+  Droplets,
+  Loader2,
+  Plus,
+  Table,
+  TrendingDown,
+  TrendingUp,
+  Trash2,
+} from 'lucide-react';
 import { useAuth } from '@/app/hooks/useAuth';
 import apiClient from '@/app/lib/api';
 
-type TabKey = 'cash' | 'raw' | 'debit' | 'credit';
+type BaseTabKey = 'cash' | 'raw' | 'debit' | 'credit';
+type CustomFieldTabKey = `field:${string}`;
+type TabKey = BaseTabKey | 'custom' | CustomFieldTabKey;
 
 interface FormState {
   date: string;
   amount: string;
   note: string;
   currency: string;
+  customFieldName: string;
+  customFieldIcon: string;
+  customFieldValue: string;
 }
 
 interface Entry {
@@ -24,25 +43,70 @@ interface Entry {
   amount: number;
   note: string;
   currency?: string;
+  customFieldName?: string | null;
+  customFieldIcon?: string | null;
+  customFieldValue?: string | null;
 }
 
-const initialForm: FormState = { date: '', amount: '', note: '', currency: 'KZT' };
+type CustomField = {
+  id: string;
+  name: string;
+  icon: string | null;
+  entriesCount?: number;
+};
+
+const initialForm: FormState = {
+  date: '',
+  amount: '',
+  note: '',
+  currency: 'KZT',
+  customFieldName: '',
+  customFieldIcon: 'mdi:tag',
+  customFieldValue: '',
+};
+
+const CUSTOM_FIELD_ICONS = [
+  'mdi:tag',
+  'mdi:briefcase',
+  'mdi:account',
+  'mdi:account-group',
+  'mdi:cash',
+  'mdi:shopping',
+  'mdi:warehouse',
+  'mdi:truck',
+  'mdi:office-building',
+  'mdi:home',
+  'mdi:chart-line',
+  'mdi:file-document-outline',
+  'mdi:calendar',
+  'mdi:star',
+];
 
 export default function DataEntryPage() {
+  const router = useRouter();
   const { user, loading } = useAuth();
+  const customFieldRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('cash');
-  const [forms, setForms] = useState<Record<TabKey, FormState>>({
+  const [forms, setForms] = useState<Record<string, FormState>>({
     cash: { ...initialForm },
     raw: { ...initialForm },
     debit: { ...initialForm },
     credit: { ...initialForm },
   });
-  const [entries, setEntries] = useState<Record<TabKey, Entry[]>>({
-    cash: [],
-    raw: [],
-    debit: [],
-    credit: [],
-  });
+  const [entries, setEntries] = useState<Record<string, Entry[]>>({});
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [loadingCustomFields, setLoadingCustomFields] = useState(false);
+  const [creatingCustomField, setCreatingCustomField] = useState(false);
+  const [newCustomFieldName, setNewCustomFieldName] = useState('');
+  const [newCustomFieldIcon, setNewCustomFieldIcon] = useState('mdi:tag');
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    fieldId: string;
+    fieldName: string;
+    entriesCount: number;
+  }>({ open: false, fieldId: '', fieldName: '', entriesCount: 0 });
+  const [deletingTab, setDeletingTab] = useState(false);
+  const [exportingTabToTable, setExportingTabToTable] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null,
   );
@@ -51,6 +115,10 @@ export default function DataEntryPage() {
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [customIconOpen, setCustomIconOpen] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [exportingTable, setExportingTable] = useState(false);
+  const [customFieldHighlight, setCustomFieldHighlight] = useState(false);
   const currencies = useMemo(
     () => [
       { code: 'KZT', label: 'KZT (Казахстан)' },
@@ -61,7 +129,7 @@ export default function DataEntryPage() {
     [],
   );
 
-  const tabMeta: Record<TabKey, { label: string; icon: ReactNode; description: string }> = useMemo(
+  const tabMeta: Record<BaseTabKey | 'custom', { label: string; icon: ReactNode; description: string }> = useMemo(
     () => ({
       cash: {
         label: 'Наличные',
@@ -83,6 +151,12 @@ export default function DataEntryPage() {
         icon: <TrendingDown className="h-4 w-4" />,
         description: 'Кредитовые операции / расход.',
       },
+      custom: {
+        label: 'Пользовательская',
+        icon: <Plus className="h-4 w-4" />,
+        description:
+          'Создайте пользовательскую вкладку (название + иконка). После создания она появится сверху рядом с другими вкладками.',
+      },
     }),
     [],
   );
@@ -91,14 +165,18 @@ export default function DataEntryPage() {
     setForms((prev) => ({
       ...prev,
       [tab]: {
-        ...prev[tab],
+        ...(prev[tab] || { ...initialForm }),
         [field]: value,
       },
     }));
   };
 
   const handleSubmit = (tab: TabKey) => {
-    const payload = forms[tab];
+    const payload = forms[tab] || initialForm;
+    if (tab === 'custom') {
+      setStatus({ type: 'error', message: 'Для этой вкладки используйте создание колонки' });
+      return;
+    }
     if (!payload.date || !payload.amount) {
       setStatus({ type: 'error', message: 'Заполните дату и сумму' });
       return;
@@ -112,9 +190,14 @@ export default function DataEntryPage() {
 
     setSaving(true);
     setError(null);
+    const isFieldTabValue = tab.startsWith('field:');
+    const fieldId = isFieldTabValue ? tab.slice('field:'.length) : null;
+    const field = fieldId ? customFields.find((f) => f.id === fieldId) || null : null;
+    const submitType: BaseTabKey = isFieldTabValue ? 'cash' : (tab as BaseTabKey);
     apiClient
       .post('/data-entry', {
-        type: tab,
+        type: submitType,
+        ...(isFieldTabValue && fieldId ? { customTabId: fieldId } : {}),
         date: payload.date,
         amount: amountNum,
         note: payload.note || undefined,
@@ -132,9 +215,23 @@ export default function DataEntryPage() {
           ...prev,
           [tab]: [saved, ...(prev[tab] || [])],
         }));
+        if (isFieldTab(tab)) {
+          const fieldId = getFieldId(tab);
+          setCustomFields((prev) =>
+            prev.map((f) =>
+              f.id === fieldId
+                ? { ...f, entriesCount: Number(f.entriesCount || 0) + 1 }
+                : f,
+            ),
+          );
+        }
         setForms((prev) => ({
           ...prev,
-          [tab]: { ...initialForm },
+          [tab]: {
+            ...initialForm,
+            customFieldName: '',
+            customFieldIcon: initialForm.customFieldIcon,
+          },
         }));
         setStatus({ type: 'success', message: 'Данные сохранены' });
       })
@@ -145,9 +242,30 @@ export default function DataEntryPage() {
       .finally(() => setSaving(false));
   };
 
-  const currentForm = forms[activeTab];
-  const currentMeta = tabMeta[activeTab];
+  const currentForm = forms[activeTab] || initialForm;
+  const currentMeta = tabMeta[activeTab as BaseTabKey] || tabMeta.custom;
   const currentEntries = entries[activeTab] || [];
+
+  const isBaseTab = (tab: TabKey): tab is BaseTabKey =>
+    tab === 'cash' || tab === 'raw' || tab === 'debit' || tab === 'credit';
+  const isFieldTab = (tab: TabKey): tab is CustomFieldTabKey => tab.startsWith('field:');
+  const getFieldId = (tab: CustomFieldTabKey) => tab.slice('field:'.length);
+
+  const getTabLabel = (tab: TabKey): string => {
+    if (isBaseTab(tab)) return tabMeta[tab].label;
+    if (tab === 'custom') return tabMeta.custom.label;
+    const fieldId = getFieldId(tab);
+    const field = customFields.find((f) => f.id === fieldId);
+    return field?.name || 'Пользовательская';
+  };
+
+  const getTabIcon = (tab: TabKey): ReactNode => {
+    if (isBaseTab(tab)) return tabMeta[tab].icon;
+    if (tab === 'custom') return tabMeta.custom.icon;
+    const fieldId = getFieldId(tab);
+    const field = customFields.find((f) => f.id === fieldId);
+    return <Icon icon={field?.icon || 'mdi:tag'} className="h-4 w-4" />;
+  };
 
   const formatDate = (value: string) => {
     if (!value) return '—';
@@ -158,7 +276,7 @@ export default function DataEntryPage() {
     }
   };
 
-  const loadEntries = (tab: TabKey) => {
+  const loadEntries = (tab: BaseTabKey) => {
     setLoadingList(true);
     setError(null);
     apiClient
@@ -186,23 +304,257 @@ export default function DataEntryPage() {
       .finally(() => setLoadingList(false));
   };
 
+  const loadCustomTabEntries = (customTabId: string, tabKey: CustomFieldTabKey) => {
+    setLoadingList(true);
+    setError(null);
+    apiClient
+      .get(`/data-entry?customTabId=${customTabId}&limit=20`)
+      .then((resp) => {
+        const rawItems: Entry[] =
+          resp.data?.items || resp.data?.data?.items || resp.data?.data || [];
+        const items = rawItems.map((item) => {
+          const amountNum = Number((item as any)?.amount);
+          return {
+            ...item,
+            amount: Number.isNaN(amountNum) ? 0 : amountNum,
+            currency: (item as any)?.currency || 'KZT',
+          };
+        });
+        setEntries((prev) => ({
+          ...prev,
+          [tabKey]: items,
+        }));
+      })
+      .catch((err) => {
+        const message = err?.response?.data?.message || 'Не удалось загрузить записи';
+        setError(message);
+      })
+      .finally(() => setLoadingList(false));
+  };
+
+  const loadCustomFields = () => {
+    setLoadingCustomFields(true);
+    setError(null);
+    apiClient
+      .get('/data-entry/custom-fields')
+      .then((resp) => {
+        const payload = resp.data?.data || resp.data;
+        const items = (payload?.items || []) as CustomField[];
+        setCustomFields(items);
+      })
+      .catch((err) => {
+        const message = err?.response?.data?.message || 'Не удалось загрузить пользовательские колонки';
+        setError(message);
+      })
+      .finally(() => setLoadingCustomFields(false));
+  };
+
+  const createCustomField = () => {
+    const name = newCustomFieldName.trim();
+    if (!name) {
+      setStatus({ type: 'error', message: 'Укажите название колонки' });
+      return;
+    }
+    setCreatingCustomField(true);
+    setError(null);
+    apiClient
+      .post('/data-entry/custom-fields', {
+        name,
+        icon: newCustomFieldIcon?.trim() || undefined,
+      })
+      .then((resp) => {
+        const createdRaw: CustomField = resp.data?.data || resp.data;
+        const created: CustomField = { ...createdRaw, entriesCount: 0 };
+        setCustomFields((prev) => {
+          const next = [...prev, created].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+          return next;
+        });
+        setActiveTab(`field:${created.id}`);
+        setNewCustomFieldName('');
+        setStatus({ type: 'success', message: 'Пользовательская колонка создана' });
+      })
+      .catch((err) => {
+        const message = err?.response?.data?.message || 'Не удалось создать колонку';
+        setStatus({ type: 'error', message });
+      })
+      .finally(() => setCreatingCustomField(false));
+  };
+
+  const removeCustomField = (id: string) => {
+    setError(null);
+    apiClient
+      .delete(`/data-entry/custom-fields/${id}`)
+      .then(() => {
+        setCustomFields((prev) => prev.filter((f) => f.id !== id));
+        if (activeTab === `field:${id}`) {
+          setActiveTab('cash');
+        }
+        setEntries((prev) => {
+          const next = { ...prev };
+          delete next[`field:${id}`];
+          return next;
+        });
+        setStatus({ type: 'success', message: 'Колонка удалена' });
+      })
+      .catch((err) => {
+        const message = err?.response?.data?.message || 'Не удалось удалить колонку';
+        setStatus({ type: 'error', message });
+      });
+  };
+
+  const openDeleteDialog = (field: CustomField) => {
+    setDeleteDialog({
+      open: true,
+      fieldId: field.id,
+      fieldName: field.name,
+      entriesCount: Number(field.entriesCount || 0),
+    });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ open: false, fieldId: '', fieldName: '', entriesCount: 0 });
+    setDeletingTab(false);
+    setExportingTabToTable(false);
+  };
+
+  const exportTabToCustomTableAndDelete = async () => {
+    if (!deleteDialog.fieldId) return;
+    setExportingTabToTable(true);
+    setStatus(null);
+    setError(null);
+    try {
+      const resp = await apiClient.post('/custom-tables/from-data-entry-custom-tab', {
+        customTabId: deleteDialog.fieldId,
+        name: deleteDialog.fieldName,
+      });
+      const payload = resp.data?.data || resp.data;
+      const tableId = payload?.tableId;
+      if (!tableId) throw new Error('tableId missing');
+      await apiClient.delete(`/data-entry/custom-fields/${deleteDialog.fieldId}`);
+      setCustomFields((prev) => prev.filter((f) => f.id !== deleteDialog.fieldId));
+      setEntries((prev) => {
+        const next = { ...prev };
+        delete next[`field:${deleteDialog.fieldId}`];
+        return next;
+      });
+      if (activeTab === `field:${deleteDialog.fieldId}`) setActiveTab('cash');
+      closeDeleteDialog();
+      router.push(`/custom-tables/${tableId}`);
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Не удалось скопировать в таблицу';
+      setStatus({ type: 'error', message });
+    } finally {
+      setExportingTabToTable(false);
+    }
+  };
+
+  const deleteTabOnly = async () => {
+    if (!deleteDialog.fieldId) return;
+    setDeletingTab(true);
+    setStatus(null);
+    setError(null);
+    try {
+      await apiClient.delete(`/data-entry/custom-fields/${deleteDialog.fieldId}`);
+      setCustomFields((prev) => prev.filter((f) => f.id !== deleteDialog.fieldId));
+      setEntries((prev) => {
+        const next = { ...prev };
+        delete next[`field:${deleteDialog.fieldId}`];
+        return next;
+      });
+      if (activeTab === `field:${deleteDialog.fieldId}`) setActiveTab('cash');
+      closeDeleteDialog();
+      setStatus({ type: 'success', message: 'Вкладка удалена' });
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Не удалось удалить вкладку';
+      setStatus({ type: 'error', message });
+    } finally {
+      setDeletingTab(false);
+    }
+  };
+
+  const createTableFromDataEntry = async (scope: 'type' | 'all') => {
+    if (!user) return;
+    setExportingTable(true);
+    setExportMenuOpen(false);
+    setCustomIconOpen(false);
+    setCalendarOpen(false);
+    setError(null);
+    setStatus(null);
+    try {
+      if (scope === 'type' && isFieldTab(activeTab)) {
+        const response = await apiClient.post('/custom-tables/from-data-entry-custom-tab', {
+          customTabId: getFieldId(activeTab),
+          name: getTabLabel(activeTab),
+        });
+        const payload = response.data?.data || response.data;
+        const tableId = payload?.tableId;
+        if (!tableId) {
+          throw new Error('tableId missing');
+        }
+        router.push(`/custom-tables/${tableId}`);
+      } else {
+        const response = await apiClient.post('/custom-tables/from-data-entry', {
+          scope,
+          type: scope === 'type' ? (isBaseTab(activeTab) ? activeTab : 'cash') : undefined,
+        });
+        const payload = response.data?.data || response.data;
+        const tableId = payload?.tableId;
+        if (!tableId) {
+          throw new Error('tableId missing');
+        }
+        router.push(`/custom-tables/${tableId}`);
+      }
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Не удалось создать таблицу';
+      setStatus({ type: 'error', message });
+    } finally {
+      setExportingTable(false);
+    }
+  };
+
   // Load on tab change
   useEffect(() => {
     if (!user) return;
-    if ((entries[activeTab] || []).length === 0) {
-      loadEntries(activeTab);
+    if (isBaseTab(activeTab)) {
+      if ((entries[activeTab] || []).length === 0) {
+        loadEntries(activeTab);
+      }
+      return;
+    }
+    if (isFieldTab(activeTab)) {
+      const id = getFieldId(activeTab);
+      if ((entries[activeTab] || []).length === 0) {
+        loadCustomTabEntries(id, activeTab);
+      }
     }
   }, [activeTab, user]);
 
+  useEffect(() => {
+    if (!user) return;
+    loadCustomFields();
+  }, [user]);
+
   const handleDelete = (entryId: string) => {
     setRemovingId(entryId);
+    if (!isBaseTab(activeTab) && !isFieldTab(activeTab)) return;
+    const effectiveTab = activeTab;
     apiClient
       .delete(`/data-entry/${entryId}`)
       .then(() => {
         setEntries((prev) => ({
           ...prev,
-          [activeTab]: (prev[activeTab] || []).filter((e) => e.id !== entryId),
+          [effectiveTab]: (prev[effectiveTab] || []).filter((e) => e.id !== entryId),
         }));
+        if (isFieldTab(effectiveTab)) {
+          const fieldId = getFieldId(effectiveTab);
+          setCustomFields((prev) =>
+            prev.map((f) =>
+              f.id === fieldId
+                ? { ...f, entriesCount: Math.max(0, Number(f.entriesCount || 0) - 1) }
+                : f,
+            ),
+          );
+        }
         setStatus({ type: 'success', message: 'Запись удалена' });
       })
       .catch((err) => {
@@ -233,16 +585,53 @@ export default function DataEntryPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-start gap-3 mb-6">
-        <div className="p-2 rounded-full bg-primary/10 text-primary">
-          <Droplets className="h-6 w-6" />
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-full bg-primary/10 text-primary">
+            <Droplets className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Ввод данных</h1>
+            <p className="text-secondary mt-1">
+              Фиксируйте остатки налички, сырья и движения по дебету/кредиту.
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Ввод данных</h1>
-          <p className="text-secondary mt-1">
-            Фиксируйте остатки налички, сырья и движения по дебету/кредиту.
-          </p>
-        </div>
+
+        {(isBaseTab(activeTab) || isFieldTab(activeTab)) && <div className="relative">
+          <button
+            type="button"
+            disabled={exportingTable}
+            onClick={() => setExportMenuOpen((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {exportingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <Table className="h-4 w-4" />}
+            Создать таблицу
+          </button>
+
+          {exportMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setExportMenuOpen(false)} />
+              <div className="absolute right-0 mt-2 z-20 w-80 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => createTableFromDataEntry('type')}
+                  className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50"
+                >
+                  Создать таблицу по текущей вкладке —{' '}
+                  <span className="font-semibold">{getTabLabel(activeTab)}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => createTableFromDataEntry('all')}
+                  className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100"
+                >
+                  Создать единую таблицу по всей базе «Ввод данных»
+                </button>
+              </div>
+            </>
+          )}
+        </div>}
       </div>
 
       {(status || error) && (
@@ -260,36 +649,179 @@ export default function DataEntryPage() {
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-100 flex flex-wrap">
-          {(Object.keys(tabMeta) as TabKey[]).map((tab) => {
-            const meta = tabMeta[tab];
-            const isActive = tab === activeTab;
-            return (
-              <button
-                key={tab}
-                onClick={() => {
-                   setActiveTab(tab);
-                   setCalendarOpen(false); // Close calendar on tab switch
-                }}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
-                  isActive
-                    ? 'text-primary border-b-2 border-primary bg-primary/5'
-                    : 'text-gray-600 hover:text-primary'
-                }`}
-              >
-                {meta.icon}
-                {meta.label}
-              </button>
-            );
-          })}
+          {(['cash', 'raw', 'debit', 'credit'] as BaseTabKey[])
+            .map((t) => t as TabKey)
+            .concat(customFields.map((f) => `field:${f.id}` as CustomFieldTabKey))
+            .concat(['custom' as const])
+            .map((tab) => {
+              const isActive = tab === activeTab;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    setCalendarOpen(false);
+                    setCustomIconOpen(false);
+                    setExportMenuOpen(false);
+                    if (tab === 'custom') {
+                      setCustomFieldHighlight(true);
+                      window.setTimeout(() => setCustomFieldHighlight(false), 1200);
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                    isActive
+                      ? 'text-primary border-b-2 border-primary bg-primary/5'
+                      : 'text-gray-600 hover:text-primary'
+                  }`}
+                >
+                  {getTabIcon(tab)}
+                  {getTabLabel(tab)}
+                  {isFieldTab(tab) && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const fieldId = getFieldId(tab);
+                        const field = customFields.find((f) => f.id === fieldId);
+                        if (field) openDeleteDialog(field);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const fieldId = getFieldId(tab);
+                          const field = customFields.find((f) => f.id === fieldId);
+                          if (field) openDeleteDialog(field);
+                        }
+                      }}
+                      className="ml-1 inline-flex items-center justify-center h-6 w-6 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      title="Удалить вкладку"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
         </div>
 
-        <div className="p-4 space-y-4">
-          <div className="text-sm text-gray-600">{currentMeta.description}</div>
+		        <div className="p-4 space-y-4">
+		          <div className="text-sm text-gray-600">
+                {isFieldTab(activeTab)
+                  ? `Ввод данных для вкладки «${getTabLabel(activeTab)}».`
+                  : currentMeta.description}
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <span className="text-sm font-medium text-gray-700 block mb-1">Дата</span>
-              <div 
+		          {activeTab === 'custom' ? (
+		            <div className="space-y-4">
+	              <div
+	                ref={customFieldRef}
+	                className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all ${
+	                  customFieldHighlight ? 'ring-2 ring-primary/40' : ''
+	                }`}
+	              >
+	                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+	                  <label className="block md:col-span-2">
+	                    <span className="text-sm font-medium text-gray-700 block mb-1">Название колонки</span>
+	                    <input
+	                      type="text"
+	                      value={newCustomFieldName}
+	                      onChange={(e) => setNewCustomFieldName(e.target.value)}
+	                      placeholder="Например: Проект"
+	                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+	                    />
+	                  </label>
+
+	                  <div className="flex items-center justify-between gap-2">
+	                    <button
+	                      type="button"
+	                      onClick={() => {
+	                        setCalendarOpen(false);
+	                        setExportMenuOpen(false);
+	                        setCustomIconOpen((v) => !v);
+	                      }}
+	                      className="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+	                      title="Выбрать иконку"
+	                    >
+	                      <Icon icon={newCustomFieldIcon || 'mdi:tag'} className="h-5 w-5" />
+	                      <span className="text-sm font-semibold">Иконка</span>
+	                    </button>
+	                    <button
+	                      type="button"
+	                      onClick={createCustomField}
+	                      disabled={creatingCustomField}
+	                      className="inline-flex items-center justify-center h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-hover disabled:opacity-50"
+	                    >
+	                      {creatingCustomField ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Создать'}
+	                    </button>
+	                  </div>
+	                </div>
+
+	                {customIconOpen && (
+	                  <>
+	                    <div className="fixed inset-0 z-10" onClick={() => setCustomIconOpen(false)} />
+	                    <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-3">
+	                      <div className="grid grid-cols-7 gap-2">
+	                        {CUSTOM_FIELD_ICONS.map((icon) => (
+	                          <button
+	                            key={icon}
+	                            type="button"
+	                            onClick={() => {
+	                              setNewCustomFieldIcon(icon);
+	                              setCustomIconOpen(false);
+	                            }}
+	                            className={`inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors ${
+	                              newCustomFieldIcon === icon
+	                                ? 'border-primary bg-primary/10 text-primary'
+	                                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+	                            }`}
+	                            title={icon}
+	                          >
+	                            <Icon icon={icon} className="h-5 w-5" />
+	                          </button>
+	                        ))}
+	                      </div>
+	                    </div>
+	                  </>
+	                )}
+	              </div>
+
+	              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+	                <div className="flex items-center justify-between mb-2">
+	                  <h3 className="font-semibold text-gray-900">Мои колонки</h3>
+	                  <span className="text-xs text-gray-500">
+	                    {loadingCustomFields ? 'Загрузка…' : `${customFields.length} шт`}
+	                  </span>
+	                </div>
+	                <div className="divide-y divide-gray-100">
+	                  {customFields.map((field) => (
+	                    <div key={field.id} className="py-2 flex items-center justify-between">
+	                      <div className="flex items-center gap-2">
+	                        <Icon icon={field.icon || 'mdi:tag'} className="h-5 w-5 text-gray-700" />
+	                        <span className="text-sm font-semibold text-gray-900">{field.name}</span>
+	                      </div>
+		                      <button
+		                        type="button"
+		                        onClick={() => openDeleteDialog(field)}
+		                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+		                      >
+		                        <Trash2 className="h-4 w-4" /> Удалить
+		                      </button>
+	                    </div>
+	                  ))}
+	                  {!loadingCustomFields && customFields.length === 0 && (
+	                    <div className="py-6 text-sm text-gray-500 text-center">Пока нет созданных колонок</div>
+	                  )}
+	                </div>
+	              </div>
+	            </div>
+	          ) : (
+	            <>
+	              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+	            <div className="relative">
+	              <span className="text-sm font-medium text-gray-700 block mb-1">Дата</span>
+	              <div 
                 className={`w-full rounded-lg border bg-white px-3 py-2 text-sm flex items-center justify-between cursor-pointer transition-colors ${
                    calendarOpen ? 'border-primary ring-1 ring-primary' : 'border-gray-200 hover:border-gray-300'
                 }`}
@@ -333,10 +865,10 @@ export default function DataEntryPage() {
                      />
                   </div>
                 </>
-              )}
-            </div>
+	              )}
+	            </div>
 
-            <label className="block">
+	            <label className="block">
               <span className="text-sm font-medium text-gray-700 block mb-1">Сумма</span>
               <input
                 type="number"
@@ -345,9 +877,9 @@ export default function DataEntryPage() {
                 placeholder="0.00"
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
               />
-            </label>
+	            </label>
 
-            <label className="block">
+	            <label className="block">
               <span className="text-sm font-medium text-gray-700 block mb-1">Комментарий</span>
               <input
                 type="text"
@@ -356,9 +888,9 @@ export default function DataEntryPage() {
                 placeholder="Например, инкассация / поставщик / склад"
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
               />
-            </label>
+	            </label>
 
-            <label className="block">
+	            <label className="block">
               <span className="text-sm font-medium text-gray-700 block mb-1">Валюта</span>
               <div className="mt-1 w-full rounded-lg border border-gray-200 bg-white text-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                 <select
@@ -389,26 +921,30 @@ export default function DataEntryPage() {
                   </button>
                 ))}
               </div>
-            </label>
-          </div>
+	            </label>
 
-          <div className="flex justify-end pt-2">
-            <button
-              onClick={() => handleSubmit(activeTab)}
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
-            >
-              Сохранить запись
-            </button>
-          </div>
-        </div>
-      </div>
+	          </div>
 
+	              <div className="flex justify-end pt-2">
+	                <button
+	                  onClick={() => handleSubmit(activeTab)}
+	                  disabled={saving}
+	                  className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
+	                >
+	                  Сохранить запись
+	                </button>
+	              </div>
+	            </>
+	          )}
+	        </div>
+	      </div>
+
+      {(isBaseTab(activeTab) || isFieldTab(activeTab)) && (
       <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 bg-gray-50/50 rounded-t-xl">
           <div className="flex items-center gap-2">
             <Droplets className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold text-gray-900">Последние записи — {tabMeta[activeTab].label}</h3>
+		            <h3 className="font-semibold text-gray-900">Последние записи — {getTabLabel(activeTab)}</h3>
           </div>
           <span className="text-xs text-gray-500 font-medium">Отображаются последние записи из базы</span>
         </div>
@@ -427,11 +963,24 @@ export default function DataEntryPage() {
             {currentEntries.map((entry) => (
               <div key={entry.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50/80 transition-colors group">
                 <div>
-                  <div className="flex items-center gap-2">
-                     <p className="text-sm font-bold text-gray-900">{format(new Date(entry.date), 'dd.MM.yyyy')}</p>
-                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{tabMeta[activeTab].label}</span>
-                  </div>
-                  <p className="text-xs text-gray-600 mt-0.5">{entry.note || 'Без комментария'}</p>
+	                  <div className="flex items-center gap-2">
+	                     <p className="text-sm font-bold text-gray-900">{format(new Date(entry.date), 'dd.MM.yyyy')}</p>
+	                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{getTabLabel(activeTab)}</span>
+	                  </div>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {entry.note || 'Без комментария'}
+                    {entry.customFieldName && entry.customFieldValue ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="mx-1">•</span>
+                        {entry.customFieldIcon ? (
+                          <Icon icon={entry.customFieldIcon} className="h-3.5 w-3.5 text-gray-500" />
+                        ) : null}
+                        <span>
+                          {entry.customFieldName}: {entry.customFieldValue}
+                        </span>
+                      </span>
+                    ) : null}
+                  </p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
@@ -456,6 +1005,59 @@ export default function DataEntryPage() {
           </div>
         )}
       </div>
+      )}
+
+      {deleteDialog.open && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={closeDeleteDialog} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-2xl">
+              <div className="p-5">
+                <h3 className="text-lg font-bold text-gray-900">Удалить вкладку</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Вкладка: <span className="font-semibold text-gray-900">{deleteDialog.fieldName}</span>
+                </p>
+                {deleteDialog.entriesCount > 0 ? (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Внутри есть данные ({deleteDialog.entriesCount}). Перед удалением можно скопировать их в таблицу.
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-600">Данных нет — вкладка будет удалена.</p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-gray-100 p-4">
+                {deleteDialog.entriesCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={exportTabToCustomTableAndDelete}
+                    disabled={exportingTabToTable || deletingTab}
+                    className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
+                  >
+                    {exportingTabToTable ? 'Копирование…' : 'Скопировать в таблицу и удалить'}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={deleteTabOnly}
+                  disabled={exportingTabToTable || deletingTab}
+                  className="w-full rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                >
+                  {deletingTab ? 'Удаление…' : 'Удалить вкладку'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeDeleteDialog}
+                  disabled={exportingTabToTable || deletingTab}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

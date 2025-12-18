@@ -554,22 +554,28 @@ export default function CustomTableDetailPage() {
             <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
             <tr>
               <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[72px]">#</th>
-              {orderedColumns.map((col) => (
-                <th key={col.id} className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate max-w-[260px]" title={col.title}>
-                      {col.title}
-                    </span>
-                    <button
-                      onClick={() => openDeleteColumn(col)}
-                      className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:bg-gray-50"
-                      title="Удалить колонку"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </th>
-              ))}
+              {orderedColumns.map((col) => {
+                const columnIcon = (col.config as any)?.icon;
+                return (
+                  <th key={col.id} className="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      {typeof columnIcon === 'string' && columnIcon ? (
+                        <Icon icon={columnIcon} className="h-4 w-4 text-gray-600" />
+                      ) : null}
+                      <span className="truncate max-w-[260px]" title={col.title}>
+                        {col.title}
+                      </span>
+                      <button
+                        onClick={() => openDeleteColumn(col)}
+                        className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:bg-gray-50"
+                        title="Удалить колонку"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </th>
+                );
+              })}
               <th className="px-3 py-2 text-right font-semibold text-gray-700 w-[64px]"></th>
             </tr>
             </thead>

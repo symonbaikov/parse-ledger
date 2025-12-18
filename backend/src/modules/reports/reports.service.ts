@@ -1,16 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
+import { In, Repository, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
 import { Transaction, TransactionType } from '../../entities/transaction.entity';
 import { Category } from '../../entities/category.entity';
 import { Branch } from '../../entities/branch.entity';
 import { Wallet } from '../../entities/wallet.entity';
 import { AuditLog, AuditAction } from '../../entities/audit-log.entity';
+import { CustomTable } from '../../entities/custom-table.entity';
+import { CustomTableColumn, CustomTableColumnType } from '../../entities/custom-table-column.entity';
+import { CustomTableRow } from '../../entities/custom-table-row.entity';
 import { DailyReport } from './interfaces/daily-report.interface';
 import { MonthlyReport } from './interfaces/monthly-report.interface';
 import { CustomReport, CustomReportGroup } from './interfaces/custom-report.interface';
 import { CustomReportDto, ReportGroupBy } from './dto/custom-report.dto';
 import { ExportReportDto, ExportFormat } from './dto/export-report.dto';
+import { CustomTablesSummaryDto } from './dto/custom-tables-summary.dto';
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -34,9 +38,109 @@ export interface StatementsSummaryResponse {
   }>;
 }
 
+export interface CustomTablesSummaryResponse {
+  totals: {
+    income: number;
+    expense: number;
+    net: number;
+    rows: number;
+  };
+  timeseries: Array<{ date: string; income: number; expense: number }>;
+  categories: Array<{ name: string; amount: number; rows: number }>;
+  counterparties: Array<{ name: string; amount: number; rows: number }>;
+  recent: Array<{
+    id: string;
+    tableId: string;
+    tableName: string;
+    rowNumber: number;
+    amount: number;
+    category: string | null;
+    counterparty: string | null;
+    updatedAt: string;
+  }>;
+  tables: Array<{
+    id: string;
+    name: string;
+    income: number;
+    expense: number;
+    net: number;
+    rows: number;
+  }>;
+}
+
 @Injectable()
 export class ReportsService {
   private readonly logger = new Logger(ReportsService.name);
+
+  private normalizeText(value: unknown): string | null {
+    if (value === undefined || value === null) return null;
+    const text = String(value).trim();
+    return text.length ? text : null;
+  }
+
+  private parseNumber(value: unknown): number | null {
+    if (value === undefined || value === null) return null;
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : null;
+    }
+    const raw = String(value).trim();
+    if (!raw.length) return null;
+
+    const normalized = raw
+      .replace(/\u00a0/g, ' ')
+      .replace(/\s+/g, '')
+      .replace(/,/g, '.');
+
+    if (!/^[-+]?\d+(\.\d+)?$/.test(normalized)) return null;
+    const asNumber = Number(normalized);
+    return Number.isFinite(asNumber) ? asNumber : null;
+  }
+
+  private parseDate(value: unknown): Date | null {
+    if (value === undefined || value === null) return null;
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+    if (typeof value === 'string') {
+      const raw = value.trim();
+      if (!raw.length) return null;
+      const v = raw.split('T')[0];
+
+      const ymd = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (ymd) {
+        const year = Number(ymd[1]);
+        const month = Number(ymd[2]);
+        const day = Number(ymd[3]);
+        return new Date(Date.UTC(year, month - 1, day));
+      }
+
+      const dmyDot = v.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+      if (dmyDot) {
+        const day = Number(dmyDot[1]);
+        const month = Number(dmyDot[2]);
+        const year = Number(dmyDot[3]);
+        return new Date(Date.UTC(year, month - 1, day));
+      }
+
+      const dmySlash = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (dmySlash) {
+        const day = Number(dmySlash[1]);
+        const month = Number(dmySlash[2]);
+        const year = Number(dmySlash[3]);
+        return new Date(Date.UTC(year, month - 1, day));
+      }
+
+      const parsed = new Date(raw);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    try {
+      const parsed = new Date(value as any);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    } catch {
+      return null;
+    }
+  }
 
   private toDateKey(value: unknown): string {
     if (typeof value === 'string') {
@@ -68,7 +172,254 @@ export class ReportsService {
     private walletRepository: Repository<Wallet>,
     @InjectRepository(AuditLog)
     private auditLogRepository: Repository<AuditLog>,
+    @InjectRepository(CustomTable)
+    private customTableRepository: Repository<CustomTable>,
+    @InjectRepository(CustomTableColumn)
+    private customTableColumnRepository: Repository<CustomTableColumn>,
+    @InjectRepository(CustomTableRow)
+    private customTableRowRepository: Repository<CustomTableRow>,
   ) {}
+
+  private scoreDateColumn(col: CustomTableColumn): number {
+    const title = (col.title || '').toLowerCase();
+    let score = 0;
+    if (col.type === CustomTableColumnType.DATE) score += 6;
+    if (/(^|[\s_])date([\s_]|$)/.test(title) || title.includes('дата')) score += 4;
+    if (title.includes('год') || title.includes('year')) score += 1;
+    if (title.includes('месяц') || title.includes('month')) score += 1;
+    return score;
+  }
+
+  private scoreAmountColumn(col: CustomTableColumn): number {
+    const title = (col.title || '').toLowerCase();
+    let score = 0;
+    if (col.type === CustomTableColumnType.NUMBER) score += 6;
+    if (title.includes('сумм') || title.includes('amount') || title.includes('итог') || title.includes('total')) score += 4;
+    if (title.includes('приход') || title.includes('доход')) score += 2;
+    if (title.includes('расход')) score += 2;
+    if (title.includes('год') || title.includes('year')) score -= 4;
+    if (title.includes('мсц') || title.includes('месяц') || title.includes('month')) score -= 3;
+    if (title.includes('курс') || title.includes('rate') || title.includes('обмен')) score -= 4;
+    if (title.includes('валют') || title.includes('currency')) score -= 3;
+    return score;
+  }
+
+  private scoreCategoryColumn(col: CustomTableColumn): number {
+    const title = (col.title || '').toLowerCase();
+    let score = 0;
+    if (title.includes('катег') || title.includes('category')) score += 6;
+    if (title.includes('статья') || title.includes('article')) score += 5;
+    if (title.includes('группа') || title.includes('group')) score += 2;
+    return score;
+  }
+
+  private scoreCounterpartyColumn(col: CustomTableColumn): number {
+    const title = (col.title || '').toLowerCase();
+    let score = 0;
+    if (title.includes('контраг') || title.includes('counterparty')) score += 6;
+    if (title.includes('постав') || title.includes('supplier')) score += 4;
+    if (title.includes('клиент') || title.includes('customer')) score += 4;
+    if (title.includes('merchant') || title.includes('получател') || title.includes('платель')) score += 4;
+    if (title.includes('кошел') || title.includes('wallet')) score -= 2;
+    if (title.includes('филиал') || title.includes('branch')) score -= 2;
+    return score;
+  }
+
+  private pickBestColumnKey(
+    columns: CustomTableColumn[],
+    scorer: (col: CustomTableColumn) => number,
+  ): string | null {
+    let best: CustomTableColumn | null = null;
+    let bestScore = 0;
+    for (const col of columns) {
+      const score = scorer(col);
+      if (score > bestScore) {
+        bestScore = score;
+        best = col;
+      }
+    }
+    return best ? best.key : null;
+  }
+
+  async getCustomTablesSummary(
+    userId: string,
+    dto: CustomTablesSummaryDto,
+  ): Promise<CustomTablesSummaryResponse> {
+    const safeDays = Number.isFinite(dto.days) && (dto.days as number) > 0 ? Math.min(dto.days as number, 3650) : 30;
+    const since = new Date();
+    since.setDate(since.getDate() - safeDays);
+    since.setHours(0, 0, 0, 0);
+
+    const requestedIds = (dto.tableIds || []).filter((id) => typeof id === 'string' && id.length);
+
+    const tables = await this.customTableRepository.find({
+      where: {
+        userId,
+        ...(requestedIds.length ? { id: In(requestedIds) } : {}),
+      },
+      relations: { category: true },
+      order: { updatedAt: 'DESC' },
+    });
+
+    if (requestedIds.length && tables.length !== requestedIds.length) {
+      throw new BadRequestException('Одна или несколько таблиц не найдены');
+    }
+
+    if (!tables.length) {
+      return {
+        totals: { income: 0, expense: 0, net: 0, rows: 0 },
+        timeseries: [],
+        categories: [],
+        counterparties: [],
+        recent: [],
+        tables: [],
+      };
+    }
+
+    const tableById = new Map<string, CustomTable>();
+    tables.forEach((t) => tableById.set(t.id, t));
+    const tableIds = tables.map((t) => t.id);
+
+    const columns = await this.customTableColumnRepository.find({
+      where: { tableId: In(tableIds) },
+      order: { tableId: 'ASC', position: 'ASC' },
+    });
+
+    const columnsByTableId = new Map<string, CustomTableColumn[]>();
+    for (const col of columns) {
+      const list = columnsByTableId.get(col.tableId) || [];
+      list.push(col);
+      columnsByTableId.set(col.tableId, list);
+    }
+
+    const mappingByTableId = new Map<
+      string,
+      { dateKey: string | null; amountKey: string | null; categoryKey: string | null; counterpartyKey: string | null }
+    >();
+
+    for (const tableId of tableIds) {
+      const cols = columnsByTableId.get(tableId) || [];
+      mappingByTableId.set(tableId, {
+        dateKey: this.pickBestColumnKey(cols, (c) => this.scoreDateColumn(c)),
+        amountKey: this.pickBestColumnKey(cols, (c) => this.scoreAmountColumn(c)),
+        categoryKey: this.pickBestColumnKey(cols, (c) => this.scoreCategoryColumn(c)),
+        counterpartyKey: this.pickBestColumnKey(cols, (c) => this.scoreCounterpartyColumn(c)),
+      });
+    }
+
+    const rows = await this.customTableRowRepository.find({
+      where: { tableId: In(tableIds), updatedAt: MoreThanOrEqual(since) },
+      order: { updatedAt: 'DESC' },
+    });
+
+    const totals = { income: 0, expense: 0, net: 0, rows: 0 };
+    const timeseriesMap = new Map<string, { income: number; expense: number }>();
+    const categoryMap = new Map<string, { amount: number; rows: number }>();
+    const counterpartyMap = new Map<string, { amount: number; rows: number }>();
+    const perTableMap = new Map<string, { income: number; expense: number; rows: number }>();
+    const recent: CustomTablesSummaryResponse['recent'] = [];
+
+    for (const row of rows) {
+      const table = tableById.get(row.tableId);
+      if (!table) continue;
+      const mapping = mappingByTableId.get(row.tableId);
+      const dateValue = mapping?.dateKey ? row.data?.[mapping.dateKey] : null;
+      const parsedDate = this.parseDate(dateValue) || row.updatedAt || row.createdAt;
+      if (parsedDate < since) continue;
+
+      const amountValue = mapping?.amountKey ? row.data?.[mapping.amountKey] : null;
+      const amountRaw = this.parseNumber(amountValue);
+      if (amountRaw === null) continue;
+
+      const abs = Math.abs(amountRaw);
+      const isIncome = amountRaw >= 0;
+      const dateKey = this.toDateKey(parsedDate);
+      const ts = timeseriesMap.get(dateKey) || { income: 0, expense: 0 };
+      if (isIncome) {
+        ts.income += abs;
+        totals.income += abs;
+      } else {
+        ts.expense += abs;
+        totals.expense += abs;
+      }
+      timeseriesMap.set(dateKey, ts);
+      totals.rows += 1;
+
+      const perTable = perTableMap.get(row.tableId) || { income: 0, expense: 0, rows: 0 };
+      if (isIncome) perTable.income += abs;
+      else perTable.expense += abs;
+      perTable.rows += 1;
+      perTableMap.set(row.tableId, perTable);
+
+      const categoryValue = mapping?.categoryKey ? row.data?.[mapping.categoryKey] : null;
+      const counterpartyValue = mapping?.counterpartyKey ? row.data?.[mapping.counterpartyKey] : null;
+      const categoryName =
+        this.normalizeText(categoryValue) || table.category?.name || null;
+      const counterpartyName = this.normalizeText(counterpartyValue) || null;
+
+      if (isIncome) {
+        const key = (counterpartyName || 'Без названия').trim() || 'Без названия';
+        const existing = counterpartyMap.get(key) || { amount: 0, rows: 0 };
+        counterpartyMap.set(key, { amount: existing.amount + abs, rows: existing.rows + 1 });
+      } else {
+        const key = (categoryName || 'Без категории').trim() || 'Без категории';
+        const existing = categoryMap.get(key) || { amount: 0, rows: 0 };
+        categoryMap.set(key, { amount: existing.amount + abs, rows: existing.rows + 1 });
+      }
+
+      if (recent.length < 20) {
+        recent.push({
+          id: row.id,
+          tableId: table.id,
+          tableName: table.name,
+          rowNumber: row.rowNumber,
+          amount: isIncome ? abs : -abs,
+          category: categoryName,
+          counterparty: counterpartyName,
+          updatedAt: (row.updatedAt || row.createdAt).toISOString(),
+        });
+      }
+    }
+
+    totals.net = totals.income - totals.expense;
+
+    const timeseries = Array.from(timeseriesMap.entries())
+      .map(([date, values]) => ({ date, ...values }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const categories = Array.from(categoryMap.entries())
+      .map(([name, data]) => ({ name, amount: data.amount, rows: data.rows }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10);
+
+    const counterparties = Array.from(counterpartyMap.entries())
+      .map(([name, data]) => ({ name, amount: data.amount, rows: data.rows }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 10);
+
+    const tablesBreakdown = tables
+      .map((t) => {
+        const metrics = perTableMap.get(t.id) || { income: 0, expense: 0, rows: 0 };
+        return {
+          id: t.id,
+          name: t.name,
+          income: metrics.income,
+          expense: metrics.expense,
+          net: metrics.income - metrics.expense,
+          rows: metrics.rows,
+        };
+      })
+      .sort((a, b) => b.rows - a.rows);
+
+    return {
+      totals,
+      timeseries,
+      categories,
+      counterparties,
+      recent,
+      tables: tablesBreakdown,
+    };
+  }
 
   /**
    * Generate daily report

@@ -26,6 +26,8 @@ import { BatchCreateCustomTableRowsDto } from './dto/batch-create-custom-table-r
 import { CustomTablesImportService } from './custom-tables-import.service';
 import { GoogleSheetsImportPreviewDto } from './dto/google-sheets-import-preview.dto';
 import { GoogleSheetsImportCommitDto } from './dto/google-sheets-import-commit.dto';
+import { CreateCustomTableFromDataEntryDto } from './dto/create-custom-table-from-data-entry.dto';
+import { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
 
 @Controller('custom-tables')
 @UseGuards(JwtAuthGuard)
@@ -55,6 +57,19 @@ export class CustomTablesController {
   @Post('import/google-sheets/commit')
   async commitGoogleSheets(@CurrentUser() user: User, @Body() dto: GoogleSheetsImportCommitDto) {
     return this.customTablesImportService.commitGoogleSheets(user.id, dto);
+  }
+
+  @Post('from-data-entry')
+  async createFromDataEntry(@CurrentUser() user: User, @Body() dto: CreateCustomTableFromDataEntryDto) {
+    return this.customTablesService.createFromDataEntry(user.id, dto);
+  }
+
+  @Post('from-data-entry-custom-tab')
+  async createFromDataEntryCustomTab(
+    @CurrentUser() user: User,
+    @Body() dto: CreateCustomTableFromDataEntryCustomTabDto,
+  ) {
+    return this.customTablesService.createFromDataEntryCustomTab(user.id, dto);
   }
 
   @Get(':id')

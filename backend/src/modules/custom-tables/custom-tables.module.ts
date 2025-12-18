@@ -5,6 +5,8 @@ import { Category } from '../../entities/category.entity';
 import { CustomTable } from '../../entities/custom-table.entity';
 import { CustomTableColumn } from '../../entities/custom-table-column.entity';
 import { CustomTableRow } from '../../entities/custom-table-row.entity';
+import { DataEntry } from '../../entities/data-entry.entity';
+import { DataEntryCustomField } from '../../entities/data-entry-custom-field.entity';
 import { GoogleSheet } from '../../entities/google-sheet.entity';
 import { GoogleSheetsModule } from '../google-sheets/google-sheets.module';
 import { CustomTablesController } from './custom-tables.controller';
@@ -17,6 +19,8 @@ import { CustomTablesService } from './custom-tables.service';
       CustomTable,
       CustomTableColumn,
       CustomTableRow,
+      DataEntry,
+      DataEntryCustomField,
       AuditLog,
       GoogleSheet,
       Category,
