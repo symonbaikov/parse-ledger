@@ -37,13 +37,14 @@ export class GoogleSheetsService {
     code: string,
     sheetId: string,
     worksheetName?: string,
+    sheetNameOverride?: string,
   ): Promise<GoogleSheet> {
     const { accessToken, refreshToken } = await this.googleSheetsApiService.exchangeCodeForTokens(
       code,
     );
 
     const info = await this.googleSheetsApiService.getSpreadsheetInfo(accessToken, sheetId);
-    const sheetName = info.title || sheetId;
+    const sheetName = sheetNameOverride?.trim() || info.title || sheetId;
     const worksheet = worksheetName || info.firstWorksheet || null;
 
     return this.create(

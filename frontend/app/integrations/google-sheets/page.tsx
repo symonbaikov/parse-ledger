@@ -22,6 +22,7 @@ interface GoogleSheetConnection {
   worksheetName?: string | null;
   lastSync?: string | null;
   isActive?: boolean;
+  oauthConnected?: boolean;
   createdAt?: string;
 }
 
@@ -35,6 +36,16 @@ const parseSpreadsheetId = (input: string): string | null => {
   }
 
   return trimmed;
+};
+
+const encodeOauthState = (payload: Record<string, unknown>): string | null => {
+  try {
+    const json = JSON.stringify(payload);
+    const base64 = btoa(unescape(encodeURIComponent(json)));
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  } catch {
+    return null;
+  }
 };
 
 export default function GoogleSheetsIntegrationPage() {
@@ -71,6 +82,23 @@ export default function GoogleSheetsIntegrationPage() {
     }
   };
 
+  const startOauth = async (payload: { sheetId: string; sheetName?: string; worksheetName?: string }) => {
+    const state = encodeOauthState({
+      sheetId: payload.sheetId,
+      sheetName: payload.sheetName?.trim() || undefined,
+      worksheetName: payload.worksheetName?.trim() || undefined,
+      from: 'integrations/google-sheets',
+    });
+    const resp = await apiClient.get('/google-sheets/oauth/url', {
+      params: { state: state || undefined },
+    });
+    const url = resp.data?.url;
+    if (!url) {
+      throw new Error('Не удалось получить ссылку для авторизации Google');
+    }
+    window.location.href = url;
+  };
+
   const handleConnect = async () => {
     const parsedId = parseSpreadsheetId(sheetUrl);
     if (!parsedId) {
@@ -78,23 +106,17 @@ export default function GoogleSheetsIntegrationPage() {
       toast.error('Укажите ID или ссылку на таблицу');
       return;
     }
-    const finalSheetName = sheetName.trim() || `Sheet ${parsedId.slice(0, 6)}`;
 
     try {
       setSubmitting(true);
       setError(null);
       setSuccess(null);
-      const resp = await apiClient.post('/google-sheets/connect', {
+      toast.success('Открываем Google авторизацию…');
+      await startOauth({
         sheetId: parsedId,
-        sheetName: finalSheetName,
-        worksheetName: worksheetName.trim() || undefined,
+        sheetName,
+        worksheetName,
       });
-      setSuccess('Таблица подключена. Не забудьте настроить Apps Script webhook.');
-      toast.success('Таблица подключена');
-      setSheetUrl('');
-      setSheetName('');
-      setWorksheetName('');
-      await loadConnections();
     } catch (err: any) {
       const message = err?.response?.data?.message || 'Не удалось подключить таблицу';
       setError(message);
@@ -232,6 +254,9 @@ export default function GoogleSheetsIntegrationPage() {
                   value={sheetName}
                   onChange={(e) => setSheetName(e.target.value)}
                 />
+                <div className="mt-1 text-xs text-gray-500">
+                  Если оставить пустым — используем название из Google Sheets.
+                </div>
               </label>
 
               <label className="block">
@@ -254,7 +279,7 @@ export default function GoogleSheetsIntegrationPage() {
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                Подключить
+                Авторизоваться и подключить
               </button>
             </div>
           </div>
@@ -332,9 +357,15 @@ export default function GoogleSheetsIntegrationPage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-gray-900">{item.sheetName}</span>
-                            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-100">
-                              <CheckCircle2 className="h-3 w-3 mr-1" /> Активно
-                            </span>
+                            {item.oauthConnected === false ? (
+                              <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 border border-amber-100">
+                                <AlertCircle className="h-3 w-3 mr-1" /> Нужен OAuth
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-100">
+                                <CheckCircle2 className="h-3 w-3 mr-1" /> Активно
+                              </span>
+                            )}
                           </div>
                           <p className="text-xs text-gray-500 mt-1 break-all">
                             ID: {item.sheetId}
@@ -349,10 +380,20 @@ export default function GoogleSheetsIntegrationPage() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
+                        {item.oauthConnected === false && (
+                          <button
+                            type="button"
+                            onClick={() => startOauth({ sheetId: item.sheetId, sheetName: item.sheetName, worksheetName: item.worksheetName || undefined })}
+                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                          >
+                            <Plug className="h-4 w-4" />
+                            Авторизовать
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleSync(item.id)}
-                          disabled={syncingId === item.id}
+                          disabled={syncingId === item.id || item.oauthConnected === false}
                           className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
                         >
                           {syncingId === item.id ? (

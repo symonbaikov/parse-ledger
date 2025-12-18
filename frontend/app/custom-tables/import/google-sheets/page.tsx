@@ -18,6 +18,7 @@ interface GoogleSheetConnection {
   sheetName: string;
   worksheetName?: string | null;
   isActive?: boolean;
+  oauthConnected?: boolean;
 }
 
 interface Category {
@@ -75,7 +76,7 @@ export default function GoogleSheetsImportPage() {
     [connections, googleSheetId],
   );
 
-  const canPreview = Boolean(googleSheetId);
+  const canPreview = Boolean(googleSheetId && selectedConnection?.oauthConnected !== false);
   const canCommit = Boolean(preview && tableName.trim() && columns.some((c) => c.include));
 
   const loadConnections = async () => {
@@ -117,7 +118,11 @@ export default function GoogleSheetsImportPage() {
   }, [selectedConnection]);
 
   const handlePreview = async () => {
-    if (!canPreview) return;
+    if (!googleSheetId) return;
+    if (selectedConnection?.oauthConnected === false) {
+      toast.error('Подключение Google Sheets требует OAuth. Переподключите таблицу в разделе «Интеграции».');
+      return;
+    }
     setLoadingPreview(true);
     try {
       const response = await apiClient.post('/custom-tables/import/google-sheets/preview', {
@@ -239,8 +244,9 @@ export default function GoogleSheetsImportPage() {
               >
                 <option value="">— выберите —</option>
                 {connections.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c.id} value={c.id} disabled={c.oauthConnected === false}>
                     {c.sheetName}
+                    {c.oauthConnected === false ? ' (нужна OAuth)' : ''}
                   </option>
                 ))}
               </select>

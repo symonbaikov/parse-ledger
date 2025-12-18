@@ -9,6 +9,9 @@ export class OAuthCallbackDto {
 
   @IsString()
   @IsOptional()
+  sheetName?: string;
+
+  @IsString()
+  @IsOptional()
   worksheetName?: string;
 }
-
