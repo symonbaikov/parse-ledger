@@ -58,6 +58,9 @@ export class CustomTable {
   @OneToMany(() => CustomTableRow, (row) => row.table)
   rows: CustomTableRow[];
 
+  @Column({ name: 'view_settings', type: 'jsonb', default: () => "'{}'::jsonb" })
+  viewSettings: Record<string, any>;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

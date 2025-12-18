@@ -435,7 +435,38 @@ export class GoogleSheetsApiService {
       throw new BadRequestException(`Failed to read Google Sheet values: ${error.message}`);
     }
   }
-}
 
+  async getGridData(
+    accessToken: string,
+    refreshToken: string,
+    spreadsheetId: string,
+    range: string,
+    options?: { fields?: string },
+  ): Promise<{ accessToken: string; spreadsheet: any }> {
+    const sheets = this.getSheetsClient(accessToken);
+
+    try {
+      const response = await sheets.spreadsheets.get({
+        spreadsheetId,
+        ranges: [range],
+        includeGridData: true,
+        fields: options?.fields,
+      });
+
+      return {
+        accessToken,
+        spreadsheet: response.data,
+      };
+    } catch (error: any) {
+      if (error.code === 401 || error.message?.includes('Invalid Credentials')) {
+        const newAccessToken = await this.refreshAccessToken(refreshToken);
+        return this.getGridData(newAccessToken, refreshToken, spreadsheetId, range, options);
+      }
+
+      this.logger.error('Error reading grid data from Google Sheet:', error);
+      throw new BadRequestException(`Failed to read Google Sheet grid data: ${error.message}`);
+    }
+  }
+}
 
 

@@ -5,7 +5,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { AuditAction, AuditLog } from '../../entities/audit-log.entity';
 import { Category } from '../../entities/category.entity';
 import { CustomTable, CustomTableSource } from '../../entities/custom-table.entity';
+import { CustomTableCellStyle } from '../../entities/custom-table-cell-style.entity';
 import { CustomTableColumn, CustomTableColumnType } from '../../entities/custom-table-column.entity';
+import { CustomTableColumnStyle } from '../../entities/custom-table-column-style.entity';
 import { CustomTableRow } from '../../entities/custom-table-row.entity';
 import { GoogleSheet } from '../../entities/google-sheet.entity';
 import { GoogleSheetsApiService } from '../google-sheets/services/google-sheets-api.service';
@@ -117,6 +119,156 @@ const inferColumnType = (values: Array<string | null>): CustomTableColumnType =>
   return CustomTableColumnType.TEXT;
 };
 
+type SheetNumberFormat = { type: string; pattern?: string };
+type SheetTextFormat = {
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  strikethrough?: boolean;
+  fontSize?: number;
+  fontFamily?: string;
+  foregroundColor?: string;
+};
+type SheetCellStyle = {
+  backgroundColor?: string;
+  horizontalAlignment?: string;
+  verticalAlignment?: string;
+  numberFormat?: SheetNumberFormat;
+  textFormat?: SheetTextFormat;
+};
+type SheetCellStylePatch = {
+  backgroundColor?: string | null;
+  horizontalAlignment?: string | null;
+  verticalAlignment?: string | null;
+  numberFormat?: SheetNumberFormat | null;
+  textFormat?: SheetTextFormat | null;
+};
+
+const clamp01 = (value: unknown): number | null => {
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(1, n));
+};
+
+const toCssColor = (color: any): string | undefined => {
+  if (!color || typeof color !== 'object') return undefined;
+  const r = clamp01(color.red);
+  const g = clamp01(color.green);
+  const b = clamp01(color.blue);
+  const a = clamp01(color.alpha);
+  if (r === null && g === null && b === null) return undefined;
+  const rr = Math.round((r ?? 0) * 255);
+  const gg = Math.round((g ?? 0) * 255);
+  const bb = Math.round((b ?? 0) * 255);
+  const aa = a ?? 1;
+  if (aa < 1) {
+    return `rgba(${rr}, ${gg}, ${bb}, ${Math.max(0, Math.min(1, aa))})`;
+  }
+  const hex = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${hex(rr)}${hex(gg)}${hex(bb)}`;
+};
+
+const extractSheetStyle = (format: any): SheetCellStyle => {
+  if (!format || typeof format !== 'object') return {};
+  const style: SheetCellStyle = {};
+
+  const bg = toCssColor(format.backgroundColor);
+  if (bg) style.backgroundColor = bg;
+
+  if (typeof format.horizontalAlignment === 'string' && format.horizontalAlignment.trim()) {
+    style.horizontalAlignment = format.horizontalAlignment.trim();
+  }
+
+  if (typeof format.verticalAlignment === 'string' && format.verticalAlignment.trim()) {
+    style.verticalAlignment = format.verticalAlignment.trim();
+  }
+
+  const nf = format.numberFormat;
+  if (nf && typeof nf === 'object' && typeof nf.type === 'string' && nf.type.trim()) {
+    const parsed: SheetNumberFormat = { type: nf.type.trim() };
+    if (typeof nf.pattern === 'string' && nf.pattern.trim()) {
+      parsed.pattern = nf.pattern.trim();
+    }
+    style.numberFormat = parsed;
+  }
+
+  const tf = format.textFormat;
+  if (tf && typeof tf === 'object') {
+    const parsed: SheetTextFormat = {};
+
+    if (typeof tf.bold === 'boolean') parsed.bold = tf.bold;
+    if (typeof tf.italic === 'boolean') parsed.italic = tf.italic;
+    if (typeof tf.underline === 'boolean') parsed.underline = tf.underline;
+    if (typeof tf.strikethrough === 'boolean') parsed.strikethrough = tf.strikethrough;
+
+    if (typeof tf.fontSize === 'number' && Number.isFinite(tf.fontSize) && tf.fontSize > 0) {
+      parsed.fontSize = tf.fontSize;
+    }
+
+    if (typeof tf.fontFamily === 'string' && tf.fontFamily.trim()) {
+      parsed.fontFamily = tf.fontFamily.trim();
+    }
+
+    const fg = toCssColor(tf.foregroundColor);
+    if (fg) parsed.foregroundColor = fg;
+
+    if (Object.keys(parsed).length) {
+      style.textFormat = parsed;
+    }
+  }
+
+  return style;
+};
+
+const isEmptyStyle = (style: Record<string, any> | null | undefined): boolean => {
+  if (!style || typeof style !== 'object') return true;
+  return Object.keys(style).length === 0;
+};
+
+const styleSignature = (style: SheetCellStyle): string => {
+  const signature: Record<string, any> = {};
+  if (style.backgroundColor !== undefined) signature.backgroundColor = style.backgroundColor;
+  if (style.horizontalAlignment !== undefined) signature.horizontalAlignment = style.horizontalAlignment;
+  if (style.verticalAlignment !== undefined) signature.verticalAlignment = style.verticalAlignment;
+  if (style.numberFormat !== undefined) signature.numberFormat = style.numberFormat;
+  if (style.textFormat !== undefined) signature.textFormat = style.textFormat;
+  return JSON.stringify(signature);
+};
+
+const diffStyle = (base: SheetCellStyle, actual: SheetCellStyle): SheetCellStylePatch => {
+  const patch: SheetCellStylePatch = {};
+  const keys: Array<keyof SheetCellStyle> = [
+    'backgroundColor',
+    'horizontalAlignment',
+    'verticalAlignment',
+    'numberFormat',
+    'textFormat',
+  ];
+
+  for (const key of keys) {
+    const baseVal = base[key];
+    const actualVal = actual[key];
+    const baseHas = baseVal !== undefined;
+    const actualHas = actualVal !== undefined;
+
+    if (!baseHas && !actualHas) continue;
+
+    if (!actualHas && baseHas) {
+      (patch as any)[key] = null;
+      continue;
+    }
+
+    if (actualHas) {
+      const equal = JSON.stringify(baseVal) === JSON.stringify(actualVal);
+      if (!baseHas || !equal) {
+        (patch as any)[key] = actualVal as any;
+      }
+    }
+  }
+
+  return patch;
+};
+
 @Injectable()
 export class CustomTablesImportService {
   private readonly logger = new Logger(CustomTablesImportService.name);
@@ -132,6 +284,10 @@ export class CustomTablesImportService {
     private readonly customTableColumnRepository: Repository<CustomTableColumn>,
     @InjectRepository(CustomTableRow)
     private readonly customTableRowRepository: Repository<CustomTableRow>,
+    @InjectRepository(CustomTableColumnStyle)
+    private readonly customTableColumnStyleRepository: Repository<CustomTableColumnStyle>,
+    @InjectRepository(CustomTableCellStyle)
+    private readonly customTableCellStyleRepository: Repository<CustomTableCellStyle>,
     @InjectRepository(AuditLog)
     private readonly auditLogRepository: Repository<AuditLog>,
     private readonly googleSheetsApiService: GoogleSheetsApiService,
@@ -432,6 +588,88 @@ export class CustomTablesImportService {
       this.throwHelpfulSchemaError(error);
     }
 
+    const keyByIndex = new Map<number, string>();
+    createdColumns.forEach((col) => {
+      const source = (col.config as any)?.source;
+      if (source && typeof source.colIndex === 'number') {
+        keyByIndex.set(source.colIndex, col.key);
+      }
+    });
+
+    let gridRowData: any[] | null = null;
+    const baseStyleByIndex = new Map<number, SheetCellStyle>();
+
+    try {
+      const grid = await this.googleSheetsApiService.getGridData(sheet.accessToken, sheet.refreshToken, sheet.sheetId, effectiveRange, {
+        fields:
+          'sheets(properties(title),data(startRow,startColumn,rowData(values(userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,numberFormat(type,pattern),textFormat(bold,italic,underline,strikethrough,fontFamily,fontSize,foregroundColor))))))',
+      });
+
+      if (grid.accessToken !== sheet.accessToken) {
+        sheet.accessToken = grid.accessToken;
+        await this.googleSheetRepository.save(sheet);
+      }
+
+      const spreadsheet = grid.spreadsheet;
+      const sheetEntry =
+        spreadsheet?.sheets?.find((s: any) => s?.properties?.title === worksheetName) || spreadsheet?.sheets?.[0];
+      const dataEntry = sheetEntry?.data?.[0];
+      gridRowData = Array.isArray(dataEntry?.rowData) ? dataEntry.rowData : null;
+
+      if (gridRowData && gridRowData.length) {
+        const rowLimit = Math.min(gridRowData.length, values.length);
+        const columnStyleEntities: CustomTableColumnStyle[] = [];
+
+        for (const [colIndex, columnKey] of keyByIndex.entries()) {
+          const headerFormat = gridRowData?.[safeHeaderIndex]?.values?.[colIndex]?.userEnteredFormat;
+          const headerStyle = extractSheetStyle(headerFormat);
+
+          const counts = new Map<string, { count: number; style: SheetCellStyle }>();
+          for (let rowIdx = safeHeaderIndex + 1; rowIdx < rowLimit; rowIdx += 1) {
+            const format = gridRowData?.[rowIdx]?.values?.[colIndex]?.userEnteredFormat;
+            const style = extractSheetStyle(format);
+            const sig = styleSignature(style);
+            const existing = counts.get(sig);
+            if (existing) {
+              existing.count += 1;
+            } else {
+              counts.set(sig, { count: 1, style });
+            }
+          }
+
+          let baseStyle: SheetCellStyle = {};
+          let bestCount = -1;
+          for (const entry of counts.values()) {
+            if (entry.count > bestCount) {
+              bestCount = entry.count;
+              baseStyle = entry.style;
+            }
+          }
+
+          baseStyleByIndex.set(colIndex, baseStyle);
+
+          const payload: Record<string, any> = {};
+          if (!isEmptyStyle(headerStyle)) payload.header = headerStyle;
+          if (!isEmptyStyle(baseStyle)) payload.cell = baseStyle;
+          if (Object.keys(payload).length) {
+            columnStyleEntities.push(
+              this.customTableColumnStyleRepository.create({
+                tableId: table.id,
+                columnKey,
+                style: payload,
+              }),
+            );
+          }
+        }
+
+        if (columnStyleEntities.length) {
+          await this.customTableColumnStyleRepository.save(columnStyleEntities);
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Google Sheets style import skipped for tableId=${table.id}`);
+    }
+
     if (!dto.importData) {
       return {
         tableId: table.id,
@@ -440,14 +678,6 @@ export class CustomTablesImportService {
         usedRange: { a1: effectiveRange, rowsCount, colsCount },
       };
     }
-
-    const keyByIndex = new Map<number, string>();
-    createdColumns.forEach((col) => {
-      const source = (col.config as any)?.source;
-      if (source && typeof source.colIndex === 'number') {
-        keyByIndex.set(source.colIndex, col.key);
-      }
-    });
 
     const dataStartIndex = safeHeaderIndex + 1;
     const rowsToInsert = [];
@@ -492,6 +722,40 @@ export class CustomTablesImportService {
       worksheetName,
       usedRange: effectiveRange,
     });
+
+    if (gridRowData && gridRowData.length && keyByIndex.size) {
+      const cellStyleEntities: CustomTableCellStyle[] = [];
+      const rowLimit = Math.min(gridRowData.length, values.length);
+
+      for (let rowIdx = dataStartIndex; rowIdx < rowLimit; rowIdx += 1) {
+        const rowNumber = bounds.startRow + rowIdx;
+        for (const [colIndex, columnKey] of keyByIndex.entries()) {
+          const baseStyle = baseStyleByIndex.get(colIndex) || {};
+          const format = gridRowData?.[rowIdx]?.values?.[colIndex]?.userEnteredFormat;
+          const actualStyle = extractSheetStyle(format);
+          const patch = diffStyle(baseStyle, actualStyle);
+          if (Object.keys(patch).length === 0) continue;
+          cellStyleEntities.push(
+            this.customTableCellStyleRepository.create({
+              tableId: table.id,
+              rowNumber,
+              columnKey,
+              style: patch,
+            }),
+          );
+        }
+      }
+
+      const chunkSizeStyles = 1000;
+      for (let i = 0; i < cellStyleEntities.length; i += chunkSizeStyles) {
+        const chunk = cellStyleEntities.slice(i, i + chunkSizeStyles);
+        try {
+          await this.customTableCellStyleRepository.save(chunk);
+        } catch (error) {
+          this.throwHelpfulSchemaError(error);
+        }
+      }
+    }
 
     return {
       tableId: table.id,

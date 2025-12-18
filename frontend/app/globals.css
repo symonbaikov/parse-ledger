@@ -46,3 +46,8 @@ body.ff-table-fullscreen > main {
   height: 100vh;
   overflow: hidden;
 }
+
+/* Custom Tables: disable selection while resizing columns. */
+body.ff-col-resizing {
+  user-select: none;
+}

@@ -23,6 +23,7 @@ async function bootstrap() {
   if (fs.existsSync(publicPath)) {
     (app as any).useStaticAssets(publicPath);
   }
+  (app as any).useStaticAssets(uploadsDir, { prefix: '/uploads' });
 
   // Global prefix for API versioning
   app.setGlobalPrefix('api/v1');

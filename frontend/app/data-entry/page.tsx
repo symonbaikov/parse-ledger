@@ -107,6 +107,8 @@ export default function DataEntryPage() {
   }>({ open: false, fieldId: '', fieldName: '', entriesCount: 0 });
   const [deletingTab, setDeletingTab] = useState(false);
   const [exportingTabToTable, setExportingTabToTable] = useState(false);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+  const iconInputRef = useRef<HTMLInputElement | null>(null);
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null,
   );
@@ -265,6 +267,20 @@ export default function DataEntryPage() {
     const fieldId = getFieldId(tab);
     const field = customFields.find((f) => f.id === fieldId);
     return <Icon icon={field?.icon || 'mdi:tag'} className="h-4 w-4" />;
+  };
+
+  const renderIconPreview = (icon: string, className?: string) => {
+    if (!icon) return null;
+    if (icon.startsWith('http')) {
+      return <img src={icon} alt="icon" className={`h-5 w-5 ${className || ''}`} />;
+    }
+    if (icon.startsWith('/uploads')) {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+      const baseUrl = apiUrl.replace('/api/v1', '');
+      const fullUrl = baseUrl + icon;
+      return <img src={fullUrl} alt="icon" className={`h-5 w-5 ${className || ''}`} />;
+    }
+    return <Icon icon={icon} className={`h-5 w-5 ${className || ''}`} />;
   };
 
   const formatDate = (value: string) => {
@@ -469,6 +485,37 @@ export default function DataEntryPage() {
       setStatus({ type: 'error', message });
     } finally {
       setDeletingTab(false);
+    }
+  };
+
+  const triggerIconUpload = () => {
+    iconInputRef.current?.click();
+  };
+
+  const handleIconFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadingIcon(true);
+    setStatus(null);
+    setError(null);
+    const formData = new FormData();
+    formData.append('icon', file);
+    try {
+      const resp = await apiClient.post('/data-entry/custom-fields/icon', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = resp.data?.url || resp.data?.data?.url;
+      if (url) {
+        setNewCustomFieldIcon(url);
+      } else {
+        throw new Error('URL missing');
+      }
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Не удалось загрузить иконку';
+      setStatus({ type: 'error', message });
+    } finally {
+      setUploadingIcon(false);
+      if (iconInputRef.current) iconInputRef.current.value = '';
     }
   };
 
@@ -734,19 +781,19 @@ export default function DataEntryPage() {
 	                  </label>
 
 	                  <div className="flex items-center justify-between gap-2">
-	                    <button
-	                      type="button"
-	                      onClick={() => {
-	                        setCalendarOpen(false);
-	                        setExportMenuOpen(false);
-	                        setCustomIconOpen((v) => !v);
-	                      }}
-	                      className="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-	                      title="Выбрать иконку"
-	                    >
-	                      <Icon icon={newCustomFieldIcon || 'mdi:tag'} className="h-5 w-5" />
-	                      <span className="text-sm font-semibold">Иконка</span>
-	                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCalendarOpen(false);
+                        setExportMenuOpen(false);
+                        setCustomIconOpen((v) => !v);
+                      }}
+                      className="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      title="Выбрать иконку"
+                    >
+                      {renderIconPreview(newCustomFieldIcon || 'mdi:tag')}
+                      <span className="text-sm font-semibold">Иконка</span>
+                    </button>
 	                    <button
 	                      type="button"
 	                      onClick={createCustomField}
@@ -761,8 +808,8 @@ export default function DataEntryPage() {
 	                {customIconOpen && (
 	                  <>
 	                    <div className="fixed inset-0 z-10" onClick={() => setCustomIconOpen(false)} />
-	                    <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-3">
-	                      <div className="grid grid-cols-7 gap-2">
+	                    <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
+	                      <div className="grid grid-cols-7 gap-2 mb-4">
 	                        {CUSTOM_FIELD_ICONS.map((icon) => (
 	                          <button
 	                            key={icon}
@@ -778,10 +825,37 @@ export default function DataEntryPage() {
 	                            }`}
 	                            title={icon}
 	                          >
-	                            <Icon icon={icon} className="h-5 w-5" />
+	                            {renderIconPreview(icon)}
 	                          </button>
 	                        ))}
 	                      </div>
+	                      <div className="border-t border-gray-100 pt-4">
+	                        <button
+	                          type="button"
+	                          onClick={() => {
+	                            triggerIconUpload();
+	                            setCustomIconOpen(false);
+	                          }}
+	                          disabled={uploadingIcon}
+	                          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-white py-2 text-sm font-semibold hover:bg-primary-hover disabled:opacity-50 transition-all"
+	                        >
+	                          {uploadingIcon ? (
+	                            <>
+	                              <Loader2 className="h-4 w-4 animate-spin" />
+	                              Загрузка...
+	                            </>
+	                          ) : (
+	                            'Загрузить иконку'
+	                          )}
+	                        </button>
+	                      </div>
+	                      <input
+	                        ref={iconInputRef}
+	                        type="file"
+	                        accept="image/*"
+	                        className="hidden"
+	                        onChange={handleIconFileChange}
+	                      />
 	                    </div>
 	                  </>
 	                )}

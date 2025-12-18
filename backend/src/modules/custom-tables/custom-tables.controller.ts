@@ -4,6 +4,7 @@ import {
   DefaultValuePipe,
   Delete,
   Get,
+  BadRequestException,
   Param,
   ParseIntPipe,
   Patch,
@@ -28,6 +29,8 @@ import { GoogleSheetsImportPreviewDto } from './dto/google-sheets-import-preview
 import { GoogleSheetsImportCommitDto } from './dto/google-sheets-import-commit.dto';
 import { CreateCustomTableFromDataEntryDto } from './dto/create-custom-table-from-data-entry.dto';
 import { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
+import { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
+import { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
 
 @Controller('custom-tables')
 @UseGuards(JwtAuthGuard)
@@ -137,12 +140,27 @@ export class CustomTablesController {
     @Param('id') tableId: string,
     @Query('cursor') cursor?: string,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+    @Query('filters') filtersRaw?: string,
   ) {
     const safeLimit = Math.min(Math.max(limit ?? 50, 1), 500);
     const cursorNumber = cursor ? Number(cursor) : undefined;
+    let filters: CustomTableRowFilterDto[] | undefined;
+    if (filtersRaw) {
+      try {
+        const parsed = JSON.parse(filtersRaw);
+        if (!Array.isArray(parsed)) {
+          throw new BadRequestException('Некорректный формат filters');
+        }
+        filters = parsed as CustomTableRowFilterDto[];
+      } catch (error) {
+        if (error instanceof BadRequestException) throw error;
+        throw new BadRequestException('Некорректный JSON в filters');
+      }
+    }
     const items = await this.customTablesService.listRows(user.id, tableId, {
       cursor: Number.isFinite(cursorNumber) ? cursorNumber : undefined,
       limit: safeLimit,
+      filters,
     });
     return { items };
   }
@@ -186,5 +204,15 @@ export class CustomTablesController {
   ) {
     const result = await this.customTablesService.batchCreateRows(user.id, tableId, dto);
     return { ok: true, ...result };
+  }
+
+  @Patch(':id/view-settings/columns')
+  async updateViewSettingsColumn(
+    @CurrentUser() user: User,
+    @Param('id') tableId: string,
+    @Body() dto: UpdateCustomTableViewSettingsColumnDto,
+  ) {
+    const table = await this.customTablesService.updateViewSettingsColumn(user.id, tableId, dto);
+    return table;
   }
 }

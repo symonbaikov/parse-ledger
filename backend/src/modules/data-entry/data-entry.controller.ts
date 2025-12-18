@@ -1,4 +1,19 @@
-import { Body, Controller, Get, Post, Query, UseGuards, Delete, Param, DefaultValuePipe, ParseIntPipe, Patch } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Post,
+  Query,
+  UseGuards,
+  Delete,
+  Param,
+  DefaultValuePipe,
+  ParseIntPipe,
+  Patch,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../../entities/user.entity';
@@ -7,6 +22,10 @@ import { CreateDataEntryDto } from './dto/create-data-entry.dto';
 import { DataEntryType } from '../../entities/data-entry.entity';
 import { CreateDataEntryCustomFieldDto } from './dto/create-data-entry-custom-field.dto';
 import { UpdateDataEntryCustomFieldDto } from './dto/update-data-entry-custom-field.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as path from 'path';
+import { diskStorage } from 'multer';
+import * as fs from 'fs';
 
 @Controller('data-entry')
 @UseGuards(JwtAuthGuard)
@@ -51,6 +70,40 @@ export class DataEntryController {
   @Post('custom-fields')
   async createCustomField(@CurrentUser() user: User, @Body() dto: CreateDataEntryCustomFieldDto) {
     return this.dataEntryService.createCustomField(user.id, dto);
+  }
+
+  @Post('custom-fields/icon')
+  @UseInterceptors(
+    FileInterceptor('icon', {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+          const targetDir = path.join(uploadsDir, 'custom-field-icons');
+          if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+          }
+          cb(null, targetDir);
+        },
+        filename: (req, file, cb) => {
+          const safeName = `${Date.now()}-${file.originalname.replace(/\s+/g, '_')}`;
+          cb(null, safeName);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+          return cb(new Error('Only images allowed'), false);
+        }
+        cb(null, true);
+      },
+      limits: { fileSize: 1_500_000 },
+    }),
+  )
+  async uploadCustomIcon(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('Файл не загружен');
+    }
+    const url = `/uploads/custom-field-icons/${file.filename}`;
+    return { url };
   }
 
   @Patch('custom-fields/:id')

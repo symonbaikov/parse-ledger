@@ -1,11 +1,13 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { In, QueryFailedError, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { AuditAction, AuditLog } from '../../entities/audit-log.entity';
 import { Category } from '../../entities/category.entity';
 import { CustomTable, CustomTableSource } from '../../entities/custom-table.entity';
+import { CustomTableCellStyle } from '../../entities/custom-table-cell-style.entity';
 import { CustomTableColumn, CustomTableColumnType } from '../../entities/custom-table-column.entity';
+import { CustomTableColumnStyle } from '../../entities/custom-table-column-style.entity';
 import { CustomTableRow } from '../../entities/custom-table-row.entity';
 import { DataEntry, DataEntryType } from '../../entities/data-entry.entity';
 import { DataEntryCustomField } from '../../entities/data-entry-custom-field.entity';
@@ -19,6 +21,8 @@ import { UpdateCustomTableRowDto } from './dto/update-custom-table-row.dto';
 import { BatchCreateCustomTableRowsDto } from './dto/batch-create-custom-table-rows.dto';
 import { CreateCustomTableFromDataEntryDto, DataEntryToCustomTableScope } from './dto/create-custom-table-from-data-entry.dto';
 import { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
+import { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
+import { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
 
 @Injectable()
 export class CustomTablesService {
@@ -33,6 +37,10 @@ export class CustomTablesService {
     private readonly customTableColumnRepository: Repository<CustomTableColumn>,
     @InjectRepository(CustomTableRow)
     private readonly customTableRowRepository: Repository<CustomTableRow>,
+    @InjectRepository(CustomTableColumnStyle)
+    private readonly customTableColumnStyleRepository: Repository<CustomTableColumnStyle>,
+    @InjectRepository(CustomTableCellStyle)
+    private readonly customTableCellStyleRepository: Repository<CustomTableCellStyle>,
     @InjectRepository(DataEntry)
     private readonly dataEntryRepository: Repository<DataEntry>,
     @InjectRepository(DataEntryCustomField)
@@ -193,6 +201,20 @@ export class CustomTablesService {
     }
 
     table.columns = (table.columns || []).sort((a, b) => a.position - b.position);
+
+    try {
+      const styles = await this.customTableColumnStyleRepository.find({
+        where: { tableId },
+        select: ['columnKey', 'style'],
+      });
+      const byKey = new Map(styles.map((s) => [s.columnKey, s.style]));
+      table.columns.forEach((col) => {
+        (col as any).style = byKey.get(col.key) || null;
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to load column styles for tableId=${tableId}`);
+    }
+
     return table;
   }
 
@@ -697,7 +719,7 @@ export class CustomTablesService {
   async listRows(
     userId: string,
     tableId: string,
-    params: { cursor?: number; limit: number },
+    params: { cursor?: number; limit: number; filters?: CustomTableRowFilterDto[] },
   ): Promise<CustomTableRow[]> {
     await this.requireTable(userId, tableId);
 
@@ -708,12 +730,248 @@ export class CustomTablesService {
       .addOrderBy('r.id', 'ASC')
       .take(params.limit);
 
+    const rawFilters = params.filters?.filter(Boolean) || [];
+    if (rawFilters.length) {
+      if (rawFilters.length > 50) {
+        throw new BadRequestException('Слишком много фильтров');
+      }
+
+      const columns = await this.customTableColumnRepository.find({
+        where: { tableId },
+        select: ['key', 'type'],
+      });
+      const typeByKey = new Map<string, CustomTableColumnType>(columns.map((c) => [c.key, c.type]));
+
+      rawFilters.forEach((filter, index) => {
+        const col = filter?.col?.trim();
+        const op = filter?.op;
+        if (!col || !op) {
+          throw new BadRequestException('Некорректный фильтр');
+        }
+        const columnType = typeByKey.get(col);
+        if (!columnType) {
+          throw new BadRequestException(`Колонка для фильтра не найдена: ${col}`);
+        }
+
+        const colParam = `f_col_${index}`;
+        const valueParam = `f_val_${index}`;
+        const valueParam2 = `f_val2_${index}`;
+        const valuesParam = `f_vals_${index}`;
+
+        const textExpr = `r.data ->> :${colParam}`;
+        const textCoalescedExpr = `COALESCE(${textExpr}, '')`;
+        const numericExpr = `(CASE WHEN ${textExpr} ~ '^\\s*-?\\d+(?:\\.\\d+)?\\s*$' THEN (${textExpr})::numeric ELSE NULL END)`;
+        const dateExpr = `(CASE
+          WHEN ${textExpr} ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN (${textExpr})::date
+          WHEN ${textExpr} ~ '^\\d{2}\\.\\d{2}\\.\\d{4}$' THEN to_date(${textExpr}, 'DD.MM.YYYY')
+          ELSE NULL
+        END)`;
+        const boolExpr = `(CASE
+          WHEN lower(${textExpr}) IN ('true','t','1','yes','y') THEN true
+          WHEN lower(${textExpr}) IN ('false','f','0','no','n') THEN false
+          ELSE NULL
+        END)`;
+
+        const apply = (sql: string, paramsObj: Record<string, any>) => {
+          query.andWhere(sql, paramsObj);
+        };
+
+        const withCol = (paramsObj: Record<string, any>) => ({ ...paramsObj, [colParam]: col });
+
+        switch (op) {
+          case 'isEmpty': {
+            if (columnType === CustomTableColumnType.MULTI_SELECT) {
+              apply(`(r.data -> :${colParam} IS NULL OR r.data -> :${colParam} = '[]'::jsonb)`, withCol({}));
+              break;
+            }
+            apply(`(${textExpr} IS NULL OR ${textExpr} = '')`, withCol({}));
+            break;
+          }
+          case 'isNotEmpty': {
+            if (columnType === CustomTableColumnType.MULTI_SELECT) {
+              apply(`(r.data -> :${colParam} IS NOT NULL AND r.data -> :${colParam} <> '[]'::jsonb)`, withCol({}));
+              break;
+            }
+            apply(`(${textExpr} IS NOT NULL AND ${textExpr} <> '')`, withCol({}));
+            break;
+          }
+          case 'contains': {
+            const value = typeof filter.value === 'string' ? filter.value.trim() : String(filter.value ?? '').trim();
+            if (!value) return;
+            apply(`${textCoalescedExpr} ILIKE :${valueParam}`, withCol({ [valueParam]: `%${value}%` }));
+            break;
+          }
+          case 'startsWith': {
+            const value = typeof filter.value === 'string' ? filter.value.trim() : String(filter.value ?? '').trim();
+            if (!value) return;
+            apply(`${textCoalescedExpr} ILIKE :${valueParam}`, withCol({ [valueParam]: `${value}%` }));
+            break;
+          }
+          case 'eq':
+          case 'neq': {
+            const isNeq = op === 'neq';
+            if (columnType === CustomTableColumnType.NUMBER) {
+              const value = Number(filter.value);
+              if (!Number.isFinite(value)) return;
+              apply(
+                `${numericExpr} ${isNeq ? 'IS DISTINCT FROM' : '='} :${valueParam}`,
+                withCol({ [valueParam]: value }),
+              );
+              break;
+            }
+            if (columnType === CustomTableColumnType.DATE) {
+              const value = typeof filter.value === 'string' ? filter.value.trim() : String(filter.value ?? '').trim();
+              if (!value) return;
+              apply(
+                `${dateExpr} ${isNeq ? 'IS DISTINCT FROM' : '='} :${valueParam}`,
+                withCol({ [valueParam]: value }),
+              );
+              break;
+            }
+            if (columnType === CustomTableColumnType.BOOLEAN) {
+              const raw = typeof filter.value === 'boolean' ? filter.value : String(filter.value ?? '').trim();
+              if (raw === '') return;
+              const value = typeof raw === 'boolean' ? raw : ['true', '1', 'yes', 'y', 't'].includes(raw.toLowerCase());
+              apply(
+                `${boolExpr} ${isNeq ? 'IS DISTINCT FROM' : '='} :${valueParam}`,
+                withCol({ [valueParam]: value }),
+              );
+              break;
+            }
+            if (columnType === CustomTableColumnType.MULTI_SELECT) {
+              const value = typeof filter.value === 'string' ? filter.value.trim() : String(filter.value ?? '').trim();
+              if (!value) return;
+              apply(
+                `(CASE WHEN jsonb_typeof(r.data -> :${colParam}) = 'array'
+                  THEN ${isNeq ? 'NOT ' : ''}EXISTS (
+                    SELECT 1 FROM jsonb_array_elements_text(r.data -> :${colParam}) AS elem
+                    WHERE elem = :${valueParam}
+                  )
+                  ELSE ${isNeq ? 'true' : 'false'} END)`,
+                withCol({ [valueParam]: value }),
+              );
+              break;
+            }
+            {
+              const value = typeof filter.value === 'string' ? filter.value.trim() : String(filter.value ?? '').trim();
+              if (!value && value !== '') return;
+              apply(
+                `${textExpr} ${isNeq ? 'IS DISTINCT FROM' : '='} :${valueParam}`,
+                withCol({ [valueParam]: value }),
+              );
+              break;
+            }
+          }
+          case 'gt':
+          case 'gte':
+          case 'lt':
+          case 'lte': {
+            const cmp =
+              op === 'gt' ? '>' : op === 'gte' ? '>=' : op === 'lt' ? '<' : '<=';
+            if (columnType === CustomTableColumnType.NUMBER) {
+              const value = Number(filter.value);
+              if (!Number.isFinite(value)) return;
+              apply(`${numericExpr} ${cmp} :${valueParam}`, withCol({ [valueParam]: value }));
+              break;
+            }
+            if (columnType === CustomTableColumnType.DATE) {
+              const value = typeof filter.value === 'string' ? filter.value.trim() : String(filter.value ?? '').trim();
+              if (!value) return;
+              apply(`${dateExpr} ${cmp} :${valueParam}`, withCol({ [valueParam]: value }));
+              break;
+            }
+            throw new BadRequestException(`Оператор ${op} не поддерживается для типа ${columnType}`);
+          }
+          case 'between': {
+            const value = filter.value;
+            const arr = Array.isArray(value) ? value : undefined;
+            if (!arr || arr.length < 2) return;
+            const [rawMin, rawMax] = arr;
+            if (columnType === CustomTableColumnType.NUMBER) {
+              const min = Number(rawMin);
+              const max = Number(rawMax);
+              if (!Number.isFinite(min) || !Number.isFinite(max)) return;
+              apply(
+                `${numericExpr} BETWEEN :${valueParam} AND :${valueParam2}`,
+                withCol({ [valueParam]: min, [valueParam2]: max }),
+              );
+              break;
+            }
+            if (columnType === CustomTableColumnType.DATE) {
+              const min = typeof rawMin === 'string' ? rawMin.trim() : String(rawMin ?? '').trim();
+              const max = typeof rawMax === 'string' ? rawMax.trim() : String(rawMax ?? '').trim();
+              if (!min || !max) return;
+              apply(
+                `${dateExpr} BETWEEN :${valueParam} AND :${valueParam2}`,
+                withCol({ [valueParam]: min, [valueParam2]: max }),
+              );
+              break;
+            }
+            throw new BadRequestException(`Оператор between не поддерживается для типа ${columnType}`);
+          }
+          case 'in': {
+            const value = filter.value;
+            const arr = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [];
+            const values = arr.map((v) => String(v).trim()).filter(Boolean);
+            if (!values.length) return;
+
+            if (columnType === CustomTableColumnType.MULTI_SELECT) {
+              apply(
+                `(CASE WHEN jsonb_typeof(r.data -> :${colParam}) = 'array'
+                  THEN EXISTS (
+                    SELECT 1 FROM jsonb_array_elements_text(r.data -> :${colParam}) AS elem
+                    WHERE elem IN (:...${valuesParam})
+                  )
+                  ELSE false END)`,
+                withCol({ [valuesParam]: values }),
+              );
+              break;
+            }
+
+            if (columnType === CustomTableColumnType.NUMBER) {
+              const nums = values.map((v) => Number(v)).filter((v) => Number.isFinite(v));
+              if (!nums.length) return;
+              apply(`${numericExpr} IN (:...${valuesParam})`, withCol({ [valuesParam]: nums }));
+              break;
+            }
+
+            apply(`${textExpr} IN (:...${valuesParam})`, withCol({ [valuesParam]: values }));
+            break;
+          }
+          default:
+            throw new BadRequestException(`Неизвестный оператор фильтра: ${op}`);
+        }
+      });
+    }
+
     if (params.cursor !== undefined) {
       query.andWhere('r.rowNumber > :cursor', { cursor: params.cursor });
     }
 
     try {
-      return await query.getMany();
+      const rows = await query.getMany();
+      if (!rows.length) return rows;
+
+      try {
+        const rowNumbers = rows.map((r) => r.rowNumber);
+        const styles = await this.customTableCellStyleRepository.find({
+          where: { tableId, rowNumber: In(rowNumbers) },
+          select: ['rowNumber', 'columnKey', 'style'],
+        });
+        const byRow = new Map<number, Record<string, any>>();
+        for (const s of styles) {
+          const current = byRow.get(s.rowNumber) || {};
+          current[s.columnKey] = s.style;
+          byRow.set(s.rowNumber, current);
+        }
+        rows.forEach((row) => {
+          (row as any).styles = byRow.get(row.rowNumber) || {};
+        });
+      } catch (error) {
+        this.logger.warn(`Failed to load cell styles for tableId=${tableId}`);
+      }
+
+      return rows;
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
@@ -811,5 +1069,56 @@ export class CustomTablesService {
     }
     await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, { tableId, count: rows.length });
     return { created: rows.length };
+  }
+
+  async updateViewSettingsColumn(
+    userId: string,
+    tableId: string,
+    dto: UpdateCustomTableViewSettingsColumnDto,
+  ): Promise<CustomTable> {
+    const table = await this.requireTable(userId, tableId);
+
+    const columnKey = dto.columnKey?.trim();
+    if (!columnKey) {
+      throw new BadRequestException('columnKey обязателен');
+    }
+
+    const column = await this.customTableColumnRepository.findOne({
+      where: { tableId, key: columnKey },
+      select: ['id', 'key'],
+    });
+    if (!column) {
+      throw new BadRequestException('Колонка не найдена');
+    }
+
+    const viewSettings = (table.viewSettings && typeof table.viewSettings === 'object' ? table.viewSettings : {}) as Record<
+      string,
+      any
+    >;
+    const columns = (viewSettings.columns && typeof viewSettings.columns === 'object' ? viewSettings.columns : {}) as Record<
+      string,
+      any
+    >;
+    const existing = (columns[columnKey] && typeof columns[columnKey] === 'object' ? columns[columnKey] : {}) as Record<
+      string,
+      any
+    >;
+    const next = { ...existing };
+
+    if (dto.width !== undefined) {
+      next.width = dto.width;
+    }
+
+    columns[columnKey] = next;
+    table.viewSettings = { ...viewSettings, columns };
+
+    let saved: CustomTable;
+    try {
+      saved = await this.customTableRepository.save(table);
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+    await this.log(userId, AuditAction.CUSTOM_TABLE_UPDATE, { tableId: saved.id, viewSettings: true });
+    return this.getTable(userId, tableId);
   }
 }
