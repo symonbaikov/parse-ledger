@@ -25,6 +25,9 @@ import {
   SharedLink,
   FilePermission,
   DataEntry,
+  CustomTable,
+  CustomTableColumn,
+  CustomTableRow,
 } from './entities';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -40,6 +43,7 @@ import { ReportsModule } from './modules/reports/reports.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { DataEntryModule } from './modules/data-entry/data-entry.module';
+import { CustomTablesModule } from './modules/custom-tables/custom-tables.module';
 
 @Module({
   imports: [
@@ -74,6 +78,9 @@ import { DataEntryModule } from './modules/data-entry/data-entry.module';
       SharedLink,
       FilePermission,
       DataEntry,
+      CustomTable,
+      CustomTableColumn,
+      CustomTableRow,
     ]),
     AuthModule,
     UsersModule,
@@ -89,6 +96,7 @@ import { DataEntryModule } from './modules/data-entry/data-entry.module';
     StorageModule,
     TelegramModule,
     DataEntryModule,
+    CustomTablesModule,
   ],
   controllers: [AppController],
   providers: [

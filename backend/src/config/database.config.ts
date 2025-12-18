@@ -6,6 +6,12 @@ export const getDatabaseConfig = (
 ): TypeOrmModuleOptions => {
   const nodeEnv = configService.get<string>('NODE_ENV') || 'development';
   const isProd = nodeEnv === 'production';
+  const runMigrationsEnv = (configService.get<string>('RUN_MIGRATIONS') || '').toLowerCase();
+  const shouldRunMigrations =
+    runMigrationsEnv === 'true' || (!isProd && runMigrationsEnv !== 'false');
+  const migrationsGlob = __filename.endsWith('.ts')
+    ? 'src/migrations/*.ts'
+    : 'dist/migrations/*.js';
 
   return {
     type: 'postgres',
@@ -13,8 +19,7 @@ export const getDatabaseConfig = (
     autoLoadEntities: true,
     synchronize: false,
     logging: !isProd,
-    migrations: [isProd ? 'dist/migrations/*.js' : 'src/migrations/*.ts'],
-    migrationsRun: false, // Don't auto-run to avoid conflicts
+    migrations: [migrationsGlob],
+    migrationsRun: shouldRunMigrations,
   };
 };
-

@@ -399,8 +399,43 @@ export class GoogleSheetsApiService {
       return false;
     }
   }
-}
 
+  async getValues(
+    accessToken: string,
+    refreshToken: string,
+    spreadsheetId: string,
+    range: string,
+    options?: {
+      valueRenderOption?: 'FORMATTED_VALUE' | 'UNFORMATTED_VALUE' | 'FORMULA';
+      dateTimeRenderOption?: 'FORMATTED_STRING' | 'SERIAL_NUMBER';
+    },
+  ): Promise<{ accessToken: string; range: string; values: any[][] }> {
+    const sheets = this.getSheetsClient(accessToken);
+
+    try {
+      const response = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range,
+        valueRenderOption: options?.valueRenderOption,
+        dateTimeRenderOption: options?.dateTimeRenderOption,
+      });
+
+      return {
+        accessToken,
+        range: response.data.range || range,
+        values: response.data.values || [],
+      };
+    } catch (error: any) {
+      if (error.code === 401 || error.message?.includes('Invalid Credentials')) {
+        const newAccessToken = await this.refreshAccessToken(refreshToken);
+        return this.getValues(newAccessToken, refreshToken, spreadsheetId, range, options);
+      }
+
+      this.logger.error('Error reading values from Google Sheet:', error);
+      throw new BadRequestException(`Failed to read Google Sheet values: ${error.message}`);
+    }
+  }
+}
 
 
 

@@ -1,0 +1,66 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { User } from './user.entity';
+import { CustomTableColumn } from './custom-table-column.entity';
+import { CustomTableRow } from './custom-table-row.entity';
+import { Category } from './category.entity';
+
+export enum CustomTableSource {
+  MANUAL = 'manual',
+  GOOGLE_SHEETS_IMPORT = 'google_sheets_import',
+}
+
+@Entity('custom_tables')
+export class CustomTable {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
+
+  @Column({ name: 'user_id' })
+  userId: string;
+
+  @Column({ name: 'name', type: 'varchar' })
+  name: string;
+
+  @Column({ name: 'description', type: 'text', nullable: true })
+  description: string | null;
+
+  @Column({
+    name: 'source',
+    type: 'enum',
+    enum: CustomTableSource,
+    enumName: 'custom_table_source_enum',
+    default: CustomTableSource.MANUAL,
+  })
+  source: CustomTableSource;
+
+  @ManyToOne(() => Category, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'category_id' })
+  category: Category | null;
+
+  @Column({ name: 'category_id', type: 'uuid', nullable: true })
+  categoryId: string | null;
+
+  @OneToMany(() => CustomTableColumn, (column) => column.table)
+  columns: CustomTableColumn[];
+
+  @OneToMany(() => CustomTableRow, (row) => row.table)
+  rows: CustomTableRow[];
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+}

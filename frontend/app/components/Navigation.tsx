@@ -22,6 +22,7 @@ import {
   Wallet,
   Plug,
   Edit3,
+  Table,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -54,6 +55,12 @@ export default function Navigation() {
       path: '/data-entry',
       icon: <Edit3 size={20} />,
       permission: 'statement.upload',
+    },
+    {
+      label: 'Таблицы',
+      path: '/custom-tables',
+      icon: <Table size={20} />,
+      permission: 'statement.view',
     },
     {
       label: 'Отчёты',

@@ -22,6 +22,17 @@ export enum AuditAction {
   WALLET_UPDATE = 'wallet.update',
   WALLET_DELETE = 'wallet.delete',
   REPORT_GENERATE = 'report.generate',
+  CUSTOM_TABLE_CREATE = 'custom_table.create',
+  CUSTOM_TABLE_UPDATE = 'custom_table.update',
+  CUSTOM_TABLE_DELETE = 'custom_table.delete',
+  CUSTOM_TABLE_COLUMN_CREATE = 'custom_table_column.create',
+  CUSTOM_TABLE_COLUMN_UPDATE = 'custom_table_column.update',
+  CUSTOM_TABLE_COLUMN_DELETE = 'custom_table_column.delete',
+  CUSTOM_TABLE_COLUMN_REORDER = 'custom_table_column.reorder',
+  CUSTOM_TABLE_ROW_CREATE = 'custom_table_row.create',
+  CUSTOM_TABLE_ROW_UPDATE = 'custom_table_row.update',
+  CUSTOM_TABLE_ROW_DELETE = 'custom_table_row.delete',
+  CUSTOM_TABLE_ROW_BATCH_CREATE = 'custom_table_row.batch_create',
 }
 
 @Entity('audit_logs')
@@ -51,7 +62,6 @@ export class AuditLog {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
-
 
 
 

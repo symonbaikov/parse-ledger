@@ -44,6 +44,7 @@ services:
       - .env
     environment:
       - NODE_ENV=production
+      - RUN_MIGRATIONS=true
       - PORT=3001
       - FRONTEND_URL=http://localhost:3000
       - DATABASE_URL=postgresql://finflow:finflow@postgres:5432/finflow
