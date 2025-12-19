@@ -726,36 +726,40 @@ export class CustomTablesImportService {
     });
 
     if (gridRowData && gridRowData.length && keyByIndex.size) {
-      const cellStyleEntities: CustomTableCellStyle[] = [];
-      const rowLimit = Math.min(gridRowData.length, values.length);
+      try {
+        const cellStyleEntities: CustomTableCellStyle[] = [];
+        const rowLimit = Math.min(gridRowData.length, values.length);
 
-      for (let rowIdx = dataStartIndex; rowIdx < rowLimit; rowIdx += 1) {
-        const rowNumber = bounds.startRow + rowIdx;
-        for (const [colIndex, columnKey] of keyByIndex.entries()) {
-          const baseStyle = baseStyleByIndex.get(colIndex) || {};
-          const format = gridRowData?.[rowIdx]?.values?.[colIndex]?.userEnteredFormat;
-          const actualStyle = extractSheetStyle(format);
-          const patch = diffStyle(baseStyle, actualStyle);
-          if (Object.keys(patch).length === 0) continue;
-          cellStyleEntities.push(
-            this.customTableCellStyleRepository.create({
-              tableId: table.id,
-              rowNumber,
-              columnKey,
-              style: patch,
-            }),
-          );
+        for (let rowIdx = dataStartIndex; rowIdx < rowLimit; rowIdx += 1) {
+          const rowNumber = bounds.startRow + rowIdx;
+          for (const [colIndex, columnKey] of keyByIndex.entries()) {
+            const baseStyle = baseStyleByIndex.get(colIndex) || {};
+            const format = gridRowData?.[rowIdx]?.values?.[colIndex]?.userEnteredFormat;
+            const actualStyle = extractSheetStyle(format);
+            const patch = diffStyle(baseStyle, actualStyle);
+            if (Object.keys(patch).length === 0) continue;
+            cellStyleEntities.push(
+              this.customTableCellStyleRepository.create({
+                tableId: table.id,
+                rowNumber,
+                columnKey,
+                style: patch,
+              }),
+            );
+          }
         }
-      }
 
-      const chunkSizeStyles = 1000;
-      for (let i = 0; i < cellStyleEntities.length; i += chunkSizeStyles) {
-        const chunk = cellStyleEntities.slice(i, i + chunkSizeStyles);
-        try {
-          await this.customTableCellStyleRepository.save(chunk);
-        } catch (error) {
-          this.throwHelpfulSchemaError(error);
+        const chunkSizeStyles = 1000;
+        for (let i = 0; i < cellStyleEntities.length; i += chunkSizeStyles) {
+          const chunk = cellStyleEntities.slice(i, i + chunkSizeStyles);
+          try {
+            await this.customTableCellStyleRepository.save(chunk);
+          } catch (error) {
+            this.throwHelpfulSchemaError(error);
+          }
         }
+      } catch (error) {
+        this.logger.warn(`Google Sheets cell style import failed for tableId=${table.id}: ${error instanceof Error ? error.message : 'unknown error'}`);
       }
     }
 
