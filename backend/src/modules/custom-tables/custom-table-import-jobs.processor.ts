@@ -58,7 +58,22 @@ export class CustomTableImportJobsProcessor {
           stage = COALESCE(stage, 'running')
       FROM next_job
       WHERE j.id = next_job.id
-      RETURNING j.*
+      RETURNING
+        j.id as "id",
+        j.user_id as "userId",
+        j.type as "type",
+        j.status as "status",
+        j.progress as "progress",
+        j.stage as "stage",
+        j.payload as "payload",
+        j.result as "result",
+        j.error as "error",
+        j.locked_at as "lockedAt",
+        j.locked_by as "lockedBy",
+        j.started_at as "startedAt",
+        j.finished_at as "finishedAt",
+        j.created_at as "createdAt",
+        j.updated_at as "updatedAt"
       `,
       [this.instanceId],
     );
@@ -92,4 +107,3 @@ export class CustomTableImportJobsProcessor {
     }
   }
 }
-
