@@ -329,6 +329,50 @@ const agFilterModelToRowFilters = (model: any, columnsByKey: Map<string, CustomT
   return result;
 };
 
+const ruLocaleText: Record<string, string> = {
+  // Common
+  loadingOoo: 'Загрузка...',
+  noRowsToShow: 'Нет строк для отображения',
+  enabled: 'Включено',
+  disabled: 'Отключено',
+
+  // Filters
+  filterOoo: 'Фильтр...',
+  equals: 'Равно',
+  notEqual: 'Не равно',
+  blank: 'Пусто',
+  notBlank: 'Не пусто',
+  empty: 'Выберите',
+  lessThan: 'Меньше',
+  greaterThan: 'Больше',
+  lessThanOrEqual: 'Меньше или равно',
+  greaterThanOrEqual: 'Больше или равно',
+  inRange: 'В диапазоне',
+  inRangeStart: 'От',
+  inRangeEnd: 'До',
+  contains: 'Содержит',
+  notContains: 'Не содержит',
+  startsWith: 'Начинается с',
+  endsWith: 'Заканчивается на',
+  andCondition: 'И',
+  orCondition: 'ИЛИ',
+  applyFilter: 'Применить',
+  resetFilter: 'Сбросить',
+  clearFilter: 'Очистить',
+  cancelFilter: 'Отмена',
+
+  // Filter panels / column menu
+  columns: 'Колонки',
+  filters: 'Фильтры',
+  pinColumn: 'Закрепить колонку',
+  valueColumns: 'Колонки значений',
+  pivotMode: 'Режим сводной таблицы',
+  groups: 'Группы строк',
+  rowGroupColumnsEmptyMessage: 'Перетащите сюда для группировки',
+  valuesColumnsEmptyMessage: 'Перетащите сюда для значений',
+  pivotsColumnsEmptyMessage: 'Перетащите сюда для заголовков',
+};
+
 export function CustomTableAgGrid(props: {
   tableId: string;
   columns: CustomTableColumn[];
@@ -829,6 +873,7 @@ export function CustomTableAgGrid(props: {
         {headerCssRules ? <style>{headerCssRules}</style> : null}
         <AgGridReact<CustomTableGridRow>
           rowData={props.rows}
+          localeText={ruLocaleText}
           getRowId={(p) => {
             const id = (p.data as any)?.id;
             if (typeof id === 'string' && id.trim()) return id;
