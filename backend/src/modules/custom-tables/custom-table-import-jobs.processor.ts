@@ -45,7 +45,7 @@ export class CustomTableImportJobsProcessor {
       WITH next_job AS (
         SELECT id
         FROM custom_table_import_jobs
-        WHERE status = 'pending'
+        WHERE status = 'pending' AND type IS NOT NULL
         ORDER BY created_at ASC
         LIMIT 1
         FOR UPDATE SKIP LOCKED
@@ -59,26 +59,32 @@ export class CustomTableImportJobsProcessor {
       FROM next_job
       WHERE j.id = next_job.id
       RETURNING
-        j.id as "id",
-        j.user_id as "userId",
-        j.type as "type",
-        j.status as "status",
-        j.progress as "progress",
-        j.stage as "stage",
-        j.payload as "payload",
-        j.result as "result",
-        j.error as "error",
-        j.locked_at as "lockedAt",
-        j.locked_by as "lockedBy",
-        j.started_at as "startedAt",
-        j.finished_at as "finishedAt",
-        j.created_at as "createdAt",
-        j.updated_at as "updatedAt"
+        json_build_object(
+          'id', j.id,
+          'userId', j.user_id,
+          'type', j.type,
+          'status', j.status,
+          'progress', j.progress,
+          'stage', j.stage,
+          'payload', j.payload,
+          'result', j.result,
+          'error', j.error,
+          'lockedAt', j.locked_at,
+          'lockedBy', j.locked_by,
+          'startedAt', j.started_at,
+          'finishedAt', j.finished_at,
+          'createdAt', j.created_at,
+          'updatedAt', j.updated_at
+        ) as job
       `,
       [this.instanceId],
     );
     if (!Array.isArray(rows) || !rows.length) return null;
-    return rows[0] as CustomTableImportJob;
+    const raw = rows[0] as any;
+    if (raw?.job && typeof raw.job === 'object') {
+      return raw.job as CustomTableImportJob;
+    }
+    return raw as CustomTableImportJob;
   }
 
   private async processJob(job: CustomTableImportJob) {
