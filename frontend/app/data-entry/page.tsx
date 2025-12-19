@@ -695,7 +695,7 @@ export default function DataEntryPage() {
       )}
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 flex flex-wrap">
+        <div className="border-b border-gray-100 flex overflow-x-auto">
           {(['cash', 'raw', 'debit', 'credit'] as BaseTabKey[])
             .map((t) => t as TabKey)
             .concat(customFields.map((f) => `field:${f.id}` as CustomFieldTabKey))
@@ -715,7 +715,7 @@ export default function DataEntryPage() {
                       window.setTimeout(() => setCustomFieldHighlight(false), 1200);
                     }
                   }}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0 ${
                     isActive
                       ? 'text-primary border-b-2 border-primary bg-primary/5'
                       : 'text-gray-600 hover:text-primary'

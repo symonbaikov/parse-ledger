@@ -16,6 +16,7 @@ export class CustomTableImportJobsProcessor {
   private readonly logger = new Logger(CustomTableImportJobsProcessor.name);
   private readonly instanceId = process.env.RAILWAY_SERVICE_INSTANCE_ID || process.env.HOSTNAME || uuidv4();
   private running = false;
+  private readonly staleLockMs = Number(process.env.CUSTOM_TABLE_IMPORT_JOB_STALE_LOCK_MS || 10 * 60 * 1000);
 
   constructor(
     @InjectRepository(CustomTableImportJob)
@@ -39,13 +40,60 @@ export class CustomTableImportJobsProcessor {
     }
   }
 
+  private extractJobId(raw: unknown): string | null {
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    const stack: unknown[] = [raw];
+    const seen = new Set<unknown>();
+    let steps = 0;
+
+    while (stack.length && steps < 200) {
+      steps += 1;
+      const current = stack.pop();
+      if (current === null || current === undefined) continue;
+      if (seen.has(current)) continue;
+      seen.add(current);
+
+      if (typeof current === 'string') {
+        if (uuidRe.test(current)) return current;
+        continue;
+      }
+
+      if (Array.isArray(current)) {
+        for (let i = current.length - 1; i >= 0; i -= 1) {
+          stack.push(current[i]);
+        }
+        continue;
+      }
+
+      if (typeof current === 'object') {
+        const obj = current as Record<string, any>;
+        const directId = obj?.id;
+        if (typeof directId === 'string' && uuidRe.test(directId)) return directId;
+
+        const maybeRows = obj?.rows;
+        if (Array.isArray(maybeRows)) stack.push(maybeRows);
+
+        for (const value of Object.values(obj)) {
+          stack.push(value);
+        }
+      }
+    }
+
+    return null;
+  }
+
   private async claimNextJob(): Promise<CustomTableImportJob | null> {
+    const staleBefore = new Date(Date.now() - (Number.isFinite(this.staleLockMs) ? this.staleLockMs : 10 * 60 * 1000));
     const rows = await this.jobRepository.query(
       `
       WITH next_job AS (
         SELECT id
         FROM custom_table_import_jobs
-        WHERE status = 'pending' AND type IS NOT NULL
+        WHERE
+          (status = 'pending' AND type IS NOT NULL)
+          OR (status = 'running' AND locked_by = $1 AND type IS NOT NULL)
+          OR (status = 'running' AND locked_at IS NOT NULL AND locked_at < $2 AND type IS NOT NULL)
         ORDER BY created_at ASC
         LIMIT 1
         FOR UPDATE SKIP LOCKED
@@ -55,20 +103,28 @@ export class CustomTableImportJobsProcessor {
           locked_at = now(),
           locked_by = $1,
           started_at = COALESCE(started_at, now()),
-          stage = COALESCE(stage, 'running')
+          stage = 'running'
       FROM next_job
       WHERE j.id = next_job.id
       RETURNING
         j.id as id
       `,
-      [this.instanceId],
+      [this.instanceId, staleBefore],
     );
-    if (!Array.isArray(rows) || !rows.length) return null;
-    const id = (rows[0] as any)?.id as string | undefined;
+
+    const id = this.extractJobId(rows);
     if (!id) {
-      this.logger.warn(`Claimed job row without id (raw=${JSON.stringify(rows[0])})`);
+      const preview = (() => {
+        try {
+          return JSON.stringify(rows);
+        } catch {
+          return String(rows);
+        }
+      })();
+      this.logger.warn(`Claimed job row without id (raw=${preview})`);
       return null;
     }
+
     const job = await this.jobRepository.findOne({ where: { id } });
     if (!job) {
       this.logger.warn(`Claimed job id=${id} but cannot load it`);

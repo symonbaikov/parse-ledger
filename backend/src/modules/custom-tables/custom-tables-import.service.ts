@@ -631,6 +631,36 @@ export class CustomTablesImportService {
         spreadsheet?.sheets?.find((s: any) => s?.properties?.title === worksheetName) || spreadsheet?.sheets?.[0];
       const dataEntry = sheetEntry?.data?.[0];
       gridRowData = Array.isArray(dataEntry?.rowData) ? dataEntry.rowData : null;
+      const columnMetadata = Array.isArray(dataEntry?.columnMetadata) ? dataEntry.columnMetadata : null;
+
+      if (columnMetadata && columnMetadata.length) {
+        try {
+          const current = table.viewSettings && typeof table.viewSettings === 'object' ? table.viewSettings : {};
+          const viewSettings: Record<string, any> = { ...(current || {}) };
+          const columnsSettings: Record<string, any> = {
+            ...(viewSettings.columns && typeof viewSettings.columns === 'object' ? viewSettings.columns : {}),
+          };
+
+          let changed = false;
+          for (const [colIndex, columnKey] of keyByIndex.entries()) {
+            const width = columnMetadata?.[colIndex]?.pixelSize;
+            if (!(typeof width === 'number' && Number.isFinite(width) && width > 0)) continue;
+            const existing = columnsSettings[columnKey] && typeof columnsSettings[columnKey] === 'object' ? columnsSettings[columnKey] : {};
+            if (existing.width !== width) {
+              columnsSettings[columnKey] = { ...existing, width };
+              changed = true;
+            }
+          }
+
+          if (changed) {
+            viewSettings.columns = columnsSettings;
+            table.viewSettings = viewSettings;
+            await this.customTableRepository.update({ id: table.id }, { viewSettings } as any);
+          }
+        } catch {
+          this.logger.warn(`Google Sheets column width import skipped for tableId=${table.id}`);
+        }
+      }
 
       if (gridRowData && gridRowData.length) {
         const rowLimit = Math.min(gridRowData.length, values.length);

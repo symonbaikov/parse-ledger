@@ -36,6 +36,8 @@ export class CustomTableImportJobsService {
     const update: any = {};
     if (patch.progress !== undefined) update.progress = patch.progress;
     if (patch.stage !== undefined) update.stage = patch.stage;
+    // Heartbeat for stale-lock recovery: keep locked_at fresh while the job is actively reporting progress.
+    update.lockedAt = new Date();
     if (!Object.keys(update).length) return;
     try {
       await this.jobRepository.update({ id: jobId }, update);
@@ -70,4 +72,3 @@ export class CustomTableImportJobsService {
     );
   }
 }
-

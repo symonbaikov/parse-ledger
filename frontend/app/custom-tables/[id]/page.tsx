@@ -13,6 +13,7 @@ import { DayPicker } from 'react-day-picker';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import 'react-day-picker/style.css';
+import { CustomTableAgGrid } from './CustomTableAgGrid';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
 
@@ -93,6 +94,7 @@ export default function CustomTableDetailPage() {
   const [loadingRows, setLoadingRows] = useState(false);
   const [savingCell, setSavingCell] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
+  const [gridFiltersParam, setGridFiltersParam] = useState<string | undefined>(undefined);
 
   const [newColumnOpen, setNewColumnOpen] = useState(false);
   const [newColumn, setNewColumn] = useState<{ title: string; type: ColumnType }>({
@@ -102,6 +104,13 @@ export default function CustomTableDetailPage() {
   const [activeFilterColKey, setActiveFilterColKey] = useState<string | null>(null);
   const [columnFilters, setColumnFilters] = useState<Record<string, any>>({});
   const filterPopoverRef = useRef<HTMLDivElement | null>(null);
+
+  const [dateFrom, setDateFrom] = useState<string | null>(null);
+  const [dateTo, setDateTo] = useState<string | null>(null);
+  const [calendarFromOpen, setCalendarFromOpen] = useState(false);
+  const [calendarToOpen, setCalendarToOpen] = useState(false);
+  const calendarFromRef = useRef<HTMLDivElement | null>(null);
+  const calendarToRef = useRef<HTMLDivElement | null>(null);
 
   const DEFAULT_COLUMN_WIDTH = 180;
   const MIN_COLUMN_WIDTH = 60;
@@ -144,6 +153,33 @@ export default function CustomTableDetailPage() {
     const width = columnWidths[colKey];
     if (typeof width === 'number' && Number.isFinite(width)) return width;
     return DEFAULT_COLUMN_WIDTH;
+  };
+
+  const gridColumnWidths = useMemo(() => {
+    const next: Record<string, number> = {};
+    for (const col of orderedColumns) {
+      next[col.key] = getColumnWidth(col.key);
+    }
+    return next;
+  }, [orderedColumns, columnWidths]);
+
+  const persistColumnWidth = async (colKey: string, width: number) => {
+    if (!tableId) return;
+    const prevWidth = getColumnWidth(colKey);
+    const finalWidth = clampWidth(width);
+    if (Math.abs(finalWidth - prevWidth) < 1) return;
+
+    setColumnWidths((prev) => ({ ...prev, [colKey]: finalWidth }));
+    try {
+      await apiClient.patch(`/custom-tables/${tableId}/view-settings/columns`, {
+        columnKey: colKey,
+        width: finalWidth,
+      });
+    } catch (error) {
+      console.error('Failed to persist column width:', error);
+      toast.error('Не удалось сохранить ширину колонки');
+      setColumnWidths((prev) => ({ ...prev, [colKey]: prevWidth }));
+    }
   };
 
   const isPlainObject = (value: unknown): value is Record<string, any> => {
@@ -259,14 +295,15 @@ export default function CustomTableDetailPage() {
     }
   };
 
-  const loadRows = async (opts?: { reset?: boolean }) => {
+  const loadRows = async (opts?: { reset?: boolean; filtersParam?: string }) => {
     if (!tableId) return;
     if (loadingRows) return;
     setLoadingRows(true);
     try {
       const cursor = opts?.reset ? undefined : rows[rows.length - 1]?.rowNumber;
+      const filters = opts?.filtersParam !== undefined ? opts.filtersParam : gridFiltersParam;
       const response = await apiClient.get(`/custom-tables/${tableId}/rows`, {
-        params: { cursor, limit: 50, filters: filtersParam },
+        params: { cursor, limit: 50, filters },
       });
       const items = response.data?.items || response.data?.data?.items || [];
       const next = Array.isArray(items) ? items : [];
@@ -278,6 +315,13 @@ export default function CustomTableDetailPage() {
     } finally {
       setLoadingRows(false);
     }
+  };
+
+  const onGridFiltersParamChange = (next: string | undefined) => {
+    if (next === gridFiltersParam) return;
+    setGridFiltersParam(next);
+    setRows([]);
+    setHasMore(true);
   };
 
   const requestFilters = useMemo<RowFilter[]>(() => {
@@ -355,13 +399,36 @@ export default function CustomTableDetailPage() {
     [requestFilters],
   );
 
-  const hasActiveFilters = requestFilters.length > 0;
+  const parseDateValue = (value: unknown): Date | null => {
+    if (!value) return null;
+    const raw = typeof value === 'string' ? value : String(value);
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const selectedDateFrom = dateFrom ? (parseDateValue(dateFrom) ?? undefined) : undefined;
+  const selectedDateTo = dateTo ? (parseDateValue(dateTo) ?? undefined) : undefined;
+
+  const formatFilterInputValue = (value: string | null, placeholder: string) => {
+    const parsed = parseDateValue(value);
+    return parsed ? format(parsed, 'dd.MM.yyyy', { locale: ru }) : placeholder;
+  };
+
+  const hasActiveDateFilter = Boolean(dateFrom || dateTo);
+
+  const hasActiveFilters = requestFilters.length > 0 || hasActiveDateFilter;
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
       const target = event.target as Node | null;
       if (filterPopoverRef.current && !filterPopoverRef.current.contains(target)) {
         setActiveFilterColKey(null);
+      }
+      if (calendarFromRef.current && !calendarFromRef.current.contains(target)) {
+        setCalendarFromOpen(false);
+      }
+      if (calendarToRef.current && !calendarToRef.current.contains(target)) {
+        setCalendarToOpen(false);
       }
     };
     document.addEventListener('click', handler);
@@ -374,7 +441,7 @@ export default function CustomTableDetailPage() {
       loadRows({ reset: true });
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [filtersParam, user, tableId]);
+  }, [gridFiltersParam, user, tableId]);
 
   const clearColumnFilter = (colKey: string) => {
     setColumnFilters((prev) => {
@@ -387,6 +454,8 @@ export default function CustomTableDetailPage() {
   const clearAllFilters = () => {
     setActiveFilterColKey(null);
     setColumnFilters({});
+    setDateFrom(null);
+    setDateTo(null);
   };
 
   const activeFilterCols = useMemo(() => new Set(requestFilters.map((f) => f.col)), [requestFilters]);
@@ -624,6 +693,19 @@ export default function CustomTableDetailPage() {
     } finally {
       setSavingCell(null);
     }
+  };
+
+  const updateCellFromGrid = async (rowId: string, columnKey: string, value: any) => {
+    const row = rows.find((r) => r.id === rowId);
+    const column = orderedColumns.find((c) => c.key === columnKey);
+    if (!row || !column) return;
+    await saveCell(row, column, value);
+  };
+
+  const requestDeleteRowFromGrid = (rowId: string) => {
+    const row = rows.find((r) => r.id === rowId);
+    if (!row) return;
+    openDeleteRow(row);
   };
 
   const openDeleteColumn = (column: CustomTableColumn) => {
@@ -872,6 +954,88 @@ export default function CustomTableDetailPage() {
         </div>
       )}
 
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Фильтр по дате</div>
+        <div className="flex flex-wrap gap-2">
+          <div className="relative" ref={calendarFromRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setCalendarFromOpen((v) => !v);
+                setCalendarToOpen(false);
+              }}
+              className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:border-primary hover:bg-primary/5 transition-colors"
+            >
+              {formatFilterInputValue(dateFrom, 'Дата от')}
+            </button>
+            {calendarFromOpen && (
+              <div className="absolute left-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3">
+                <style>{`
+                  .rdp { --rdp-cell-size: 36px; --rdp-accent-color: #0a66c2; --rdp-background-color: #e3f2fd; margin: 0; }
+                  .rdp-button { font-size: 0.875rem; font-weight: 500; }
+                  .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f0f0f0; font-weight: 600; }
+                  .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover { background-color: var(--rdp-accent-color); color: white; font-weight: 700; }
+                  .rdp-head_cell { color: #0a66c2; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; }
+                  .rdp-caption_label { font-weight: 700; color: #191919; font-size: 0.95rem; }
+                  .rdp-nav_button { color: #0a66c2; padding: 4px 6px; border-radius: 6px; }
+                  .rdp-nav_button:hover { background-color: #e3f2fd; color: #0a66c2; }
+                `}</style>
+                <DayPicker
+                  mode="single"
+                  selected={selectedDateFrom}
+                  locale={ru}
+                  onSelect={(date) => {
+                    if (!date) return;
+                    setDateFrom(date.toISOString());
+                    setCalendarFromOpen(false);
+                  }}
+                  fromYear={2000}
+                  toYear={2035}
+                />
+              </div>
+            )}
+          </div>
+          <div className="relative" ref={calendarToRef}>
+            <button
+              type="button"
+              onClick={() => {
+                setCalendarToOpen((v) => !v);
+                setCalendarFromOpen(false);
+              }}
+              className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:border-primary hover:bg-primary/5 transition-colors"
+            >
+              {formatFilterInputValue(dateTo, 'Дата до')}
+            </button>
+            {calendarToOpen && (
+              <div className="absolute left-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3">
+                <style>{`
+                  .rdp { --rdp-cell-size: 36px; --rdp-accent-color: #0a66c2; --rdp-background-color: #e3f2fd; margin: 0; }
+                  .rdp-button { font-size: 0.875rem; font-weight: 500; }
+                  .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f0f0f0; font-weight: 600; }
+                  .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover { background-color: var(--rdp-accent-color); color: white; font-weight: 700; }
+                  .rdp-head_cell { color: #0a66c2; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; }
+                  .rdp-caption_label { font-weight: 700; color: #191919; font-size: 0.95rem; }
+                  .rdp-nav_button { color: #0a66c2; padding: 4px 6px; border-radius: 6px; }
+                  .rdp-nav_button:hover { background-color: #e3f2fd; color: #0a66c2; }
+                `}</style>
+                <DayPicker
+                  mode="single"
+                  selected={selectedDateTo}
+                  locale={ru}
+                  onSelect={(date) => {
+                    if (!date) return;
+                    setDateTo(date.toISOString());
+                    setCalendarToOpen(false);
+                  }}
+                  fromYear={2000}
+                  toYear={2035}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {newColumnOpen && (
         <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
@@ -926,6 +1090,21 @@ export default function CustomTableDetailPage() {
               : 'overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm'
           }
         >
+          <CustomTableAgGrid
+            tableId={tableId as string}
+            columns={orderedColumns}
+            rows={rows}
+            columnWidths={gridColumnWidths}
+            isFullscreen={isFullscreen}
+            loadingRows={loadingRows}
+            hasMore={hasMore}
+            onLoadMore={loadRows}
+            onFiltersParamChange={onGridFiltersParamChange}
+            onUpdateCell={updateCellFromGrid}
+            onDeleteRow={requestDeleteRowFromGrid}
+            onPersistColumnWidth={persistColumnWidth}
+          />
+          {false && (
           <table className="min-w-full text-sm table-fixed">
             <colgroup>
               <col style={{ width: 72 }} />
@@ -985,11 +1164,7 @@ export default function CustomTableDetailPage() {
                         <button
                           type="button"
                           onClick={() => toggleFilterPopover(col.key)}
-                          className={[
-                            'inline-flex items-center justify-center h-7 w-7 rounded-lg border',
-                            isFiltered ? 'border-primary text-primary bg-primary/5' : 'border-gray-200 text-gray-500',
-                            'hover:bg-gray-50',
-                          ].join(' ')}
+                          className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-gray-200 text-gray-500 bg-white hover:bg-white"
                           title="Фильтр"
                         >
                           <Filter className="h-3.5 w-3.5" />
@@ -1002,7 +1177,7 @@ export default function CustomTableDetailPage() {
                           return (
                             <>
                               <div className="fixed inset-0 z-20" onClick={() => setActiveFilterColKey(null)} />
-                              <div className="fixed z-30 w-[340px] max-w-[calc(100vw-32px)] rounded-xl border border-gray-200 bg-white p-4 shadow-2xl" style={{ top: `${top}px`, left: `${left}px` }}>
+                              <div className="fixed z-30 w-[340px] max-w-[calc(100vw-32px)] max-h-[500px] rounded-xl border border-gray-200 bg-white p-4 shadow-2xl overflow-y-auto" style={{ top: `${top}px`, left: `${left}px` }}>
                               <div className="flex items-center justify-between gap-2 mb-4">
                                 <div className="min-w-0">
                                   <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -1190,7 +1365,7 @@ export default function CustomTableDetailPage() {
                       </div>
                       <button
                         onClick={() => openDeleteColumn(col)}
-                        className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-gray-200 text-gray-500 hover:text-red-600 hover:bg-gray-50"
+                        className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-gray-200 text-gray-500 bg-white hover:bg-white"
                         title="Удалить колонку"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -1301,7 +1476,7 @@ export default function CustomTableDetailPage() {
                   <td className="px-3 py-2 text-right">
                     <button
                       onClick={() => openDeleteRow(row)}
-                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-red-600"
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 text-gray-600 bg-white hover:bg-white"
                       title="Удалить строку"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -1312,6 +1487,7 @@ export default function CustomTableDetailPage() {
             )}
             </tbody>
           </table>
+          )}
         </div>
       </div>
 
