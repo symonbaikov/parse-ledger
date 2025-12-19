@@ -380,7 +380,9 @@ export class TelegramService {
   }
 
   private sanitizeFileName(fileName: string): string {
-    return fileName.replace(/[^a-zA-Z0-9_.-]/g, '_');
+    // Allow cyrillic letters (Russian alphabet) and common characters
+    // Remove only truly dangerous characters for file systems
+    return fileName.replace(/[<>:"|?*\/\\]/g, '_');
   }
 
   private async downloadTelegramFile(

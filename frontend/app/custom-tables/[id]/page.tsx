@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Filter, Maximize2, Minimize2, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Copy, Filter, Maximize2, Minimize2, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { Icon } from '@iconify/react';
 import toast from 'react-hot-toast';
 import apiClient from '@/app/lib/api';
@@ -95,6 +95,8 @@ export default function CustomTableDetailPage() {
   const [savingCell, setSavingCell] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [gridFiltersParam, setGridFiltersParam] = useState<string | undefined>(undefined);
+  const [selectedColumnKeys, setSelectedColumnKeys] = useState<string[]>([]);
+  const [bulkDeleteColumnsOpen, setBulkDeleteColumnsOpen] = useState(false);
 
   const [newColumnOpen, setNewColumnOpen] = useState(false);
   const [newColumn, setNewColumn] = useState<{ title: string; type: ColumnType }>({
@@ -128,6 +130,11 @@ export default function CustomTableDetailPage() {
     const cols = table?.columns || [];
     return [...cols].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   }, [table?.columns]);
+
+  useEffect(() => {
+    const allowed = new Set(orderedColumns.map((c) => c.key));
+    setSelectedColumnKeys((prev) => prev.filter((k) => allowed.has(k)));
+  }, [orderedColumns]);
 
   useEffect(() => {
     if (!table) return;
@@ -1103,6 +1110,8 @@ export default function CustomTableDetailPage() {
             onUpdateCell={updateCellFromGrid}
             onDeleteRow={requestDeleteRowFromGrid}
             onPersistColumnWidth={persistColumnWidth}
+            selectedColumnKeys={selectedColumnKeys}
+            onSelectedColumnKeysChange={setSelectedColumnKeys}
           />
           {false && (
           <table className="min-w-full text-sm table-fixed">

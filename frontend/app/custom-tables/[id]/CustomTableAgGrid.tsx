@@ -267,9 +267,107 @@ export function CustomTableAgGrid(props: {
   onUpdateCell: (rowId: string, columnKey: string, value: any) => Promise<void>;
   onDeleteRow: (rowId: string) => void;
   onPersistColumnWidth: (columnKey: string, width: number) => Promise<void>;
+  selectedColumnKeys: string[];
+  onSelectedColumnKeysChange: (keys: string[]) => void;
 }) {
   const gridApiRef = useRef<any>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const columnsByKey = useMemo(() => new Map(props.columns.map((c) => [c.key, c])), [props.columns]);
+  const selectedColSet = useMemo(() => new Set(props.selectedColumnKeys), [props.selectedColumnKeys]);
+
+  const selectionDragRef = useRef<{
+    active: boolean;
+    anchorColId: string | null;
+    lastColId: string | null;
+  }>({ active: false, anchorColId: null, lastColId: null });
+
+  const getSelectableDisplayedColIds = (): string[] => {
+    const api = gridApiRef.current;
+    const cols = api?.getAllDisplayedColumns?.() || [];
+    return (cols as any[])
+      .map((c) => (typeof c?.getColId === 'function' ? c.getColId() : null))
+      .filter((id: any) => typeof id === 'string' && id && !id.startsWith('__'));
+  };
+
+  const applyColumnRangeSelection = (anchor: string, current: string) => {
+    const displayed = getSelectableDisplayedColIds();
+    const a = displayed.indexOf(anchor);
+    const b = displayed.indexOf(current);
+    if (a === -1 || b === -1) return;
+    const start = Math.min(a, b);
+    const end = Math.max(a, b);
+    const next = displayed.slice(start, end + 1);
+    props.onSelectedColumnKeysChange(next);
+  };
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const getHeaderColIdFromTarget = (target: EventTarget | null): string | null => {
+      const el = target as HTMLElement | null;
+      if (!el) return null;
+      const tag = el.tagName?.toLowerCase();
+      if (tag && ['input', 'textarea', 'select', 'button'].includes(tag)) return null;
+      if (el.closest('.ag-floating-filter')) return null;
+      if (el.closest('.ag-header-cell-resize')) return null;
+      const cell = el.closest?.('.ag-header-row.ag-header-row-column .ag-header-cell') as HTMLElement | null;
+      if (!cell) return null;
+      const colId = cell.getAttribute('col-id');
+      if (!colId || colId.startsWith('__')) return null;
+      return colId;
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      const drag = selectionDragRef.current;
+      if (!drag.active || !drag.anchorColId) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const colId = getHeaderColIdFromTarget(el);
+      if (!colId || colId === drag.lastColId) return;
+      drag.lastColId = colId;
+      applyColumnRangeSelection(drag.anchorColId, colId);
+    };
+
+    const stopDrag = () => {
+      const drag = selectionDragRef.current;
+      drag.active = false;
+      drag.anchorColId = null;
+      drag.lastColId = null;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+
+    const onMouseUp = () => stopDrag();
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      const colId = getHeaderColIdFromTarget(e.target);
+      if (!colId) return;
+
+      // Support ctrl/cmd toggle without drag.
+      if (e.ctrlKey || e.metaKey) {
+        const next = new Set(props.selectedColumnKeys);
+        if (next.has(colId)) next.delete(colId);
+        else next.add(colId);
+        props.onSelectedColumnKeysChange(Array.from(next));
+        return;
+      }
+
+      selectionDragRef.current.active = true;
+      selectionDragRef.current.anchorColId = colId;
+      selectionDragRef.current.lastColId = colId;
+      applyColumnRangeSelection(colId, colId);
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    };
+
+    root.addEventListener('mousedown', onMouseDown);
+    return () => {
+      root.removeEventListener('mousedown', onMouseDown);
+      stopDrag();
+    };
+  }, [props.selectedColumnKeys, props.onSelectedColumnKeysChange]);
 
   const headerCssRules = useMemo(() => {
     const lines: string[] = [];
@@ -343,11 +441,13 @@ export function CustomTableAgGrid(props: {
       const baseCellStyle =
         (col.style && typeof col.style === 'object' ? (col.style as any).cell : null) || {};
 
-        defs.push({
-          colId: col.key,
-          headerName: col.title,
-          width: props.columnWidths[col.key],
-          minWidth: 80,
+      defs.push({
+        colId: col.key,
+        headerName: col.title,
+        width: props.columnWidths[col.key],
+        minWidth: 80,
+        headerClass: selectedColSet.has(col.key) ? 'ff-col-selected' : undefined,
+        cellClass: selectedColSet.has(col.key) ? 'ff-col-selected-cell' : undefined,
         valueGetter: (p) => (p.data?.data ? p.data.data[col.key] : null),
         valueSetter: (p) => {
           if (!p.data) return false;
@@ -513,6 +613,7 @@ export function CustomTableAgGrid(props: {
 
   return (
     <div
+      ref={rootRef}
       className={props.isFullscreen ? 'h-full' : undefined}
       style={{ width: '100%', height: props.isFullscreen ? '100%' : '70vh', minHeight: props.isFullscreen ? undefined : 520 }}
     >
@@ -530,6 +631,9 @@ export function CustomTableAgGrid(props: {
           }}
           columnDefs={colDefs}
           defaultColDef={defaultColDef}
+          enableCellTextSelection
+          ensureDomOrder
+          enableRangeSelection
           onGridReady={onGridReady}
           onFilterChanged={onFilterChanged}
           onCellValueChanged={onCellValueChanged}

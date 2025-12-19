@@ -85,7 +85,7 @@ export class StorageController {
     );
 
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
 
     return res.sendFile(filePath);
   }
@@ -106,7 +106,7 @@ export class StorageController {
     );
 
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
 
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
@@ -211,7 +211,7 @@ export class StorageController {
     const mimeType = this.getMimeType(statement.fileType);
 
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
 
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);

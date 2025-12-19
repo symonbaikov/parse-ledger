@@ -116,7 +116,7 @@ export class ReportsController {
 
     // Send file
     res.setHeader('Content-Type', dto.format === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
 
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);

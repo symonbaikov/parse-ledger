@@ -120,7 +120,7 @@ export class StatementsController {
       user.id,
     );
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
     stream.on('error', (err: any) => {
       const status =
         err?.code === 'ENOENT' || err?.code === 'EISDIR'
