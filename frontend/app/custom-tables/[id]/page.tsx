@@ -329,7 +329,7 @@ export default function CustomTableDetailPage() {
     setLoadingRows(true);
     try {
       const cursor = opts?.reset ? undefined : rows[rows.length - 1]?.rowNumber;
-      const filters = opts?.filtersParam !== undefined ? opts.filtersParam : gridFiltersParam;
+      const filters = opts?.filtersParam !== undefined ? opts.filtersParam : combinedFiltersParam;
       const response = await apiClient.get(`/custom-tables/${tableId}/rows`, {
         params: { cursor, limit: 50, filters },
       });
@@ -348,8 +348,13 @@ export default function CustomTableDetailPage() {
   const onGridFiltersParamChange = (next: string | undefined) => {
     if (next === gridFiltersParam) return;
     setGridFiltersParam(next);
-    setRows([]);
-    setHasMore(true);
+  };
+
+  const parseDateValue = (value: unknown): Date | null => {
+    if (!value) return null;
+    const raw = typeof value === 'string' ? value : String(value);
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   };
 
   const requestFilters = useMemo<RowFilter[]>(() => {
@@ -427,12 +432,45 @@ export default function CustomTableDetailPage() {
     [requestFilters],
   );
 
-  const parseDateValue = (value: unknown): Date | null => {
-    if (!value) return null;
-    const raw = typeof value === 'string' ? value : String(value);
-    const parsed = new Date(raw);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  const parseFiltersParam = (raw: string | undefined): RowFilter[] => {
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as RowFilter[]) : [];
+    } catch {
+      return [];
+    }
   };
+
+  const dateFilterColKey = useMemo(() => {
+    const firstDateCol = orderedColumns.find((c) => c.type === 'date');
+    return firstDateCol?.key || null;
+  }, [orderedColumns]);
+
+  const dateFilters = useMemo<RowFilter[]>(() => {
+    if (!dateFilterColKey) return [];
+    const from = parseDateValue(dateFrom);
+    const to = parseDateValue(dateTo);
+    const fromOk = from && !Number.isNaN(from.getTime());
+    const toOk = to && !Number.isNaN(to.getTime());
+    if (!fromOk && !toOk) return [];
+
+    const toIsoDate = (date: Date) => format(date, 'yyyy-MM-dd', { locale: ru });
+
+    if (fromOk && toOk) {
+      return [{ col: dateFilterColKey, op: 'between', value: [toIsoDate(from!), toIsoDate(to!)] }];
+    }
+    if (fromOk) return [{ col: dateFilterColKey, op: 'gte', value: toIsoDate(from!) }];
+    return [{ col: dateFilterColKey, op: 'lte', value: toIsoDate(to!) }];
+  }, [dateFilterColKey, dateFrom, dateTo]);
+
+  const combinedFiltersParam = useMemo(() => {
+    const base = parseFiltersParam(gridFiltersParam);
+    const overrideCols = new Set<string>([...requestFilters.map((f) => f.col), ...dateFilters.map((f) => f.col)]);
+    const baseWithoutOverrides = base.filter((f) => !overrideCols.has(f.col));
+    const merged = [...baseWithoutOverrides, ...requestFilters, ...dateFilters];
+    return merged.length ? JSON.stringify(merged) : undefined;
+  }, [gridFiltersParam, requestFilters, dateFilters]);
 
   const selectedDateFrom = dateFrom ? (parseDateValue(dateFrom) ?? undefined) : undefined;
   const selectedDateTo = dateTo ? (parseDateValue(dateTo) ?? undefined) : undefined;
@@ -465,11 +503,13 @@ export default function CustomTableDetailPage() {
 
   useEffect(() => {
     if (!user || !tableId) return;
+    setRows([]);
+    setHasMore(true);
     const timer = window.setTimeout(() => {
-      loadRows({ reset: true });
+      loadRows({ reset: true, filtersParam: combinedFiltersParam });
     }, 400);
     return () => window.clearTimeout(timer);
-  }, [gridFiltersParam, user, tableId]);
+  }, [combinedFiltersParam, user, tableId]);
 
   const clearColumnFilter = (colKey: string) => {
     setColumnFilters((prev) => {
@@ -697,7 +737,16 @@ export default function CustomTableDetailPage() {
     const toastId = toast.loading('Добавление строки...');
     try {
       const response = await apiClient.post(`/custom-tables/${tableId}/rows`, { data: {} });
-      const created = response.data?.data || response.data;
+      const raw = response.data as any;
+      const created =
+        raw && typeof raw === 'object' && typeof raw.id === 'string' && typeof raw.rowNumber === 'number'
+          ? raw
+          : raw && typeof raw === 'object' && raw.data && typeof raw.data.id === 'string' && typeof raw.data.rowNumber === 'number'
+            ? raw.data
+            : null;
+      if (!created) {
+        throw new Error('Unexpected create row response');
+      }
       setRows((prev) => [...prev, created]);
       toast.success('Строка добавлена', { id: toastId });
     } catch (error) {
@@ -734,6 +783,23 @@ export default function CustomTableDetailPage() {
     const row = rows.find((r) => r.id === rowId);
     if (!row) return;
     openDeleteRow(row);
+  };
+
+  const renameColumnTitleFromGrid = async (columnKey: string, nextTitle: string) => {
+    if (!tableId) return;
+    const col = orderedColumns.find((c) => c.key === columnKey);
+    if (!col) return;
+    const title = nextTitle.trim();
+    if (!title) return;
+    try {
+      await apiClient.patch(`/custom-tables/${tableId}/columns/${col.id}`, { title });
+      await loadTable();
+      toast.success('Название колонки обновлено');
+    } catch (error) {
+      console.error('Failed to rename column:', error);
+      toast.error('Не удалось переименовать колонку');
+      throw error;
+    }
   };
 
   const openDeleteColumn = (column: CustomTableColumn) => {
@@ -1247,6 +1313,7 @@ export default function CustomTableDetailPage() {
             onPersistColumnWidth={persistColumnWidth}
             selectedColumnKeys={selectedColumnKeys}
             onSelectedColumnKeysChange={setSelectedColumnKeys}
+            onRenameColumnTitle={renameColumnTitleFromGrid}
           />
           {false && (
           <table className="min-w-full text-sm table-fixed">

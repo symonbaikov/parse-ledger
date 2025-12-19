@@ -10,6 +10,7 @@ import type {
   ColumnResizedEvent,
   FilterChangedEvent,
   GridReadyEvent,
+  IHeaderParams,
 } from 'ag-grid-community';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
@@ -51,6 +52,76 @@ type RowFilterOp =
 type RowFilter = { col: string; op: RowFilterOp; value?: any };
 
 type CellSelectionRef = { rowId: string; colId: string };
+
+function EditableColumnHeader(
+  params: IHeaderParams & { onRenameColumnTitle?: (columnKey: string, nextTitle: string) => Promise<void> },
+) {
+  const colId = params.column?.getColId?.() || '';
+  const isSystem = !colId || colId.startsWith('__');
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(params.displayName || '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!editing) setValue(params.displayName || '');
+  }, [params.displayName, editing]);
+
+  const startEditing = () => {
+    if (isSystem) return;
+    setEditing(true);
+  };
+
+  const commit = async () => {
+    if (isSystem) return;
+    const next = value.trim();
+    const prev = (params.displayName || '').trim();
+    setEditing(false);
+    if (!next || next === prev) return;
+    if (!params.onRenameColumnTitle) return;
+    try {
+      setSaving(true);
+      await params.onRenameColumnTitle(colId, next);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancel = () => {
+    setEditing(false);
+    setValue(params.displayName || '');
+  };
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => void commit()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            void commit();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancel();
+          }
+        }}
+        className="w-full h-7 rounded-md border border-gray-200 bg-white px-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+      />
+    );
+  }
+
+  return (
+    <div
+      onDoubleClick={startEditing}
+      className={saving ? 'opacity-60' : undefined}
+      title={isSystem ? undefined : 'Двойной клик — переименовать'}
+    >
+      {params.displayName}
+    </div>
+  );
+}
 
 const isPlainObject = (value: unknown): value is Record<string, any> => {
   if (!value || typeof value !== 'object') return false;
@@ -273,6 +344,7 @@ export function CustomTableAgGrid(props: {
   onPersistColumnWidth: (columnKey: string, width: number) => Promise<void>;
   selectedColumnKeys: string[];
   onSelectedColumnKeysChange: (keys: string[]) => void;
+  onRenameColumnTitle: (columnKey: string, nextTitle: string) => Promise<void>;
 }) {
   const gridApiRef = useRef<any>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -404,6 +476,7 @@ export function CustomTableAgGrid(props: {
 
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
+      if (e.detail && e.detail > 1) return;
       const colId = getHeaderColIdFromTarget(e.target);
       if (!colId) return;
 
@@ -571,6 +644,10 @@ export function CustomTableAgGrid(props: {
       defs.push({
         colId: col.key,
         headerName: col.title,
+        headerComponent: EditableColumnHeader as any,
+        headerComponentParams: {
+          onRenameColumnTitle: props.onRenameColumnTitle,
+        },
         width: props.columnWidths[col.key],
         minWidth: 80,
         headerClass: selectedColSet.has(col.key) ? 'ff-col-selected' : undefined,
@@ -659,7 +736,7 @@ export function CustomTableAgGrid(props: {
     });
 
     return defs;
-  }, [props.columns, props.columnWidths, props.onDeleteRow]);
+  }, [props.columns, props.columnWidths, props.onDeleteRow, props.onRenameColumnTitle, selectedColSet, isCellRangeSelected]);
 
   const onGridReady = (event: GridReadyEvent) => {
     gridApiRef.current = event.api as any;
