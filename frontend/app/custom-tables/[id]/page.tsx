@@ -777,7 +777,11 @@ export default function CustomTableDetailPage() {
   };
 
   const renderIconPreview = (iconStr: string) => {
-    if (iconStr.startsWith('http://') || iconStr.startsWith('https://')) {
+    if (
+      iconStr.startsWith('http://') ||
+      iconStr.startsWith('https://') ||
+      iconStr.startsWith('/uploads/')
+    ) {
       return <img src={iconStr} alt="icon" className="h-full w-full object-contain" />;
     }
     return <Icon icon={iconStr} className="h-full w-full" />;
@@ -1177,7 +1181,8 @@ export default function CustomTableDetailPage() {
                         type="button"
                         onClick={() => {
                           triggerColumnIconUpload();
-                          setColumnIconOpen(false);
+                          // Keep input mounted while the OS file picker opens.
+                          setTimeout(() => setColumnIconOpen(false), 0);
                         }}
                         disabled={uploadingColumnIcon}
                         className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-white py-2 text-sm font-semibold hover:bg-primary-hover disabled:opacity-50 transition-all"
@@ -1185,17 +1190,17 @@ export default function CustomTableDetailPage() {
                         {uploadingColumnIcon ? 'Загрузка...' : 'Загрузить иконку'}
                       </button>
                     </div>
-                    <input
-                      ref={columnIconInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleColumnIconFileChange}
-                    />
                   </div>
                 </>
               )}
             </div>
+            <input
+              ref={columnIconInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleColumnIconFileChange}
+            />
             <div className="md:col-span-2 flex gap-2 justify-end">
               <button
                 onClick={() => {

@@ -266,7 +266,7 @@ export default function DataEntryPage() {
     if (tab === 'custom') return tabMeta.custom.icon;
     const fieldId = getFieldId(tab);
     const field = customFields.find((f) => f.id === fieldId);
-    return <Icon icon={field?.icon || 'mdi:tag'} className="h-4 w-4" />;
+    return renderIconPreview(field?.icon || 'mdi:tag', 'h-4 w-4') || null;
   };
 
   const renderIconPreview = (icon: string, className?: string) => {
@@ -834,7 +834,8 @@ export default function DataEntryPage() {
 	                          type="button"
 	                          onClick={() => {
 	                            triggerIconUpload();
-	                            setCustomIconOpen(false);
+	                            // Keep input mounted while the OS file picker opens.
+	                            setTimeout(() => setCustomIconOpen(false), 0);
 	                          }}
 	                          disabled={uploadingIcon}
 	                          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-white py-2 text-sm font-semibold hover:bg-primary-hover disabled:opacity-50 transition-all"
@@ -849,17 +850,17 @@ export default function DataEntryPage() {
 	                          )}
 	                        </button>
 	                      </div>
-	                      <input
-	                        ref={iconInputRef}
-	                        type="file"
-	                        accept="image/*"
-	                        className="hidden"
-	                        onChange={handleIconFileChange}
-	                      />
 	                    </div>
 	                  </>
 	                )}
 	              </div>
+                <input
+                  ref={iconInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleIconFileChange}
+                />
 
 	              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
 	                <div className="flex items-center justify-between mb-2">
@@ -872,7 +873,7 @@ export default function DataEntryPage() {
 	                  {customFields.map((field) => (
 	                    <div key={field.id} className="py-2 flex items-center justify-between">
 	                      <div className="flex items-center gap-2">
-	                        <Icon icon={field.icon || 'mdi:tag'} className="h-5 w-5 text-gray-700" />
+	                        {renderIconPreview(field.icon || 'mdi:tag', 'h-5 w-5 text-gray-700')}
 	                        <span className="text-sm font-semibold text-gray-900">{field.name}</span>
 	                      </div>
 		                      <button
