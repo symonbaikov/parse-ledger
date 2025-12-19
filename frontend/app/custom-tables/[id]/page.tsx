@@ -75,6 +75,23 @@ const COLUMN_TYPES: Array<{ value: ColumnType; label: string }> = [
   { value: 'multi_select', label: 'Мультивыбор' },
 ];
 
+const COLUMN_ICONS = [
+  'mdi:tag',
+  'mdi:briefcase',
+  'mdi:account',
+  'mdi:account-group',
+  'mdi:cash',
+  'mdi:shopping',
+  'mdi:warehouse',
+  'mdi:truck',
+  'mdi:office-building',
+  'mdi:home',
+  'mdi:chart-line',
+  'mdi:file-document-outline',
+  'mdi:calendar',
+  'mdi:star',
+];
+
 export default function CustomTableDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -103,6 +120,10 @@ export default function CustomTableDetailPage() {
     title: '',
     type: 'text',
   });
+  const [newColumnIcon, setNewColumnIcon] = useState<string>('mdi:tag');
+  const [columnIconOpen, setColumnIconOpen] = useState(false);
+  const [uploadingColumnIcon, setUploadingColumnIcon] = useState(false);
+  const columnIconInputRef = useRef<HTMLInputElement | null>(null);
   const [activeFilterColKey, setActiveFilterColKey] = useState<string | null>(null);
   const [columnFilters, setColumnFilters] = useState<Record<string, any>>({});
   const filterPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -755,16 +776,59 @@ export default function CustomTableDetailPage() {
     }
   };
 
+  const renderIconPreview = (iconStr: string) => {
+    if (iconStr.startsWith('http://') || iconStr.startsWith('https://')) {
+      return <img src={iconStr} alt="icon" className="h-full w-full object-contain" />;
+    }
+    return <Icon icon={iconStr} className="h-full w-full" />;
+  };
+
+  const triggerColumnIconUpload = () => {
+    columnIconInputRef.current?.click();
+  };
+
+  const handleColumnIconFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadingColumnIcon(true);
+    const formData = new FormData();
+    formData.append('icon', file);
+    try {
+      const resp = await apiClient.post('/data-entry/custom-fields/icon', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = resp.data?.url || resp.data?.data?.url;
+      if (url) {
+        setNewColumnIcon(url);
+        toast.success('Иконка загружена');
+      } else {
+        throw new Error('URL missing');
+      }
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Не удалось загрузить иконку';
+      toast.error(message);
+    } finally {
+      setUploadingColumnIcon(false);
+      if (columnIconInputRef.current) columnIconInputRef.current.value = '';
+    }
+  };
+
   const createColumn = async () => {
     if (!tableId) return;
     const title = newColumn.title.trim();
     if (!title) return;
     const toastId = toast.loading('Добавление колонки...');
     try {
-      await apiClient.post(`/custom-tables/${tableId}/columns`, { title, type: newColumn.type });
+      await apiClient.post(`/custom-tables/${tableId}/columns`, { 
+        title, 
+        type: newColumn.type,
+        config: { icon: newColumnIcon }
+      });
       toast.success('Колонка добавлена', { id: toastId });
       setNewColumnOpen(false);
       setNewColumn({ title: '', type: 'text' });
+      setNewColumnIcon('mdi:tag');
+      setColumnIconOpen(false);
       await loadTable();
     } catch (error) {
       console.error('Failed to create column:', error);
@@ -1045,8 +1109,8 @@ export default function CustomTableDetailPage() {
 
       {newColumnOpen && (
         <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
-            <div className="md:col-span-3">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+            <div className="md:col-span-2">
               <label className="block text-xs font-semibold text-gray-700 mb-1">Название колонки</label>
               <input
                 value={newColumn.title}
@@ -1069,9 +1133,75 @@ export default function CustomTableDetailPage() {
                 ))}
               </select>
             </div>
-            <div className="md:col-span-1 flex gap-2 justify-end">
+            <div className="md:col-span-1 relative">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Иконка</label>
               <button
-                onClick={() => setNewColumnOpen(false)}
+                type="button"
+                onClick={() => setColumnIconOpen((v) => !v)}
+                className="w-full inline-flex items-center justify-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                title="Выбрать иконку"
+              >
+                <div className="h-4 w-4">
+                  {renderIconPreview(newColumnIcon || 'mdi:tag')}
+                </div>
+                <span className="text-sm font-semibold">Выбрать</span>
+              </button>
+              {columnIconOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setColumnIconOpen(false)} />
+                  <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
+                    <div className="grid grid-cols-7 gap-2 mb-4">
+                      {COLUMN_ICONS.map((icon) => (
+                        <button
+                          key={icon}
+                          type="button"
+                          onClick={() => {
+                            setNewColumnIcon(icon);
+                            setColumnIconOpen(false);
+                          }}
+                          className={`inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors ${
+                            newColumnIcon === icon
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                          }`}
+                          title={icon}
+                        >
+                          <div className="h-5 w-5">
+                            {renderIconPreview(icon)}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="border-t border-gray-100 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerColumnIconUpload();
+                          setColumnIconOpen(false);
+                        }}
+                        disabled={uploadingColumnIcon}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-white py-2 text-sm font-semibold hover:bg-primary-hover disabled:opacity-50 transition-all"
+                      >
+                        {uploadingColumnIcon ? 'Загрузка...' : 'Загрузить иконку'}
+                      </button>
+                    </div>
+                    <input
+                      ref={columnIconInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleColumnIconFileChange}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="md:col-span-2 flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setNewColumnOpen(false);
+                  setColumnIconOpen(false);
+                }}
                 className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Отмена
@@ -1161,7 +1291,9 @@ export default function CustomTableDetailPage() {
                   >
                     <div className="flex items-center gap-2">
                       {typeof columnIcon === 'string' && columnIcon ? (
-                        <Icon icon={columnIcon} className="h-4 w-4 text-gray-600" />
+                        <div className="h-4 w-4">
+                          {renderIconPreview(columnIcon)}
+                        </div>
                       ) : null}
                       <span className="truncate max-w-[260px]" title={col.title}>
                         {col.title}

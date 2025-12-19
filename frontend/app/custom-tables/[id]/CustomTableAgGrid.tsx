@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import type {
+  CellMouseDownEvent,
+  CellMouseOverEvent,
   CellValueChangedEvent,
   ColDef,
   ColumnResizedEvent,
@@ -47,6 +49,8 @@ type RowFilterOp =
   | 'isNotEmpty';
 
 type RowFilter = { col: string; op: RowFilterOp; value?: any };
+
+type CellSelectionRef = { rowId: string; colId: string };
 
 const isPlainObject = (value: unknown): value is Record<string, any> => {
   if (!value || typeof value !== 'object') return false;
@@ -281,6 +285,65 @@ export function CustomTableAgGrid(props: {
     lastColId: string | null;
   }>({ active: false, anchorColId: null, lastColId: null });
 
+  const cellSelectionDragRef = useRef(false);
+  const [selectionAnchor, setSelectionAnchor] = useState<CellSelectionRef | null>(null);
+  const [selectionFocus, setSelectionFocus] = useState<CellSelectionRef | null>(null);
+  const [gridReady, setGridReady] = useState(false);
+
+  const rowIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    props.rows.forEach((row, index) => {
+      map.set(row.id, index);
+    });
+    return map;
+  }, [props.rows]);
+
+  const columnIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    props.columns.forEach((col, index) => {
+      map.set(col.key, index);
+    });
+    return map;
+  }, [props.columns]);
+
+  const selectionBounds = useMemo(() => {
+    if (!selectionAnchor || !selectionFocus) return null;
+    const anchorRow = rowIndexById.get(selectionAnchor.rowId);
+    const focusRow = rowIndexById.get(selectionFocus.rowId);
+    const anchorCol = columnIndexById.get(selectionAnchor.colId);
+    const focusCol = columnIndexById.get(selectionFocus.colId);
+    if (
+      anchorRow === undefined ||
+      focusRow === undefined ||
+      anchorCol === undefined ||
+      focusCol === undefined
+    ) {
+      return null;
+    }
+    return {
+      rowStart: Math.min(anchorRow, focusRow),
+      rowEnd: Math.max(anchorRow, focusRow),
+      colStart: Math.min(anchorCol, focusCol),
+      colEnd: Math.max(anchorCol, focusCol),
+    };
+  }, [selectionAnchor, selectionFocus, rowIndexById, columnIndexById]);
+
+  const isCellRangeSelected = useCallback(
+    (rowId: string | undefined, colId: string | undefined) => {
+      if (!selectionBounds || !rowId || !colId) return false;
+      const rowIndex = rowIndexById.get(rowId);
+      const colIndex = columnIndexById.get(colId);
+      if (rowIndex === undefined || colIndex === undefined) return false;
+      return (
+        rowIndex >= selectionBounds.rowStart &&
+        rowIndex <= selectionBounds.rowEnd &&
+        colIndex >= selectionBounds.colStart &&
+        colIndex <= selectionBounds.colEnd
+      );
+    },
+    [selectionBounds, rowIndexById, columnIndexById],
+  );
+
   const getSelectableDisplayedColIds = (): string[] => {
     const api = gridApiRef.current;
     const cols = api?.getAllDisplayedColumns?.() || [];
@@ -352,7 +415,6 @@ export function CustomTableAgGrid(props: {
         props.onSelectedColumnKeysChange(Array.from(next));
         return;
       }
-
       selectionDragRef.current.active = true;
       selectionDragRef.current.anchorColId = colId;
       selectionDragRef.current.lastColId = colId;
@@ -368,6 +430,71 @@ export function CustomTableAgGrid(props: {
       stopDrag();
     };
   }, [props.selectedColumnKeys, props.onSelectedColumnKeysChange]);
+
+  useEffect(() => {
+    const stopCellDrag = () => {
+      if (cellSelectionDragRef.current) {
+        cellSelectionDragRef.current = false;
+      }
+    };
+    window.addEventListener('mouseup', stopCellDrag);
+    return () => {
+      window.removeEventListener('mouseup', stopCellDrag);
+    };
+  }, []);
+
+  const handleCellMouseDown = useCallback(
+    (event: CellMouseDownEvent<CustomTableGridRow>) => {
+      const rowId = typeof event.data?.id === 'string' ? event.data.id : null;
+      const colId = event.colDef?.colId;
+      if (!rowId || !colId || colId.startsWith('__')) return;
+      if (!columnIndexById.has(colId)) return;
+      const ref = { rowId, colId };
+      setSelectionAnchor(ref);
+      setSelectionFocus((prev) => (prev?.rowId === ref.rowId && prev?.colId === ref.colId ? prev : ref));
+      cellSelectionDragRef.current = true;
+    },
+    [columnIndexById],
+  );
+
+  const handleCellMouseOver = useCallback(
+    (event: CellMouseOverEvent<CustomTableGridRow>) => {
+      if (!cellSelectionDragRef.current) return;
+      const rowId = typeof event.data?.id === 'string' ? event.data.id : null;
+      const colId = event.colDef?.colId;
+      if (!rowId || !colId || colId.startsWith('__')) return;
+      if (!columnIndexById.has(colId)) return;
+      setSelectionFocus((prev) => {
+        if (prev?.rowId === rowId && prev?.colId === colId) return prev;
+        return { rowId, colId };
+      });
+    },
+    [columnIndexById],
+  );
+
+  const handleCellMouseUp = useCallback(() => {
+    if (cellSelectionDragRef.current) {
+      cellSelectionDragRef.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!gridReady) return;
+    const api = gridApiRef.current;
+    if (!api) return;
+    api.addEventListener('cellMouseDown', handleCellMouseDown);
+    api.addEventListener('cellMouseOver', handleCellMouseOver);
+    api.addEventListener('cellMouseUp', handleCellMouseUp);
+    return () => {
+      try {
+        api.removeEventListener('cellMouseDown', handleCellMouseDown);
+        api.removeEventListener('cellMouseOver', handleCellMouseOver);
+        api.removeEventListener('cellMouseUp', handleCellMouseUp);
+      } catch {
+        // ignore after unmount
+      }
+    };
+  }, [gridReady, handleCellMouseDown, handleCellMouseOver, handleCellMouseUp]);
 
   const headerCssRules = useMemo(() => {
     const lines: string[] = [];
@@ -447,7 +574,10 @@ export function CustomTableAgGrid(props: {
         width: props.columnWidths[col.key],
         minWidth: 80,
         headerClass: selectedColSet.has(col.key) ? 'ff-col-selected' : undefined,
-        cellClass: selectedColSet.has(col.key) ? 'ff-col-selected-cell' : undefined,
+        cellClassRules: {
+          'ff-col-selected-cell': () => selectedColSet.has(col.key),
+          'ff-cell-range-selected': (params: any) => isCellRangeSelected(params.data?.id, col.key),
+        },
         valueGetter: (p) => (p.data?.data ? p.data.data[col.key] : null),
         valueSetter: (p) => {
           if (!p.data) return false;
@@ -533,6 +663,7 @@ export function CustomTableAgGrid(props: {
 
   const onGridReady = (event: GridReadyEvent) => {
     gridApiRef.current = event.api as any;
+    setGridReady(true);
   };
 
   const onFilterChanged = (event: FilterChangedEvent) => {
@@ -631,9 +762,8 @@ export function CustomTableAgGrid(props: {
           }}
           columnDefs={colDefs}
           defaultColDef={defaultColDef}
-          enableCellTextSelection
           ensureDomOrder
-          enableRangeSelection
+          rowSelection="multiple"
           onGridReady={onGridReady}
           onFilterChanged={onFilterChanged}
           onCellValueChanged={onCellValueChanged}
