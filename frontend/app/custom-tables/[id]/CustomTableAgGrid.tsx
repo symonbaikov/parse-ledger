@@ -320,7 +320,6 @@ export function CustomTableAgGrid(props: {
       editable: true,
       filter: true,
       floatingFilter: true,
-      suppressMenuHide: false,
     };
   }, []);
 
@@ -344,11 +343,11 @@ export function CustomTableAgGrid(props: {
       const baseCellStyle =
         (col.style && typeof col.style === 'object' ? (col.style as any).cell : null) || {};
 
-      defs.push({
-        colId: col.key,
-        headerName: col.title,
-        width: props.columnWidths[col.key],
-        minWidth: 80,
+        defs.push({
+          colId: col.key,
+          headerName: col.title,
+          width: props.columnWidths[col.key],
+          minWidth: 80,
         valueGetter: (p) => (p.data?.data ? p.data.data[col.key] : null),
         valueSetter: (p) => {
           if (!p.data) return false;
@@ -379,21 +378,21 @@ export function CustomTableAgGrid(props: {
         // Header styles are applied via injected CSS rules (AG Grid ColDef doesn't support inline `headerStyle` in our setup).
         ...(col.type === 'boolean'
           ? {
-              cellRenderer: (p: any) => {
-                const input = document.createElement('input');
-                input.type = 'checkbox';
-                input.disabled = true;
-                input.checked = Boolean(p.value);
-                input.style.pointerEvents = 'none';
-                return input;
-              },
-              editable: true,
+              editable: false,
               filter: 'agSetColumnFilter',
-              valueSetter: (p: any) => {
-                if (!p.data) return false;
-                const v = Boolean(p.newValue);
-                p.data.data = { ...(p.data.data || {}), [col.key]: v };
-                return true;
+              cellRenderer: (p: any) => {
+                const checked = Boolean(p.value);
+                return (
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      p.setValue(Boolean(e.target.checked));
+                    }}
+                    className="h-4 w-4"
+                  />
+                );
               },
             }
           : null),
@@ -410,28 +409,22 @@ export function CustomTableAgGrid(props: {
       editable: false,
       filter: false,
       cellRenderer: (p: any) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.dataset.action = 'delete';
-        btn.title = 'Удалить';
-        btn.textContent = 'Del';
-        btn.style.width = '34px';
-        btn.style.height = '28px';
-        btn.style.border = '1px solid #e5e7eb';
-        btn.style.borderRadius = '8px';
-        btn.style.background = '#fff';
-        btn.style.color = '#6b7280';
-        btn.style.fontSize = '12px';
-        btn.style.lineHeight = '1';
-        btn.style.cursor = 'pointer';
-        return btn;
-      },
-      onCellClicked: (e: any) => {
-        const target = e.event?.target as HTMLElement | null;
-        const btn = target?.closest?.('button[data-action="delete"]') as HTMLButtonElement | null;
-        if (!btn) return;
-        const rowId = e.data?.id;
-        if (typeof rowId === 'string' && rowId) props.onDeleteRow(rowId);
+        const rowId = p.data?.id;
+        const canDelete = typeof rowId === 'string' && rowId.length > 0;
+        return (
+          <button
+            type="button"
+            title="Удалить"
+            disabled={!canDelete}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (canDelete) props.onDeleteRow(rowId);
+            }}
+            className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 disabled:opacity-50"
+          >
+            Del
+          </button>
+        );
       },
     });
 
@@ -498,7 +491,9 @@ export function CustomTableAgGrid(props: {
 
     const onScroll = () => {
       if (props.loadingRows || !props.hasMore) return;
-      const last = api.getLastDisplayedRow?.();
+      const last =
+        api.getLastDisplayedRowIndex?.() ??
+        api.getLastDisplayedRow?.();
       if (typeof last !== 'number') return;
       if (last >= props.rows.length - 10) {
         props.onLoadMore({ reset: false });
@@ -507,7 +502,12 @@ export function CustomTableAgGrid(props: {
 
     api.addEventListener?.('bodyScroll', onScroll);
     return () => {
-      api.removeEventListener?.('bodyScroll', onScroll);
+      try {
+        if (typeof api.isDestroyed === 'function' && api.isDestroyed()) return;
+        api.removeEventListener?.('bodyScroll', onScroll);
+      } catch {
+        // ignore (grid might already be destroyed)
+      }
     };
   }, [props.loadingRows, props.hasMore, props.rows.length, props.onLoadMore]);
 
@@ -520,7 +520,14 @@ export function CustomTableAgGrid(props: {
         {headerCssRules ? <style>{headerCssRules}</style> : null}
         <AgGridReact<CustomTableGridRow>
           rowData={props.rows}
-          getRowId={(p) => p.data.id}
+          getRowId={(p) => {
+            const id = (p.data as any)?.id;
+            if (typeof id === 'string' && id.trim()) return id;
+            const rowNumber = (p.data as any)?.rowNumber;
+            if (typeof rowNumber === 'number' && Number.isFinite(rowNumber)) return `row_${rowNumber}`;
+            const idx = (p as any)?.rowIndex ?? (p as any)?.node?.rowIndex ?? 0;
+            return `row_${idx}`;
+          }}
           columnDefs={colDefs}
           defaultColDef={defaultColDef}
           onGridReady={onGridReady}
@@ -528,7 +535,6 @@ export function CustomTableAgGrid(props: {
           onCellValueChanged={onCellValueChanged}
           onColumnResized={onColumnResized}
           animateRows={false}
-          suppressRowClickSelection={true}
           headerHeight={42}
           rowHeight={38}
           domLayout="normal"
