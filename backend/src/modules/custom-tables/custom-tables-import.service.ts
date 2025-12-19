@@ -600,10 +600,12 @@ export class CustomTablesImportService {
     const baseStyleByIndex = new Map<number, SheetCellStyle>();
 
     try {
-      const grid = await this.googleSheetsApiService.getGridData(sheet.accessToken, sheet.refreshToken, sheet.sheetId, effectiveRange, {
-        fields:
-          'sheets(properties(title),data(startRow,startColumn,rowData(values(userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,numberFormat(type,pattern),textFormat(bold,italic,underline,strikethrough,fontFamily,fontSize,foregroundColor))))))',
-      });
+      const grid = await this.googleSheetsApiService.getGridData(
+        sheet.accessToken,
+        sheet.refreshToken,
+        sheet.sheetId,
+        effectiveRange,
+      );
 
       if (grid.accessToken !== sheet.accessToken) {
         sheet.accessToken = grid.accessToken;
