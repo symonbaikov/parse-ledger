@@ -953,19 +953,19 @@ export class CustomTablesService {
       if (!rows.length) return rows;
 
       try {
-        const rowNumbers = rows.map((r) => r.rowNumber);
+        const rowIds = rows.map((r) => r.id);
         const styles = await this.customTableCellStyleRepository.find({
-          where: { tableId, rowNumber: In(rowNumbers) },
-          select: ['rowNumber', 'columnKey', 'style'],
+          where: { rowId: In(rowIds) },
+          select: ['rowId', 'columnKey', 'style'],
         });
-        const byRow = new Map<number, Record<string, any>>();
+        const byRow = new Map<string, Record<string, any>>();
         for (const s of styles) {
-          const current = byRow.get(s.rowNumber) || {};
+          const current = byRow.get(s.rowId) || {};
           current[s.columnKey] = s.style;
-          byRow.set(s.rowNumber, current);
+          byRow.set(s.rowId, current);
         }
         rows.forEach((row) => {
-          (row as any).styles = byRow.get(row.rowNumber) || {};
+          (row as any).styles = byRow.get(row.id) || {};
         });
       } catch (error) {
         this.logger.warn(`Failed to load cell styles for tableId=${tableId}`);

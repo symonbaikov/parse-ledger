@@ -725,6 +725,23 @@ export class CustomTablesImportService {
       usedRange: effectiveRange,
     });
 
+    let rowIdByRowNumber = new Map<number, string>();
+    try {
+      if (rowsToInsert.length) {
+        const minRow = rowsToInsert[0].rowNumber;
+        const maxRow = rowsToInsert[rowsToInsert.length - 1].rowNumber;
+        const existingRows = await this.customTableRowRepository
+          .createQueryBuilder('r')
+          .select(['r.id', 'r.rowNumber'])
+          .where('r.tableId = :tableId', { tableId: table.id })
+          .andWhere('r.rowNumber BETWEEN :minRow AND :maxRow', { minRow, maxRow })
+          .getMany();
+        rowIdByRowNumber = new Map(existingRows.map((r) => [r.rowNumber, r.id]));
+      }
+    } catch (error) {
+      this.logger.warn(`Failed to build rowId map for tableId=${table.id}`);
+    }
+
     if (gridRowData && gridRowData.length && keyByIndex.size) {
       try {
         const cellStyleEntities: CustomTableCellStyle[] = [];
@@ -732,6 +749,8 @@ export class CustomTablesImportService {
 
         for (let rowIdx = dataStartIndex; rowIdx < rowLimit; rowIdx += 1) {
           const rowNumber = bounds.startRow + rowIdx;
+          const rowId = rowIdByRowNumber.get(rowNumber);
+          if (!rowId) continue;
           for (const [colIndex, columnKey] of keyByIndex.entries()) {
             const baseStyle = baseStyleByIndex.get(colIndex) || {};
             const format = gridRowData?.[rowIdx]?.values?.[colIndex]?.userEnteredFormat;
@@ -740,8 +759,7 @@ export class CustomTablesImportService {
             if (Object.keys(patch).length === 0) continue;
             cellStyleEntities.push(
               this.customTableCellStyleRepository.create({
-                tableId: table.id,
-                rowNumber,
+                rowId,
                 columnKey,
                 style: patch,
               }),

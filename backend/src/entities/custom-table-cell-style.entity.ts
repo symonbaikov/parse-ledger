@@ -1,17 +1,14 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('custom_table_cell_styles')
-@Index('IDX_custom_table_cell_styles_table_id', ['tableId'])
-@Index('IDX_custom_table_cell_styles_table_row_col_unique', ['tableId', 'rowNumber', 'columnKey'], { unique: true })
+@Index('IDX_custom_table_cell_styles_row_id', ['rowId'])
+@Index('IDX_custom_table_cell_styles_row_id_column_key_unique', ['rowId', 'columnKey'], { unique: true })
 export class CustomTableCellStyle {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'table_id', type: 'uuid' })
-  tableId: string;
-
-  @Column({ name: 'row_number', type: 'int' })
-  rowNumber: number;
+  @Column({ name: 'row_id', type: 'uuid' })
+  rowId: string;
 
   @Column({ name: 'column_key', type: 'varchar' })
   columnKey: string;
@@ -25,4 +22,3 @@ export class CustomTableCellStyle {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-
