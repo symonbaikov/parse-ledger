@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { Category } from '../../entities/category.entity';
 import { CustomTable } from '../../entities/custom-table.entity';
+import { CustomTableImportJob } from '../../entities/custom-table-import-job.entity';
 import { CustomTableCellStyle } from '../../entities/custom-table-cell-style.entity';
 import { CustomTableColumn } from '../../entities/custom-table-column.entity';
 import { CustomTableColumnStyle } from '../../entities/custom-table-column-style.entity';
@@ -12,6 +13,8 @@ import { DataEntryCustomField } from '../../entities/data-entry-custom-field.ent
 import { GoogleSheet } from '../../entities/google-sheet.entity';
 import { GoogleSheetsModule } from '../google-sheets/google-sheets.module';
 import { CustomTablesController } from './custom-tables.controller';
+import { CustomTableImportJobsProcessor } from './custom-table-import-jobs.processor';
+import { CustomTableImportJobsService } from './custom-table-import-jobs.service';
 import { CustomTablesImportService } from './custom-tables-import.service';
 import { CustomTablesService } from './custom-tables.service';
 
@@ -19,6 +22,7 @@ import { CustomTablesService } from './custom-tables.service';
   imports: [
     TypeOrmModule.forFeature([
       CustomTable,
+      CustomTableImportJob,
       CustomTableColumnStyle,
       CustomTableColumn,
       CustomTableRow,
@@ -32,7 +36,7 @@ import { CustomTablesService } from './custom-tables.service';
     GoogleSheetsModule,
   ],
   controllers: [CustomTablesController],
-  providers: [CustomTablesService, CustomTablesImportService],
-  exports: [CustomTablesService],
+  providers: [CustomTablesService, CustomTablesImportService, CustomTableImportJobsService, CustomTableImportJobsProcessor],
+  exports: [CustomTablesService, CustomTableImportJobsService],
 })
 export class CustomTablesModule {}

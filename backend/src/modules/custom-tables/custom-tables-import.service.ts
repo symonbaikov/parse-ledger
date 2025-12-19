@@ -486,7 +486,20 @@ export class CustomTablesImportService {
     });
   }
 
-  async commitGoogleSheets(userId: string, dto: GoogleSheetsImportCommitDto) {
+  async executeGoogleSheetsCommit(
+    userId: string,
+    dto: GoogleSheetsImportCommitDto,
+    opts?: { onProgress?: (progress: number, stage?: string) => void | Promise<void> },
+  ) {
+    const report = async (progress: number, stage?: string) => {
+      try {
+        await opts?.onProgress?.(Math.max(0, Math.min(100, Math.floor(progress))), stage);
+      } catch {
+        // ignore
+      }
+    };
+
+    await report(1, 'reading_values');
     const sheet = await this.requireGoogleSheet(userId, dto.googleSheetId);
     const worksheetName = await this.resolveWorksheetName(sheet, dto.worksheetName);
     const range = this.buildRange(worksheetName, dto.range);
@@ -529,6 +542,7 @@ export class CustomTablesImportService {
       throw new BadRequestException('Нужно выбрать хотя бы одну колонку для импорта');
     }
 
+    await report(5, 'creating_table');
     const categoryId =
       dto.categoryId === null || dto.categoryId === undefined
         ? null
@@ -673,6 +687,7 @@ export class CustomTablesImportService {
     }
 
     if (!dto.importData) {
+      await report(100, 'done');
       return {
         tableId: table.id,
         columnsCreated: createdColumns.length,
@@ -681,6 +696,7 @@ export class CustomTablesImportService {
       };
     }
 
+    await report(10, 'importing_rows');
     const dataStartIndex = safeHeaderIndex + 1;
     const rowsToInsert = [];
     for (let rowIdx = dataStartIndex; rowIdx < values.length; rowIdx += 1) {
@@ -697,24 +713,29 @@ export class CustomTablesImportService {
           data[key] = null;
         }
       }
-      rowsToInsert.push(
-        this.customTableRowRepository.create({
-          tableId: table.id,
-          rowNumber: sourceRowNumber,
-          data,
-        }),
-      );
+      rowsToInsert.push({
+        tableId: table.id,
+        rowNumber: sourceRowNumber,
+        data,
+      });
     }
 
     const chunkSize = 500;
     for (let i = 0; i < rowsToInsert.length; i += chunkSize) {
       const chunk = rowsToInsert.slice(i, i + chunkSize);
       try {
-        await this.customTableRowRepository.save(chunk);
+        await this.customTableRowRepository
+          .createQueryBuilder()
+          .insert()
+          .into(CustomTableRow)
+          .values(chunk)
+          .execute();
       } catch (error) {
         this.throwHelpfulSchemaError(error);
       }
       this.logger.log(`Imported rows ${i + 1}-${Math.min(i + chunkSize, rowsToInsert.length)} for table ${table.id}`);
+      const fraction = rowsToInsert.length ? Math.min(1, (i + chunk.length) / rowsToInsert.length) : 1;
+      await report(10 + fraction * 70, 'importing_rows');
     }
 
     await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
@@ -725,6 +746,7 @@ export class CustomTablesImportService {
       usedRange: effectiveRange,
     });
 
+    await report(82, 'loading_styles');
     let rowIdByRowNumber = new Map<number, string>();
     try {
       if (rowsToInsert.length) {
@@ -744,8 +766,22 @@ export class CustomTablesImportService {
 
     if (gridRowData && gridRowData.length && keyByIndex.size) {
       try {
-        const cellStyleEntities: CustomTableCellStyle[] = [];
         const rowLimit = Math.min(gridRowData.length, values.length);
+        const cellCount = Math.max(0, rowLimit - dataStartIndex) * keyByIndex.size;
+        const MAX_CELL_STYLE_INSERTS = 50_000;
+        if (cellCount > MAX_CELL_STYLE_INSERTS) {
+          this.logger.warn(
+            `Google Sheets cell style import skipped for tableId=${table.id} (cells=${cellCount} > ${MAX_CELL_STYLE_INSERTS})`,
+          );
+          return {
+            tableId: table.id,
+            columnsCreated: createdColumns.length,
+            rowsCreated: rowsToInsert.length,
+            usedRange: { a1: effectiveRange, rowsCount, colsCount },
+          };
+        }
+
+        const cellStyleEntities: CustomTableCellStyle[] = [];
 
         for (let rowIdx = dataStartIndex; rowIdx < rowLimit; rowIdx += 1) {
           const rowNumber = bounds.startRow + rowIdx;
@@ -757,13 +793,7 @@ export class CustomTablesImportService {
             const actualStyle = extractSheetStyle(format);
             const patch = diffStyle(baseStyle, actualStyle);
             if (Object.keys(patch).length === 0) continue;
-            cellStyleEntities.push(
-              this.customTableCellStyleRepository.create({
-                rowId,
-                columnKey,
-                style: patch,
-              }),
-            );
+            cellStyleEntities.push({ id: uuidv4(), rowId, columnKey, style: patch } as any);
           }
         }
 
@@ -771,21 +801,33 @@ export class CustomTablesImportService {
         for (let i = 0; i < cellStyleEntities.length; i += chunkSizeStyles) {
           const chunk = cellStyleEntities.slice(i, i + chunkSizeStyles);
           try {
-            await this.customTableCellStyleRepository.save(chunk);
+            await this.customTableCellStyleRepository
+              .createQueryBuilder()
+              .insert()
+              .into(CustomTableCellStyle)
+              .values(chunk as any)
+              .execute();
           } catch (error) {
             this.throwHelpfulSchemaError(error);
           }
+          const fraction = cellStyleEntities.length ? Math.min(1, (i + chunk.length) / cellStyleEntities.length) : 1;
+          await report(85 + fraction * 10, 'saving_styles');
         }
       } catch (error) {
         this.logger.warn(`Google Sheets cell style import failed for tableId=${table.id}: ${error instanceof Error ? error.message : 'unknown error'}`);
       }
     }
 
+    await report(100, 'done');
     return {
       tableId: table.id,
       columnsCreated: createdColumns.length,
       rowsCreated: rowsToInsert.length,
       usedRange: { a1: effectiveRange, rowsCount, colsCount },
     };
+  }
+
+  async commitGoogleSheets(userId: string, dto: GoogleSheetsImportCommitDto) {
+    return this.executeGoogleSheetsCommit(userId, dto);
   }
 }

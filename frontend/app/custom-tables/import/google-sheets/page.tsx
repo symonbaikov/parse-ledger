@@ -70,6 +70,11 @@ export default function GoogleSheetsImportPage() {
 
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [committing, setCommitting] = useState(false);
+  const [jobId, setJobId] = useState('');
+  const [jobStatus, setJobStatus] = useState('');
+  const [jobProgress, setJobProgress] = useState(0);
+  const [jobStage, setJobStage] = useState('');
+  const [jobError, setJobError] = useState('');
 
   const selectedConnection = useMemo(
     () => connections.find((c) => c.id === googleSheetId) || null,
@@ -173,13 +178,17 @@ export default function GoogleSheetsImportPage() {
       });
 
       const result = response.data?.data || response.data;
-      const tableId = result?.tableId;
-      toast.success('Импорт завершён');
-      if (tableId) {
-        router.push(`/custom-tables/${tableId}`);
+      const nextJobId = result?.jobId;
+      if (!nextJobId) {
+        toast.error('Не удалось запустить импорт');
         return;
       }
-      router.push('/custom-tables');
+      setJobId(nextJobId);
+      setJobStatus('pending');
+      setJobProgress(0);
+      setJobStage('queued');
+      setJobError('');
+      toast.success('Импорт запущен');
     } catch (error: any) {
       console.error('Commit failed:', error);
       const message = error?.response?.data?.message || 'Не удалось выполнить импорт';
@@ -188,6 +197,53 @@ export default function GoogleSheetsImportPage() {
       setCommitting(false);
     }
   };
+
+  useEffect(() => {
+    if (!jobId) return;
+    let cancelled = false;
+    let timer: number | null = null;
+
+    const poll = async () => {
+      try {
+        const response = await apiClient.get(`/custom-tables/import/jobs/${jobId}`);
+        const payload = response.data?.data || response.data;
+        if (cancelled) return;
+
+        const status = String(payload?.status || '');
+        setJobStatus(status);
+        setJobProgress(typeof payload?.progress === 'number' ? payload.progress : 0);
+        setJobStage(String(payload?.stage || ''));
+        setJobError(String(payload?.error || ''));
+
+        if (status === 'done') {
+          const tableId = payload?.result?.tableId;
+          toast.success('Импорт завершён');
+          if (tableId) {
+            router.push(`/custom-tables/${tableId}`);
+          } else {
+            router.push('/custom-tables');
+          }
+          return;
+        }
+
+        if (status === 'failed') {
+          toast.error(payload?.error || 'Импорт завершился с ошибкой');
+          return;
+        }
+      } catch (error) {
+        if (cancelled) return;
+        console.error('Job poll failed:', error);
+      }
+
+      timer = window.setTimeout(poll, 1500);
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [jobId, router]);
 
   if (authLoading) {
     return (
@@ -381,12 +437,28 @@ export default function GoogleSheetsImportPage() {
 
             <button
               onClick={handleCommit}
-              disabled={!canCommit || committing}
+              disabled={!canCommit || committing || Boolean(jobId)}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {committing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              Импортировать
+              {jobId ? 'Импорт выполняется…' : 'Импортировать'}
             </button>
+            {jobId ? (
+              <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-semibold text-gray-900">Прогресс</div>
+                  <div className="text-sm font-semibold text-gray-700">{Math.round(jobProgress)}%</div>
+                </div>
+                <div className="mt-2 h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+                  <div className="h-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, jobProgress))}%` }} />
+                </div>
+                <div className="mt-2 text-xs text-gray-600">
+                  Статус: <span className="font-medium">{jobStatus || '—'}</span>{' '}
+                  {jobStage ? <span className="text-gray-500">({jobStage})</span> : null}
+                </div>
+                {jobError ? <div className="mt-2 text-xs text-red-600 break-words">{jobError}</div> : null}
+              </div>
+            ) : null}
             {!preview && (
               <div className="mt-2 text-xs text-gray-500">Сначала сделайте превью.</div>
             )}

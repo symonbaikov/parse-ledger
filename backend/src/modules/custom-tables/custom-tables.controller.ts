@@ -27,6 +27,7 @@ import { BatchCreateCustomTableRowsDto } from './dto/batch-create-custom-table-r
 import { CustomTablesImportService } from './custom-tables-import.service';
 import { GoogleSheetsImportPreviewDto } from './dto/google-sheets-import-preview.dto';
 import { GoogleSheetsImportCommitDto } from './dto/google-sheets-import-commit.dto';
+import { CustomTableImportJobsService } from './custom-table-import-jobs.service';
 import { CreateCustomTableFromDataEntryDto } from './dto/create-custom-table-from-data-entry.dto';
 import { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
 import { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
@@ -38,6 +39,7 @@ export class CustomTablesController {
   constructor(
     private readonly customTablesService: CustomTablesService,
     private readonly customTablesImportService: CustomTablesImportService,
+    private readonly importJobsService: CustomTableImportJobsService,
   ) {}
 
   @Post()
@@ -59,7 +61,25 @@ export class CustomTablesController {
 
   @Post('import/google-sheets/commit')
   async commitGoogleSheets(@CurrentUser() user: User, @Body() dto: GoogleSheetsImportCommitDto) {
-    return this.customTablesImportService.commitGoogleSheets(user.id, dto);
+    const job = await this.importJobsService.createGoogleSheetsJob(user.id, dto as any);
+    return { jobId: job.id };
+  }
+
+  @Get('import/jobs/:jobId')
+  async getImportJob(@CurrentUser() user: User, @Param('jobId') jobId: string) {
+    const job = await this.importJobsService.getJobForUser(user.id, jobId);
+    return {
+      id: job.id,
+      type: job.type,
+      status: job.status,
+      progress: job.progress,
+      stage: job.stage,
+      result: job.result,
+      error: job.error,
+      createdAt: job.createdAt,
+      startedAt: job.startedAt,
+      finishedAt: job.finishedAt,
+    };
   }
 
   @Post('from-data-entry')
