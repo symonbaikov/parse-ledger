@@ -112,23 +112,6 @@ export default function Navigation() {
                   </Link>
                 );
               })}
-              
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  className={`
-                    group inline-flex flex-col items-center justify-center px-3 pt-1 border-b-2 text-xs font-medium min-w-[64px] transition-colors duration-200
-                    ${pathname?.startsWith('/admin')
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-secondary hover:text-primary'}
-                  `}
-                >
-                  <span className="mb-1 group-hover:scale-110 transition-transform duration-200">
-                    <Shield size={20} />
-                  </span>
-                  <span className="hidden lg:block">Админка</span>
-                </Link>
-              )}
             </nav>
           </div>
 
@@ -174,6 +157,16 @@ export default function Navigation() {
                     <Plug size={16} className="mr-2" />
                     Интеграции
                   </Link>
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <Shield size={16} className="mr-2" />
+                      Админка
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       setUserMenuOpen(false);
@@ -222,21 +215,6 @@ export default function Navigation() {
                 {item.label}
               </Link>
             ))}
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className={`
-                  flex items-center pl-3 pr-4 py-2 border-l-4 text-base font-medium
-                  ${pathname?.startsWith('/admin')
-                    ? 'bg-blue-50 border-primary text-primary'
-                    : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'}
-                `}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <span className="mr-3"><Shield size={20} /></span>
-                Админ-панель
-              </Link>
-            )}
           </div>
         </div>
       )}
