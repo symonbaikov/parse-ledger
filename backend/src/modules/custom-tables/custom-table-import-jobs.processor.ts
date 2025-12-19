@@ -59,32 +59,22 @@ export class CustomTableImportJobsProcessor {
       FROM next_job
       WHERE j.id = next_job.id
       RETURNING
-        json_build_object(
-          'id', j.id,
-          'userId', j.user_id,
-          'type', j.type,
-          'status', j.status,
-          'progress', j.progress,
-          'stage', j.stage,
-          'payload', j.payload,
-          'result', j.result,
-          'error', j.error,
-          'lockedAt', j.locked_at,
-          'lockedBy', j.locked_by,
-          'startedAt', j.started_at,
-          'finishedAt', j.finished_at,
-          'createdAt', j.created_at,
-          'updatedAt', j.updated_at
-        ) as job
+        j.id as id
       `,
       [this.instanceId],
     );
     if (!Array.isArray(rows) || !rows.length) return null;
-    const raw = rows[0] as any;
-    if (raw?.job && typeof raw.job === 'object') {
-      return raw.job as CustomTableImportJob;
+    const id = (rows[0] as any)?.id as string | undefined;
+    if (!id) {
+      this.logger.warn(`Claimed job row without id (raw=${JSON.stringify(rows[0])})`);
+      return null;
     }
-    return raw as CustomTableImportJob;
+    const job = await this.jobRepository.findOne({ where: { id } });
+    if (!job) {
+      this.logger.warn(`Claimed job id=${id} but cannot load it`);
+      return null;
+    }
+    return job;
   }
 
   private async processJob(job: CustomTableImportJob) {
