@@ -343,7 +343,7 @@ export default function StatementsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header / CTA Section */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -429,8 +429,8 @@ export default function StatementsPage() {
                            {getFileIcon(statement.fileType)}
                         </div>
                         <div className="ml-4 min-w-0 flex-1">
-                          <div className="text-base font-semibold text-gray-900 truncate group-hover:text-primary transition-colors">
-                            {statement.fileName}
+                          <div className="text-base font-semibold text-gray-900 truncate group-hover:text-primary transition-colors" title={statement.fileName}>
+                            {statement.fileName.length > 20 ? statement.fileName.substring(0, 20) + '...' : statement.fileName}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">

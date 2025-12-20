@@ -541,7 +541,7 @@ export default function ReportsPage() {
             onClick={() => setTab('sheets')}
             className={`rounded-md border px-4 py-2 text-sm font-semibold transition-colors ${
               tab === 'sheets'
-                ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                ? 'border-primary bg-primary text-white shadow-sm'
                 : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
             }`}
           >
@@ -551,7 +551,7 @@ export default function ReportsPage() {
             onClick={() => setTab('local')}
             className={`rounded-md border px-4 py-2 text-sm font-semibold transition-colors ${
               tab === 'local'
-                ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                ? 'border-primary bg-primary text-white shadow-sm'
                 : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
             }`}
           >
@@ -561,7 +561,7 @@ export default function ReportsPage() {
             onClick={() => setTab('statements')}
             className={`rounded-md border px-4 py-2 text-sm font-semibold transition-colors ${
               tab === 'statements'
-                ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                ? 'border-primary bg-primary text-white shadow-sm'
                 : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
             }`}
           >

@@ -631,7 +631,7 @@ export default function DataEntryPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-full bg-primary/10 text-primary">

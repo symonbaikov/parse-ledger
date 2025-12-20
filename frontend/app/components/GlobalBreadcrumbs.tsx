@@ -51,7 +51,7 @@ export default function GlobalBreadcrumbs() {
 
   return (
     <div data-global-breadcrumbs className="bg-white/70 backdrop-blur-sm border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <Breadcrumbs items={items} />
       </div>
     </div>

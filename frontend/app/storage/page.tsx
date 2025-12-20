@@ -291,104 +291,112 @@ export default function StoragePage() {
     !!filters.status || !!filters.bank || !!filters.categoryId || !!filters.ownership;
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth={false} sx={{ mt: 4, mb: 4, px: { xs: 2, md: 4, lg: 8 } }}>
       {/* Header Section */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" component="h1" fontWeight="700" sx={{ mb: 1, color: '#191919' }}>
-          Хранилище
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Управляйте загруженными файлами и документами
-        </Typography>
+      <Box sx={{ mb: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Box>
+          <Typography variant="h5" sx={{ mb: 1, color: '#111827', fontWeight: 600, letterSpacing: '-0.01em' }}>
+            Хранилище
+          </Typography>
+          <Typography variant="body2" sx={{ color: '#6B7280', maxWidth: 600 }}>
+            Управляйте загруженными файлами и документами
+          </Typography>
+        </Box>
+        {/* Potentially add a primary action button here if needed in future */}
       </Box>
 
       {/* Main Content Card */}
       <Paper 
         elevation={0} 
         sx={{ 
-          p: 0, 
           borderRadius: 3, 
-          border: '1px solid #e0e0e0',
+          border: '1px solid #F3F4F6',
           overflow: 'hidden',
-          bgcolor: 'white'
+          bgcolor: 'white',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px 0 rgba(0, 0, 0, 0.01)'
         }}
       >
         {/* Controls Bar */}
-        <Box sx={{ p: 2, display: 'flex', gap: 2, borderBottom: '1px solid #e0e0e0', alignItems: 'center' }}>
+        <Box sx={{ p: 2.5, display: 'flex', gap: 2, borderBottom: '1px solid #F3F4F6', alignItems: 'center' }}>
           <TextField
-            fullWidth
-            placeholder="Поиск по файлам, банкам..."
+            placeholder="Поиск по файлам..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             size="small"
+            sx={{
+                width: 320,
+                '& .MuiOutlinedInput-root': {
+                    bgcolor: '#F9FAFB',
+                    borderRadius: 2,
+                    fontSize: '0.875rem',
+                    '& fieldset': { border: '1px solid transparent', transition: 'all 0.2s' },
+                    '&:hover fieldset': { borderColor: '#E5E7EB' },
+                    '&.Mui-focused fieldset': { borderColor: '#E5E7EB', borderWidth: 1, boxShadow: '0 0 0 2px rgba(243, 244, 246, 0.5)' },
+                },
+                '& .MuiOutlinedInput-input': { py: 1.25 }
+            }}
             InputProps={{
               startAdornment: (
-                <InputAdornment position="start">
-                  <Search size={18} className="text-gray-500" />
+                <InputAdornment position="start" sx={{ mr: 1, color: '#9CA3AF' }}>
+                  <Search size={18} />
                 </InputAdornment>
               ),
-              sx: { 
-                borderRadius: 50, // Pill shape
-                bgcolor: '#F8F9FA',
-                '& fieldset': { border: 'none' }, // Remove default border
-                '&:hover fieldset': { border: '1px solid #e0e0e0' },
-                '&.Mui-focused fieldset': { border: '1px solid #0a66c2' }, // LinkedIn blue on focus
-                pl: 1
-              }
             }}
           />
           <Button
-            variant={filtersApplied ? 'contained' : 'outlined'}
-            startIcon={<Filter size={18} />}
+            variant="text"
+            startIcon={<Filter size={16} />}
             onClick={handleOpenFilters}
-            size="medium"
             sx={{ 
-              borderRadius: 50, 
-              textTransform: 'none', 
-              minWidth: 120,
-              borderColor: filtersApplied ? 'primary.main' : '#666',
-              color: filtersApplied ? 'white' : '#666',
-              '&:hover': {
-                 borderColor: filtersApplied ? 'primary.dark' : '#333',
-                 bgcolor: filtersApplied ? 'primary.dark' : 'rgba(0,0,0,0.04)'
-              }
+              color: filtersApplied ? '#111827' : '#6B7280',
+              bgcolor: filtersApplied ? '#F3F4F6' : 'transparent',
+              borderRadius: 2,
+              px: 2,
+              py: 1,
+              textTransform: 'none',
+              fontWeight: 500,
+              fontSize: '0.875rem',
+              '&:hover': { bgcolor: '#F9FAFB', color: '#111827' }
             }}
           >
-            Фильтры
+            Фильтры {filtersApplied && <Box component="span" sx={{ ml: 1, display: 'inline-flex', width: 6, height: 6, borderRadius: '50%', bgcolor: '#3B82F6' }} />}
           </Button>
         </Box>
 
         {/* Files Table */}
         <TableContainer>
-          <Table sx={{ minWidth: 650 }}>
+          <Table sx={{ minWidth: 800 }}>
             <TableHead>
-              <TableRow sx={{ bgcolor: '#F8F9FA' }}>
-                <TableCell sx={{ fontWeight: 600, color: '#666', borderBottom: '1px solid #e0e0e0', py: 2 }}>Имя файла</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#666', borderBottom: '1px solid #e0e0e0', py: 2 }}>Банк</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#666', borderBottom: '1px solid #e0e0e0', py: 2 }}>Счет</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#666', borderBottom: '1px solid #e0e0e0', py: 2 }}>Размер</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#666', borderBottom: '1px solid #e0e0e0', py: 2 }}>Статус</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#666', borderBottom: '1px solid #e0e0e0', py: 2 }}>Категория</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#666', borderBottom: '1px solid #e0e0e0', py: 2 }}>Доступ</TableCell>
-                <TableCell sx={{ fontWeight: 600, color: '#666', borderBottom: '1px solid #e0e0e0', py: 2 }}>Создано</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 600, color: '#666', borderBottom: '1px solid #e0e0e0', py: 2 }}>Действия</TableCell>
+              <TableRow>
+                <TableCell sx={{ pl: 3, py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Имя файла</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Банк</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Счет</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Размер</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Статус</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Категория</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Доступ</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Создано</TableCell>
+                <TableCell align="right" sx={{ pr: 3, py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Действия</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
-                    <Typography color="text.secondary">Загрузка данных...</Typography>
+                  <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : filteredFiles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                      <Box sx={{ p: 2, bgcolor: '#F3F2EF', borderRadius: '50%' }}>
-                         <Search size={24} className="text-gray-400" />
+                  <TableCell colSpan={9} align="center" sx={{ py: 12 }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <Box sx={{ p: 3, bgcolor: '#F9FAFB', borderRadius: '50%' }}>
+                         <Search size={32} className="text-gray-300" />
                       </Box>
-                      <Typography color="text.secondary">Файлы не найдены</Typography>
+                      <Typography variant="body1" sx={{ color: '#374151', fontWeight: 500 }}>Файлы не найдены</Typography>
+                      <Typography variant="body2" sx={{ color: '#9CA3AF' }}>Попробуйте изменить параметры поиска или фильтры</Typography>
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -397,51 +405,68 @@ export default function StoragePage() {
                   <TableRow
                     key={file.id}
                     sx={{
-                      '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' },
-                      borderBottom: '1px solid #f0f0f0' // Very subtle divider
+                      '&:hover': { bgcolor: '#F9FAFB' },
+                      borderBottom: '1px solid #F3F4F6',
+                      transition: 'background-color 0.1s'
                     }}
                   >
-                    <TableCell sx={{ borderBottom: '1px solid #f0f0f0' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ p: 0.5, bgcolor: '#eef3f8', borderRadius: 1, color: '#0a66c2' }}>
+                    <TableCell sx={{ pl: 3, py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
+                      <Box sx={{ display: 'flex', items: 'center', gap: 2 }}>
+                        <Box sx={{ 
+                            width: 36, 
+                            height: 36, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            borderRadius: '8px', 
+                            bgcolor: '#EEF2FF', 
+                            color: '#4F46E5',
+                            flexShrink: 0
+                        }}>
                            <Icon icon="mdi:file-document-outline" width={20} />
                         </Box>
-                        <Box>
-                           <Typography variant="body2" fontWeight="600" color="text.primary">
+                        <Box sx={{ minWidth: 0 }}>
+                           <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827', mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                              {file.fileName}
                            </Typography>
-                             {file.sharedLinksCount > 0 && (
-                            <Typography variant="caption" color="primary">
-                               {file.sharedLinksCount} shared links
-                            </Typography>
+                           {file.sharedLinksCount > 0 && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Share2 size={12} className="text-blue-500" />
+                                <Typography variant="caption" sx={{ color: '#3B82F6', fontWeight: 500 }}>
+                                    {file.sharedLinksCount} shared
+                                </Typography>
+                            </Box>
                           )}
                         </Box>
                       </Box>
                     </TableCell>
-                    <TableCell sx={{ borderBottom: '1px solid #f0f0f0' }}>
-                        <Typography variant="body2">{file.bankName}</Typography>
+                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
+                        <Typography variant="body2" sx={{ color: '#374151' }}>{file.bankName}</Typography>
                     </TableCell>
-                    <TableCell sx={{ borderBottom: '1px solid #f0f0f0' }}>
-                       <Typography variant="body2" color="text.secondary">
-                         {file.metadata?.accountNumber || '—'}
+                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
+                       <Typography variant="body2" sx={{ color: '#6B7280', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                         {file.metadata?.accountNumber ? `••••${file.metadata.accountNumber.slice(-4)}` : '—'}
                        </Typography>
                     </TableCell>
-                    <TableCell sx={{ borderBottom: '1px solid #f0f0f0' }}>
-                        <Typography variant="body2" color="text.secondary">{formatFileSize(file.fileSize)}</Typography>
+                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
+                        <Typography variant="body2" sx={{ color: '#6B7280' }}>{formatFileSize(file.fileSize)}</Typography>
                     </TableCell>
-                    <TableCell sx={{ borderBottom: '1px solid #f0f0f0' }}>
-                      <Chip
-                        label={getStatusLabel(file.status)}
-                        size="small"
-                        sx={{ 
-                            height: 24, 
-                            fontWeight: 500,
-                            bgcolor: file.status === 'processed' ? '#e6f7e9' : '#f0f0f0',
-                            color: file.status === 'processed' ? '#1b5e20' : '#444'
-                        }}
-                      />
+                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                         <Box sx={{ 
+                             width: 8, 
+                             height: 8, 
+                             borderRadius: '50%', 
+                             bgcolor: getStatusColor(file.status) === 'success' ? '#10B981' : 
+                                      getStatusColor(file.status) === 'warning' ? '#F59E0B' : 
+                                      getStatusColor(file.status) === 'error' ? '#EF4444' : '#6B7280'
+                         }} />
+                         <Typography variant="body2" sx={{ color: '#374151' }}>
+                             {getStatusLabel(file.status)}
+                         </Typography>
+                      </Box>
                     </TableCell>
-                    <TableCell sx={{ borderBottom: '1px solid #f0f0f0' }}>
+                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
                       <FormControl size="small" fullWidth variant="standard" sx={{ minWidth: 120 }}>
                         <Select
                           value={file.categoryId || ''}
@@ -451,20 +476,22 @@ export default function StoragePage() {
                           disabled={categoriesLoading || (!file.isOwner && file.permissionType !== 'editor')}
                           sx={{ 
                              fontSize: '0.875rem',
-                             '& .MuiSelect-select': { py: 0.5, display: 'flex', alignItems: 'center', gap: 1 } 
+                             color: '#374151',
+                             '& .MuiSelect-select': { py: 0.5, display: 'flex', alignItems: 'center', gap: 1, px: 0 },
+                             '& .MuiSelect-icon': { color: '#9CA3AF' }
                           }}
                           renderValue={(selected) => {
                             const selectedCategory =
                               categories.find((cat) => cat.id === selected) || file.category;
 
                             if (!selectedCategory) {
-                              return <span style={{ color: '#999' }}>Выбрать</span>;
+                              return <Typography variant="body2" sx={{ color: '#9CA3AF' }}>Выбрать</Typography>;
                             }
 
                             return (
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                {selectedCategory.icon && <Icon icon={selectedCategory.icon} width={16} color={selectedCategory.color || '#666'} />}
-                                <Typography variant="body2" sx={{ color: selectedCategory.color || 'inherit' }}>
+                                <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: selectedCategory.color || '#9CA3AF' }} />
+                                <Typography variant="body2" sx={{ color: '#374151' }}>
                                   {selectedCategory.name}
                                 </Typography>
                               </Box>
@@ -472,12 +499,12 @@ export default function StoragePage() {
                           }}
                         >
                           <MenuItem value="">
-                            <em>Без категории</em>
+                            <Typography variant="body2" color="text.secondary">Без категории</Typography>
                           </MenuItem>
                           {categories.map((cat) => (
                             <MenuItem key={cat.id} value={cat.id}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Icon icon={cat.icon || 'mdi:tag'} width={16} color={cat.color || '#666'} />
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: cat.color || '#9CA3AF' }} />
                                 {cat.name}
                               </Box>
                             </MenuItem>
@@ -485,39 +512,52 @@ export default function StoragePage() {
                         </Select>
                       </FormControl>
                     </TableCell>
-                    <TableCell sx={{ borderBottom: '1px solid #f0f0f0' }}>
-                        <Typography variant="caption" sx={{ px: 1, py: 0.5, bgcolor: '#f3f2ef', borderRadius: 1, color: '#666', fontWeight: 500 }}>
+                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
+                        <Typography variant="caption" sx={{ 
+                            px: 1, 
+                            py: 0.25, 
+                            borderRadius: '4px', 
+                            bgcolor: file.isOwner ? '#F3F4F6' : '#EEF2FF', 
+                            color: file.isOwner ? '#4B5563' : '#4F46E5', 
+                            fontWeight: 500,
+                            fontSize: '0.75rem' 
+                        }}>
                            {file.isOwner ? 'Владелец' : getPermissionLabel(file.permissionType)}
                         </Typography>
                     </TableCell>
-                    <TableCell sx={{ borderBottom: '1px solid #f0f0f0' }}>
-                        <Typography variant="body2" color="text.secondary">
-                            {new Date(file.createdAt).toLocaleDateString('ru-RU')}
-                        </Typography>
+                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                            <Typography variant="body2" sx={{ color: '#374151' }}>
+                                {new Date(file.createdAt).toLocaleDateString('ru-RU')}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#9CA3AF' }}>
+                                {new Date(file.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                            </Typography>
+                        </Box>
                     </TableCell>
-                    <TableCell align="right" sx={{ borderBottom: '1px solid #f0f0f0' }}>
+                    <TableCell align="right" sx={{ pr: 3, py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
                       <div className="flex items-center justify-end gap-1">
                         <Tooltip title="View">
                           <button
                             onClick={() => handleView(file.id)}
-                            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors"
                           >
-                            <Eye size={18} />
+                            <Eye size={16} />
                           </button>
                         </Tooltip>
                         <Tooltip title="Download">
                           <button
                             onClick={() => handleDownload(file.id, file.fileName)}
-                            className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors"
                           >
-                            <Download size={18} />
+                            <Download size={16} />
                           </button>
                         </Tooltip>
                         <button
                           onClick={(e) => handleMenuOpen(e, file)}
-                           className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-700 transition-colors"
+                           className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors"
                         >
-                          <MoreVertical size={18} />
+                          <MoreVertical size={16} />
                         </button>
                       </div>
                     </TableCell>
@@ -535,20 +575,26 @@ export default function StoragePage() {
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
         PaperProps={{
-            elevation: 3,
-            sx: { borderRadius: 3, mt: 1, minWidth: 150 }
+            elevation: 0,
+            sx: { 
+                borderRadius: 2, 
+                mt: 1, 
+                minWidth: 160,
+                border: '1px solid #F3F4F6',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+            }
         }}
       >
         <MenuItem onClick={() => {
           if (selectedFile) handleView(selectedFile.id);
           handleMenuClose();
-        }} sx={{ gap: 1.5, fontSize: '0.9rem', py: 1 }}>
+        }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
            <Eye size={16} /> Просмотр
         </MenuItem>
         <MenuItem onClick={() => {
           if (selectedFile) handleDownload(selectedFile.id, selectedFile.fileName);
           handleMenuClose();
-        }} sx={{ gap: 1.5, fontSize: '0.9rem', py: 1 }}>
+        }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
            <Download size={16} /> Скачать
         </MenuItem>
         {selectedFile?.isOwner && (
@@ -556,13 +602,13 @@ export default function StoragePage() {
             <MenuItem onClick={() => {
               if (selectedFile) handleShare(selectedFile.id);
               handleMenuClose();
-            }} sx={{ gap: 1.5, fontSize: '0.9rem', py: 1 }}>
+            }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
                <Share2 size={16} /> Поделиться
             </MenuItem>
             <MenuItem onClick={() => {
               if (selectedFile) handleManagePermissions(selectedFile.id);
               handleMenuClose();
-            }} sx={{ gap: 1.5, fontSize: '0.9rem', py: 1 }}>
+            }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
                <Icon icon="mdi:shield-account-outline" width={16} /> Доступ
             </MenuItem>
           </>
@@ -575,25 +621,58 @@ export default function StoragePage() {
         onClose={handleCloseFilters}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ paper: { sx: { p: 2, width: 320, borderRadius: 3, marginTop: 1, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' } } }}
+        slotProps={{ 
+            paper: { 
+                sx: { 
+                    p: 2.5, 
+                    width: 320, 
+                    borderRadius: 3, 
+                    marginTop: 1, 
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    border: '1px solid #F3F4F6',
+                    elevation: 0
+                } 
+            } 
+        }}
+        elevation={0}
       >
-        <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 2 }}>
-          Фильтры
-        </Typography>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {/* Reuse existing filter logic controls here, just styled if needed */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#111827' }}>
+            Фильтры
+            </Typography>
+            <Button 
+                size="small" 
+                onClick={handleResetFilters}
+                sx={{ 
+                    minWidth: 'auto', 
+                    p: 0.5, 
+                    fontSize: '0.75rem', 
+                    color: '#6B7280', 
+                    textTransform: 'none',
+                    '&:hover': { color: '#111827', bgcolor: 'transparent' } 
+                }}
+            >
+                Сбросить
+            </Button>
+        </Box>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           <FormControl size="small" fullWidth>
-            <Typography variant="caption" sx={{ mb: 0.5, color: 'text.secondary', fontWeight: 500 }}>
+            <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
               Статус
             </Typography>
             <Select
               value={filters.status}
               onChange={(e) => handleFilterChange('status', e.target.value as string)}
               displayEmpty
-              sx={{ borderRadius: 2 }}
+              sx={{ 
+                  borderRadius: 1.5, 
+                  bgcolor: '#F9FAFB',
+                  '& fieldset': { border: '1px solid #E5E7EB' },
+                  '&:hover fieldset': { border: '1px solid #D1D5DB' },
+              }}
             >
               <MenuItem value="">
-                <em>Все</em>
+                <Typography variant="body2" color="text.secondary">Все</Typography>
               </MenuItem>
               {statusOptions.map((status) => (
                 <MenuItem key={status} value={status}>
@@ -604,17 +683,22 @@ export default function StoragePage() {
           </FormControl>
 
           <FormControl size="small" fullWidth>
-            <Typography variant="caption" sx={{ mb: 0.5, color: 'text.secondary', fontWeight: 500 }}>
+            <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
               Банк
             </Typography>
             <Select
               value={filters.bank}
               onChange={(e) => handleFilterChange('bank', e.target.value as string)}
               displayEmpty
-               sx={{ borderRadius: 2 }}
+               sx={{ 
+                  borderRadius: 1.5, 
+                  bgcolor: '#F9FAFB',
+                  '& fieldset': { border: '1px solid #E5E7EB' },
+                  '&:hover fieldset': { border: '1px solid #D1D5DB' },
+              }}
             >
               <MenuItem value="">
-                <em>Все</em>
+                 <Typography variant="body2" color="text.secondary">Все</Typography>
               </MenuItem>
               {bankOptions.map((bank) => (
                 <MenuItem key={bank} value={bank}>
@@ -625,17 +709,22 @@ export default function StoragePage() {
           </FormControl>
 
           <FormControl size="small" fullWidth>
-            <Typography variant="caption" sx={{ mb: 0.5, color: 'text.secondary', fontWeight: 500 }}>
+            <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
               Категория
             </Typography>
             <Select
               value={filters.categoryId}
               onChange={(e) => handleFilterChange('categoryId', e.target.value as string)}
               displayEmpty
-               sx={{ borderRadius: 2 }}
+               sx={{ 
+                  borderRadius: 1.5, 
+                  bgcolor: '#F9FAFB',
+                  '& fieldset': { border: '1px solid #E5E7EB' },
+                  '&:hover fieldset': { border: '1px solid #D1D5DB' },
+              }}
             >
               <MenuItem value="">
-                <em>Все</em>
+                 <Typography variant="body2" color="text.secondary">Все</Typography>
               </MenuItem>
               {categories.map((cat) => (
                 <MenuItem key={cat.id} value={cat.id}>
@@ -646,32 +735,44 @@ export default function StoragePage() {
           </FormControl>
 
           <FormControl size="small" fullWidth>
-            <Typography variant="caption" sx={{ mb: 0.5, color: 'text.secondary', fontWeight: 500 }}>
+            <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
               Тип доступа
             </Typography>
             <Select
               value={filters.ownership}
               onChange={(e) => handleFilterChange('ownership', e.target.value as string)}
               displayEmpty
-               sx={{ borderRadius: 2 }}
+               sx={{ 
+                  borderRadius: 1.5, 
+                  bgcolor: '#F9FAFB',
+                  '& fieldset': { border: '1px solid #E5E7EB' },
+                  '&:hover fieldset': { border: '1px solid #D1D5DB' },
+              }}
             >
               <MenuItem value="">
-                <em>Все</em>
+                 <Typography variant="body2" color="text.secondary">Все</Typography>
               </MenuItem>
               <MenuItem value="owned">Мои файлы</MenuItem>
               <MenuItem value="shared">Доступные мне</MenuItem>
             </Select>
           </FormControl>
 
-          <Divider sx={{ my: 1 }} />
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-            <Button variant="text" color="inherit" onClick={handleResetFilters} sx={{ textTransform: 'none' }}>
-              Сбросить
-            </Button>
-            <Button variant="contained" onClick={handleCloseFilters} sx={{ borderRadius: 50, textTransform: 'none', px: 3, boxShadow: 'none' }}>
-              Применить
-            </Button>
-          </Box>
+          <Button 
+            variant="contained" 
+            onClick={handleCloseFilters} 
+            fullWidth
+            sx={{ 
+                mt: 1,
+                borderRadius: 2, 
+                textTransform: 'none', 
+                bgcolor: '#111827',
+                color: 'white',
+                boxShadow: 'none',
+                '&:hover': { bgcolor: '#1F2937', boxShadow: 'none' }
+            }}
+          >
+            Применить
+          </Button>
         </Box>
       </Popover>
     </Container>

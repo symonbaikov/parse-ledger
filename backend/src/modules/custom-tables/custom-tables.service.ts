@@ -11,6 +11,8 @@ import { CustomTableColumnStyle } from '../../entities/custom-table-column-style
 import { CustomTableRow } from '../../entities/custom-table-row.entity';
 import { DataEntry, DataEntryType } from '../../entities/data-entry.entity';
 import { DataEntryCustomField } from '../../entities/data-entry-custom-field.entity';
+import { Statement } from '../../entities/statement.entity';
+import { Transaction, TransactionType } from '../../entities/transaction.entity';
 import { CreateCustomTableDto } from './dto/create-custom-table.dto';
 import { UpdateCustomTableDto } from './dto/update-custom-table.dto';
 import { CreateCustomTableColumnDto } from './dto/create-custom-table-column.dto';
@@ -21,6 +23,7 @@ import { UpdateCustomTableRowDto } from './dto/update-custom-table-row.dto';
 import { BatchCreateCustomTableRowsDto } from './dto/batch-create-custom-table-rows.dto';
 import { CreateCustomTableFromDataEntryDto, DataEntryToCustomTableScope } from './dto/create-custom-table-from-data-entry.dto';
 import { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
+import { CreateCustomTableFromStatementsDto } from './dto/create-custom-table-from-statements.dto';
 import { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
 import { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
 
@@ -45,6 +48,10 @@ export class CustomTablesService {
     private readonly dataEntryRepository: Repository<DataEntry>,
     @InjectRepository(DataEntryCustomField)
     private readonly dataEntryCustomFieldRepository: Repository<DataEntryCustomField>,
+    @InjectRepository(Statement)
+    private readonly statementRepository: Repository<Statement>,
+    @InjectRepository(Transaction)
+    private readonly transactionRepository: Repository<Transaction>,
     @InjectRepository(AuditLog)
     private readonly auditLogRepository: Repository<AuditLog>,
   ) {}
@@ -587,6 +594,193 @@ export class CustomTablesService {
       rowsCreated: rowsToInsert.length,
       source: 'data_entry_custom_tab_export',
       customTabId: customTab.id,
+    });
+
+    return {
+      tableId: table.id,
+      columnsCreated: createdColumns.length,
+      rowsCreated: rowsToInsert.length,
+    };
+  }
+
+  async createFromStatements(
+    userId: string,
+    dto: CreateCustomTableFromStatementsDto,
+  ): Promise<{ tableId: string; columnsCreated: number; rowsCreated: number }> {
+    const statementIds = Array.from(new Set((dto.statementIds || []).map((v) => String(v).trim()).filter(Boolean)));
+    if (!statementIds.length) {
+      throw new BadRequestException('Выберите выписку');
+    }
+    if (statementIds.length > 10) {
+      throw new BadRequestException('Слишком много выписок (лимит 10)');
+    }
+
+    let statements: Statement[];
+    try {
+      statements = await this.statementRepository.find({
+        where: { id: In(statementIds), userId },
+        order: { createdAt: 'DESC' },
+      });
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+    if (statements.length !== statementIds.length) {
+      throw new BadRequestException('Выписка не найдена');
+    }
+
+    let transactions: Transaction[];
+    try {
+      transactions = await this.transactionRepository.find({
+        where: { statementId: In(statementIds) },
+        order: { transactionDate: 'ASC', createdAt: 'ASC' } as any,
+      });
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+    if (!transactions.length) {
+      throw new BadRequestException('В выбранной выписке нет транзакций');
+    }
+
+    const defaultName =
+      statements.length === 1
+        ? `Выписка — ${statements[0]?.fileName || 'без названия'}`
+        : `Выписки (${statements.length})`;
+    const tableName = (dto.name?.trim() || defaultName).slice(0, 120);
+    const description = dto.description === undefined ? null : dto.description;
+
+    const includeStatementCol = statements.length > 1;
+
+    const columnDefs: Array<{ id: string; title: string; type: CustomTableColumnType }> = [
+      ...(includeStatementCol ? [{ id: 'statement', title: 'Выписка', type: CustomTableColumnType.TEXT }] : []),
+      { id: 'date', title: 'Дата', type: CustomTableColumnType.DATE },
+      { id: 'counterparty', title: 'Контрагент', type: CustomTableColumnType.TEXT },
+      { id: 'purpose', title: 'Назначение', type: CustomTableColumnType.TEXT },
+      { id: 'debit', title: 'Дебет', type: CustomTableColumnType.NUMBER },
+      { id: 'credit', title: 'Кредит', type: CustomTableColumnType.NUMBER },
+      { id: 'currency', title: 'Валюта', type: CustomTableColumnType.TEXT },
+      { id: 'type', title: 'Тип', type: CustomTableColumnType.TEXT },
+    ];
+
+    let table: CustomTable;
+    try {
+      table = await this.customTableRepository.save(
+        this.customTableRepository.create({
+          userId,
+          name: tableName,
+          description,
+          source: CustomTableSource.MANUAL,
+          categoryId: null,
+        }),
+      );
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+
+    await this.log(userId, AuditAction.CUSTOM_TABLE_CREATE, {
+      tableId: table.id,
+      source: 'statement_export',
+      statementIds,
+      rowsPlanned: transactions.length,
+    });
+
+    let createdColumns: CustomTableColumn[];
+    try {
+      createdColumns = await this.customTableColumnRepository.save(
+        columnDefs.map((def, position) =>
+          this.customTableColumnRepository.create({
+            tableId: table.id,
+            key: this.generateColumnKey(),
+            title: def.title,
+            type: def.type,
+            isRequired: false,
+            isUnique: false,
+            position,
+            config: null,
+          }),
+        ),
+      );
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+
+    const keyByDefId = new Map<string, string>();
+    for (let i = 0; i < createdColumns.length; i += 1) {
+      const def = columnDefs[i];
+      const col = createdColumns[i];
+      if (def && col) keyByDefId.set(def.id, col.key);
+    }
+
+    const statementKey = keyByDefId.get('statement');
+    const dateKey = keyByDefId.get('date');
+    const counterpartyKey = keyByDefId.get('counterparty');
+    const purposeKey = keyByDefId.get('purpose');
+    const debitKey = keyByDefId.get('debit');
+    const creditKey = keyByDefId.get('credit');
+    const currencyKey = keyByDefId.get('currency');
+    const typeKey = keyByDefId.get('type');
+
+    if (!dateKey || !counterpartyKey || !purposeKey || !debitKey || !creditKey || !currencyKey || !typeKey) {
+      throw new BadRequestException('Не удалось сформировать колонки таблицы');
+    }
+
+    const statementNameById = new Map<string, string>();
+    for (const s of statements) {
+      statementNameById.set(s.id, s.fileName);
+    }
+
+    const typeLabel: Record<string, string> = {
+      [TransactionType.INCOME]: 'Поступление',
+      [TransactionType.EXPENSE]: 'Списание',
+    };
+
+    const rowsToInsert = transactions.map((tx, idx) => {
+      const data: Record<string, any> = {};
+
+      if (includeStatementCol && statementKey) {
+        data[statementKey] = statementNameById.get(tx.statementId) || tx.statementId;
+      }
+
+      const date =
+        tx.transactionDate instanceof Date
+          ? tx.transactionDate.toISOString().slice(0, 10)
+          : String(tx.transactionDate ?? '').slice(0, 10);
+      data[dateKey] = date;
+      data[counterpartyKey] = tx.counterpartyName || '';
+      data[purposeKey] = tx.paymentPurpose || '';
+
+      const asNumberOrNull = (value: unknown) => {
+        if (value === null || value === undefined || value === '') return null;
+        const n = typeof value === 'number' ? value : Number(value);
+        return Number.isFinite(n) ? n : null;
+      };
+
+      data[debitKey] = asNumberOrNull(tx.debit);
+      data[creditKey] = asNumberOrNull(tx.credit);
+      data[currencyKey] = tx.currency || 'KZT';
+      data[typeKey] = typeLabel[tx.transactionType] || tx.transactionType;
+
+      return this.customTableRowRepository.create({
+        tableId: table.id,
+        rowNumber: idx + 1,
+        data,
+      });
+    });
+
+    const chunkSize = 500;
+    for (let i = 0; i < rowsToInsert.length; i += chunkSize) {
+      const chunk = rowsToInsert.slice(i, i + chunkSize);
+      try {
+        await this.customTableRowRepository.save(chunk);
+      } catch (error) {
+        this.throwHelpfulSchemaError(error);
+      }
+    }
+
+    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
+      tableId: table.id,
+      rowsCreated: rowsToInsert.length,
+      source: 'statement_export',
+      statementIds,
     });
 
     return {

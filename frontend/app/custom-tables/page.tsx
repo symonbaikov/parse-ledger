@@ -28,6 +28,16 @@ interface CustomTableItem {
   updatedAt: string;
 }
 
+interface StatementItem {
+  id: string;
+  fileName: string;
+  status: string;
+  totalTransactions: number;
+  statementDateFrom?: string | null;
+  statementDateTo?: string | null;
+  createdAt: string;
+}
+
 const extractErrorMessage = (error: any): string | null => {
   return (
     error?.response?.data?.error?.message ||
@@ -42,10 +52,19 @@ export default function CustomTablesPage() {
   const { user, loading: authLoading } = useAuth();
   const [items, setItems] = useState<CustomTableItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [statements, setStatements] = useState<StatementItem[]>([]);
+  const [statementsLoading, setStatementsLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', categoryId: '' });
+  const [createFromStatementsOpen, setCreateFromStatementsOpen] = useState(false);
+  const [createFromStatementsForm, setCreateFromStatementsForm] = useState<{ name: string; description: string }>({
+    name: '',
+    description: '',
+  });
+  const [selectedStatementIds, setSelectedStatementIds] = useState<string[]>([]);
+  const [creatingFromStatements, setCreatingFromStatements] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CustomTableItem | null>(null);
 
@@ -72,6 +91,20 @@ export default function CustomTablesPage() {
       toast.error(extractErrorMessage(error) || 'Не удалось загрузить таблицы');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStatements = async () => {
+    setStatementsLoading(true);
+    try {
+      const response = await apiClient.get('/statements', { params: { page: 1, limit: 50 } });
+      const payload = response.data?.data || response.data?.items || [];
+      setStatements(Array.isArray(payload) ? payload : []);
+    } catch (error) {
+      console.error('Failed to load statements:', error);
+      toast.error(extractErrorMessage(error) || 'Не удалось загрузить выписки');
+    } finally {
+      setStatementsLoading(false);
     }
   };
 
@@ -105,6 +138,45 @@ export default function CustomTablesPage() {
       toast.error(extractErrorMessage(error) || 'Не удалось создать таблицу');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const openCreateFromStatements = async () => {
+    setCreateFromStatementsOpen(true);
+    setSelectedStatementIds([]);
+    setCreateFromStatementsForm({ name: '', description: '' });
+    await loadStatements();
+  };
+
+  const handleCreateFromStatements = async () => {
+    if (!selectedStatementIds.length) {
+      toast.error('Выберите хотя бы одну выписку');
+      return;
+    }
+    setCreatingFromStatements(true);
+    try {
+      const response = await apiClient.post('/custom-tables/from-statements', {
+        statementIds: selectedStatementIds,
+        name: createFromStatementsForm.name.trim() ? createFromStatementsForm.name.trim() : undefined,
+        description: createFromStatementsForm.description.trim()
+          ? createFromStatementsForm.description.trim()
+          : undefined,
+      });
+      const data = response.data?.data || response.data;
+      const tableId = data?.tableId || data?.id;
+      toast.success('Таблица создана из выписки');
+      setCreateFromStatementsOpen(false);
+      setSelectedStatementIds([]);
+      if (tableId) {
+        router.push(`/custom-tables/${tableId}`);
+        return;
+      }
+      await loadTables();
+    } catch (error) {
+      console.error('Failed to create from statements:', error);
+      toast.error(extractErrorMessage(error) || 'Не удалось создать таблицу из выписки');
+    } finally {
+      setCreatingFromStatements(false);
     }
   };
 
@@ -169,6 +241,14 @@ export default function CustomTablesPage() {
       </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={openCreateFromStatements}
+          className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+        >
+          <FileSpreadsheet className="h-4 w-4 text-blue-600" />
+          Из выписки
+        </button>
         <Link
           href="/custom-tables/import/google-sheets"
           className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
@@ -177,6 +257,105 @@ export default function CustomTablesPage() {
           Импорт из Google Sheets
         </Link>
       </div>
+
+      {createFromStatementsOpen && (
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="text-sm font-semibold text-gray-900">Создать таблицу из выписки</div>
+            <button
+              onClick={() => setCreateFromStatementsOpen(false)}
+              className="text-sm text-gray-500 hover:text-gray-900"
+            >
+              Закрыть
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="md:col-span-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Название (опционально)</label>
+              <input
+                value={createFromStatementsForm.name}
+                onChange={(e) => setCreateFromStatementsForm((prev) => ({ ...prev, name: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Например: Платежи из выписки"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Описание (опционально)</label>
+              <input
+                value={createFromStatementsForm.description}
+                onChange={(e) => setCreateFromStatementsForm((prev) => ({ ...prev, description: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Опционально"
+              />
+            </div>
+            <div className="md:col-span-1">
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Выписки</label>
+              <div className="max-h-44 overflow-auto rounded-lg border border-gray-200 p-2">
+                {statementsLoading ? (
+                  <div className="text-sm text-gray-500 px-2 py-1">Загрузка...</div>
+                ) : statements.length === 0 ? (
+                  <div className="text-sm text-gray-500 px-2 py-1">Нет выписок</div>
+                ) : (
+                  <div className="space-y-1">
+                    {statements.map((s) => {
+                      const disabled =
+                        !s.totalTransactions ||
+                        s.status === 'error' ||
+                        s.status === 'uploaded' ||
+                        s.status === 'processing';
+                      const checked = selectedStatementIds.includes(s.id);
+                      const label = s.fileName || s.id;
+                      return (
+                        <label
+                          key={s.id}
+                          className={`flex items-center gap-2 rounded-md px-2 py-1 text-xs ${
+                            disabled ? 'opacity-50' : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            disabled={disabled}
+                            checked={checked}
+                            onChange={(e) => {
+                              const nextChecked = e.target.checked;
+                              setSelectedStatementIds((prev) => {
+                                if (nextChecked) return Array.from(new Set([...prev, s.id]));
+                                return prev.filter((id) => id !== s.id);
+                              });
+                            }}
+                          />
+                          <span className="truncate" title={label}>
+                            {label}
+                          </span>
+                          <span className="ml-auto text-gray-400">{s.totalTransactions ?? 0}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className="mt-1 text-[11px] text-gray-500">Доступны только обработанные выписки с транзакциями</div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              onClick={() => setCreateFromStatementsOpen(false)}
+              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Отмена
+            </button>
+            <button
+              onClick={handleCreateFromStatements}
+              disabled={!selectedStatementIds.length || creatingFromStatements}
+              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {creatingFromStatements ? 'Создание...' : 'Создать'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {createOpen && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">

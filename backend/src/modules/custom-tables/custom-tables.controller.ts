@@ -30,6 +30,7 @@ import { GoogleSheetsImportCommitDto } from './dto/google-sheets-import-commit.d
 import { CustomTableImportJobsService } from './custom-table-import-jobs.service';
 import { CreateCustomTableFromDataEntryDto } from './dto/create-custom-table-from-data-entry.dto';
 import { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
+import { CreateCustomTableFromStatementsDto } from './dto/create-custom-table-from-statements.dto';
 import { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
 import { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
 
@@ -93,6 +94,11 @@ export class CustomTablesController {
     @Body() dto: CreateCustomTableFromDataEntryCustomTabDto,
   ) {
     return this.customTablesService.createFromDataEntryCustomTab(user.id, dto);
+  }
+
+  @Post('from-statements')
+  async createFromStatements(@CurrentUser() user: User, @Body() dto: CreateCustomTableFromStatementsDto) {
+    return this.customTablesService.createFromStatements(user.id, dto);
   }
 
   @Get(':id')

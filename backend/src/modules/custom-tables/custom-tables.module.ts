@@ -11,6 +11,8 @@ import { CustomTableRow } from '../../entities/custom-table-row.entity';
 import { DataEntry } from '../../entities/data-entry.entity';
 import { DataEntryCustomField } from '../../entities/data-entry-custom-field.entity';
 import { GoogleSheet } from '../../entities/google-sheet.entity';
+import { Statement } from '../../entities/statement.entity';
+import { Transaction } from '../../entities/transaction.entity';
 import { GoogleSheetsModule } from '../google-sheets/google-sheets.module';
 import { CustomTablesController } from './custom-tables.controller';
 import { CustomTableImportJobsProcessor } from './custom-table-import-jobs.processor';
@@ -32,6 +34,8 @@ import { CustomTablesService } from './custom-tables.service';
       AuditLog,
       GoogleSheet,
       Category,
+      Statement,
+      Transaction,
     ]),
     GoogleSheetsModule,
   ],
