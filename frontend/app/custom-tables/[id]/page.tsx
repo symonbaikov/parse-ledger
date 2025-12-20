@@ -772,6 +772,26 @@ export default function CustomTableDetailPage() {
     }
   };
 
+  const saveRowPatch = async (rowId: string, patch: Record<string, any>) => {
+    if (!tableId) return;
+    if (!patch || typeof patch !== 'object') return;
+    const keys = Object.keys(patch);
+    if (!keys.length) return;
+    const key = `${rowId}:bulk`;
+    setSavingCell(key);
+    try {
+      await apiClient.patch(`/custom-tables/${tableId}/rows/${rowId}`, { data: patch });
+      setRows((prev) =>
+        prev.map((r) => (r.id === rowId ? { ...r, data: { ...(r.data || {}), ...patch } } : r)),
+      );
+    } catch (error) {
+      console.error('Failed to update row:', error);
+      toast.error('Не удалось сохранить изменения');
+    } finally {
+      setSavingCell(null);
+    }
+  };
+
   const updateCellFromGrid = async (rowId: string, columnKey: string, value: any) => {
     const row = rows.find((r) => r.id === rowId);
     const column = orderedColumns.find((c) => c.key === columnKey);
@@ -1309,6 +1329,7 @@ export default function CustomTableDetailPage() {
             onLoadMore={loadRows}
             onFiltersParamChange={onGridFiltersParamChange}
             onUpdateCell={updateCellFromGrid}
+            onUpdateRowData={saveRowPatch}
             onDeleteRow={requestDeleteRowFromGrid}
             onPersistColumnWidth={persistColumnWidth}
             selectedColumnKeys={selectedColumnKeys}

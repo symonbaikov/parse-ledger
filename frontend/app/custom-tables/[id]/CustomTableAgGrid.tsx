@@ -53,6 +53,9 @@ type RowFilter = { col: string; op: RowFilterOp; value?: any };
 
 type CellSelectionRef = { rowId: string; colId: string };
 
+type UndoCellChange = { rowId: string; colKey: string; prev: any; next: any };
+type UndoAction = { kind: 'cells'; changes: UndoCellChange[]; ts: number };
+
 function EditableColumnHeader(
   params: IHeaderParams & { onRenameColumnTitle?: (columnKey: string, nextTitle: string) => Promise<void> },
 ) {
@@ -384,6 +387,7 @@ export function CustomTableAgGrid(props: {
   onLoadMore: (opts?: { reset?: boolean; filtersParam?: string }) => void;
   onFiltersParamChange: (filtersParam: string | undefined) => void;
   onUpdateCell: (rowId: string, columnKey: string, value: any) => Promise<void>;
+  onUpdateRowData?: (rowId: string, patch: Record<string, any>) => Promise<void>;
   onDeleteRow: (rowId: string) => void;
   onPersistColumnWidth: (columnKey: string, width: number) => Promise<void>;
   selectedColumnKeys: string[];
@@ -394,6 +398,9 @@ export function CustomTableAgGrid(props: {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const columnsByKey = useMemo(() => new Map(props.columns.map((c) => [c.key, c])), [props.columns]);
   const selectedColSet = useMemo(() => new Set(props.selectedColumnKeys), [props.selectedColumnKeys]);
+  const undoStackRef = useRef<UndoAction[]>([]);
+  const suppressUndoCaptureRef = useRef(0);
+  const suppressServerSyncRef = useRef(0);
 
   const selectionDragRef = useRef<{
     active: boolean;
@@ -457,11 +464,129 @@ export function CustomTableAgGrid(props: {
     return order.filter((k) => selectedColSet.has(k));
   }, [props.columns, selectedColSet]);
 
+  const isEqualValue = useCallback((a: any, b: any) => {
+    if (a === b) return true;
+    if (a === null || a === undefined) return b === null || b === undefined;
+    if (b === null || b === undefined) return a === null || a === undefined;
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false;
+      for (let i = 0; i < a.length; i += 1) {
+        if (a[i] !== b[i]) return false;
+      }
+      return true;
+    }
+    return false;
+  }, []);
+
+  const pushUndoAction = useCallback((action: UndoAction) => {
+    if (!action.changes.length) return;
+    const stack = undoStackRef.current;
+    stack.push(action);
+    const limit = 200;
+    if (stack.length > limit) stack.splice(0, stack.length - limit);
+  }, []);
+
+  const persistRowPatches = useCallback(
+    async (patches: Array<{ rowId: string; patch: Record<string, any> }>) => {
+      if (!patches.length) return;
+      if (props.onUpdateRowData) {
+        for (const item of patches) {
+          await props.onUpdateRowData(item.rowId, item.patch);
+        }
+        return;
+      }
+      for (const item of patches) {
+        for (const [colKey, value] of Object.entries(item.patch)) {
+          await props.onUpdateCell(item.rowId, colKey, value);
+        }
+      }
+    },
+    [props.onUpdateCell, props.onUpdateRowData],
+  );
+
+  const persistCellChanges = useCallback(
+    async (changes: Array<{ rowId: string; colKey: string; value: any }>) => {
+      if (!changes.length) return;
+      const byRow = new Map<string, Record<string, any>>();
+      for (const ch of changes) {
+        const rowPatch = byRow.get(ch.rowId) || {};
+        rowPatch[ch.colKey] = ch.value;
+        byRow.set(ch.rowId, rowPatch);
+      }
+      const patches = Array.from(byRow.entries()).map(([rowId, patch]) => ({ rowId, patch }));
+      await persistRowPatches(patches);
+    },
+    [persistRowPatches],
+  );
+
   const formatClipboardValue = useCallback((value: unknown): string => {
     if (value === null || value === undefined) return '';
     if (Array.isArray(value)) return value.map((v) => (v === null || v === undefined ? '' : String(v))).join(', ');
     return String(value);
   }, []);
+
+  const normalizeValueForColumn = useCallback(
+    (columnKey: string, raw: unknown): any => {
+      const col = columnsByKey.get(columnKey);
+      if (!col) return raw;
+      if (raw === '' || raw === undefined || raw === null) return null;
+
+      if (col.type === 'number') {
+        if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+        const s = String(raw).trim();
+        if (!s) return null;
+        const normalized = s.replace(/\s+/g, '').replace(',', '.');
+        const n = Number(normalized);
+        return Number.isFinite(n) ? n : null;
+      }
+
+      if (col.type === 'boolean') {
+        if (typeof raw === 'boolean') return raw;
+        const lower = String(raw).trim().toLowerCase();
+        if (['true', '1', 'да', 'yes', 'y', 't'].includes(lower)) return true;
+        if (['false', '0', 'нет', 'no', 'n', 'f'].includes(lower)) return false;
+        return Boolean(lower);
+      }
+
+      if (col.type === 'date') {
+        if (raw instanceof Date && !Number.isNaN(raw.getTime())) return raw.toISOString().slice(0, 10);
+        const trimmed = String(raw).trim();
+        if (!trimmed) return null;
+        const ddmmyyyy = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(trimmed);
+        if (ddmmyyyy) {
+          const [, dd, mm, yyyy] = ddmmyyyy;
+          return `${yyyy}-${mm}-${dd}`;
+        }
+        const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+        if (iso) return trimmed;
+        const parsed = new Date(trimmed);
+        if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+        return null;
+      }
+
+      if (col.type === 'multi_select') {
+        if (Array.isArray(raw)) {
+          const values = raw.map((v) => String(v).trim()).filter(Boolean);
+          return values.length ? values : null;
+        }
+        const trimmed = String(raw).trim();
+        if (!trimmed) return null;
+        const values = trimmed
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean);
+        return values.length ? values : null;
+      }
+
+      if (col.type === 'select') {
+        const trimmed = String(raw).trim();
+        return trimmed ? trimmed : null;
+      }
+
+      return String(raw);
+    },
+    [columnsByKey],
+  );
 
   const normalizePasteValue = useCallback((columnKey: string, raw: string): any => {
     const col = columnsByKey.get(columnKey);
@@ -736,6 +861,94 @@ export function CustomTableAgGrid(props: {
       }
     };
 
+    const onCut = (event: ClipboardEvent) => {
+      const root = rootRef.current;
+      if (!root) return;
+      const target = (event.target as Node | null) ?? null;
+      const activeEl = (document.activeElement as HTMLElement | null) ?? null;
+      const active = activeEl as unknown as Node | null;
+      if (target && !root.contains(target) && active && !root.contains(active)) return;
+      const tag = activeEl?.tagName?.toLowerCase();
+      if (tag && ['input', 'textarea', 'select'].includes(tag)) return;
+      if (activeEl && (activeEl as any).isContentEditable) return;
+
+      const bounds = selectionBounds;
+      const hasMultiBounds =
+        !!bounds && (bounds.rowEnd > bounds.rowStart || bounds.colEnd > bounds.colStart);
+      let rowSlice: CustomTableGridRow[] = [];
+      let colKeys: string[] = [];
+      let startRowIndex = 0;
+
+      if (hasMultiBounds) {
+        rowSlice = props.rows.slice(bounds.rowStart, bounds.rowEnd + 1);
+        colKeys = props.columns.slice(bounds.colStart, bounds.colEnd + 1).map((c) => c.key);
+        startRowIndex = bounds.rowStart;
+      } else {
+        colKeys = getSelectedColumnKeysInOrder();
+        if (colKeys.length) {
+          rowSlice = props.rows;
+          startRowIndex = 0;
+        } else {
+          const focused = focusedCellRef.current || selectionAnchor;
+          if (!focused) return;
+          const rowIndex = rowIndexById.get(focused.rowId);
+          const colIndex = columnIndexById.get(focused.colId);
+          if (rowIndex === undefined || colIndex === undefined) return;
+          rowSlice = [props.rows[rowIndex]].filter(Boolean) as CustomTableGridRow[];
+          colKeys = [props.columns[colIndex]].filter(Boolean).map((c) => c.key);
+          startRowIndex = rowIndex;
+        }
+      }
+
+      const lines = rowSlice.map((row) => colKeys.map((k) => formatClipboardValue(row.data?.[k])).join('\t'));
+      const text = lines.join('\n');
+      if (!text) return;
+      if (!event.clipboardData) return;
+      event.clipboardData.setData('text/plain', text);
+
+      const api = gridApiRef.current;
+      if (!api) return;
+
+      const changes: UndoCellChange[] = [];
+
+      for (let r = 0; r < rowSlice.length; r += 1) {
+        const row = rowSlice[r];
+        const rowId = row.id;
+        if (!rowId) continue;
+        for (let c = 0; c < colKeys.length; c += 1) {
+          const colKey = colKeys[c];
+          const prev = normalizeValueForColumn(colKey, row.data?.[colKey]);
+          const next = null;
+          if (isEqualValue(prev, next)) continue;
+          changes.push({ rowId, colKey, prev, next });
+        }
+      }
+
+      suppressUndoCaptureRef.current += 1;
+      suppressServerSyncRef.current += 1;
+      try {
+        for (let r = 0; r < rowSlice.length; r += 1) {
+          const rowIndex = startRowIndex + r;
+          const row = props.rows[rowIndex];
+          if (!row) continue;
+          const node = api.getRowNode?.(row.id);
+          if (!node) continue;
+          for (const colKey of colKeys) {
+            node.setDataValue?.(colKey, null);
+          }
+        }
+      } finally {
+        setTimeout(() => {
+          suppressUndoCaptureRef.current = Math.max(0, suppressUndoCaptureRef.current - 1);
+          suppressServerSyncRef.current = Math.max(0, suppressServerSyncRef.current - 1);
+        }, 0);
+      }
+
+      pushUndoAction({ kind: 'cells', changes, ts: Date.now() });
+      void persistCellChanges(changes.map((c) => ({ rowId: c.rowId, colKey: c.colKey, value: c.next })));
+      event.preventDefault();
+    };
+
     const onPaste = (event: ClipboardEvent) => {
       const root = rootRef.current;
       if (!root) return;
@@ -786,13 +999,9 @@ export function CustomTableAgGrid(props: {
         const maxRows = matrix.length;
         const maxCols = selectedColKeys.length;
 
-        const applyValue = (rowId: string, colKey: string, raw: string) => {
-          const value = normalizePasteValue(colKey, raw);
-          const node = api.getRowNode?.(rowId);
-          if (!node) return;
-          node.setDataValue?.(colKey, value);
-        };
+        const changes: UndoCellChange[] = [];
 
+        const planned: Array<{ rowId: string; colKey: string; value: any }> = [];
         for (let r = 0; r < maxRows; r += 1) {
           const rowIndex = startRowIndex + r;
           const row = props.rows[rowIndex];
@@ -802,10 +1011,32 @@ export function CustomTableAgGrid(props: {
             const colKey = selectedColKeys[c];
             if (!colKey) continue;
             const sourceCell = sourceRow[Math.min(c, sourceRow.length - 1)] ?? '';
-            applyValue(row.id, colKey, sourceCell);
+            const next = normalizeValueForColumn(colKey, normalizePasteValue(colKey, sourceCell));
+            const prev = normalizeValueForColumn(colKey, row.data?.[colKey]);
+            if (!isEqualValue(prev, next)) {
+              changes.push({ rowId: row.id, colKey, prev, next });
+              planned.push({ rowId: row.id, colKey, value: next });
+            }
           }
         }
 
+        suppressUndoCaptureRef.current += 1;
+        suppressServerSyncRef.current += 1;
+        try {
+          for (const item of planned) {
+            const node = api.getRowNode?.(item.rowId);
+            if (!node) continue;
+            node.setDataValue?.(item.colKey, item.value);
+          }
+        } finally {
+          setTimeout(() => {
+            suppressUndoCaptureRef.current = Math.max(0, suppressUndoCaptureRef.current - 1);
+            suppressServerSyncRef.current = Math.max(0, suppressServerSyncRef.current - 1);
+          }, 0);
+        }
+
+        pushUndoAction({ kind: 'cells', changes, ts: Date.now() });
+        void persistCellChanges(changes.map((c) => ({ rowId: c.rowId, colKey: c.colKey, value: c.next })));
         event.preventDefault();
         return;
       }
@@ -813,12 +1044,8 @@ export function CustomTableAgGrid(props: {
       const maxRows = hasMultiBounds ? bounds.rowEnd - bounds.rowStart + 1 : matrix.length;
       const maxCols = hasMultiBounds ? bounds.colEnd - bounds.colStart + 1 : matrix[0].length;
 
-      const applyValue = (rowId: string, colKey: string, raw: string) => {
-        const value = normalizePasteValue(colKey, raw);
-        const node = api.getRowNode?.(rowId);
-        if (!node) return;
-        node.setDataValue?.(colKey, value);
-      };
+      const changes: UndoCellChange[] = [];
+      const planned: Array<{ rowId: string; colKey: string; value: any }> = [];
 
       for (let r = 0; r < maxRows; r += 1) {
         const rowIndex = startRowIndex + r;
@@ -830,17 +1057,41 @@ export function CustomTableAgGrid(props: {
           const col = props.columns[colIndex];
           if (!col) continue;
           const sourceCell = sourceRow[Math.min(c, sourceRow.length - 1)] ?? '';
-          applyValue(row.id, col.key, sourceCell);
+          const next = normalizeValueForColumn(col.key, normalizePasteValue(col.key, sourceCell));
+          const prev = normalizeValueForColumn(col.key, row.data?.[col.key]);
+          if (!isEqualValue(prev, next)) {
+            changes.push({ rowId: row.id, colKey: col.key, prev, next });
+            planned.push({ rowId: row.id, colKey: col.key, value: next });
+          }
         }
       }
 
+      suppressUndoCaptureRef.current += 1;
+      suppressServerSyncRef.current += 1;
+      try {
+        for (const item of planned) {
+          const node = api.getRowNode?.(item.rowId);
+          if (!node) continue;
+          node.setDataValue?.(item.colKey, item.value);
+        }
+      } finally {
+        setTimeout(() => {
+          suppressUndoCaptureRef.current = Math.max(0, suppressUndoCaptureRef.current - 1);
+          suppressServerSyncRef.current = Math.max(0, suppressServerSyncRef.current - 1);
+        }, 0);
+      }
+
+      pushUndoAction({ kind: 'cells', changes, ts: Date.now() });
+      void persistCellChanges(changes.map((c) => ({ rowId: c.rowId, colKey: c.colKey, value: c.next })));
       event.preventDefault();
     };
 
     document.addEventListener('copy', onCopy);
+    document.addEventListener('cut', onCut);
     document.addEventListener('paste', onPaste);
     return () => {
       document.removeEventListener('copy', onCopy);
+      document.removeEventListener('cut', onCut);
       document.removeEventListener('paste', onPaste);
     };
   }, [
@@ -853,6 +1104,181 @@ export function CustomTableAgGrid(props: {
     getSelectedColumnKeysInOrder,
     formatClipboardValue,
     normalizePasteValue,
+    normalizeValueForColumn,
+    isEqualValue,
+    pushUndoAction,
+    persistCellChanges,
+  ]);
+
+  useEffect(() => {
+    const copyTextToClipboard = async (text: string): Promise<boolean> => {
+      try {
+        if (navigator?.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch {
+        // fall through
+      }
+
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', 'true');
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        ta.setSelectionRange(0, ta.value.length);
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    };
+
+    const onKeyDown = async (event: KeyboardEvent) => {
+      const root = rootRef.current;
+      if (!root) return;
+      const target = (event.target as Node | null) ?? null;
+      const activeEl = (document.activeElement as HTMLElement | null) ?? null;
+      const active = activeEl as unknown as Node | null;
+      if (target && !root.contains(target) && active && !root.contains(active)) return;
+      const tag = activeEl?.tagName?.toLowerCase();
+      if (tag && ['input', 'textarea', 'select'].includes(tag)) return;
+      if (activeEl && (activeEl as any).isContentEditable) return;
+
+      const isMod = event.ctrlKey || event.metaKey;
+      if (!isMod) return;
+      const key = event.key?.toLowerCase?.() ?? '';
+
+      if (key === 'z' && !event.shiftKey && !event.altKey) {
+        const action = undoStackRef.current.pop() || null;
+        if (!action) return;
+        const api = gridApiRef.current;
+        if (!api) return;
+
+        const persist: Array<{ rowId: string; colKey: string; value: any }> = [];
+        suppressUndoCaptureRef.current += 1;
+        suppressServerSyncRef.current += 1;
+        try {
+          for (const change of action.changes) {
+            const node = api.getRowNode?.(change.rowId);
+            if (!node) continue;
+            node.setDataValue?.(change.colKey, change.prev);
+            persist.push({ rowId: change.rowId, colKey: change.colKey, value: change.prev });
+          }
+        } finally {
+          setTimeout(() => {
+            suppressUndoCaptureRef.current = Math.max(0, suppressUndoCaptureRef.current - 1);
+            suppressServerSyncRef.current = Math.max(0, suppressServerSyncRef.current - 1);
+          }, 0);
+        }
+
+        void persistCellChanges(persist);
+        event.preventDefault();
+        return;
+      }
+
+      // Ctrl/Cmd+X outside inputs doesn't reliably trigger a `cut` event, so handle it here.
+      if (key === 'x' && !event.shiftKey && !event.altKey) {
+        const bounds = selectionBounds;
+        const hasMultiBounds =
+          !!bounds && (bounds.rowEnd > bounds.rowStart || bounds.colEnd > bounds.colStart);
+        let rowSlice: CustomTableGridRow[] = [];
+        let colKeys: string[] = [];
+        let startRowIndex = 0;
+
+        if (hasMultiBounds) {
+          rowSlice = props.rows.slice(bounds.rowStart, bounds.rowEnd + 1);
+          colKeys = props.columns.slice(bounds.colStart, bounds.colEnd + 1).map((c) => c.key);
+          startRowIndex = bounds.rowStart;
+        } else {
+          colKeys = getSelectedColumnKeysInOrder();
+          if (colKeys.length) {
+            rowSlice = props.rows;
+            startRowIndex = 0;
+          } else {
+            const focused = focusedCellRef.current || selectionAnchor;
+            if (!focused) return;
+            const rowIndex = rowIndexById.get(focused.rowId);
+            const colIndex = columnIndexById.get(focused.colId);
+            if (rowIndex === undefined || colIndex === undefined) return;
+            rowSlice = [props.rows[rowIndex]].filter(Boolean) as CustomTableGridRow[];
+            colKeys = [props.columns[colIndex]].filter(Boolean).map((c) => c.key);
+            startRowIndex = rowIndex;
+          }
+        }
+
+        const lines = rowSlice.map((row) => colKeys.map((k) => formatClipboardValue(row.data?.[k])).join('\t'));
+        const text = lines.join('\n');
+        if (!text) return;
+
+        const copied = await copyTextToClipboard(text);
+        if (!copied) return;
+
+        const api = gridApiRef.current;
+        if (!api) return;
+
+        const changes: UndoCellChange[] = [];
+        for (let r = 0; r < rowSlice.length; r += 1) {
+          const row = rowSlice[r];
+          const rowId = row.id;
+          if (!rowId) continue;
+          for (let c = 0; c < colKeys.length; c += 1) {
+            const colKey = colKeys[c];
+            const prev = normalizeValueForColumn(colKey, row.data?.[colKey]);
+            const next = null;
+            if (isEqualValue(prev, next)) continue;
+            changes.push({ rowId, colKey, prev, next });
+          }
+        }
+
+        suppressUndoCaptureRef.current += 1;
+        suppressServerSyncRef.current += 1;
+        try {
+          for (let r = 0; r < rowSlice.length; r += 1) {
+            const rowIndex = startRowIndex + r;
+            const row = props.rows[rowIndex];
+            if (!row) continue;
+            const node = api.getRowNode?.(row.id);
+            if (!node) continue;
+            for (const colKey of colKeys) {
+              node.setDataValue?.(colKey, null);
+            }
+          }
+        } finally {
+          setTimeout(() => {
+            suppressUndoCaptureRef.current = Math.max(0, suppressUndoCaptureRef.current - 1);
+            suppressServerSyncRef.current = Math.max(0, suppressServerSyncRef.current - 1);
+          }, 0);
+        }
+
+        pushUndoAction({ kind: 'cells', changes, ts: Date.now() });
+        void persistCellChanges(changes.map((c) => ({ rowId: c.rowId, colKey: c.colKey, value: c.next })));
+        event.preventDefault();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [
+    selectionBounds,
+    selectionAnchor,
+    props.rows,
+    props.columns,
+    rowIndexById,
+    columnIndexById,
+    getSelectedColumnKeysInOrder,
+    formatClipboardValue,
+    normalizeValueForColumn,
+    isEqualValue,
+    pushUndoAction,
+    persistCellChanges,
   ]);
 
   const headerCssRules = useMemo(() => {
@@ -1041,26 +1467,18 @@ export function CustomTableAgGrid(props: {
     const rowId = event.data?.id;
     if (!rowId) return;
 
-    const col = columnsByKey.get(columnKey);
-    if (!col) return;
+    const nextValue = normalizeValueForColumn(columnKey, event.newValue);
+    const prevValue = normalizeValueForColumn(columnKey, event.oldValue);
 
-    let nextValue: any = event.newValue;
-    if (nextValue === '' || nextValue === undefined) nextValue = null;
-
-    if (col.type === 'boolean') {
-      nextValue = Boolean(nextValue);
-    } else if (col.type === 'multi_select') {
-      if (typeof nextValue === 'string') {
-        const arr = nextValue
-          .split(',')
-          .map((v) => v.trim())
-          .filter(Boolean);
-        nextValue = arr.length ? arr : null;
-      } else if (Array.isArray(nextValue)) {
-        nextValue = nextValue.length ? nextValue : null;
-      }
+    if (!suppressUndoCaptureRef.current && !isEqualValue(prevValue, nextValue)) {
+      pushUndoAction({
+        kind: 'cells',
+        changes: [{ rowId, colKey: columnKey, prev: prevValue, next: nextValue }],
+        ts: Date.now(),
+      });
     }
 
+    if (suppressServerSyncRef.current) return;
     try {
       await props.onUpdateCell(rowId, columnKey, nextValue);
     } catch {
