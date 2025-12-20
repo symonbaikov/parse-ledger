@@ -55,6 +55,15 @@ type CustomField = {
   entriesCount?: number;
 };
 
+type DataEntryTableLink = {
+  id: string;
+  name: string;
+  dataEntryScope?: 'type' | 'all' | null;
+  dataEntryType?: BaseTabKey | null;
+  dataEntryCustomTabId?: string | null;
+  dataEntrySyncedAt?: string | null;
+};
+
 const initialForm: FormState = {
   date: '',
   amount: '',
@@ -95,6 +104,7 @@ export default function DataEntryPage() {
   });
   const [entries, setEntries] = useState<Record<string, Entry[]>>({});
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [dataEntryTables, setDataEntryTables] = useState<DataEntryTableLink[]>([]);
   const [loadingCustomFields, setLoadingCustomFields] = useState(false);
   const [creatingCustomField, setCreatingCustomField] = useState(false);
   const [newCustomFieldName, setNewCustomFieldName] = useState('');
@@ -120,6 +130,7 @@ export default function DataEntryPage() {
   const [customIconOpen, setCustomIconOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportingTable, setExportingTable] = useState(false);
+  const [syncingTable, setSyncingTable] = useState(false);
   const [customFieldHighlight, setCustomFieldHighlight] = useState(false);
   const currencies = useMemo(
     () => [
@@ -269,6 +280,19 @@ export default function DataEntryPage() {
     return renderIconPreview(field?.icon || 'mdi:tag', 'h-4 w-4') || null;
   };
 
+  const linkedTable = useMemo(() => {
+    if (isBaseTab(activeTab)) {
+      return dataEntryTables.find(
+        (table) => table.dataEntryScope === 'type' && table.dataEntryType === activeTab,
+      );
+    }
+    if (isFieldTab(activeTab)) {
+      const fieldId = getFieldId(activeTab);
+      return dataEntryTables.find((table) => table.dataEntryCustomTabId === fieldId);
+    }
+    return null;
+  }, [activeTab, dataEntryTables]);
+
   const renderIconPreview = (icon: string, className?: string) => {
     if (!icon) return null;
     if (icon.startsWith('http')) {
@@ -363,6 +387,23 @@ export default function DataEntryPage() {
         setError(message);
       })
       .finally(() => setLoadingCustomFields(false));
+  };
+
+  const loadDataEntryTables = () => {
+    apiClient
+      .get('/custom-tables')
+      .then((resp) => {
+        const payload = resp.data?.items || resp.data?.data?.items || resp.data?.data || [];
+        const items = Array.isArray(payload) ? payload : [];
+        const linked = items.filter(
+          (table: DataEntryTableLink) => table.dataEntryScope || table.dataEntryCustomTabId,
+        );
+        setDataEntryTables(linked);
+      })
+      .catch((err) => {
+        const message = err?.response?.data?.message || 'Не удалось загрузить таблицы';
+        setError(message);
+      });
   };
 
   const createCustomField = () => {
@@ -519,6 +560,39 @@ export default function DataEntryPage() {
     }
   };
 
+  const syncDataEntryTable = async (tableId: string) => {
+    if (!user) return;
+    setSyncingTable(true);
+    setExportMenuOpen(false);
+    setCustomIconOpen(false);
+    setCalendarOpen(false);
+    setError(null);
+    setStatus(null);
+    try {
+      const response = await apiClient.post(`/custom-tables/${tableId}/sync-from-data-entry`);
+      const payload = response.data?.data || response.data;
+      const rowsCreated = payload?.rowsCreated;
+      setStatus({
+        type: 'success',
+        message:
+          typeof rowsCreated === 'number'
+            ? `Синхронизировано (${rowsCreated} строк)`
+            : 'Синхронизировано',
+      });
+      const syncedAt = payload?.syncedAt || payload?.dataEntrySyncedAt;
+      if (syncedAt) {
+        setDataEntryTables((prev) =>
+          prev.map((table) => (table.id === tableId ? { ...table, dataEntrySyncedAt: syncedAt } : table)),
+        );
+      }
+    } catch (err: any) {
+      const message = err?.response?.data?.message || 'Не удалось синхронизировать';
+      setStatus({ type: 'error', message });
+    } finally {
+      setSyncingTable(false);
+    }
+  };
+
   const createTableFromDataEntry = async (scope: 'type' | 'all') => {
     if (!user) return;
     setExportingTable(true);
@@ -579,6 +653,7 @@ export default function DataEntryPage() {
   useEffect(() => {
     if (!user) return;
     loadCustomFields();
+    loadDataEntryTables();
   }, [user]);
 
   const handleDelete = (entryId: string) => {
@@ -648,12 +723,12 @@ export default function DataEntryPage() {
         {(isBaseTab(activeTab) || isFieldTab(activeTab)) && <div className="relative">
           <button
             type="button"
-            disabled={exportingTable}
+            disabled={exportingTable || syncingTable}
             onClick={() => setExportMenuOpen((v) => !v)}
             className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {exportingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <Table className="h-4 w-4" />}
-            Создать таблицу
+            Действия с таблицами
           </button>
 
           {exportMenuOpen && (
@@ -663,7 +738,8 @@ export default function DataEntryPage() {
                 <button
                   type="button"
                   onClick={() => createTableFromDataEntry('type')}
-                  className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50"
+                  disabled={exportingTable || syncingTable}
+                  className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   Создать таблицу по текущей вкладке —{' '}
                   <span className="font-semibold">{getTabLabel(activeTab)}</span>
@@ -671,10 +747,31 @@ export default function DataEntryPage() {
                 <button
                   type="button"
                   onClick={() => createTableFromDataEntry('all')}
-                  className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100"
+                  disabled={exportingTable || syncingTable}
+                  className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   Создать единую таблицу по всей базе «Ввод данных»
                 </button>
+                {linkedTable && (
+                  <button
+                    type="button"
+                    onClick={() => syncDataEntryTable(linkedTable.id)}
+                    disabled={exportingTable || syncingTable}
+                    className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {syncingTable ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Синхронизация…
+                      </span>
+                    ) : (
+                      <>
+                        Синхронизировать с таблицей —{' '}
+                        <span className="font-semibold">{linkedTable.name}</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </>
           )}

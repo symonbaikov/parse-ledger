@@ -27,6 +27,8 @@ import { CreateCustomTableFromStatementsDto } from './dto/create-custom-table-fr
 import { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
 import { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
 
+type DataEntryFieldKey = 'date' | 'type' | 'amount' | 'currency' | 'note';
+
 @Injectable()
 export class CustomTablesService {
   private readonly logger = new Logger(CustomTablesService.name);
@@ -119,6 +121,43 @@ export class CustomTablesService {
       select: ['key'],
     });
     return new Set(columns.map((c) => c.key));
+  }
+
+  private getDataEntryColumnMapping(columns: CustomTableColumn[]): {
+    fieldKeyByName: Partial<Record<DataEntryFieldKey, string>>;
+    customFieldKeyByName: Map<string, string>;
+  } {
+    const fieldKeyByName: Partial<Record<DataEntryFieldKey, string>> = {};
+    const customFieldKeyByName = new Map<string, string>();
+    const titleToField: Record<string, DataEntryFieldKey> = {
+      дата: 'date',
+      тип: 'type',
+      сумма: 'amount',
+      валюта: 'currency',
+      комментарий: 'note',
+    };
+
+    for (const column of columns) {
+      const config = column.config && typeof column.config === 'object' ? column.config : null;
+      const source = config ? (config as any).source : null;
+      if (source?.kind === 'data_entry_field' && source.field && !fieldKeyByName[source.field]) {
+        fieldKeyByName[source.field as DataEntryFieldKey] = column.key;
+      }
+      if (source?.kind === 'data_entry_custom_tab' && source.field && !fieldKeyByName[source.field]) {
+        fieldKeyByName[source.field as DataEntryFieldKey] = column.key;
+      }
+      if (source?.kind === 'data_entry_custom_field' && source.name && !customFieldKeyByName.has(source.name)) {
+        customFieldKeyByName.set(source.name, column.key);
+      }
+
+      const normalizedTitle = column.title?.trim().toLowerCase();
+      const fallbackField = normalizedTitle ? titleToField[normalizedTitle] : undefined;
+      if (fallbackField && !fieldKeyByName[fallbackField]) {
+        fieldKeyByName[fallbackField] = column.key;
+      }
+    }
+
+    return { fieldKeyByName, customFieldKeyByName };
   }
 
   private async getNextColumnPosition(tableId: string): Promise<number> {
@@ -308,13 +347,40 @@ export class CustomTablesService {
       type: CustomTableColumnType;
       config?: Record<string, any> | null;
     }> = [
-      { id: 'date', title: 'Дата', type: CustomTableColumnType.DATE },
+      {
+        id: 'date',
+        title: 'Дата',
+        type: CustomTableColumnType.DATE,
+        config: { source: { kind: 'data_entry_field', field: 'date' } },
+      },
       ...(dto.scope === DataEntryToCustomTableScope.ALL
-        ? [{ id: 'type', title: 'Тип', type: CustomTableColumnType.TEXT }]
+        ? [
+            {
+              id: 'type',
+              title: 'Тип',
+              type: CustomTableColumnType.TEXT,
+              config: { source: { kind: 'data_entry_field', field: 'type' } },
+            },
+          ]
         : []),
-      { id: 'amount', title: 'Сумма', type: CustomTableColumnType.NUMBER },
-      { id: 'currency', title: 'Валюта', type: CustomTableColumnType.TEXT },
-      { id: 'note', title: 'Комментарий', type: CustomTableColumnType.TEXT },
+      {
+        id: 'amount',
+        title: 'Сумма',
+        type: CustomTableColumnType.NUMBER,
+        config: { source: { kind: 'data_entry_field', field: 'amount' } },
+      },
+      {
+        id: 'currency',
+        title: 'Валюта',
+        type: CustomTableColumnType.TEXT,
+        config: { source: { kind: 'data_entry_field', field: 'currency' } },
+      },
+      {
+        id: 'note',
+        title: 'Комментарий',
+        type: CustomTableColumnType.TEXT,
+        config: { source: { kind: 'data_entry_field', field: 'note' } },
+      },
     ];
 
     const customNames = Array.from(customFieldMetaByName.keys()).sort((a, b) =>
@@ -342,6 +408,10 @@ export class CustomTablesService {
           description,
           source: CustomTableSource.MANUAL,
           categoryId: null,
+          dataEntryScope: dto.scope,
+          dataEntryType: selectedType || null,
+          dataEntryCustomTabId: null,
+          dataEntrySyncedAt: new Date(),
         }),
       );
     } catch (error) {
@@ -497,6 +567,10 @@ export class CustomTablesService {
           description,
           source: CustomTableSource.MANUAL,
           categoryId: null,
+          dataEntryScope: null,
+          dataEntryType: null,
+          dataEntryCustomTabId: customTab.id,
+          dataEntrySyncedAt: new Date(),
         }),
       );
     } catch (error) {
@@ -516,10 +590,30 @@ export class CustomTablesService {
       type: CustomTableColumnType;
       config?: Record<string, any> | null;
     }> = [
-      { id: 'date', title: 'Дата', type: CustomTableColumnType.DATE },
-      { id: 'amount', title: 'Сумма', type: CustomTableColumnType.NUMBER },
-      { id: 'currency', title: 'Валюта', type: CustomTableColumnType.TEXT },
-      { id: 'note', title: 'Комментарий', type: CustomTableColumnType.TEXT },
+      {
+        id: 'date',
+        title: 'Дата',
+        type: CustomTableColumnType.DATE,
+        config: { source: { kind: 'data_entry_custom_tab', customTabId: customTab.id, field: 'date' } },
+      },
+      {
+        id: 'amount',
+        title: 'Сумма',
+        type: CustomTableColumnType.NUMBER,
+        config: { source: { kind: 'data_entry_custom_tab', customTabId: customTab.id, field: 'amount' } },
+      },
+      {
+        id: 'currency',
+        title: 'Валюта',
+        type: CustomTableColumnType.TEXT,
+        config: { source: { kind: 'data_entry_custom_tab', customTabId: customTab.id, field: 'currency' } },
+      },
+      {
+        id: 'note',
+        title: 'Комментарий',
+        type: CustomTableColumnType.TEXT,
+        config: { source: { kind: 'data_entry_custom_tab', customTabId: customTab.id, field: 'note' } },
+      },
     ];
 
     let createdColumns: CustomTableColumn[];
@@ -534,13 +628,7 @@ export class CustomTablesService {
             isRequired: false,
             isUnique: false,
             position,
-            config: {
-              ...(def.config ?? {}),
-              source: {
-                kind: 'data_entry_custom_tab',
-                customTabId: customTab.id,
-              },
-            },
+            config: def.config ?? null,
           }),
         ),
       );
@@ -601,6 +689,135 @@ export class CustomTablesService {
       columnsCreated: createdColumns.length,
       rowsCreated: rowsToInsert.length,
     };
+  }
+
+  async syncFromDataEntry(
+    userId: string,
+    tableId: string,
+  ): Promise<{ tableId: string; rowsCreated: number; syncedAt: Date }> {
+    let table: CustomTable | null = null;
+    try {
+      table = await this.customTableRepository.findOne({
+        where: { id: tableId, userId },
+        relations: { columns: true },
+      });
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+    if (!table) {
+      throw new NotFoundException('Таблица не найдена');
+    }
+
+    const isCustomTab = Boolean(table.dataEntryCustomTabId);
+    if (!isCustomTab && !table.dataEntryScope) {
+      throw new BadRequestException('Таблица не связана с вводом данных');
+    }
+
+    let entries: DataEntry[];
+    try {
+      if (isCustomTab) {
+        entries = await this.dataEntryRepository.find({
+          where: { userId, customTabId: table.dataEntryCustomTabId },
+          order: { date: 'ASC', createdAt: 'ASC' },
+        });
+      } else if (table.dataEntryScope === DataEntryToCustomTableScope.TYPE) {
+        if (!table.dataEntryType) {
+          throw new BadRequestException('Не указан тип для синхронизации');
+        }
+        entries = await this.dataEntryRepository.find({
+          where: { userId, type: table.dataEntryType },
+          order: { date: 'ASC', createdAt: 'ASC' },
+        });
+      } else {
+        entries = await this.dataEntryRepository.find({
+          where: { userId },
+          order: { date: 'ASC', createdAt: 'ASC' },
+        });
+      }
+    } catch (error) {
+      this.throwHelpfulSchemaError(error);
+    }
+
+    const columns = (table.columns || []).sort((a, b) => a.position - b.position);
+    const { fieldKeyByName, customFieldKeyByName } = this.getDataEntryColumnMapping(columns);
+
+    const requiredFields: DataEntryFieldKey[] = ['date', 'amount', 'currency', 'note'];
+    if (!isCustomTab && table.dataEntryScope === DataEntryToCustomTableScope.ALL) {
+      requiredFields.push('type');
+    }
+
+    const missing = requiredFields.filter((field) => !fieldKeyByName[field]);
+    if (missing.length) {
+      const labelByField: Record<DataEntryFieldKey, string> = {
+        date: 'Дата',
+        type: 'Тип',
+        amount: 'Сумма',
+        currency: 'Валюта',
+        note: 'Комментарий',
+      };
+      const missingLabels = missing.map((field) => labelByField[field]).join(', ');
+      throw new BadRequestException(`Не найдены колонки для синхронизации: ${missingLabels}`);
+    }
+
+    const typeLabels: Record<DataEntryType, string> = {
+      [DataEntryType.CASH]: 'Наличные',
+      [DataEntryType.RAW]: 'Сырьё',
+      [DataEntryType.DEBIT]: 'Дебет',
+      [DataEntryType.CREDIT]: 'Кредит',
+    };
+
+    const rowsToInsert = entries.map((entry, idx) => {
+      const data: Record<string, any> = {};
+      const dateKey = fieldKeyByName.date;
+      const amountKey = fieldKeyByName.amount;
+      const currencyKey = fieldKeyByName.currency;
+      const noteKey = fieldKeyByName.note;
+      const typeKey = fieldKeyByName.type;
+
+      if (dateKey) data[dateKey] = entry.date;
+      if (amountKey) data[amountKey] = entry.amount;
+      if (currencyKey) data[currencyKey] = entry.currency || 'KZT';
+      if (noteKey) data[noteKey] = entry.note || null;
+
+      if (!isCustomTab && table.dataEntryScope === DataEntryToCustomTableScope.ALL && typeKey) {
+        data[typeKey] = typeLabels[entry.type] || entry.type;
+      }
+
+      const customName = entry.customFieldName?.trim();
+      if (customName) {
+        const customKey = customFieldKeyByName.get(customName);
+        if (customKey) {
+          data[customKey] = entry.customFieldValue ?? null;
+        }
+      }
+
+      return {
+        tableId: table.id,
+        rowNumber: idx + 1,
+        data,
+      };
+    });
+
+    const syncedAt = new Date();
+    await this.customTableRepository.manager.transaction(async (manager) => {
+      await manager.delete(CustomTableRow, { tableId: table.id });
+      const chunkSize = 500;
+      for (let i = 0; i < rowsToInsert.length; i += chunkSize) {
+        const chunk = rowsToInsert.slice(i, i + chunkSize);
+        if (chunk.length) {
+          await manager.save(CustomTableRow, chunk);
+        }
+      }
+      await manager.update(CustomTable, { id: table.id, userId }, { dataEntrySyncedAt: syncedAt } as any);
+    });
+
+    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
+      tableId: table.id,
+      rowsCreated: rowsToInsert.length,
+      source: 'data_entry_sync',
+    });
+
+    return { tableId: table.id, rowsCreated: rowsToInsert.length, syncedAt };
   }
 
   async createFromStatements(

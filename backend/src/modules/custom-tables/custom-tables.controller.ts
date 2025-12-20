@@ -96,6 +96,11 @@ export class CustomTablesController {
     return this.customTablesService.createFromDataEntryCustomTab(user.id, dto);
   }
 
+  @Post(':id/sync-from-data-entry')
+  async syncFromDataEntry(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.customTablesService.syncFromDataEntry(user.id, id);
+  }
+
   @Post('from-statements')
   async createFromStatements(@CurrentUser() user: User, @Body() dto: CreateCustomTableFromStatementsDto) {
     return this.customTablesService.createFromStatements(user.id, dto);

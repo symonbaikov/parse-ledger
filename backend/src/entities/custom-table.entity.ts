@@ -12,6 +12,7 @@ import { User } from './user.entity';
 import { CustomTableColumn } from './custom-table-column.entity';
 import { CustomTableRow } from './custom-table-row.entity';
 import { Category } from './category.entity';
+import { DataEntryType } from './data-entry.entity';
 
 export enum CustomTableSource {
   MANUAL = 'manual',
@@ -60,6 +61,18 @@ export class CustomTable {
 
   @Column({ name: 'view_settings', type: 'jsonb', default: () => "'{}'::jsonb" })
   viewSettings: Record<string, any>;
+
+  @Column({ name: 'data_entry_scope', type: 'varchar', length: 16, nullable: true })
+  dataEntryScope: 'type' | 'all' | null;
+
+  @Column({ name: 'data_entry_type', type: 'varchar', length: 16, nullable: true })
+  dataEntryType: DataEntryType | null;
+
+  @Column({ name: 'data_entry_custom_tab_id', type: 'uuid', nullable: true })
+  dataEntryCustomTabId: string | null;
+
+  @Column({ name: 'data_entry_synced_at', type: 'timestamp', nullable: true })
+  dataEntrySyncedAt: Date | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
