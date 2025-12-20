@@ -405,6 +405,7 @@ export function CustomTableAgGrid(props: {
   const [selectionAnchor, setSelectionAnchor] = useState<CellSelectionRef | null>(null);
   const [selectionFocus, setSelectionFocus] = useState<CellSelectionRef | null>(null);
   const [gridReady, setGridReady] = useState(false);
+  const focusedCellRef = useRef<CellSelectionRef | null>(null);
 
   const rowIndexById = useMemo(() => {
     const map = new Map<string, number>();
@@ -443,6 +444,60 @@ export function CustomTableAgGrid(props: {
       colEnd: Math.max(anchorCol, focusCol),
     };
   }, [selectionAnchor, selectionFocus, rowIndexById, columnIndexById]);
+
+  const getSelectedColumnKeysInOrder = useCallback(() => {
+    const order = props.columns.map((c) => c.key);
+    return order.filter((k) => selectedColSet.has(k));
+  }, [props.columns, selectedColSet]);
+
+  const formatClipboardValue = useCallback((value: unknown): string => {
+    if (value === null || value === undefined) return '';
+    if (Array.isArray(value)) return value.map((v) => (v === null || v === undefined ? '' : String(v))).join(', ');
+    return String(value);
+  }, []);
+
+  const normalizePasteValue = useCallback((columnKey: string, raw: string): any => {
+    const col = columnsByKey.get(columnKey);
+    if (!col) return raw;
+    const trimmed = raw.trim();
+    if (trimmed === '') return null;
+
+    if (col.type === 'number') {
+      const normalized = trimmed.replace(/\s+/g, '').replace(',', '.');
+      const n = Number(normalized);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    if (col.type === 'boolean') {
+      const lower = trimmed.toLowerCase();
+      if (['true', '1', 'да', 'yes', 'y', 't'].includes(lower)) return true;
+      if (['false', '0', 'нет', 'no', 'n', 'f'].includes(lower)) return false;
+      return Boolean(trimmed);
+    }
+
+    if (col.type === 'date') {
+      const ddmmyyyy = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(trimmed);
+      if (ddmmyyyy) {
+        const [, dd, mm, yyyy] = ddmmyyyy;
+        return `${yyyy}-${mm}-${dd}`;
+      }
+      const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+      if (iso) return trimmed;
+      const parsed = new Date(trimmed);
+      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+      return null;
+    }
+
+    if (col.type === 'multi_select') {
+      const values = trimmed
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean);
+      return values.length ? values : null;
+    }
+
+    return trimmed;
+  }, [columnsByKey]);
 
   const isCellRangeSelected = useCallback(
     (rowId: string | undefined, colId: string | undefined) => {
@@ -523,6 +578,7 @@ export function CustomTableAgGrid(props: {
       if (e.detail && e.detail > 1) return;
       const colId = getHeaderColIdFromTarget(e.target);
       if (!colId) return;
+      rootRef.current?.focus?.({ preventScroll: true } as any);
 
       // Support ctrl/cmd toggle without drag.
       if (e.ctrlKey || e.metaKey) {
@@ -566,6 +622,7 @@ export function CustomTableAgGrid(props: {
       const colId = event.colDef?.colId;
       if (!rowId || !colId || colId.startsWith('__')) return;
       if (!columnIndexById.has(colId)) return;
+      rootRef.current?.focus?.({ preventScroll: true } as any);
       const ref = { rowId, colId };
       setSelectionAnchor(ref);
       setSelectionFocus((prev) => (prev?.rowId === ref.rowId && prev?.colId === ref.colId ? prev : ref));
@@ -599,19 +656,153 @@ export function CustomTableAgGrid(props: {
     if (!gridReady) return;
     const api = gridApiRef.current;
     if (!api) return;
+    const handleCellFocused = (event: any) => {
+      const column = event?.column;
+      const rowIndex = event?.rowIndex;
+      if (!column || typeof rowIndex !== 'number' || rowIndex < 0) return;
+      const colId = typeof column.getColId === 'function' ? column.getColId() : null;
+      if (!colId || colId.startsWith('__')) return;
+      const rowNode = event.api?.getDisplayedRowAtIndex?.(rowIndex) || null;
+      const rowId = rowNode?.id || rowNode?.data?.id;
+      if (typeof rowId !== 'string' || !rowId) return;
+      focusedCellRef.current = { rowId, colId };
+    };
     api.addEventListener('cellMouseDown', handleCellMouseDown);
     api.addEventListener('cellMouseOver', handleCellMouseOver);
     api.addEventListener('cellMouseUp', handleCellMouseUp);
+    api.addEventListener('cellFocused', handleCellFocused);
     return () => {
       try {
         api.removeEventListener('cellMouseDown', handleCellMouseDown);
         api.removeEventListener('cellMouseOver', handleCellMouseOver);
         api.removeEventListener('cellMouseUp', handleCellMouseUp);
+        api.removeEventListener('cellFocused', handleCellFocused);
       } catch {
         // ignore after unmount
       }
     };
   }, [gridReady, handleCellMouseDown, handleCellMouseOver, handleCellMouseUp]);
+
+  useEffect(() => {
+    const onCopy = (event: ClipboardEvent) => {
+      const root = rootRef.current;
+      if (!root) return;
+      const target = (event.target as Node | null) ?? null;
+      const activeEl = (document.activeElement as HTMLElement | null) ?? null;
+      const active = activeEl as unknown as Node | null;
+      if (target && !root.contains(target) && active && !root.contains(active)) return;
+      const tag = activeEl?.tagName?.toLowerCase();
+      if (tag && ['input', 'textarea', 'select'].includes(tag)) return;
+      if (activeEl && (activeEl as any).isContentEditable) return;
+
+      const bounds = selectionBounds;
+      let rowSlice: CustomTableGridRow[] = [];
+      let colKeys: string[] = [];
+
+      if (bounds) {
+        rowSlice = props.rows.slice(bounds.rowStart, bounds.rowEnd + 1);
+        colKeys = props.columns.slice(bounds.colStart, bounds.colEnd + 1).map((c) => c.key);
+      } else {
+        colKeys = getSelectedColumnKeysInOrder();
+        if (!colKeys.length) return;
+        rowSlice = props.rows;
+      }
+
+      const lines = rowSlice.map((row) => colKeys.map((k) => formatClipboardValue(row.data?.[k])).join('\t'));
+      const text = lines.join('\n');
+      if (!text) return;
+      if (event.clipboardData) {
+        event.clipboardData.setData('text/plain', text);
+        event.preventDefault();
+      }
+    };
+
+    const onPaste = (event: ClipboardEvent) => {
+      const root = rootRef.current;
+      if (!root) return;
+      const target = (event.target as Node | null) ?? null;
+      const activeEl = (document.activeElement as HTMLElement | null) ?? null;
+      const active = activeEl as unknown as Node | null;
+      if (target && !root.contains(target) && active && !root.contains(active)) return;
+      const tag = activeEl?.tagName?.toLowerCase();
+      if (tag && ['input', 'textarea', 'select'].includes(tag)) return;
+      if (activeEl && (activeEl as any).isContentEditable) return;
+
+      const text = event.clipboardData?.getData('text/plain') ?? '';
+      if (!text) return;
+
+      const rows = text
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .split('\n');
+      if (rows.length && rows[rows.length - 1] === '') rows.pop();
+      const matrix = rows.map((line) => line.split('\t'));
+      if (!matrix.length || !matrix[0]?.length) return;
+
+      const bounds = selectionBounds;
+      let startRowIndex = -1;
+      let startColIndex = -1;
+
+      if (bounds) {
+        startRowIndex = bounds.rowStart;
+        startColIndex = bounds.colStart;
+      } else {
+        const focused = focusedCellRef.current || selectionAnchor;
+        if (!focused) return;
+        const r = rowIndexById.get(focused.rowId);
+        const c = columnIndexById.get(focused.colId);
+        if (r === undefined || c === undefined) return;
+        startRowIndex = r;
+        startColIndex = c;
+      }
+
+      const maxRows = bounds ? bounds.rowEnd - bounds.rowStart + 1 : matrix.length;
+      const maxCols = bounds ? bounds.colEnd - bounds.colStart + 1 : matrix[0].length;
+
+      const api = gridApiRef.current;
+      if (!api) return;
+
+      const applyValue = (rowId: string, colKey: string, raw: string) => {
+        const value = normalizePasteValue(colKey, raw);
+        const node = api.getRowNode?.(rowId);
+        if (!node) return;
+        node.setDataValue?.(colKey, value);
+      };
+
+      for (let r = 0; r < maxRows; r += 1) {
+        const rowIndex = startRowIndex + r;
+        const row = props.rows[rowIndex];
+        if (!row) continue;
+        const sourceRow = matrix[Math.min(r, matrix.length - 1)] || [];
+        for (let c = 0; c < maxCols; c += 1) {
+          const colIndex = startColIndex + c;
+          const col = props.columns[colIndex];
+          if (!col) continue;
+          const sourceCell = sourceRow[Math.min(c, sourceRow.length - 1)] ?? '';
+          applyValue(row.id, col.key, sourceCell);
+        }
+      }
+
+      event.preventDefault();
+    };
+
+    document.addEventListener('copy', onCopy);
+    document.addEventListener('paste', onPaste);
+    return () => {
+      document.removeEventListener('copy', onCopy);
+      document.removeEventListener('paste', onPaste);
+    };
+  }, [
+    selectionBounds,
+    selectionAnchor,
+    props.rows,
+    props.columns,
+    rowIndexById,
+    columnIndexById,
+    getSelectedColumnKeysInOrder,
+    formatClipboardValue,
+    normalizePasteValue,
+  ]);
 
   const headerCssRules = useMemo(() => {
     const lines: string[] = [];
@@ -866,6 +1057,7 @@ export function CustomTableAgGrid(props: {
   return (
     <div
       ref={rootRef}
+      tabIndex={0}
       className={props.isFullscreen ? 'h-full' : undefined}
       style={{ width: '100%', height: props.isFullscreen ? '100%' : '70vh', minHeight: props.isFullscreen ? undefined : 520 }}
     >
