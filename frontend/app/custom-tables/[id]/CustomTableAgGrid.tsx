@@ -446,7 +446,14 @@ export function CustomTableAgGrid(props: {
   }, [selectionAnchor, selectionFocus, rowIndexById, columnIndexById]);
 
   const getSelectedColumnKeysInOrder = useCallback(() => {
-    const order = props.columns.map((c) => c.key);
+    const api = gridApiRef.current;
+    const displayed = api?.getAllDisplayedColumns?.() || [];
+    const order =
+      displayed.length > 0
+        ? (displayed as any[])
+            .map((c) => (typeof c?.getColId === 'function' ? c.getColId() : null))
+            .filter((id: any) => typeof id === 'string' && id && !id.startsWith('__'))
+        : props.columns.map((c) => c.key);
     return order.filter((k) => selectedColSet.has(k));
   }, [props.columns, selectedColSet]);
 
@@ -585,7 +592,8 @@ export function CustomTableAgGrid(props: {
         const next = new Set(props.selectedColumnKeys);
         if (next.has(colId)) next.delete(colId);
         else next.add(colId);
-        props.onSelectedColumnKeysChange(Array.from(next));
+        const ordered = getSelectableDisplayedColIds().filter((id) => next.has(id));
+        props.onSelectedColumnKeysChange(ordered);
         return;
       }
       selectionDragRef.current.active = true;
@@ -696,16 +704,27 @@ export function CustomTableAgGrid(props: {
       if (activeEl && (activeEl as any).isContentEditable) return;
 
       const bounds = selectionBounds;
+      const hasMultiBounds =
+        !!bounds && (bounds.rowEnd > bounds.rowStart || bounds.colEnd > bounds.colStart);
       let rowSlice: CustomTableGridRow[] = [];
       let colKeys: string[] = [];
 
-      if (bounds) {
+      if (hasMultiBounds) {
         rowSlice = props.rows.slice(bounds.rowStart, bounds.rowEnd + 1);
         colKeys = props.columns.slice(bounds.colStart, bounds.colEnd + 1).map((c) => c.key);
       } else {
         colKeys = getSelectedColumnKeysInOrder();
-        if (!colKeys.length) return;
-        rowSlice = props.rows;
+        if (colKeys.length) {
+          rowSlice = props.rows;
+        } else {
+          const focused = focusedCellRef.current || selectionAnchor;
+          if (!focused) return;
+          const rowIndex = rowIndexById.get(focused.rowId);
+          const colIndex = columnIndexById.get(focused.colId);
+          if (rowIndex === undefined || colIndex === undefined) return;
+          rowSlice = [props.rows[rowIndex]].filter(Boolean) as CustomTableGridRow[];
+          colKeys = [props.columns[colIndex]].filter(Boolean).map((c) => c.key);
+        }
       }
 
       const lines = rowSlice.map((row) => colKeys.map((k) => formatClipboardValue(row.data?.[k])).join('\t'));
@@ -740,10 +759,13 @@ export function CustomTableAgGrid(props: {
       if (!matrix.length || !matrix[0]?.length) return;
 
       const bounds = selectionBounds;
+      const hasMultiBounds =
+        !!bounds && (bounds.rowEnd > bounds.rowStart || bounds.colEnd > bounds.colStart);
+      const selectedColKeys = getSelectedColumnKeysInOrder();
       let startRowIndex = -1;
       let startColIndex = -1;
 
-      if (bounds) {
+      if (hasMultiBounds) {
         startRowIndex = bounds.rowStart;
         startColIndex = bounds.colStart;
       } else {
@@ -756,11 +778,40 @@ export function CustomTableAgGrid(props: {
         startColIndex = c;
       }
 
-      const maxRows = bounds ? bounds.rowEnd - bounds.rowStart + 1 : matrix.length;
-      const maxCols = bounds ? bounds.colEnd - bounds.colStart + 1 : matrix[0].length;
-
       const api = gridApiRef.current;
       if (!api) return;
+
+      // Column-selection paste: keep 1:1 mapping by column keys regardless of the focused column.
+      if (!hasMultiBounds && selectedColKeys.length) {
+        const maxRows = matrix.length;
+        const maxCols = selectedColKeys.length;
+
+        const applyValue = (rowId: string, colKey: string, raw: string) => {
+          const value = normalizePasteValue(colKey, raw);
+          const node = api.getRowNode?.(rowId);
+          if (!node) return;
+          node.setDataValue?.(colKey, value);
+        };
+
+        for (let r = 0; r < maxRows; r += 1) {
+          const rowIndex = startRowIndex + r;
+          const row = props.rows[rowIndex];
+          if (!row) continue;
+          const sourceRow = matrix[Math.min(r, matrix.length - 1)] || [];
+          for (let c = 0; c < maxCols; c += 1) {
+            const colKey = selectedColKeys[c];
+            if (!colKey) continue;
+            const sourceCell = sourceRow[Math.min(c, sourceRow.length - 1)] ?? '';
+            applyValue(row.id, colKey, sourceCell);
+          }
+        }
+
+        event.preventDefault();
+        return;
+      }
+
+      const maxRows = hasMultiBounds ? bounds.rowEnd - bounds.rowStart + 1 : matrix.length;
+      const maxCols = hasMultiBounds ? bounds.colEnd - bounds.colStart + 1 : matrix[0].length;
 
       const applyValue = (rowId: string, colKey: string, raw: string) => {
         const value = normalizePasteValue(colKey, raw);
