@@ -36,6 +36,7 @@ import { Icon } from '@iconify/react';
 import { useRouter } from 'next/navigation';
 import { alpha } from '@mui/material/styles';
 import api from '../lib/api';
+import { DocumentTypeIcon } from '../components/DocumentTypeIcon';
 
 interface StorageFile {
   id: string;
@@ -423,7 +424,12 @@ export default function StoragePage() {
                             color: '#4F46E5',
                             flexShrink: 0
                         }}>
-                           <Icon icon="mdi:file-document-outline" width={20} />
+                           <DocumentTypeIcon
+                             fileType={file.fileType}
+                             fileName={file.fileName}
+                             size={20}
+                             className="text-indigo-600"
+                           />
                         </Box>
                         <Box sx={{ minWidth: 0 }}>
                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827', mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

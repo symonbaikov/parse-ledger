@@ -1,0 +1,4 @@
+frontend/app/statements/page.tsx:441:                            <span className="text-xs text-gray-400">
+frontend/app/statements/page.tsx:588:                  <p className="mt-2 text-xs text-gray-400">
+frontend/app/statements/page.tsx:754:                      <div className="text-xs text-gray-400 w-32 shrink-0">
+frontend/app/custom-tables/[id]/page.tsx:1687:                            {isSaving && <span className="text-xs text-gray-400">…</span>}

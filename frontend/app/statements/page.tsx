@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   UploadCloud, 
-  FileText, 
   Eye, 
   Download, 
   Trash2, 
@@ -21,6 +20,7 @@ import toast from 'react-hot-toast';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
 import ConfirmModal from '@/app/components/ConfirmModal';
+import { DocumentTypeIcon } from '@/app/components/DocumentTypeIcon';
 
 interface Statement {
   id: string;
@@ -225,8 +225,8 @@ export default function StatementsPage() {
     }
   };
 
-  const getFileIcon = (fileType?: string) => {
-    return <FileText className="text-red-500" size={24} />;
+  const getFileIcon = (fileType?: string, fileName?: string) => {
+    return <DocumentTypeIcon fileType={fileType} fileName={fileName} size={24} className="text-red-500" />;
   };
 
   const handleDownloadFile = async (id: string, fileName: string) => {
@@ -342,6 +342,8 @@ export default function StatementsPage() {
     setLogStatementName('');
   };
 
+  const viewingStatement = viewingFile ? statements.find((s) => s.id === viewingFile) : null;
+
   return (
     <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header / CTA Section */}
@@ -426,16 +428,13 @@ export default function StatementsPage() {
                     <td className="px-6 py-5">
                       <div className="flex items-center cursor-pointer group/file" onClick={() => handleViewFile(statement.id)}>
                         <div className="flex-shrink-0 h-12 w-12 flex items-center justify-center rounded-xl bg-red-50 text-red-500 group-hover/file:bg-red-100 group-hover/file:scale-110 transition-all duration-200">
-                           {getFileIcon(statement.fileType)}
+                           {getFileIcon(statement.fileType, statement.fileName)}
                         </div>
                         <div className="ml-4 min-w-0 flex-1">
                           <div className="text-base font-semibold text-gray-900 truncate group-hover:text-primary transition-colors" title={statement.fileName}>
                             {statement.fileName.length > 20 ? statement.fileName.substring(0, 20) + '...' : statement.fileName}
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                              PDF
-                            </span>
                             <span className="text-xs text-gray-400">
                               {(statement.fileType || 'document').toUpperCase()}
                             </span>
@@ -598,7 +597,7 @@ export default function StatementsPage() {
                     >
                       <div className="flex items-center gap-3 overflow-hidden">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-500">
-                          <FileText size={20} />
+                          <DocumentTypeIcon fileType={file.type} fileName={file.name} size={20} className="text-red-500" />
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-gray-900">
@@ -665,10 +664,15 @@ export default function StatementsPage() {
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
               <div className="flex items-center">
                  <div className="mr-3 p-1.5 bg-white rounded shadow-sm border border-gray-100">
-                    <FileText size={20} className="text-red-500" />
+                    <DocumentTypeIcon
+                      fileType={viewingStatement?.fileType}
+                      fileName={viewingStatement?.fileName}
+                      size={20}
+                      className="text-red-500"
+                    />
                  </div>
                  <h3 className="text-lg font-semibold text-gray-900">
-                    {statements.find(s => s.id === viewingFile)?.fileName}
+                    {viewingStatement?.fileName}
                  </h3>
               </div>
               <button 
