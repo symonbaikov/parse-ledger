@@ -888,7 +888,7 @@ export default function CustomTableDetailPage() {
         if (tag) {
           nextStyles.manualTag = tag;
         } else {
-          delete nextStyles.manualTag;
+          nextStyles.manualTag = null;
         }
         await saveRowPatch(rowId, { styles: nextStyles });
       }
@@ -1492,6 +1492,10 @@ export default function CustomTableDetailPage() {
           selectedColumnKeys={selectedColumnKeys}
           onSelectedColumnKeysChange={setSelectedColumnKeys}
           onRenameColumnTitle={renameColumnTitleFromGrid}
+          onDeleteColumn={(colKey) => {
+            const target = orderedColumns.find((c) => c.key === colKey);
+            if (target) openDeleteColumn(target);
+          }}
           onSelectedRowIdsChange={setSelectedRowIds}
         />
           </div>

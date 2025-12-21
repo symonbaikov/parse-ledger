@@ -56,7 +56,10 @@ type RowFilter = { col: string; op: RowFilterOp; value?: any };
 type CellSelectionRef = { rowId: string; colId: string };
 
 function EditableColumnHeader(
-  params: IHeaderParams & { onRenameColumnTitle?: (columnKey: string, nextTitle: string) => Promise<void> },
+  params: IHeaderParams & {
+    onRenameColumnTitle?: (columnKey: string, nextTitle: string) => Promise<void>;
+    onDeleteColumn?: (columnKey: string) => void;
+  },
 ) {
   const colId = params.column?.getColId?.() || '';
   const isSystem = !colId || colId.startsWith('__');
@@ -115,12 +118,27 @@ function EditableColumnHeader(
   }
 
   return (
-    <div
-      onDoubleClick={startEditing}
-      className={saving ? 'opacity-60' : undefined}
-      title={isSystem ? undefined : 'Двойной клик — переименовать'}
-    >
-      {params.displayName}
+    <div className="flex items-center justify-between gap-1" title={isSystem ? undefined : 'Двойной клик — переименовать'}>
+      <div
+        onDoubleClick={startEditing}
+        className={saving ? 'opacity-60 flex-1 truncate' : 'flex-1 truncate'}
+        style={{ minWidth: 0 }}
+      >
+        {params.displayName}
+      </div>
+      {!isSystem && params.onDeleteColumn ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            params.onDeleteColumn?.(colId);
+          }}
+          className="h-6 w-6 flex items-center justify-center rounded border border-transparent text-gray-400 hover:text-red-500 hover:border-red-200"
+          title="Удалить колонку"
+        >
+          ×
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -391,6 +409,7 @@ export function CustomTableAgGrid(props: {
   selectedColumnKeys: string[];
   onSelectedColumnKeysChange: (keys: string[]) => void;
   onRenameColumnTitle: (columnKey: string, nextTitle: string) => Promise<void>;
+  onDeleteColumn?: (columnKey: string) => void;
   onSelectedRowIdsChange: (rowIds: string[]) => void;
 }) {
   const gridApiRef = useRef<any>(null);
@@ -708,6 +727,7 @@ export function CustomTableAgGrid(props: {
         headerComponent: EditableColumnHeader as any,
         headerComponentParams: {
           onRenameColumnTitle: props.onRenameColumnTitle,
+          onDeleteColumn: props.onDeleteColumn,
         },
         width: props.columnWidths[col.key],
         minWidth: 80,
