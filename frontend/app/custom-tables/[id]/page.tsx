@@ -10,6 +10,7 @@ import {
   Maximize2,
   Minimize2,
   Pencil,
+  PaintBucket,
   Plus,
   Rows,
   Save,
@@ -134,7 +135,8 @@ export default function CustomTableDetailPage() {
   const [selectedColumnKeys, setSelectedColumnKeys] = useState<string[]>([]);
   const [bulkDeleteColumnsOpen, setBulkDeleteColumnsOpen] = useState(false);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
-  const [rowStyleTagLoading, setRowStyleTagLoading] = useState(false);
+  const [rowFillLoading, setRowFillLoading] = useState(false);
+  const [rowFillColor, setRowFillColor] = useState<string>('#111827');
 
   const [newColumnOpen, setNewColumnOpen] = useState(false);
   const [newColumn, setNewColumn] = useState<{ title: string; type: ColumnType }>({
@@ -874,30 +876,30 @@ export default function CustomTableDetailPage() {
     }
   };
 
-  const applyRowStyleTag = async (tag: 'heading' | 'total' | null) => {
+  const applyRowFill = async (color: string | null) => {
     if (!selectedRowIds.length) {
-      toast.error('Выберите строки, к которым нужно применить стиль');
+      toast.error('Выберите строки, к которым нужно применить заливку');
       return;
     }
-    setRowStyleTagLoading(true);
+    setRowFillLoading(true);
     try {
       for (const rowId of selectedRowIds) {
         const row = rows.find((r) => r.id === rowId);
         if (!row) continue;
         const nextStyles = { ...(row.styles || {}) };
-        if (tag) {
-          nextStyles.manualTag = tag;
+        if (color) {
+          nextStyles.manualFill = color;
         } else {
-          nextStyles.manualTag = null;
+          delete (nextStyles as any).manualFill;
         }
         await saveRowPatch(rowId, { styles: nextStyles });
       }
-      toast.success('Стиль применён');
+      toast.success(color ? 'Заливка применена' : 'Заливка сброшена');
     } catch (error) {
-      console.error('Failed to apply row style tag:', error);
-      toast.error('Не удалось применить стиль');
+      console.error('Failed to apply row fill:', error);
+      toast.error('Не удалось применить заливку');
     } finally {
-      setRowStyleTagLoading(false);
+      setRowFillLoading(false);
     }
   };
 
@@ -1318,24 +1320,36 @@ export default function CustomTableDetailPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-semibold text-gray-500">
-              {selectedRowIds.length ? `Выбрано строк: ${selectedRowIds.length}` : 'Стиль строки'}
+              {selectedRowIds.length ? `Выбрано строк: ${selectedRowIds.length}` : 'Заливка строк'}
             </span>
-            {['heading', 'total', null].map((tag) => (
-              <button
-                key={String(tag)}
-                onClick={() => applyRowStyleTag(tag as 'heading' | 'total' | null)}
-                disabled={rowStyleTagLoading || !selectedRowIds.length}
-                className={`min-w-[72px] rounded-full border px-3 py-1 text-[11px] font-medium transition ${
-                  tag
-                    ? 'border-gray-200 bg-white text-gray-700 hover:border-primary hover:text-primary'
-                    : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
-                } ${rowStyleTagLoading || !selectedRowIds.length ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                {tag === 'heading' && 'Заголовок'}
-                {tag === 'total' && 'Итог'}
-                {tag === null && 'Очистить'}
-              </button>
-            ))}
+            <input
+              type="color"
+              value={rowFillColor}
+              onChange={(e) => setRowFillColor(e.target.value)}
+              className="h-8 w-10 rounded border border-gray-200"
+              title="Цвет заливки"
+            />
+            <button
+              onClick={() => applyRowFill(rowFillColor)}
+              disabled={rowFillLoading || !selectedRowIds.length}
+              className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
+                rowFillLoading || !selectedRowIds.length ? 'opacity-50 cursor-not-allowed' : ''
+              } border-gray-200 bg-white text-gray-700 hover:border-primary hover:text-primary`}
+            >
+              <span className="inline-flex items-center gap-1">
+                <PaintBucket className="h-4 w-4" />
+                <span>Заливка</span>
+              </span>
+            </button>
+            <button
+              onClick={() => applyRowFill(null)}
+              disabled={rowFillLoading || !selectedRowIds.length}
+              className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
+                rowFillLoading || !selectedRowIds.length ? 'opacity-50 cursor-not-allowed' : ''
+              } border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200`}
+            >
+              Очистить
+            </button>
           </div>
         </div>
       </div>

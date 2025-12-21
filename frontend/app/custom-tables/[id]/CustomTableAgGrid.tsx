@@ -689,7 +689,11 @@ export function CustomTableAgGrid(props: {
 
   const getRowStyle = useCallback(
     (params: RowClassParams) => {
-      const tag = params.data?.styles?.manualTag;
+      const styles = params.data?.styles || {};
+      if (styles.manualFill) {
+        return { backgroundColor: styles.manualFill, color: '#fff' };
+      }
+      const tag = styles.manualTag;
       if (tag === 'heading') {
         return { backgroundColor: '#111827', color: '#fff' };
       }
