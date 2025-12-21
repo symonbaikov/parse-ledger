@@ -1227,6 +1227,11 @@ export default function CustomTableDetailPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (dateFrom && !calendarFromOpen) {
+                    setDateFrom(null);
+                    setCalendarFromOpen(false);
+                    return;
+                  }
                   setCalendarFromOpen((v) => !v);
                   setCalendarToOpen(false);
                 }}
@@ -1234,6 +1239,16 @@ export default function CustomTableDetailPage() {
               >
                 <CalendarDays className="h-4 w-4" />
                 <span>{dateFrom ? formatFilterInputValue(dateFrom, '') : 'Дата от'}</span>
+                {dateFrom ? (
+                  <X
+                    className="h-3.5 w-3.5 text-white/80 hover:text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDateFrom(null);
+                      setCalendarFromOpen(false);
+                    }}
+                  />
+                ) : null}
               </button>
               {calendarFromOpen && (
                 <div className="absolute right-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3 origin-top-right">
@@ -1256,6 +1271,11 @@ export default function CustomTableDetailPage() {
               <button
                 type="button"
                 onClick={() => {
+                  if (dateTo && !calendarToOpen) {
+                    setDateTo(null);
+                    setCalendarToOpen(false);
+                    return;
+                  }
                   setCalendarToOpen((v) => !v);
                   setCalendarFromOpen(false);
                 }}
@@ -1263,6 +1283,16 @@ export default function CustomTableDetailPage() {
               >
                 <CalendarDays className="h-4 w-4" />
                 <span>{dateTo ? formatFilterInputValue(dateTo, '') : 'Дата до'}</span>
+                {dateTo ? (
+                  <X
+                    className="h-3.5 w-3.5 text-white/80 hover:text-white"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDateTo(null);
+                      setCalendarToOpen(false);
+                    }}
+                  />
+                ) : null}
               </button>
               {calendarToOpen && (
                 <div className="absolute right-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3 origin-top-right">

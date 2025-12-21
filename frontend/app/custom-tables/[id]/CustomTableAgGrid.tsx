@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Icon } from '@iconify/react';
 import { AgGridReact } from 'ag-grid-react';
 import type {
   CellMouseDownEvent,
@@ -59,6 +60,7 @@ function EditableColumnHeader(
   params: IHeaderParams & {
     onRenameColumnTitle?: (columnKey: string, nextTitle: string) => Promise<void>;
     onDeleteColumn?: (columnKey: string) => void;
+    headerIcon?: string | null;
   },
 ) {
   const colId = params.column?.getColId?.() || '';
@@ -96,6 +98,14 @@ function EditableColumnHeader(
     setValue(params.displayName || '');
   };
 
+  const renderHeaderIcon = (iconStr?: string | null) => {
+    if (!iconStr) return null;
+    if (iconStr.startsWith('http://') || iconStr.startsWith('https://') || iconStr.startsWith('/uploads/')) {
+      return <img src={iconStr} alt="" className="h-4 w-4 object-contain" />;
+    }
+    return <Icon icon={iconStr} className="h-4 w-4" />;
+  };
+
   if (editing) {
     return (
       <input
@@ -121,10 +131,11 @@ function EditableColumnHeader(
     <div className="flex items-center justify-between gap-1" title={isSystem ? undefined : 'Двойной клик — переименовать'}>
       <div
         onDoubleClick={startEditing}
-        className={saving ? 'opacity-60 flex-1 truncate' : 'flex-1 truncate'}
+        className={saving ? 'opacity-60 flex-1 truncate inline-flex items-center gap-1' : 'flex-1 truncate inline-flex items-center gap-1'}
         style={{ minWidth: 0 }}
       >
-        {params.displayName}
+        {renderHeaderIcon(params.headerIcon)}
+        <span className="truncate">{params.displayName}</span>
       </div>
       {!isSystem && params.onDeleteColumn ? (
         <button
@@ -732,6 +743,7 @@ export function CustomTableAgGrid(props: {
         headerComponentParams: {
           onRenameColumnTitle: props.onRenameColumnTitle,
           onDeleteColumn: props.onDeleteColumn,
+          headerIcon: (col.config as any)?.icon || null,
         },
         width: props.columnWidths[col.key],
         minWidth: 80,
