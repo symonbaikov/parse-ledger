@@ -924,6 +924,8 @@ export function CustomTableAgGrid(props: {
           animateRows={false}
           headerHeight={42}
           rowHeight={38}
+          suppressRowVirtualisation
+          suppressColumnVirtualisation
           domLayout="normal"
         />
       </div>
