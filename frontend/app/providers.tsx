@@ -2,17 +2,24 @@
 
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { Toaster } from 'react-hot-toast';
 import { theme } from './theme';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: { fontSize: '14px' },
+        }}
+      />
       {children}
     </ThemeProvider>
   );
 }
-
 
 
 

@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Trash2,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
 import apiClient from '@/app/lib/api';
 
@@ -247,10 +248,12 @@ export default function DataEntryPage() {
           },
         }));
         setStatus({ type: 'success', message: 'Данные сохранены' });
+        toast.success('Запись сохранена');
       })
       .catch((err) => {
         const message = err?.response?.data?.message || 'Не удалось сохранить данные';
         setStatus({ type: 'error', message });
+        toast.error(message);
       })
       .finally(() => setSaving(false));
   };
@@ -340,6 +343,7 @@ export default function DataEntryPage() {
       .catch((err) => {
         const message = err?.response?.data?.message || 'Не удалось загрузить записи';
         setError(message);
+        toast.error(message);
       })
       .finally(() => setLoadingList(false));
   };
@@ -368,6 +372,7 @@ export default function DataEntryPage() {
       .catch((err) => {
         const message = err?.response?.data?.message || 'Не удалось загрузить записи';
         setError(message);
+        toast.error(message);
       })
       .finally(() => setLoadingList(false));
   };
@@ -385,6 +390,7 @@ export default function DataEntryPage() {
       .catch((err) => {
         const message = err?.response?.data?.message || 'Не удалось загрузить пользовательские колонки';
         setError(message);
+        toast.error(message);
       })
       .finally(() => setLoadingCustomFields(false));
   };
@@ -403,6 +409,7 @@ export default function DataEntryPage() {
       .catch((err) => {
         const message = err?.response?.data?.message || 'Не удалось загрузить таблицы';
         setError(message);
+        toast.error(message);
       });
   };
 
@@ -429,10 +436,12 @@ export default function DataEntryPage() {
         setActiveTab(`field:${created.id}`);
         setNewCustomFieldName('');
         setStatus({ type: 'success', message: 'Пользовательская колонка создана' });
+        toast.success('Колонка создана');
       })
       .catch((err) => {
         const message = err?.response?.data?.message || 'Не удалось создать колонку';
         setStatus({ type: 'error', message });
+        toast.error(message);
       })
       .finally(() => setCreatingCustomField(false));
   };
@@ -452,10 +461,12 @@ export default function DataEntryPage() {
           return next;
         });
         setStatus({ type: 'success', message: 'Колонка удалена' });
+        toast.success('Колонка удалена');
       })
       .catch((err) => {
         const message = err?.response?.data?.message || 'Не удалось удалить колонку';
         setStatus({ type: 'error', message });
+        toast.error(message);
       });
   };
 

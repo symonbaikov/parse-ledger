@@ -37,6 +37,7 @@ import { useRouter } from 'next/navigation';
 import { alpha } from '@mui/material/styles';
 import api from '../lib/api';
 import { DocumentTypeIcon } from '../components/DocumentTypeIcon';
+import toast from 'react-hot-toast';
 
 interface StorageFile {
   id: string;
@@ -103,6 +104,7 @@ export default function StoragePage() {
       setFiles(response.data);
     } catch (error) {
       console.error('Failed to load files:', error);
+      toast.error('Не удалось загрузить файлы');
     } finally {
       setLoading(false);
     }
@@ -115,6 +117,7 @@ export default function StoragePage() {
       setCategories(response.data || []);
     } catch (error) {
       console.error('Failed to load categories:', error);
+      toast.error('Не удалось загрузить категории');
     } finally {
       setCategoriesLoading(false);
     }
@@ -147,17 +150,21 @@ export default function StoragePage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      toast.success('Файл скачан');
     } catch (error) {
       console.error('Failed to download file:', error);
+      toast.error('Не удалось скачать файл');
     }
   };
 
   const handleShare = (fileId: string) => {
     router.push(`/storage/${fileId}?tab=share`);
+    toast.success('Открыто окно доступа');
   };
 
   const handleManagePermissions = (fileId: string) => {
     router.push(`/storage/${fileId}?tab=permissions`);
+    toast.success('Открыто управление правами');
   };
 
   const handleCategoryChange = async (fileId: string, categoryId: string) => {
@@ -177,8 +184,10 @@ export default function StoragePage() {
             : file,
         ),
       );
+      toast.success('Категория обновлена');
     } catch (error) {
       console.error('Failed to update file category:', error);
+      toast.error('Не удалось обновить категорию файла');
     }
   };
 

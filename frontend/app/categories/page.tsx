@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import type { ChangeEvent } from 'react';
 import {
   Container,
   Typography,
@@ -30,6 +30,7 @@ import { Add, Edit, Delete, Check } from '@mui/icons-material';
 import { Icon } from '@iconify/react';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
+import toast from 'react-hot-toast';
 
 interface Category {
   id: string;
@@ -39,6 +40,17 @@ interface Category {
   icon?: string;
   parentId?: string;
 }
+
+const resolveIconUrl = (iconValue?: string) => {
+  if (!iconValue) return null;
+  if (iconValue.startsWith('http')) return iconValue;
+  if (iconValue.startsWith('/uploads')) {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const base = apiUrl.replace(/\/api\/v1$/, '') || '';
+    return `${base}${iconValue}`;
+  }
+  return null;
+};
 
 const PREDEFINED_ICONS = [
   'mdi:home', 'mdi:food', 'mdi:car', 'mdi:shopping', 'mdi:cart',
@@ -64,6 +76,8 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [uploadingIcon, setUploadingIcon] = useState(false);
+  const iconInputRef = useRef<HTMLInputElement | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -87,6 +101,7 @@ export default function CategoriesPage() {
       setCategories(response.data);
     } catch (error) {
       console.error('Failed to load categories:', error);
+      toast.error('Не удалось загрузить категории');
     } finally {
       setLoading(false);
     }
@@ -118,6 +133,9 @@ export default function CategoriesPage() {
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setEditingCategory(null);
+    if (iconInputRef.current) {
+      iconInputRef.current.value = '';
+    }
   };
 
   const handleSave = async () => {
@@ -129,14 +147,17 @@ export default function CategoriesPage() {
 
       if (editingCategory) {
         await apiClient.put(`/categories/${editingCategory.id}`, data);
+        toast.success('Категория обновлена');
       } else {
         await apiClient.post('/categories', data);
+        toast.success('Категория создана');
       }
 
       await loadCategories();
       handleCloseDialog();
     } catch (error) {
       console.error('Failed to save category:', error);
+      toast.error('Не удалось сохранить категорию');
     }
   };
 
@@ -148,8 +169,41 @@ export default function CategoriesPage() {
     try {
       await apiClient.delete(`/categories/${id}`);
       await loadCategories();
+      toast.success('Категория удалена');
     } catch (error) {
       console.error('Failed to delete category:', error);
+      toast.error('Не удалось удалить категорию');
+    }
+  };
+
+  const triggerIconUpload = () => {
+    iconInputRef.current?.click();
+  };
+
+  const handleIconFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fd = new FormData();
+    fd.append('icon', file);
+    setUploadingIcon(true);
+    try {
+      const response = await apiClient.post('/data-entry/custom-fields/icon', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = response.data?.url || response.data;
+      if (url) {
+        setFormData((prev) => ({ ...prev, icon: url }));
+        toast.success('Иконка загружена');
+      }
+    } catch (error) {
+      console.error('Failed to upload icon:', error);
+      toast.error('Не удалось загрузить иконку. Попробуйте ещё раз.');
+    } finally {
+      setUploadingIcon(false);
+      if (iconInputRef.current) {
+        iconInputRef.current.value = '';
+      }
     }
   };
 
@@ -209,7 +263,16 @@ export default function CategoriesPage() {
                       flexShrink: 0
                     }}
                   >
-                    <Icon icon={category.icon || 'mdi:tag'} width={32} height={32} />
+                    {resolveIconUrl(category.icon) ? (
+                      <Box
+                        component="img"
+                        src={resolveIconUrl(category.icon) as string}
+                        alt=""
+                        sx={{ width: 32, height: 32, objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <Icon icon={category.icon || 'mdi:tag'} width={32} height={32} />
+                    )}
                   </Box>
                   <Box>
                     <Typography variant="h6" component="div" fontWeight="600" noWrap>
@@ -281,6 +344,13 @@ export default function CategoriesPage() {
               <Typography variant="subtitle2" gutterBottom>
                 Выберите иконку
               </Typography>
+              <input
+                type="file"
+                accept="image/*"
+                ref={iconInputRef}
+                style={{ display: 'none' }}
+                onChange={handleIconFileChange}
+              />
               <Box 
                 sx={{ 
                   display: 'grid', 
@@ -318,6 +388,30 @@ export default function CategoriesPage() {
                     <Icon icon={iconName} width={24} height={24} />
                   </Box>
                 ))}
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1.5, gap: 2 }}>
+                {resolveIconUrl(formData.icon) && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Загруженная иконка:
+                    </Typography>
+                    <Box
+                      component="img"
+                      src={resolveIconUrl(formData.icon) || formData.icon}
+                      alt=""
+                      sx={{ width: 32, height: 32, borderRadius: 1, objectFit: 'contain', border: '1px solid', borderColor: 'divider' }}
+                    />
+                  </Box>
+                )}
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={triggerIconUpload}
+                  disabled={uploadingIcon}
+                  sx={{ ml: 'auto' }}
+                >
+                  {uploadingIcon ? 'Загрузка...' : 'Загрузить иконку'}
+                </Button>
               </Box>
             </Box>
 
@@ -368,7 +462,16 @@ export default function CategoriesPage() {
                       color: formData.color || '#2196F3',
                     }}
                   >
-                    <Icon icon={formData.icon || 'mdi:tag'} width={28} height={28} />
+                    {resolveIconUrl(formData.icon) ? (
+                      <Box
+                        component="img"
+                        src={resolveIconUrl(formData.icon) as string}
+                        alt=""
+                        sx={{ width: 28, height: 28, objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <Icon icon={formData.icon || 'mdi:tag'} width={28} height={28} />
+                    )}
                   </Box>
                   <Typography variant="subtitle1" fontWeight="bold">
                     {formData.name || 'Название категории'}
@@ -387,9 +490,3 @@ export default function CategoriesPage() {
     </Container>
   );
 }
-
-
-
-
-
-
