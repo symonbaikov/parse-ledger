@@ -5,8 +5,11 @@ export class CreateCustomTableRowDto {
   data: Record<string, any>;
 
   @IsOptional()
+  @IsObject()
+  styles?: Record<string, any>;
+
+  @IsOptional()
   @IsInt()
   @Min(1)
   rowNumber?: number;
 }
-

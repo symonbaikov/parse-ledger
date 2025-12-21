@@ -844,14 +844,27 @@ export default function CustomTableDetailPage() {
   const saveRowPatch = async (rowId: string, patch: Record<string, any>) => {
     if (!tableId) return;
     if (!patch || typeof patch !== 'object') return;
-    const keys = Object.keys(patch);
-    if (!keys.length) return;
+    const { styles, ...dataPatch } = patch;
+    const keys = Object.keys(dataPatch);
+    const hasStyles = styles && typeof styles === 'object';
+    if (!keys.length && !hasStyles) return;
     const key = `${rowId}:bulk`;
     setSavingCell(key);
     try {
-      await apiClient.patch(`/custom-tables/${tableId}/rows/${rowId}`, { data: patch });
+      await apiClient.patch(`/custom-tables/${tableId}/rows/${rowId}`, {
+        data: dataPatch,
+        ...(hasStyles ? { styles } : {}),
+      });
       setRows((prev) =>
-        prev.map((r) => (r.id === rowId ? { ...r, data: { ...(r.data || {}), ...patch } } : r)),
+        prev.map((r) =>
+          r.id === rowId
+            ? {
+                ...r,
+                data: { ...(r.data || {}), ...dataPatch },
+                ...(hasStyles ? { styles: { ...(r.styles || {}), ...styles } } : {}),
+              }
+            : r,
+        ),
       );
     } catch (error) {
       console.error('Failed to update row:', error);

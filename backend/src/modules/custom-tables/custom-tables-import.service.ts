@@ -935,14 +935,15 @@ export class CustomTablesImportService {
           data[key] = null;
         }
       }
-      const manualTag = autoRowTagsByRowNumber.get(sourceRowNumber);
-      if (manualTag) {
-        data.styles = { ...(data.styles || {}), manualTag };
-      }
       rowsToInsert.push({
         tableId: table.id,
         rowNumber: sourceRowNumber,
         data,
+        styles: (() => {
+          const manualTag = autoRowTagsByRowNumber.get(sourceRowNumber);
+          if (!manualTag) return undefined;
+          return { manualTag };
+        })(),
       });
     }
 

@@ -1364,6 +1364,13 @@ export class CustomTablesService {
       if (!rows.length) return rows;
 
       try {
+        const stylesByRowId = new Map<string, Record<string, any>>();
+        rows.forEach((row) => {
+          if (row.styles && typeof row.styles === 'object') {
+            stylesByRowId.set(row.id, row.styles as any);
+          }
+        });
+
         const rowIds = rows.map((r) => r.id);
         const styles = await this.customTableCellStyleRepository.find({
           where: { rowId: In(rowIds) },
@@ -1376,7 +1383,12 @@ export class CustomTablesService {
           byRow.set(s.rowId, current);
         }
         rows.forEach((row) => {
-          (row as any).styles = byRow.get(row.id) || {};
+          const merged = { ...(byRow.get(row.id) || {}) };
+          const rowLevel = stylesByRowId.get(row.id);
+          if (rowLevel) {
+            Object.assign(merged, rowLevel);
+          }
+          (row as any).styles = merged;
         });
       } catch (error) {
         this.logger.warn(`Failed to load cell styles for tableId=${tableId}`);
@@ -1394,7 +1406,12 @@ export class CustomTablesService {
     const data = this.sanitizeRowData(dto.data, allowedKeys);
     const rowNumber = dto.rowNumber ?? (await this.getNextRowNumber(tableId));
 
-    const row = this.customTableRowRepository.create({ tableId, rowNumber, data });
+    const row = this.customTableRowRepository.create({
+      tableId,
+      rowNumber,
+      data,
+      styles: dto.styles ?? {},
+    });
     let saved: CustomTableRow;
     try {
       saved = await this.customTableRowRepository.save(row);
@@ -1425,6 +1442,9 @@ export class CustomTablesService {
     const allowedKeys = await this.getAllowedColumnKeys(tableId);
     const patch = this.sanitizeRowData(dto.data, allowedKeys);
     row.data = { ...(row.data || {}), ...patch };
+    if (dto.styles && typeof dto.styles === 'object') {
+      row.styles = { ...(row.styles || {}), ...dto.styles };
+    }
 
     let saved: CustomTableRow;
     try {

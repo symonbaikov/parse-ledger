@@ -30,10 +30,12 @@ export class CustomTableRow {
   @Column({ name: 'data', type: 'jsonb', default: () => "'{}'::jsonb" })
   data: Record<string, any>;
 
+  @Column({ name: 'styles', type: 'jsonb', nullable: true, default: () => "'{}'::jsonb" })
+  styles?: Record<string, any> | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-
