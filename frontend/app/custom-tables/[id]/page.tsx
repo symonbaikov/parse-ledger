@@ -891,6 +891,7 @@ export default function CustomTableDetailPage() {
           nextStyles.manualFill = color;
         } else {
           delete (nextStyles as any).manualFill;
+          delete (nextStyles as any).manualTag;
         }
         await saveRowPatch(rowId, { styles: nextStyles });
       }
@@ -1326,7 +1327,7 @@ export default function CustomTableDetailPage() {
               type="color"
               value={rowFillColor}
               onChange={(e) => setRowFillColor(e.target.value)}
-              className="h-8 w-10 rounded border border-gray-200"
+              className="h-7 w-7 rounded-md border border-gray-200"
               title="Цвет заливки"
             />
             <button

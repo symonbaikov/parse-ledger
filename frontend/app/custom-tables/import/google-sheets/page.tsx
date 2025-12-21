@@ -11,8 +11,6 @@ import { useAuth } from '@/app/hooks/useAuth';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
 type LayoutType = 'auto' | 'flat' | 'matrix';
-type PreviewRowTag = 'heading' | 'total';
-
 interface GoogleSheetConnection {
   id: string;
   sheetId: string;
@@ -37,14 +35,6 @@ interface PreviewColumn {
   include: boolean;
 }
 
-interface HighlightedRow {
-  rowNumber: number;
-  suggestedTag: PreviewRowTag;
-  reason: string;
-  backgroundColor?: string;
-  textColor?: string;
-}
-
 interface PreviewResponse {
   spreadsheetId: string;
   worksheetName: string;
@@ -52,14 +42,8 @@ interface PreviewResponse {
   layoutSuggested: LayoutType;
   headerRowIndex: number;
   columns: PreviewColumn[];
-  sampleRows: Array<{ rowNumber: number; values: Array<string | null> }>;
-  highlightedRows: HighlightedRow[];
+  sampleRows: Array<{ rowNumber: number; values: Array<string | null>; styles?: Array<Record<string, any> | null> }>;
 }
-
-const ROW_TAG_LABELS: Record<PreviewRowTag, string> = {
-  heading: 'Заголовок',
-  total: 'Итого',
-};
 
 export default function GoogleSheetsImportPage() {
   const router = useRouter();
@@ -78,7 +62,6 @@ export default function GoogleSheetsImportPage() {
 
   const [preview, setPreview] = useState<PreviewResponse | null>(null);
   const [columns, setColumns] = useState<PreviewColumn[]>([]);
-  const [rowTagSelections, setRowTagSelections] = useState<Record<number, PreviewRowTag>>({});
 
   const [tableName, setTableName] = useState('');
   const [tableDescription, setTableDescription] = useState('');
@@ -158,13 +141,6 @@ export default function GoogleSheetsImportPage() {
       setPreview(data);
       setColumns(data.columns || []);
       setHeaderRowIndex(data.headerRowIndex ?? headerRowIndex);
-      const initialRowTags: Record<number, PreviewRowTag> = {};
-      (data.highlightedRows || []).forEach((row) => {
-        if (row && typeof row.rowNumber === 'number' && row.suggestedTag) {
-          initialRowTags[row.rowNumber] = row.suggestedTag;
-        }
-      });
-      setRowTagSelections(initialRowTags);
       if (!tableName.trim()) {
         setTableName(selectedConnection?.sheetName || 'Импорт из Google Sheets');
       }
@@ -178,40 +154,9 @@ export default function GoogleSheetsImportPage() {
     }
   };
 
-  const handleRowTagChange = (rowNumber: number, nextTag: PreviewRowTag | null) => {
-    setRowTagSelections((prev) => {
-      const next = { ...prev };
-      if (nextTag) {
-        next[rowNumber] = nextTag;
-      } else {
-        delete next[rowNumber];
-      }
-      return next;
-    });
-  };
-
-  const applyTagToHighlightedRows = (tag: PreviewRowTag | null) => {
-    if (!preview) return;
-    setRowTagSelections((prev) => {
-      const next = { ...prev };
-      (preview.highlightedRows || []).forEach((row) => {
-        if (!row) return;
-        if (tag) {
-          next[row.rowNumber] = tag;
-        } else {
-          delete next[row.rowNumber];
-        }
-      });
-      return next;
-    });
-  };
-
   const handleCommit = async () => {
     if (!preview || !canCommit) return;
     setCommitting(true);
-    const autoRowTagsPayload = Object.entries(rowTagSelections)
-      .map(([rowNumber, tag]) => ({ rowNumber: Number(rowNumber), tag }))
-      .filter((item) => Number.isFinite(item.rowNumber));
     try {
       const response = await apiClient.post('/custom-tables/import/google-sheets/commit', {
         googleSheetId,
@@ -229,7 +174,6 @@ export default function GoogleSheetsImportPage() {
           type: c.suggestedType,
           include: c.include,
         })),
-        ...(autoRowTagsPayload.length ? { autoRowTags: autoRowTagsPayload } : {}),
       });
 
       const result = response.data?.data || response.data;
@@ -427,85 +371,6 @@ export default function GoogleSheetsImportPage() {
             )}
           </div>
 
-          {preview && preview.highlightedRows.length > 0 && (
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-gray-900">Контрастные строки</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    Сильный контраст в импортированной таблице. Присвойте им метки «заголовок» или «итого».
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => applyTagToHighlightedRows('heading')}
-                    className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-semibold text-gray-700 hover:border-primary hover:text-primary"
-                  >
-                    Сделать заголовками
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyTagToHighlightedRows('total')}
-                    className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-semibold text-gray-700 hover:border-primary hover:text-primary"
-                  >
-                    Сделать итогами
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyTagToHighlightedRows(null)}
-                    className="inline-flex items-center justify-center rounded-full border border-transparent bg-gray-100 px-3 py-1 text-[11px] font-semibold text-gray-600 hover:bg-gray-200"
-                  >
-                    Сбросить
-                  </button>
-                </div>
-              </div>
-              <div className="mt-3 space-y-2">
-                {preview.highlightedRows.map((row) => {
-                  const selection = rowTagSelections[row.rowNumber];
-                  return (
-                    <div
-                      key={row.rowNumber}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium text-gray-900">Строка #{row.rowNumber}</div>
-                        <div className="text-xs text-gray-500">{row.reason}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {row.backgroundColor && (
-                          <span
-                            className="flex h-6 w-6 items-center justify-center rounded border border-gray-200 text-[11px] font-semibold"
-                            style={{
-                              backgroundColor: row.backgroundColor,
-                              color: row.textColor || '#111',
-                            }}
-                          >
-                            A
-                          </span>
-                        )}
-                        <select
-                          value={selection || ''}
-                          onChange={(event) =>
-                            handleRowTagChange(
-                              row.rowNumber,
-                              event.target.value ? (event.target.value as PreviewRowTag) : null,
-                            )
-                          }
-                          className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 focus:border-primary focus:outline-none"
-                        >
-                          <option value="">Пропустить</option>
-                          <option value="heading">Заголовок</option>
-                          <option value="total">Итого</option>
-                        </select>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <div className="text-sm font-semibold text-gray-900 mb-3">Результат</div>
             <label className="block mb-3">
@@ -606,7 +471,7 @@ export default function GoogleSheetsImportPage() {
               <div>
                 <div className="text-sm font-semibold text-gray-900">Превью</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Used range и sample. В commit будут считаны все данные.
+                  Used range, sample и стили. В commit будут считаны все данные.
                 </div>
               </div>
               {preview && (
@@ -640,34 +505,27 @@ export default function GoogleSheetsImportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {preview.sampleRows.map((r) => {
-                      const flaggedTag = rowTagSelections[r.rowNumber];
-                      return (
-                        <tr
-                          key={r.rowNumber}
-                          className={`border-b border-gray-100 last:border-0 ${flaggedTag ? 'bg-amber-50' : ''}`}
-                        >
-                          <td className="px-2 py-1 text-gray-500">
-                            <div className="flex items-center gap-2">
-                              <span>{r.rowNumber}</span>
-                              {flaggedTag && (
-                                <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-600">
-                                  {ROW_TAG_LABELS[flaggedTag]}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          {r.values.slice(0, 12).map((v, idx) => (
-                            <td key={idx} className="px-2 py-1 text-gray-700">
+                    {preview.sampleRows.map((r) => (
+                      <tr key={r.rowNumber} className="border-b border-gray-100 last:border-0">
+                        <td className="px-2 py-1 text-gray-500">{r.rowNumber}</td>
+                        {r.values.slice(0, 12).map((v, idx) => {
+                          const style = r.styles?.[idx] || null;
+                          const css = sheetStyleToCss(style || {});
+                          return (
+                            <td
+                              key={idx}
+                              className="px-2 py-1 text-gray-700"
+                              style={css}
+                            >
                               {v ?? '—'}
                             </td>
-                          ))}
-                          {preview.columns.length > 12 && (
-                            <td className="px-2 py-1 text-gray-500">…</td>
-                          )}
-                        </tr>
-                      );
-                    })}
+                          );
+                        })}
+                        {preview.columns.length > 12 && (
+                          <td className="px-2 py-1 text-gray-500">…</td>
+                        )}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -766,3 +624,43 @@ export default function GoogleSheetsImportPage() {
     </div>
   );
 }
+// Minimal style -> CSS mapper for preview
+const mapHorizontalAlignment = (value: unknown): CSSProperties['textAlign'] | undefined => {
+  const raw = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  if (!raw) return undefined;
+  if (raw === 'LEFT') return 'left';
+  if (raw === 'CENTER') return 'center';
+  if (raw === 'RIGHT') return 'right';
+  if (raw === 'JUSTIFY') return 'justify';
+  return undefined;
+};
+
+const sheetStyleToCss = (style: Record<string, any>) => {
+  const backgroundColor = typeof style.backgroundColor === 'string' ? style.backgroundColor : undefined;
+  const textAlign = mapHorizontalAlignment(style.horizontalAlignment);
+  const tf = style.textFormat && typeof style.textFormat === 'object' ? (style.textFormat as any) : null;
+  const color = tf && typeof tf.foregroundColor === 'string' ? tf.foregroundColor : undefined;
+  const fontWeight = tf && typeof tf.bold === 'boolean' ? (tf.bold ? 700 : 400) : undefined;
+  const fontStyle = tf && typeof tf.italic === 'boolean' ? (tf.italic ? 'italic' : 'normal') : undefined;
+
+  const underline = tf && typeof tf.underline === 'boolean' ? tf.underline : undefined;
+  const strikethrough = tf && typeof tf.strikethrough === 'boolean' ? tf.strikethrough : undefined;
+  let textDecorationLine: CSSProperties['textDecorationLine'] | undefined;
+  if (underline === true || strikethrough === true) {
+    const parts: string[] = [];
+    if (underline === true) parts.push('underline');
+    if (strikethrough === true) parts.push('line-through');
+    textDecorationLine = parts.join(' ') as any;
+  } else if (underline === false || strikethrough === false) {
+    textDecorationLine = 'none';
+  }
+
+  const fontSize =
+    tf && typeof tf.fontSize === 'number' && Number.isFinite(tf.fontSize) && tf.fontSize > 0 ? tf.fontSize : undefined;
+  const fontFamily =
+    tf && typeof tf.fontFamily === 'string' && tf.fontFamily.trim()
+      ? tf.fontFamily
+      : undefined;
+
+  return { backgroundColor, textAlign, color, fontWeight, fontStyle, textDecorationLine, fontSize, fontFamily };
+};

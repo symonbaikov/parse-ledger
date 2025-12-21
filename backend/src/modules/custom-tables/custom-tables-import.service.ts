@@ -588,6 +588,8 @@ export class CustomTablesImportService {
     });
 
     let highlightedRows: HighlightedRowInfo[] = [];
+    let sampleRowStyles: Array<Array<SheetCellStyle | null>> = [];
+    const sampleRowIndices = sample.map((_, idx) => safeHeaderIndex + 1 + idx);
     try {
       const grid = await this.googleSheetsApiService.getGridData(
         sheet.accessToken,
@@ -608,6 +610,17 @@ export class CustomTablesImportService {
       const dataEntry = sheetEntry?.data?.[0];
       const gridRowData = Array.isArray(dataEntry?.rowData) ? dataEntry.rowData : null;
       highlightedRows = detectHighContrastRows(gridRowData, bounds.startRow, safeHeaderIndex, values.length);
+
+      if (gridRowData && gridRowData.length) {
+        sampleRowStyles = sampleRowIndices.map((rowIdx) => {
+          const row = gridRowData?.[rowIdx];
+          if (!row || !Array.isArray(row.values)) return [];
+          return Array.from({ length: colsCount }).map((_, colIdx) => {
+            const fmt = row.values?.[colIdx]?.userEnteredFormat;
+            return extractSheetStyle(fmt);
+          });
+        });
+      }
     } catch (error) {
       this.logger.warn(
         `High contrast detection skipped during preview for googleSheetId=${dto.googleSheetId}: ${
@@ -633,6 +646,7 @@ export class CustomTablesImportService {
       sampleRows: sample.map((row, idx) => ({
         rowNumber: bounds.startRow + safeHeaderIndex + 1 + idx,
         values: Array.from({ length: colsCount }).map((_, colIdx) => normalizeCellValue(row?.[colIdx])),
+        styles: sampleRowStyles[idx] || [],
       })),
       columns,
       highlightedRows,
