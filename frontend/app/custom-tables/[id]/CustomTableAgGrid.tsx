@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '@iconify/react';
+import { Trash2 } from 'lucide-react';
 import { AgGridReact } from 'ag-grid-react';
 import type {
   CellMouseDownEvent,
@@ -826,7 +827,7 @@ export function CustomTableAgGrid(props: {
             }}
             className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 disabled:opacity-50"
           >
-            Del
+            <Trash2 className="h-4 w-4" />
           </button>
         );
       },

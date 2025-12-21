@@ -1230,13 +1230,17 @@ export default function CustomTableDetailPage() {
                   setCalendarFromOpen((v) => !v);
                   setCalendarToOpen(false);
                 }}
-                className={`inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600 transition ${dateFrom ? 'bg-primary text-white shadow-sm' : 'hover:bg-white'}`}
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                  dateFrom ? 'border-primary bg-primary/10 text-gray-900' : 'border-gray-200 bg-white text-gray-600 hover:bg-white'
+                }`}
               >
-                <CalendarDays className="h-4 w-4" />
-                <span>{dateFrom ? formatFilterInputValue(dateFrom, '') : 'Дата от'}</span>
+                <CalendarDays className={`h-4 w-4 ${dateFrom ? 'text-primary' : 'text-gray-600'}`} />
+                <span className="min-w-[80px] text-left">
+                  {dateFrom ? formatFilterInputValue(dateFrom, '') : 'Дата от'}
+                </span>
                 {dateFrom ? (
                   <X
-                    className="h-3.5 w-3.5 text-white/80 hover:text-white"
+                    className="h-3.5 w-3.5 text-gray-500 hover:text-gray-800"
                     onClick={(e) => {
                       e.stopPropagation();
                       setDateFrom(null);
@@ -1269,13 +1273,17 @@ export default function CustomTableDetailPage() {
                   setCalendarToOpen((v) => !v);
                   setCalendarFromOpen(false);
                 }}
-                className={`inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600 transition ${dateTo ? 'bg-primary text-white shadow-sm' : 'hover:bg-white'}`}
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                  dateTo ? 'border-primary bg-primary/10 text-gray-900' : 'border-gray-200 bg-white text-gray-600 hover:bg-white'
+                }`}
               >
-                <CalendarDays className="h-4 w-4" />
-                <span>{dateTo ? formatFilterInputValue(dateTo, '') : 'Дата до'}</span>
+                <CalendarDays className={`h-4 w-4 ${dateTo ? 'text-primary' : 'text-gray-600'}`} />
+                <span className="min-w-[80px] text-left">
+                  {dateTo ? formatFilterInputValue(dateTo, '') : 'Дата до'}
+                </span>
                 {dateTo ? (
                   <X
-                    className="h-3.5 w-3.5 text-white/80 hover:text-white"
+                    className="h-3.5 w-3.5 text-gray-500 hover:text-gray-800"
                     onClick={(e) => {
                       e.stopPropagation();
                       setDateTo(null);
