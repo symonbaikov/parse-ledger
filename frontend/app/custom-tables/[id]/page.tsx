@@ -1498,7 +1498,7 @@ export default function CustomTableDetailPage() {
         <div
           className={
             isFullscreen
-              ? 'h-full w-full bg-white transition-all duration-300'
+              ? 'h-full w-full bg-white transition-all duration-300 overflow-x-auto'
               : 'overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm'
           }
         >
