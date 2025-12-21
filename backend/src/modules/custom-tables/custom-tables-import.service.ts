@@ -593,7 +593,8 @@ export class CustomTablesImportService {
         sheet.accessToken,
         sheet.refreshToken,
         sheet.sheetId,
-        range,
+        effectiveRange,
+        { fields: 'sheets(properties/title,data/rowData/values/userEnteredFormat)' },
       );
 
       if (grid.accessToken !== sheet.accessToken) {
