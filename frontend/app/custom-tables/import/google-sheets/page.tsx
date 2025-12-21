@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FileSpreadsheet, Loader2, Sparkles } from 'lucide-react';
@@ -292,14 +292,13 @@ export default function GoogleSheetsImportPage() {
                 value={googleSheetId}
                 onChange={(e) => {
                   setGoogleSheetId(e.target.value);
-                  setPreview(null);
-                  setColumns([]);
-                  setRowTagSelections({});
-                }}
-                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              >
-                <option value="">— выберите —</option>
-                {connections.map((c) => (
+          setPreview(null);
+          setColumns([]);
+        }}
+        className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+      >
+        <option value="">— выберите —</option>
+        {connections.map((c) => (
                   <option key={c.id} value={c.id} disabled={c.oauthConnected === false}>
                     {c.sheetName}
                     {c.oauthConnected === false ? ' (нужна OAuth)' : ''}
