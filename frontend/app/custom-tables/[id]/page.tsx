@@ -1227,11 +1227,6 @@ export default function CustomTableDetailPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (dateFrom && !calendarFromOpen) {
-                    setDateFrom(null);
-                    setCalendarFromOpen(false);
-                    return;
-                  }
                   setCalendarFromOpen((v) => !v);
                   setCalendarToOpen(false);
                 }}
@@ -1271,11 +1266,6 @@ export default function CustomTableDetailPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (dateTo && !calendarToOpen) {
-                    setDateTo(null);
-                    setCalendarToOpen(false);
-                    return;
-                  }
                   setCalendarToOpen((v) => !v);
                   setCalendarFromOpen(false);
                 }}
