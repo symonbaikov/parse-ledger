@@ -1,10 +1,25 @@
 'use client';
 
-import { useEffect, useMemo, useState, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useState, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Copy, Filter, Maximize2, Minimize2, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  CalendarDays,
+  Columns,
+  Maximize2,
+  Minimize2,
+  Pencil,
+  Plus,
+  Rows,
+  Save,
+  Trash2,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import { Icon } from '@iconify/react';
+import { Menu, MenuItem } from '@mui/material';
 import toast from 'react-hot-toast';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
@@ -16,6 +31,7 @@ import 'react-day-picker/style.css';
 import { CustomTableAgGrid } from './CustomTableAgGrid';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
+type EditingScope = 'name' | 'description' | 'both';
 
 interface CustomTableColumn {
   id: string;
@@ -99,9 +115,12 @@ export default function CustomTableDetailPage() {
   const tableId = params?.id;
 
   const [isFullscreen, setIsFullscreen] = useState(true);
+  const [zoomLevel, setZoomLevel] = useState(1);
   const [editingMeta, setEditingMeta] = useState(false);
   const [metaDraft, setMetaDraft] = useState<{ name: string; description: string }>({ name: '', description: '' });
   const [savingMeta, setSavingMeta] = useState(false);
+  const [editingScope, setEditingScope] = useState<EditingScope | null>('both');
+  const [pencilMenuAnchor, setPencilMenuAnchor] = useState<HTMLElement | null>(null);
 
   const [table, setTable] = useState<CustomTable | null>(null);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; color?: string | null; icon?: string | null }>>([]);
@@ -146,11 +165,15 @@ export default function CustomTableDetailPage() {
   const [deleteColumnTarget, setDeleteColumnTarget] = useState<CustomTableColumn | null>(null);
   const [deleteRowModalOpen, setDeleteRowModalOpen] = useState(false);
   const [deleteRowTarget, setDeleteRowTarget] = useState<CustomTableRow | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const orderedColumns = useMemo(() => {
     const cols = table?.columns || [];
     return [...cols].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   }, [table?.columns]);
+
+  const activeCategory =
+    categories.find((cat) => cat.id === categoryId) || table?.category || null;
 
   useEffect(() => {
     const allowed = new Set(orderedColumns.map((c) => c.key));
@@ -660,6 +683,10 @@ export default function CustomTableDetailPage() {
   }, [isFullscreen, user]);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
     if (!isFullscreen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -689,13 +716,27 @@ export default function CustomTableDetailPage() {
     }
   };
 
-  const startEditMeta = () => {
+  const openEditMeta = (scope: EditingScope) => {
     if (!table) return;
     setMetaDraft({
       name: table.name || '',
       description: table.description || '',
     });
+    setEditingScope(scope);
     setEditingMeta(true);
+  };
+
+  const handlePencilClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    setPencilMenuAnchor(event.currentTarget);
+  };
+
+  const handleClosePencilMenu = () => {
+    setPencilMenuAnchor(null);
+  };
+
+  const handleSelectEditScope = (scope: EditingScope) => {
+    handleClosePencilMenu();
+    openEditMeta(scope);
   };
 
   const cancelEditMeta = () => {
@@ -704,24 +745,39 @@ export default function CustomTableDetailPage() {
       name: table?.name || '',
       description: table?.description || '',
     });
+    setEditingScope(null);
   };
 
   const saveMeta = async () => {
     if (!tableId) return;
-    const name = metaDraft.name.trim();
-    if (!name) {
-      toast.error('Введите название таблицы');
+    const scope: EditingScope = editingScope ?? 'both';
+    const payload: Record<string, unknown> = {};
+
+    if (scope !== 'description') {
+      const name = metaDraft.name.trim();
+      if (!name) {
+        toast.error('Введите название таблицы');
+        return;
+      }
+      payload.name = name;
+    }
+
+    if (scope !== 'name') {
+      const description = metaDraft.description.trim();
+      payload.description = description ? description : null;
+    }
+
+    if (!Object.keys(payload).length) {
+      setEditingMeta(false);
+      setEditingScope(null);
       return;
     }
-    const description = metaDraft.description.trim();
 
     setSavingMeta(true);
     try {
-      await apiClient.patch(`/custom-tables/${tableId}`, {
-        name,
-        description: description ? description : null,
-      });
+      await apiClient.patch(`/custom-tables/${tableId}`, payload);
       setEditingMeta(false);
+      setEditingScope(null);
       await loadTable();
       toast.success('Сохранено');
     } catch (error) {
@@ -952,253 +1008,267 @@ export default function CustomTableDetailPage() {
     );
   }
 
+
+  // Client-side only rendering to avoid hydration issues
+  if (!mounted) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">Загрузка...</div>
+    );
+  }
+
   return (
     <div
       className={
         isFullscreen
-          ? 'h-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col'
-          : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8'
+          ? 'h-screen w-screen overflow-hidden bg-white'
+          : 'max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8'
       }
+      style={isFullscreen ? { paddingTop: '110px' } : undefined}
     >
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
+      {/* Header Controls Inlined */}
+      <div
+        className={
+          isFullscreen
+            ? 'fixed top-0 left-0 right-0 z-50 border-b border-gray-100 bg-white/95 backdrop-blur-md shadow-md px-4 py-2.5'
+            : 'mb-6 flex items-start justify-between gap-4'
+        }
+      >
+       {/* Fullscreen layout adjustment: Flex container for the header content */}
+        <div className={isFullscreen ? 'flex items-center justify-between gap-4 max-w-[1920px] mx-auto' : 'contents'}>
+          <div className="min-w-0">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => router.push('/custom-tables')}
               className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="h-4 w-4" />
-              Назад
+              <span className={isFullscreen ? 'hidden sm:inline' : ''}>Назад</span>
             </button>
-            <Link href="/custom-tables" className="text-sm text-gray-400 hover:text-gray-600">
-              / Таблицы
-            </Link>
+            {!isFullscreen && (
+                <Link href="/custom-tables" className="text-sm text-gray-400 hover:text-gray-600">
+                / Таблицы
+                </Link>
+            )}
           </div>
-          <div className="mt-2 flex items-center gap-3">
+          <div className="flex items-start gap-2">
             <span
-              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200"
-              style={{ backgroundColor: table.category?.color || '#f3f4f6' }}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm"
+              style={{ backgroundColor: activeCategory?.color || '#f3f4f6' }}
             >
-              {table.category?.icon ? (
-                <Icon icon={table.category.icon} className="h-5 w-5 text-gray-900" />
+              {activeCategory?.icon ? (
+                <Icon icon={activeCategory.icon} className="h-6 w-6 text-gray-900" />
               ) : (
-                <span className="text-gray-900 font-semibold">T</span>
+                <span className="text-2xl font-semibold text-gray-900">
+                  {(activeCategory?.name || table.name || 'T').charAt(0)}
+                </span>
               )}
             </span>
-            {editingMeta ? (
-              <div className="flex items-center gap-2 w-full max-w-[520px]">
-                <input
-                  value={metaDraft.name}
-                  onChange={(e) => setMetaDraft((prev) => ({ ...prev, name: e.target.value }))}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      saveMeta();
-                    }
-                    if (e.key === 'Escape') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      cancelEditMeta();
-                    }
-                  }}
-                  disabled={savingMeta}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-base font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
-                  placeholder="Название таблицы"
-                />
-                <button
-                  onClick={saveMeta}
-                  disabled={savingMeta || !metaDraft.name.trim()}
-                  className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-primary text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Сохранить"
+            <div className="flex-1">
+              {editingMeta ? (
+                <div className="flex flex-col gap-1">
+                  {(editingScope ?? 'both') !== 'description' && (
+                    <input
+                      value={metaDraft.name}
+                      onChange={(e) => setMetaDraft((prev) => ({ ...prev, name: e.target.value }))}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          saveMeta();
+                        }
+                        if (e.key === 'Escape') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          cancelEditMeta();
+                        }
+                      }}
+                      disabled={savingMeta}
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
+                      placeholder="Название таблицы"
+                    />
+                  )}
+                  {(editingScope ?? 'both') !== 'name' && (
+                    <textarea
+                      value={metaDraft.description}
+                      onChange={(e) => setMetaDraft((prev) => ({ ...prev, description: e.target.value }))}
+                      rows={1}
+                      disabled={savingMeta}
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
+                      placeholder="Описание таблицы"
+                    />
+                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={saveMeta}
+                      disabled={
+                        savingMeta ||
+                        ((editingScope ?? 'both') !== 'description' && !metaDraft.name.trim())
+                      }
+                      className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Сохранить"
+                    >
+                      <Save className="h-4 w-4" />
+                      <span className="ml-1 text-[11px]">Сохранить</span>
+                    </button>
+                    <button
+                      onClick={cancelEditMeta}
+                      disabled={savingMeta}
+                      className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="ml-1 text-[11px]">Отмена</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 min-w-0">
+                  <h1 className="text-xl font-semibold text-gray-900 truncate">{table.name}</h1>
+                  <button
+                    onClick={handlePencilClick}
+                    className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 bg-white text-gray-700 hover:border-primary hover:text-primary"
+                    title="Редактировать название и описание"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <Menu
+                    anchorEl={pencilMenuAnchor}
+                    open={Boolean(pencilMenuAnchor)}
+                    onClose={handleClosePencilMenu}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                    transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                  >
+                    <MenuItem onClick={() => handleSelectEditScope('name')}>Изменить название</MenuItem>
+                    <MenuItem onClick={() => handleSelectEditScope('description')}>Изменить описание</MenuItem>
+                    <MenuItem onClick={() => handleSelectEditScope('both')}>Название и описание</MenuItem>
+                  </Menu>
+                </div>
+              )}
+            </div>
+            {!editingMeta && (
+              <div className="ml-3 flex items-center gap-2">
+                <select
+                  value={categoryId}
+                  onChange={(e) => updateCategory(e.target.value)}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 max-w-[150px]"
                 >
-                  <Save className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={cancelEditMeta}
-                  disabled={savingMeta}
-                  className="inline-flex items-center justify-center h-10 w-10 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Отмена"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 min-w-0">
-                <h1 className="text-2xl font-bold text-gray-900 truncate">{table.name}</h1>
-                <button
-                  onClick={startEditMeta}
-                  className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                  title="Редактировать название и описание"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
+                  <option value="">Без категории</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
           </div>
-          {editingMeta ? (
-            <textarea
-              value={metaDraft.description}
-              onChange={(e) => setMetaDraft((prev) => ({ ...prev, description: e.target.value }))}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  cancelEditMeta();
-                }
-                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                  e.preventDefault();
-                  saveMeta();
-                }
-              }}
-              disabled={savingMeta}
-              rows={2}
-              className="mt-2 w-full max-w-[720px] resize-y rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
-              placeholder="Описание (опционально)"
-            />
-          ) : (
-            <p className="text-secondary mt-1">{table.description || '—'}</p>
+          {!editingMeta && !isFullscreen && ( // Hide description in fullscreen header to save space
+             <div className="text-secondary ml-[52px]">{table.description || '—'}</div>
           )}
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <div className="text-xs font-semibold text-gray-700">Категория:</div>
-            <select
-              value={categoryId}
-              onChange={(e) => updateCategory(e.target.value)}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="">Без категории</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-[11px]">
+          <div className="flex items-center gap-1">
+            <div className="relative" ref={calendarFromRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCalendarFromOpen((v) => !v);
+                  setCalendarToOpen(false);
+                }}
+                className={`inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600 transition ${dateFrom ? 'bg-primary text-white shadow-sm' : 'hover:bg-white'}`}
+              >
+                <CalendarDays className="h-4 w-4" />
+                <span>{dateFrom ? formatFilterInputValue(dateFrom, '') : 'Дата от'}</span>
+              </button>
+              {calendarFromOpen && (
+                <div className="absolute right-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3 origin-top-right">
+                  <DayPicker
+                    mode="single"
+                    selected={selectedDateFrom}
+                    locale={ru}
+                    onSelect={(date) => {
+                      if (!date) return;
+                      setDateFrom(date.toISOString());
+                      setCalendarFromOpen(false);
+                    }}
+                    fromYear={2000}
+                    toYear={2035}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="relative" ref={calendarToRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCalendarToOpen((v) => !v);
+                  setCalendarFromOpen(false);
+                }}
+                className={`inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600 transition ${dateTo ? 'bg-primary text-white shadow-sm' : 'hover:bg-white'}`}
+              >
+                <CalendarDays className="h-4 w-4" />
+                <span>{dateTo ? formatFilterInputValue(dateTo, '') : 'Дата до'}</span>
+              </button>
+              {calendarToOpen && (
+                <div className="absolute right-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3 origin-top-right">
+                  <DayPicker
+                    mode="single"
+                    selected={selectedDateTo}
+                    locale={ru}
+                    onSelect={(date) => {
+                      if (!date) return;
+                      setDateTo(date.toISOString());
+                      setCalendarToOpen(false);
+                    }}
+                    fromYear={2000}
+                    toYear={2035}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsFullscreen((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            title={isFullscreen ? 'Выйти из полноэкранного режима (Esc)' : 'Открыть в полноэкранном режиме'}
-          >
-            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            {isFullscreen ? 'Выйти' : 'Полный экран'}
-          </button>
-          <button
-            onClick={() => setNewColumnOpen((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Plus className="h-4 w-4" />
-            Колонка
-          </button>
-          <button
-            onClick={addRow}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-          >
-            <Plus className="h-4 w-4" />
-            Строка
-          </button>
-        </div>
-      </div>
-
-      {hasActiveFilters && (
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Фильтры активны</div>
-          <button
-            type="button"
-            onClick={clearAllFilters}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <X className="h-4 w-4" />
-            Очистить все
-          </button>
-        </div>
-      )}
-
-      <div className="mb-5 flex flex-wrap items-center gap-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Фильтр по дате</div>
-        <div className="flex flex-wrap gap-2">
-          <div className="relative" ref={calendarFromRef}>
+          <div className="flex items-center gap-1">
             <button
-              type="button"
-              onClick={() => {
-                setCalendarFromOpen((v) => !v);
-                setCalendarToOpen(false);
-              }}
-              className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:border-primary hover:bg-primary/5 transition-colors"
+              onClick={() => setZoomLevel((z) => Math.max(0.5, z - 0.1))}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition hover:border-primary hover:text-primary disabled:opacity-50"
+              disabled={zoomLevel <= 0.5}
+              title="Уменьшить масштаб"
             >
-              {formatFilterInputValue(dateFrom, 'Дата от')}
+              <ZoomOut className="h-4 w-4" />
             </button>
-            {calendarFromOpen && (
-              <div className="absolute left-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3">
-                <style>{`
-                  .rdp { --rdp-cell-size: 36px; --rdp-accent-color: #0a66c2; --rdp-background-color: #e3f2fd; margin: 0; }
-                  .rdp-button { font-size: 0.875rem; font-weight: 500; }
-                  .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f0f0f0; font-weight: 600; }
-                  .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover { background-color: var(--rdp-accent-color); color: white; font-weight: 700; }
-                  .rdp-head_cell { color: #0a66c2; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; }
-                  .rdp-caption_label { font-weight: 700; color: #191919; font-size: 0.95rem; }
-                  .rdp-nav_button { color: #0a66c2; padding: 4px 6px; border-radius: 6px; }
-                  .rdp-nav_button:hover { background-color: #e3f2fd; color: #0a66c2; }
-                `}</style>
-                <DayPicker
-                  mode="single"
-                  selected={selectedDateFrom}
-                  locale={ru}
-                  onSelect={(date) => {
-                    if (!date) return;
-                    setDateFrom(date.toISOString());
-                    setCalendarFromOpen(false);
-                  }}
-                  fromYear={2000}
-                  toYear={2035}
-                />
-              </div>
-            )}
+            <span className="w-12 text-center text-[11px] font-medium text-gray-700 select-none">
+              {Math.round(zoomLevel * 100)}%
+            </span>
+            <button
+              onClick={() => setZoomLevel((z) => Math.min(1.5, z + 0.1))}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition hover:border-primary hover:text-primary disabled:opacity-50"
+              disabled={zoomLevel >= 1.5}
+              title="Увеличить масштаб"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </button>
           </div>
-          <div className="relative" ref={calendarToRef}>
+          <div className="flex items-center gap-1">
             <button
-              type="button"
-              onClick={() => {
-                setCalendarToOpen((v) => !v);
-                setCalendarFromOpen(false);
-              }}
-              className="inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:border-primary hover:bg-primary/5 transition-colors"
+              onClick={() => setNewColumnOpen((v) => !v)}
+              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-700 transition hover:border-primary hover:text-primary"
             >
-              {formatFilterInputValue(dateTo, 'Дата до')}
+              <Columns className="h-4 w-4" />
+              <span>Колонка</span>
             </button>
-            {calendarToOpen && (
-              <div className="absolute left-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3">
-                <style>{`
-                  .rdp { --rdp-cell-size: 36px; --rdp-accent-color: #0a66c2; --rdp-background-color: #e3f2fd; margin: 0; }
-                  .rdp-button { font-size: 0.875rem; font-weight: 500; }
-                  .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f0f0f0; font-weight: 600; }
-                  .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover { background-color: var(--rdp-accent-color); color: white; font-weight: 700; }
-                  .rdp-head_cell { color: #0a66c2; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; }
-                  .rdp-caption_label { font-weight: 700; color: #191919; font-size: 0.95rem; }
-                  .rdp-nav_button { color: #0a66c2; padding: 4px 6px; border-radius: 6px; }
-                  .rdp-nav_button:hover { background-color: #e3f2fd; color: #0a66c2; }
-                `}</style>
-                <DayPicker
-                  mode="single"
-                  selected={selectedDateTo}
-                  locale={ru}
-                  onSelect={(date) => {
-                    if (!date) return;
-                    setDateTo(date.toISOString());
-                    setCalendarToOpen(false);
-                  }}
-                  fromYear={2000}
-                  toYear={2035}
-                />
-              </div>
-            )}
+            <button
+              onClick={addRow}
+              className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-[11px] font-medium text-white transition hover:bg-primary-hover"
+            >
+              <Rows className="h-4 w-4" />
+              <span>Строка</span>
+            </button>
           </div>
         </div>
       </div>
 
       {newColumnOpen && (
-        <div className="mb-5 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+         <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+           {/* Repurposed New Column Form */}
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
             <div className="md:col-span-2">
               <label className="block text-xs font-semibold text-gray-700 mb-1">Название колонки</label>
@@ -1224,22 +1294,21 @@ export default function CustomTableDetailPage() {
               </select>
             </div>
             <div className="md:col-span-1 relative">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Иконка</label>
+                {/* Icon Picker (Existing Logic) */}
+               <label className="block text-xs font-semibold text-gray-700 mb-1">Иконка</label>
               <button
                 type="button"
                 onClick={() => setColumnIconOpen((v) => !v)}
                 className="w-full inline-flex items-center justify-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                title="Выбрать иконку"
               >
-                <div className="h-4 w-4">
+                 <div className="h-4 w-4">
                   {renderIconPreview(newColumnIcon || 'mdi:tag')}
                 </div>
                 <span className="text-sm font-semibold">Выбрать</span>
               </button>
               {columnIconOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setColumnIconOpen(false)} />
-                  <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
+                 <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
+                    {/* ... Icon grid ... */}
                     <div className="grid grid-cols-7 gap-2 mb-4">
                       {COLUMN_ICONS.map((icon) => (
                         <button
@@ -1254,20 +1323,18 @@ export default function CustomTableDetailPage() {
                               ? 'border-primary bg-primary/10 text-primary'
                               : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                           }`}
-                          title={icon}
                         >
-                          <div className="h-5 w-5">
+                           <div className="h-5 w-5">
                             {renderIconPreview(icon)}
                           </div>
                         </button>
                       ))}
                     </div>
-                    <div className="border-t border-gray-100 pt-4">
+                     <div className="border-t border-gray-100 pt-4">
                       <button
                         type="button"
                         onClick={() => {
                           triggerColumnIconUpload();
-                          // Keep input mounted while the OS file picker opens.
                           setTimeout(() => setColumnIconOpen(false), 0);
                         }}
                         disabled={uploadingColumnIcon}
@@ -1276,11 +1343,11 @@ export default function CustomTableDetailPage() {
                         {uploadingColumnIcon ? 'Загрузка...' : 'Загрузить иконку'}
                       </button>
                     </div>
-                  </div>
-                </>
+                 </div>
               )}
             </div>
-            <input
+            {/* Hidden Input */}
+             <input
               ref={columnIconInputRef}
               type="file"
               accept="image/*"
@@ -1307,17 +1374,33 @@ export default function CustomTableDetailPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+         </div>
+       )}
+    </div>
 
-      <div className={isFullscreen ? 'flex-1 min-h-0 overflow-hidden' : undefined}>
+      {/* Main Table Area */}
+      <div 
+        className={
+            isFullscreen 
+            ? `h-full w-full transition-all duration-300 pt-0` // No padding in full immersive
+            : undefined
+        }
+      >
         <div
           className={
             isFullscreen
-              ? 'h-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-sm'
+              ? 'h-full w-full bg-white transition-all duration-300'
               : 'overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm'
           }
         >
+          <div 
+             style={{ 
+               transform: `scale(${zoomLevel})`, 
+               transformOrigin: 'top left',
+               width: `${100 / zoomLevel}%`,
+               height: `${100 / zoomLevel}%`
+             }}
+          >
           <CustomTableAgGrid
             tableId={tableId as string}
             columns={orderedColumns}
@@ -1329,401 +1412,18 @@ export default function CustomTableDetailPage() {
             onLoadMore={loadRows}
             onFiltersParamChange={onGridFiltersParamChange}
             onUpdateCell={updateCellFromGrid}
-            onUpdateRowData={saveRowPatch}
+            
             onDeleteRow={requestDeleteRowFromGrid}
             onPersistColumnWidth={persistColumnWidth}
             selectedColumnKeys={selectedColumnKeys}
             onSelectedColumnKeysChange={setSelectedColumnKeys}
             onRenameColumnTitle={renameColumnTitleFromGrid}
           />
-          {false && (
-          <table className="min-w-full text-sm table-fixed">
-            <colgroup>
-              <col style={{ width: 72 }} />
-              {orderedColumns.map((col) => (
-                <col key={col.id} style={{ width: getColumnWidth(col.key) }} />
-              ))}
-              <col style={{ width: 64 }} />
-            </colgroup>
-            <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-            <tr>
-              <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[72px]">#</th>
-              {orderedColumns.map((col) => {
-                const columnIcon = (col.config as any)?.icon;
-                const isFiltered = activeFilterCols.has(col.key);
-                const filterState = columnFilters[col.key] || {};
-                const headerStyle = (col.style && typeof col.style === 'object' ? (col.style as any).header : null) || {};
-                const headerCss = getCellCss(headerStyle);
-                const thStyle: CSSProperties | undefined =
-                  headerCss.backgroundColor ||
-                  headerCss.textAlign ||
-                  headerCss.verticalAlign ||
-                  headerCss.color ||
-                  headerCss.fontWeight ||
-                  headerCss.fontStyle ||
-                  headerCss.textDecorationLine ||
-                  headerCss.fontSize ||
-                  headerCss.fontFamily
-                    ? {
-                        ...(headerCss.backgroundColor ? { backgroundColor: headerCss.backgroundColor } : {}),
-                        ...(headerCss.textAlign ? { textAlign: headerCss.textAlign } : {}),
-                        ...(headerCss.verticalAlign ? { verticalAlign: headerCss.verticalAlign } : {}),
-                        ...(headerCss.color ? { color: headerCss.color } : {}),
-                        ...(headerCss.fontWeight ? { fontWeight: headerCss.fontWeight } : {}),
-                        ...(headerCss.fontStyle ? { fontStyle: headerCss.fontStyle } : {}),
-                        ...(headerCss.textDecorationLine ? { textDecorationLine: headerCss.textDecorationLine } : {}),
-                        ...(headerCss.fontSize ? { fontSize: headerCss.fontSize } : {}),
-                        ...(headerCss.fontFamily ? { fontFamily: headerCss.fontFamily } : {}),
-                      }
-                    : undefined;
-                return (
-                  <th
-                    key={col.id}
-                    className="group relative px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap"
-                    style={thStyle}
-                  >
-                    <div className="flex items-center gap-2">
-                      {typeof columnIcon === 'string' && columnIcon ? (
-                        <div className="h-4 w-4">
-                          {renderIconPreview(columnIcon)}
-                        </div>
-                      ) : null}
-                      <span className="truncate max-w-[260px]" title={col.title}>
-                        {col.title}
-                      </span>
-                      <div
-                        className="relative"
-                        ref={activeFilterColKey === col.key ? filterPopoverRef : null}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleFilterPopover(col.key)}
-                          className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-gray-200 text-gray-500 bg-white hover:bg-white"
-                          title="Фильтр"
-                        >
-                          <Filter className="h-3.5 w-3.5" />
-                        </button>
-
-                        {activeFilterColKey === col.key && (() => {
-                          const rect = filterPopoverRef.current?.getBoundingClientRect();
-                          const top = rect ? Math.min(window.innerHeight - 520, rect.bottom + 8) : 100;
-                          const left = rect ? Math.max(16, Math.min(window.innerWidth - 356, rect.left)) : 100;
-                          return (
-                            <>
-                              <div className="fixed inset-0 z-20" onClick={() => setActiveFilterColKey(null)} />
-                              <div className="fixed z-30 w-[340px] max-w-[calc(100vw-32px)] max-h-[500px] rounded-xl border border-gray-200 bg-white p-4 shadow-2xl overflow-y-auto" style={{ top: `${top}px`, left: `${left}px` }}>
-                              <div className="flex items-center justify-between gap-2 mb-4">
-                                <div className="min-w-0">
-                                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    Фильтр
-                                  </div>
-                                  <div className="truncate text-sm font-semibold text-gray-900" title={col.title}>
-                                    {col.title}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveFilterColKey(null)}
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
-                                  title="Закрыть"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </div>
-
-                              <div className="space-y-3">
-                              {(col.type === 'text' || col.type === 'select' || col.type === 'multi_select') && (
-                                <div className="grid grid-cols-1 gap-2">
-                                  <label className="text-xs font-semibold text-gray-700">Оператор</label>
-                                  <select
-                                    value={
-                                      filterState.op ??
-                                      (col.type === 'text'
-                                        ? 'contains'
-                                        : col.type === 'select'
-                                          ? 'eq'
-                                          : 'in')
-                                    }
-                                    onChange={(e) => {
-                                      const op = e.target.value as RowFilterOp;
-                                      setColumnFilterState(col.key, { ...filterState, op });
-                                    }}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                  >
-                                    {col.type === 'text' && (
-                                      <>
-                                        <option value="contains">Содержит</option>
-                                        <option value="eq">Равно</option>
-                                        <option value="startsWith">Начинается с</option>
-                                        <option value="isEmpty">Пусто</option>
-                                        <option value="isNotEmpty">Не пусто</option>
-                                      </>
-                                    )}
-                                    {(col.type === 'select' || col.type === 'multi_select') && (
-                                      <>
-                                        <option value="eq">Равно</option>
-                                        <option value="in">В списке</option>
-                                        <option value="contains">Содержит</option>
-                                        <option value="isEmpty">Пусто</option>
-                                        <option value="isNotEmpty">Не пусто</option>
-                                      </>
-                                    )}
-                                  </select>
-
-                                  {filterState.op !== 'isEmpty' && filterState.op !== 'isNotEmpty' && (
-                                    <>
-                                      <label className="text-xs font-semibold text-gray-700">Значение</label>
-                                      <input
-                                        value={filterState.value ?? ''}
-                                        onChange={(e) =>
-                                          setColumnFilterState(col.key, { ...filterState, value: e.target.value })
-                                        }
-                                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                        placeholder={
-                                          filterState.op === 'in'
-                                            ? 'Например: KZT, USD, EUR'
-                                            : 'Введите значение'
-                                        }
-                                      />
-                                    </>
-                                  )}
-                                </div>
-                              )}
-
-                              {col.type === 'number' && (
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div>
-                                    <label className="text-xs font-semibold text-gray-700">От</label>
-                                    <input
-                                      type="number"
-                                      value={filterState.min ?? ''}
-                                      onChange={(e) =>
-                                        setColumnFilterState(col.key, { ...filterState, min: e.target.value })
-                                      }
-                                      className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                      placeholder="0"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="text-xs font-semibold text-gray-700">До</label>
-                                    <input
-                                      type="number"
-                                      value={filterState.max ?? ''}
-                                      onChange={(e) =>
-                                        setColumnFilterState(col.key, { ...filterState, max: e.target.value })
-                                      }
-                                      className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                      placeholder="100000"
-                                    />
-                                  </div>
-                                </div>
-                              )}
-
-                              {col.type === 'boolean' && (
-                                <div className="grid grid-cols-1 gap-2">
-                                  <label className="text-xs font-semibold text-gray-700">Значение</label>
-                                  <select
-                                    value={filterState.value ?? ''}
-                                    onChange={(e) =>
-                                      setColumnFilterState(col.key, { ...filterState, value: e.target.value })
-                                    }
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                  >
-                                    <option value="">Все</option>
-                                    <option value="true">Да</option>
-                                    <option value="false">Нет</option>
-                                  </select>
-                                </div>
-                              )}
-
-                              {col.type === 'date' && (
-                                <div className="grid grid-cols-1 gap-2">
-                                  <div className="text-xs font-semibold text-gray-700">Период</div>
-                                  <div className="text-sm text-gray-600">
-                                    {filterState.from || filterState.to
-                                      ? `${filterState.from || '…'} — ${filterState.to || '…'}`
-                                      : 'Выберите даты'}
-                                  </div>
-                                  <div className="rounded-xl border border-gray-200 bg-white p-2">
-                                    <style>{`
-                                      .rdp { --rdp-cell-size: 34px; --rdp-accent-color: #0a66c2; --rdp-background-color: #e3f2fd; margin: 0; }
-                                      .rdp-button { font-size: 0.875rem; font-weight: 500; }
-                                      .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f0f0f0; font-weight: 600; }
-                                      .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover { background-color: var(--rdp-accent-color); color: white; font-weight: 700; }
-                                      .rdp-head_cell { color: #0a66c2; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; }
-                                      .rdp-caption_label { font-weight: 700; color: #191919; font-size: 0.95rem; }
-                                      .rdp-nav_button { color: #0a66c2; padding: 4px 6px; border-radius: 6px; }
-                                      .rdp-nav_button:hover { background-color: #e3f2fd; color: #0a66c2; }
-                                    `}</style>
-                                    <DayPicker
-                                      mode="range"
-                                      locale={ru}
-                                      selected={{
-                                        from: filterState.from ? new Date(`${filterState.from}T00:00:00`) : undefined,
-                                        to: filterState.to ? new Date(`${filterState.to}T00:00:00`) : undefined,
-                                      }}
-                                      onSelect={(range: any) => {
-                                        const from = range?.from ? format(range.from, 'yyyy-MM-dd') : '';
-                                        const to = range?.to ? format(range.to, 'yyyy-MM-dd') : '';
-                                        setColumnFilterState(col.key, { ...filterState, from, to });
-                                      }}
-                                      fromYear={2000}
-                                      toYear={2035}
-                                    />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="mt-3 flex items-center justify-between gap-2">
-                              <button
-                                type="button"
-                                onClick={() => clearColumnFilter(col.key)}
-                                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                              >
-                                <X className="h-4 w-4" />
-                                Очистить
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setActiveFilterColKey(null)}
-                                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-                              >
-                                Готово
-                              </button>
-                            </div>
-                          </div>
-                          </>
-                          );
-                        })()}
-                      </div>
-                      <button
-                        onClick={() => openDeleteColumn(col)}
-                        className="inline-flex items-center justify-center h-7 w-7 rounded-lg border border-gray-200 text-gray-500 bg-white hover:bg-white"
-                        title="Удалить колонку"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    <div
-                      onPointerDown={(e) => startColumnResize(col.key, e)}
-                      className="absolute right-0 top-0 z-20 h-full w-4 cursor-col-resize touch-none -mr-2 flex items-center justify-center hover:bg-primary/10"
-                      title="Изменить ширину"
-                    >
-                      <div
-                        className={[
-                          'w-0.5 h-8 rounded-full',
-                          resizingColKey === col.key ? 'bg-primary' : 'bg-gray-300',
-                        ].join(' ')}
-                      />
-                    </div>
-                  </th>
-                );
-              })}
-              <th className="px-3 py-2 text-right font-semibold text-gray-700 w-[64px]"></th>
-            </tr>
-            </thead>
-            <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={orderedColumns.length + 2} className="px-4 py-6 text-center text-gray-500">
-                  {loadingRows
-                    ? 'Загрузка...'
-                    : requestFilters.length
-                      ? 'Нет строк по текущим фильтрам.'
-                      : 'Нет строк. Добавьте первую строку.'}
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="border-b border-gray-100 last:border-0">
-                  <td className="px-3 py-2 text-gray-500">{row.rowNumber}</td>
-                  {orderedColumns.map((col) => {
-                    const cellKey = `${row.id}:${col.id}`;
-                    const value = (row.data || {})[col.key];
-                    const isSaving = savingCell === cellKey;
-                    const baseStyle = (col.style && typeof col.style === 'object' ? (col.style as any).cell : null) || {};
-                    const overrideStyle =
-                      (row.styles && typeof row.styles === 'object' ? (row.styles as any)[col.key] : null) || {};
-                    const mergedStyle = mergeSheetStyle(baseStyle, overrideStyle);
-                    const cellCss = getCellCss(mergedStyle);
-                    const tdStyle: CSSProperties | undefined =
-                      cellCss.backgroundColor || cellCss.verticalAlign
-                        ? {
-                            ...(cellCss.backgroundColor ? { backgroundColor: cellCss.backgroundColor } : {}),
-                            ...(cellCss.verticalAlign ? { verticalAlign: cellCss.verticalAlign } : {}),
-                          }
-                        : undefined;
-                    const inputStyle: CSSProperties | undefined =
-                      cellCss.textAlign ||
-                      cellCss.color ||
-                      cellCss.fontWeight ||
-                      cellCss.fontStyle ||
-                      cellCss.textDecorationLine ||
-                      cellCss.fontSize ||
-                      cellCss.fontFamily
-                        ? {
-                            ...(cellCss.textAlign ? { textAlign: cellCss.textAlign } : {}),
-                            ...(cellCss.color ? { color: cellCss.color } : {}),
-                            ...(cellCss.fontWeight ? { fontWeight: cellCss.fontWeight } : {}),
-                            ...(cellCss.fontStyle ? { fontStyle: cellCss.fontStyle } : {}),
-                            ...(cellCss.textDecorationLine ? { textDecorationLine: cellCss.textDecorationLine } : {}),
-                            ...(cellCss.fontSize ? { fontSize: cellCss.fontSize } : {}),
-                            ...(cellCss.fontFamily ? { fontFamily: cellCss.fontFamily } : {}),
-                          }
-                        : undefined;
-
-                    if (col.type === 'boolean') {
-                      return (
-                        <td key={col.id} className="px-3 py-2" style={tdStyle}>
-                          <label className="inline-flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(value)}
-                              disabled={isSaving}
-                              onChange={(e) => saveCell(row, col, e.target.checked)}
-                              className="h-4 w-4"
-                            />
-                            {isSaving && <span className="text-xs text-gray-400">…</span>}
-                          </label>
-                        </td>
-                      );
-                    }
-
-                    return (
-                      <td key={col.id} className="px-3 py-2" style={tdStyle}>
-                        <input
-                          defaultValue={value ?? ''}
-                          onBlur={(e) => {
-                            const next = e.target.value;
-                            const normalized = next === '' ? null : next;
-                            if ((value ?? null) === normalized) return;
-                            saveCell(row, col, normalized);
-                          }}
-                          disabled={isSaving}
-                          style={inputStyle}
-                          className="w-full rounded-lg border border-gray-200 bg-transparent px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-transparent"
-                        />
-                      </td>
-                    );
-                  })}
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={() => openDeleteRow(row)}
-                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 text-gray-600 bg-white hover:bg-white"
-                      title="Удалить строку"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-            </tbody>
-          </table>
-          )}
+          </div>
         </div>
       </div>
+{/* Existing Modals ... */}
+
 
       <div className={isFullscreen ? 'mt-3 flex items-center justify-center' : 'mt-4 flex items-center justify-center'}>
         <button
