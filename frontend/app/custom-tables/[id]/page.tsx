@@ -133,6 +133,8 @@ export default function CustomTableDetailPage() {
   const [gridFiltersParam, setGridFiltersParam] = useState<string | undefined>(undefined);
   const [selectedColumnKeys, setSelectedColumnKeys] = useState<string[]>([]);
   const [bulkDeleteColumnsOpen, setBulkDeleteColumnsOpen] = useState(false);
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [rowStyleTagLoading, setRowStyleTagLoading] = useState(false);
 
   const [newColumnOpen, setNewColumnOpen] = useState(false);
   const [newColumn, setNewColumn] = useState<{ title: string; type: ColumnType }>({
@@ -848,6 +850,33 @@ export default function CustomTableDetailPage() {
     }
   };
 
+  const applyRowStyleTag = async (tag: 'heading' | 'total' | null) => {
+    if (!selectedRowIds.length) {
+      toast.error('Выберите строки, к которым нужно применить стиль');
+      return;
+    }
+    setRowStyleTagLoading(true);
+    try {
+      for (const rowId of selectedRowIds) {
+        const row = rows.find((r) => r.id === rowId);
+        if (!row) continue;
+        const nextStyles = { ...(row.styles || {}) };
+        if (tag) {
+          nextStyles.manualTag = tag;
+        } else {
+          delete nextStyles.manualTag;
+        }
+        await saveRowPatch(rowId, { styles: nextStyles });
+      }
+      toast.success('Стиль применён');
+    } catch (error) {
+      console.error('Failed to apply row style tag:', error);
+      toast.error('Не удалось применить стиль');
+    } finally {
+      setRowStyleTagLoading(false);
+    }
+  };
+
   const updateCellFromGrid = async (rowId: string, columnKey: string, value: any) => {
     const row = rows.find((r) => r.id === rowId);
     const column = orderedColumns.find((c) => c.key === columnKey);
@@ -1263,6 +1292,27 @@ export default function CustomTableDetailPage() {
               <span>Строка</span>
             </button>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-gray-500">
+              {selectedRowIds.length ? `Выбрано строк: ${selectedRowIds.length}` : 'Стиль строки'}
+            </span>
+            {['heading', 'total', null].map((tag) => (
+              <button
+                key={String(tag)}
+                onClick={() => applyRowStyleTag(tag as 'heading' | 'total' | null)}
+                disabled={rowStyleTagLoading || !selectedRowIds.length}
+                className={`min-w-[72px] rounded-full border px-3 py-1 text-[11px] font-medium transition ${
+                  tag
+                    ? 'border-gray-200 bg-white text-gray-700 hover:border-primary hover:text-primary'
+                    : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
+                } ${rowStyleTagLoading || !selectedRowIds.length ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {tag === 'heading' && 'Заголовок'}
+                {tag === 'total' && 'Итог'}
+                {tag === null && 'Очистить'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1413,12 +1463,13 @@ export default function CustomTableDetailPage() {
             onFiltersParamChange={onGridFiltersParamChange}
             onUpdateCell={updateCellFromGrid}
             
-            onDeleteRow={requestDeleteRowFromGrid}
-            onPersistColumnWidth={persistColumnWidth}
-            selectedColumnKeys={selectedColumnKeys}
-            onSelectedColumnKeysChange={setSelectedColumnKeys}
-            onRenameColumnTitle={renameColumnTitleFromGrid}
-          />
+          onDeleteRow={requestDeleteRowFromGrid}
+          onPersistColumnWidth={persistColumnWidth}
+          selectedColumnKeys={selectedColumnKeys}
+          onSelectedColumnKeysChange={setSelectedColumnKeys}
+          onRenameColumnTitle={renameColumnTitleFromGrid}
+          onSelectedRowIdsChange={setSelectedRowIds}
+        />
           </div>
         </div>
       </div>

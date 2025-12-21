@@ -11,6 +11,8 @@ import type {
   FilterChangedEvent,
   GridReadyEvent,
   IHeaderParams,
+  RowClassParams,
+  SelectionChangedEvent,
 } from 'ag-grid-community';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
@@ -389,6 +391,7 @@ export function CustomTableAgGrid(props: {
   selectedColumnKeys: string[];
   onSelectedColumnKeysChange: (keys: string[]) => void;
   onRenameColumnTitle: (columnKey: string, nextTitle: string) => Promise<void>;
+  onSelectedRowIdsChange: (rowIds: string[]) => void;
 }) {
   const gridApiRef = useRef<any>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -665,6 +668,20 @@ export function CustomTableAgGrid(props: {
     };
   }, []);
 
+  const getRowStyle = useCallback(
+    (params: RowClassParams) => {
+      const tag = params.data?.styles?.manualTag;
+      if (tag === 'heading') {
+        return { backgroundColor: '#111827', color: '#fff' };
+      }
+      if (tag === 'total') {
+        return { backgroundColor: '#0f172a', color: '#fff' };
+      }
+      return undefined;
+    },
+    [],
+  );
+
   const colDefs = useMemo<Array<ColDef<CustomTableGridRow>>>(() => {
     const defs: Array<ColDef<CustomTableGridRow>> = [
       {
@@ -787,6 +804,17 @@ export function CustomTableAgGrid(props: {
     setGridReady(true);
   };
 
+  const handleSelectionChanged = useCallback(
+    (event: SelectionChangedEvent) => {
+      const rows = event.api.getSelectedRows?.() || [];
+      const ids = rows
+        .map((row) => (row as CustomTableGridRow)?.id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0);
+      props.onSelectedRowIdsChange(ids);
+    },
+    [props],
+  );
+
   const onFilterChanged = (event: FilterChangedEvent) => {
     const model = event.api.getFilterModel();
     const filters = agFilterModelToRowFilters(model, columnsByKey);
@@ -886,10 +914,13 @@ export function CustomTableAgGrid(props: {
           defaultColDef={defaultColDef}
           ensureDomOrder
           rowSelection="multiple"
+          rowMultiSelectWithClick
           onGridReady={onGridReady}
           onFilterChanged={onFilterChanged}
           onCellValueChanged={onCellValueChanged}
           onColumnResized={onColumnResized}
+          onSelectionChanged={handleSelectionChanged}
+          getRowStyle={getRowStyle}
           animateRows={false}
           headerHeight={42}
           rowHeight={38}

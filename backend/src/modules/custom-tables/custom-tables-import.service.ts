@@ -15,7 +15,11 @@ import {
   GoogleSheetsImportLayoutType,
   GoogleSheetsImportPreviewDto,
 } from './dto/google-sheets-import-preview.dto';
-import { GoogleSheetsImportCommitDto, GoogleSheetsImportColumnDto } from './dto/google-sheets-import-commit.dto';
+import {
+  GoogleSheetsImportCommitDto,
+  GoogleSheetsImportColumnDto,
+  GoogleSheetsImportManualRowTag,
+} from './dto/google-sheets-import-commit.dto';
 
 interface A1RangeBounds {
   sheetName: string;
@@ -269,6 +273,149 @@ const diffStyle = (base: SheetCellStyle, actual: SheetCellStyle): SheetCellStyle
   return patch;
 };
 
+export type HighlightedRowTag = 'heading' | 'total';
+
+export interface HighlightedRowInfo {
+  rowNumber: number;
+  suggestedTag: HighlightedRowTag;
+  reason: string;
+  backgroundColor?: string;
+  textColor?: string;
+}
+
+type NormalizedRgbColor = { r: number; g: number; b: number; alpha: number };
+
+const normalizeRgbColor = (value: any): NormalizedRgbColor | null => {
+  if (!value || typeof value !== 'object') return null;
+  const r = clamp01(value.red);
+  const g = clamp01(value.green);
+  const b = clamp01(value.blue);
+  const alpha = clamp01(value.alpha ?? 1);
+  if (r === null || g === null || b === null) return null;
+  return { r, g, b, alpha: alpha === null ? 1 : alpha };
+};
+
+const normalizedColorKey = (color: NormalizedRgbColor): string =>
+  `${color.r.toFixed(4)}-${color.g.toFixed(4)}-${color.b.toFixed(4)}-${color.alpha.toFixed(4)}`;
+
+const normalizedColorToCss = (color: NormalizedRgbColor): string => {
+  const toByte = (val: number) => Math.round(Math.max(0, Math.min(1, val)) * 255);
+  const rr = toByte(color.r);
+  const gg = toByte(color.g);
+  const bb = toByte(color.b);
+  const hex = (n: number) => n.toString(16).padStart(2, '0');
+  if (color.alpha < 1) {
+    const alpha = Math.max(0, Math.min(1, color.alpha));
+    return `rgba(${rr}, ${gg}, ${bb}, ${alpha})`;
+  }
+  return `#${hex(rr)}${hex(gg)}${hex(bb)}`;
+};
+
+const colorLuminance = (color: NormalizedRgbColor): number => {
+  const toLinear = (value: number) => {
+    const v = Math.max(0, Math.min(1, value));
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * toLinear(color.r) + 0.7152 * toLinear(color.g) + 0.0722 * toLinear(color.b);
+};
+
+const contrastRatio = (lumA: number, lumB: number): number => {
+  const bright = Math.max(lumA, lumB);
+  const dark = Math.min(lumA, lumB);
+  return (bright + 0.05) / (dark + 0.05);
+};
+
+const detectHighContrastRows = (
+  gridRowData: any[] | null | undefined,
+  startRowNumber: number,
+  headerRowIndex: number,
+  valuesLength: number,
+): HighlightedRowInfo[] => {
+  const threshold = 6;
+  const maxRows = 80;
+  if (!Array.isArray(gridRowData) || !gridRowData.length) return [];
+  const limit = Math.min(gridRowData.length, valuesLength);
+  if (limit <= headerRowIndex + 1) return [];
+
+  const results: HighlightedRowInfo[] = [];
+
+  for (let rowIdx = headerRowIndex + 1; rowIdx < limit && results.length < maxRows; rowIdx += 1) {
+    const row = gridRowData[rowIdx];
+    if (!row || !Array.isArray(row.values)) continue;
+
+    const backgroundMap = new Map<string, { color: NormalizedRgbColor; count: number }>();
+    const textMap = new Map<string, { color: NormalizedRgbColor; count: number }>();
+
+    for (const cell of row.values) {
+      const format = cell?.userEnteredFormat;
+      if (!format) continue;
+
+      const bgColor = normalizeRgbColor(format.backgroundColor);
+      if (bgColor) {
+        const key = normalizedColorKey(bgColor);
+        const existing = backgroundMap.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          backgroundMap.set(key, { color: bgColor, count: 1 });
+        }
+      }
+
+      const textFormat = format.textFormat;
+      if (textFormat) {
+        const fgColor = normalizeRgbColor(textFormat.foregroundColor);
+        if (fgColor) {
+          const key = normalizedColorKey(fgColor);
+          const existing = textMap.get(key);
+          if (existing) {
+            existing.count += 1;
+          } else {
+            textMap.set(key, { color: fgColor, count: 1 });
+          }
+        }
+      }
+    }
+
+    const pickBestColor = (map: Map<string, { color: NormalizedRgbColor; count: number }>) => {
+      let best: NormalizedRgbColor | null = null;
+      let bestCount = -1;
+      for (const entry of map.values()) {
+        if (entry.count > bestCount) {
+          bestCount = entry.count;
+          best = entry.color;
+        }
+      }
+      return best;
+    };
+
+    const dominantBg = pickBestColor(backgroundMap);
+    if (!dominantBg) continue;
+    const dominantText = pickBestColor(textMap);
+
+    const bgLum = colorLuminance(dominantBg);
+    const fallbackText =
+      bgLum < 0.5
+        ? { r: 1, g: 1, b: 1, alpha: 1 }
+        : { r: 0, g: 0, b: 0, alpha: 1 };
+    const chosenText = dominantText || fallbackText;
+    const textLum = colorLuminance(chosenText);
+
+    const ratio = contrastRatio(bgLum, textLum);
+    if (ratio < threshold) continue;
+
+    const suggestedTag: HighlightedRowTag = bgLum < textLum ? 'heading' : 'total';
+    results.push({
+      rowNumber: startRowNumber + rowIdx,
+      suggestedTag,
+      reason: `Контраст ${ratio.toFixed(1)}:1`,
+      backgroundColor: normalizedColorToCss(dominantBg),
+      textColor: normalizedColorToCss(chosenText),
+    });
+  }
+
+  return results;
+};
+
 @Injectable()
 export class CustomTablesImportService {
   private readonly logger = new Logger(CustomTablesImportService.name);
@@ -440,6 +587,34 @@ export class CustomTablesImportService {
       };
     });
 
+    let highlightedRows: HighlightedRowInfo[] = [];
+    try {
+      const grid = await this.googleSheetsApiService.getGridData(
+        sheet.accessToken,
+        sheet.refreshToken,
+        sheet.sheetId,
+        range,
+      );
+
+      if (grid.accessToken !== sheet.accessToken) {
+        sheet.accessToken = grid.accessToken;
+        await this.googleSheetRepository.save(sheet);
+      }
+
+      const spreadsheet = grid.spreadsheet;
+      const sheetEntry =
+        spreadsheet?.sheets?.find((s: any) => s?.properties?.title === worksheetName) || spreadsheet?.sheets?.[0];
+      const dataEntry = sheetEntry?.data?.[0];
+      const gridRowData = Array.isArray(dataEntry?.rowData) ? dataEntry.rowData : null;
+      highlightedRows = detectHighContrastRows(gridRowData, bounds.startRow, safeHeaderIndex, values.length);
+    } catch (error) {
+      this.logger.warn(
+        `High contrast detection skipped during preview for googleSheetId=${dto.googleSheetId}: ${
+          error instanceof Error ? error.message : 'unknown error'
+        }`,
+      );
+    }
+
     return {
       spreadsheetId: sheet.sheetId,
       worksheetName,
@@ -459,6 +634,7 @@ export class CustomTablesImportService {
         values: Array.from({ length: colsCount }).map((_, colIdx) => normalizeCellValue(row?.[colIdx])),
       })),
       columns,
+      highlightedRows,
     };
   }
 
@@ -611,6 +787,7 @@ export class CustomTablesImportService {
     });
 
     let gridRowData: any[] | null = null;
+    let highlightedRows: HighlightedRowInfo[] = [];
     const baseStyleByIndex = new Map<number, SheetCellStyle>();
 
     try {
@@ -632,6 +809,12 @@ export class CustomTablesImportService {
       const dataEntry = sheetEntry?.data?.[0];
       gridRowData = Array.isArray(dataEntry?.rowData) ? dataEntry.rowData : null;
       const columnMetadata = Array.isArray(dataEntry?.columnMetadata) ? dataEntry.columnMetadata : null;
+      highlightedRows = detectHighContrastRows(
+        gridRowData,
+        bounds.startRow,
+        safeHeaderIndex,
+        values.length,
+      );
 
       if (columnMetadata && columnMetadata.length) {
         try {
@@ -728,6 +911,14 @@ export class CustomTablesImportService {
 
     await report(10, 'importing_rows');
     const dataStartIndex = safeHeaderIndex + 1;
+    const autoRowTagsByRowNumber = new Map<number, GoogleSheetsImportManualRowTag>();
+    if (Array.isArray(dto.autoRowTags)) {
+      for (const tag of dto.autoRowTags) {
+        if (tag && typeof tag.rowNumber === 'number' && tag.rowNumber >= 1 && tag.tag) {
+          autoRowTagsByRowNumber.set(tag.rowNumber, tag.tag);
+        }
+      }
+    }
     const rowsToInsert = [];
     for (let rowIdx = dataStartIndex; rowIdx < values.length; rowIdx += 1) {
       const sourceRowNumber = bounds.startRow + rowIdx;
@@ -742,6 +933,10 @@ export class CustomTablesImportService {
         } else {
           data[key] = null;
         }
+      }
+      const manualTag = autoRowTagsByRowNumber.get(sourceRowNumber);
+      if (manualTag) {
+        data.styles = { ...(data.styles || {}), manualTag };
       }
       rowsToInsert.push({
         tableId: table.id,

@@ -4,6 +4,7 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -36,6 +37,19 @@ export class GoogleSheetsImportColumnDto {
   @Type(() => Boolean)
   @IsBoolean()
   include?: boolean;
+}
+
+export type GoogleSheetsImportManualRowTag = 'heading' | 'total';
+
+export class GoogleSheetsImportRowTagDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  rowNumber: number;
+
+  @IsString()
+  @IsIn(['heading', 'total'])
+  tag: GoogleSheetsImportManualRowTag;
 }
 
 export class GoogleSheetsImportCommitDto {
@@ -78,6 +92,13 @@ export class GoogleSheetsImportCommitDto {
   @IsOptional()
   @IsEnum(GoogleSheetsImportLayoutType)
   layoutType?: GoogleSheetsImportLayoutType;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => GoogleSheetsImportRowTagDto)
+  autoRowTags?: GoogleSheetsImportRowTagDto[];
 
   @IsOptional()
   @IsArray()
