@@ -890,8 +890,8 @@ export default function CustomTableDetailPage() {
         if (color) {
           nextStyles.manualFill = color;
         } else {
-          delete (nextStyles as any).manualFill;
-          delete (nextStyles as any).manualTag;
+          nextStyles.manualFill = null;
+          nextStyles.manualTag = null;
         }
         await saveRowPatch(rowId, { styles: nextStyles });
       }
