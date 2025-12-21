@@ -360,7 +360,18 @@ export default function CustomTableDetailPage() {
       });
       const items = response.data?.items || response.data?.data?.items || [];
       const next = Array.isArray(items) ? items : [];
-      setRows((prev) => (opts?.reset ? next : [...prev, ...next]));
+      setRows((prev) => {
+        const merged = opts?.reset ? next : [...prev, ...next];
+        const seen = new Set<string>();
+        const deduped: typeof merged = [];
+        for (const row of merged) {
+          const id = (row as any)?.id || String((row as any)?.rowNumber);
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          deduped.push(row);
+        }
+        return deduped;
+      });
       setHasMore(next.length >= 50);
     } catch (error) {
       console.error('Failed to load rows:', error);
