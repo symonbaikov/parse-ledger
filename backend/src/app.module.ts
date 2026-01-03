@@ -28,6 +28,9 @@ import {
   CustomTable,
   CustomTableColumn,
   CustomTableRow,
+  Workspace,
+  WorkspaceInvitation,
+  WorkspaceMember,
 } from './entities';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -44,6 +47,7 @@ import { StorageModule } from './modules/storage/storage.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
 import { DataEntryModule } from './modules/data-entry/data-entry.module';
 import { CustomTablesModule } from './modules/custom-tables/custom-tables.module';
+import { WorkspacesModule } from './modules/workspaces/workspaces.module';
 
 @Module({
   imports: [
@@ -81,6 +85,9 @@ import { CustomTablesModule } from './modules/custom-tables/custom-tables.module
       CustomTable,
       CustomTableColumn,
       CustomTableRow,
+      Workspace,
+      WorkspaceInvitation,
+      WorkspaceMember,
     ]),
     AuthModule,
     UsersModule,
@@ -97,6 +104,7 @@ import { CustomTablesModule } from './modules/custom-tables/custom-tables.module
     TelegramModule,
     DataEntryModule,
     CustomTablesModule,
+    WorkspacesModule,
   ],
   controllers: [AppController],
   providers: [
