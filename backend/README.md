@@ -16,6 +16,11 @@ npm install
 cp .env.example .env
 ```
 
+Для отправки email-приглашений в рабочие пространства добавьте:
+
+- `APP_URL` — базовый URL фронтенда (используется в ссылках приглашений)
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — SMTP параметры; если они не заданы, ссылка всё равно вернётся в ответе API, но письмо отправлено не будет.
+
 ## Запуск базы данных
 
 Используйте Docker Compose для запуска PostgreSQL и Redis:
@@ -71,7 +76,6 @@ src/
 API доступно по адресу: `http://localhost:3001/api/v1`
 
 Health check: `GET /api/v1/health`
-
 
 
 
