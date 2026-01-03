@@ -16,6 +16,9 @@ import {
   SharePermissionLevel,
   FilePermissionType,
   Category,
+  User,
+  WorkspaceMember,
+  WorkspaceRole,
 } from '../../entities';
 import { CreateSharedLinkDto } from './dto/create-shared-link.dto';
 import { UpdateSharedLinkDto } from './dto/update-shared-link.dto';
@@ -53,19 +56,42 @@ export class StorageService {
     private readonly transactionRepository: Repository<Transaction>,
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(WorkspaceMember)
+    private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
   ) {}
+
+  private async getUserContext(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'workspaceId'],
+    });
+    return {
+      workspaceId: user?.workspaceId ?? null,
+    };
+  }
 
   /**
    * Get all files (statements) in storage for a user
    */
   async getStorageFiles(userId: string) {
     try {
-      // Get all statements owned by user
-      const ownedStatements = await this.statementRepository.find({
-        where: { userId },
-        relations: ['category'],
-        order: { createdAt: 'DESC' },
-      });
+      const { workspaceId } = await this.getUserContext(userId);
+
+      // Get all statements owned by user or workspace
+      const ownedStatements = await this.statementRepository
+        .createQueryBuilder('statement')
+        .leftJoinAndSelect('statement.category', 'category')
+        .leftJoinAndSelect('statement.user', 'owner')
+        .where(
+          workspaceId
+            ? 'owner.workspaceId = :workspaceId'
+            : 'statement.userId = :userId',
+          workspaceId ? { workspaceId } : { userId },
+        )
+        .orderBy('statement.created_at', 'DESC')
+        .getMany();
 
       // Get all statements shared with user (if permissions table exists)
       let sharedPermissions = [];
@@ -75,7 +101,7 @@ export class StorageService {
             userId,
             isActive: true,
           },
-          relations: ['statement', 'statement.category'],
+          relations: ['statement', 'statement.category', 'statement.user'],
         });
       } catch (error) {
         // If permissions table doesn't exist yet, just use empty array
@@ -97,9 +123,18 @@ export class StorageService {
       }
 
       // Enrich with permissions info
+      const workspaceRole = workspaceId
+        ? await this.workspaceMemberRepository.findOne({
+            where: { workspaceId, userId },
+            select: ['role'],
+          })
+        : null;
+
       const enrichedStatements = await Promise.all(
         allStatements.map(async (statement) => {
           const isOwner = statement.userId === userId;
+          const isWorkspacePeer =
+            workspaceId && statement.user && statement.user.workspaceId === workspaceId;
           let permission = null;
           let sharedLinks = 0;
 
@@ -109,15 +144,28 @@ export class StorageService {
               where: { statementId: statement.id },
             });
           } catch (error) {
-            // If tables don't exist yet, use defaults
             console.warn('Storage tables may not exist yet:', error.message);
           }
+
+          const permissionType = isOwner
+            ? FilePermissionType.OWNER
+            : isWorkspacePeer
+            ? FilePermissionType.VIEWER
+            : permission?.permissionType;
+
+          const canReshare =
+            isOwner ||
+            (isWorkspacePeer &&
+              workspaceRole &&
+              [WorkspaceRole.OWNER, WorkspaceRole.ADMIN].includes(workspaceRole.role)) ||
+            permission?.canReshare ||
+            false;
 
           return {
             ...statement,
             isOwner,
-            permissionType: isOwner ? FilePermissionType.OWNER : permission?.permissionType,
-            canReshare: isOwner || permission?.canReshare || false,
+            permissionType,
+            canReshare,
             sharedLinksCount: sharedLinks,
           };
         }),
@@ -166,7 +214,7 @@ export class StorageService {
   async getFileDetails(statementId: string, userId: string) {
     const statement = await this.statementRepository.findOne({
       where: { id: statementId },
-      relations: ['category'],
+      relations: ['category', 'user'],
     });
 
     if (!statement) {
@@ -197,6 +245,9 @@ export class StorageService {
 
     const isOwner = statement.userId === userId;
     const userPermission = await this.getUserPermissionForStatement(userId, statementId);
+    const { workspaceId } = await this.getUserContext(userId);
+    const isWorkspacePeer =
+      workspaceId && statement.user && statement.user.workspaceId === workspaceId;
 
     return {
       statement,
@@ -208,7 +259,11 @@ export class StorageService {
       })),
       permissions,
       isOwner,
-      userPermission: isOwner ? FilePermissionType.OWNER : userPermission?.permissionType,
+      userPermission: isOwner
+        ? FilePermissionType.OWNER
+        : isWorkspacePeer
+        ? FilePermissionType.VIEWER
+        : userPermission?.permissionType,
     };
   }
 
@@ -572,15 +627,43 @@ export class StorageService {
   ): Promise<void> {
     const statement = await this.statementRepository.findOne({
       where: { id: statementId },
+      relations: ['user'],
     });
 
     if (!statement) {
       throw new NotFoundException('File not found');
     }
 
+    const { workspaceId } = await this.getUserContext(userId);
+
     // Owner has all permissions
     if (statement.userId === userId) {
       return;
+    }
+
+    // Workspace members: allow view/download; admins/owners can edit/share
+    const isSameWorkspace =
+      workspaceId && statement.user?.workspaceId && statement.user.workspaceId === workspaceId;
+    if (isSameWorkspace) {
+      const membership = await this.workspaceMemberRepository.findOne({
+        where: { workspaceId, userId },
+        select: ['role'],
+      });
+
+      if (requiredAction === 'view' || requiredAction === 'download') {
+        return;
+      }
+
+      const canManage =
+        membership && [WorkspaceRole.ADMIN, WorkspaceRole.OWNER].includes(membership.role);
+
+      if (requiredAction === 'edit' && canManage) {
+        return;
+      }
+
+      if (requiredAction === 'share' && canManage) {
+        return;
+      }
     }
 
     // Check file permissions

@@ -13,6 +13,7 @@ import { DataEntryCustomField } from '../../entities/data-entry-custom-field.ent
 import { GoogleSheet } from '../../entities/google-sheet.entity';
 import { Statement } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
+import { User } from '../../entities/user.entity';
 import { GoogleSheetsModule } from '../google-sheets/google-sheets.module';
 import { CustomTablesController } from './custom-tables.controller';
 import { CustomTableImportJobsProcessor } from './custom-table-import-jobs.processor';
@@ -36,6 +37,7 @@ import { CustomTablesService } from './custom-tables.service';
       Category,
       Statement,
       Transaction,
+      User,
     ]),
     GoogleSheetsModule,
   ],

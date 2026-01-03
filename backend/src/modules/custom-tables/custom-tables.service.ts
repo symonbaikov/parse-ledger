@@ -26,6 +26,7 @@ import { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-
 import { CreateCustomTableFromStatementsDto } from './dto/create-custom-table-from-statements.dto';
 import { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
 import { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
+import { User } from '../../entities/user.entity';
 
 type DataEntryFieldKey = 'date' | 'type' | 'amount' | 'currency' | 'note';
 
@@ -56,6 +57,8 @@ export class CustomTablesService {
     private readonly transactionRepository: Repository<Transaction>,
     @InjectRepository(AuditLog)
     private readonly auditLogRepository: Repository<AuditLog>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   private throwHelpfulSchemaError(error: unknown): never {
@@ -70,10 +73,33 @@ export class CustomTablesService {
     throw error;
   }
 
+  private async getWorkspaceId(userId: string): Promise<string | null> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'workspaceId'],
+    });
+    return user?.workspaceId ?? null;
+  }
+
   private async resolveCategoryId(userId: string, categoryId: string): Promise<string> {
     let category: Category | null = null;
     try {
-      category = await this.categoryRepository.findOne({ where: { id: categoryId, userId } });
+      const workspaceId = await this.getWorkspaceId(userId);
+      const qb = this.categoryRepository
+        .createQueryBuilder('category')
+        .leftJoin('category.user', 'owner')
+        .where('category.id = :categoryId', { categoryId });
+
+      if (workspaceId) {
+        qb.andWhere('(category.userId = :userId OR owner.workspaceId = :workspaceId)', {
+          userId,
+          workspaceId,
+        });
+      } else {
+        qb.andWhere('category.userId = :userId', { userId });
+      }
+
+      category = await qb.getOne();
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
@@ -84,16 +110,31 @@ export class CustomTablesService {
   }
 
   private async requireTable(userId: string, tableId: string): Promise<CustomTable> {
-    let table: CustomTable | null = null;
+    const workspaceId = await this.getWorkspaceId(userId);
     try {
-      table = await this.customTableRepository.findOne({ where: { id: tableId, userId } });
+      const qb = this.customTableRepository
+        .createQueryBuilder('table')
+        .leftJoinAndSelect('table.user', 'owner')
+        .where('table.id = :tableId', { tableId });
+
+      if (workspaceId) {
+        qb.andWhere('(table.userId = :userId OR owner.workspaceId = :workspaceId)', {
+          userId,
+          workspaceId,
+        });
+      } else {
+        qb.andWhere('table.userId = :userId', { userId });
+      }
+
+      const table = await qb.getOne();
+      if (!table) {
+        throw new NotFoundException('Таблица не найдена');
+      }
+      return table;
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    if (!table) {
-      throw new NotFoundException('Таблица не найдена');
-    }
-    return table;
+    throw new NotFoundException('Таблица не найдена');
   }
 
   private generateColumnKey(): string {
@@ -222,21 +263,31 @@ export class CustomTablesService {
 
   async listTables(userId: string): Promise<CustomTable[]> {
     try {
-      return await this.customTableRepository.find({
-        where: { userId },
-        relations: { category: true },
-        order: { createdAt: 'DESC' },
-      });
+      const workspaceId = await this.getWorkspaceId(userId);
+      const qb = this.customTableRepository
+        .createQueryBuilder('table')
+        .leftJoinAndSelect('table.category', 'category')
+        .leftJoin('table.user', 'owner')
+        .orderBy('table.created_at', 'DESC');
+
+      if (workspaceId) {
+        qb.where('owner.workspaceId = :workspaceId', { workspaceId });
+      } else {
+        qb.where('table.userId = :userId', { userId });
+      }
+
+      return await qb.getMany();
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
   }
 
   async getTable(userId: string, tableId: string): Promise<CustomTable> {
+    await this.requireTable(userId, tableId);
     let table: CustomTable | null = null;
     try {
       table = await this.customTableRepository.findOne({
-        where: { id: tableId, userId },
+        where: { id: tableId },
         relations: { columns: true, category: true },
       });
     } catch (error) {

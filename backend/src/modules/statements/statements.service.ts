@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,6 +12,7 @@ import * as path from 'path';
 import { Statement, StatementStatus, FileType, BankName } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
+import { WorkspaceMember, WorkspaceRole } from '../../entities';
 import { calculateFileHash } from '../../common/utils/file-hash.util';
 import { getFileTypeFromMime } from '../../common/utils/file-validator.util';
 import { AuditLog, AuditAction } from '../../entities/audit-log.entity';
@@ -45,8 +47,37 @@ export class StatementsService {
     private transactionRepository: Repository<Transaction>,
     @InjectRepository(AuditLog)
     private auditLogRepository: Repository<AuditLog>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(WorkspaceMember)
+    private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
     private statementProcessingService: StatementProcessingService,
   ) {}
+
+  private async getWorkspaceId(userId: string): Promise<string | null> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'workspaceId'],
+    });
+    return user?.workspaceId ?? null;
+  }
+
+  private async ensureCanModify(statement: Statement, userId: string): Promise<void> {
+    if (statement.userId === userId) {
+      return;
+    }
+    const workspaceId = await this.getWorkspaceId(userId);
+    if (workspaceId && statement.user?.workspaceId === workspaceId) {
+      const membership = await this.workspaceMemberRepository.findOne({
+        where: { workspaceId, userId },
+        select: ['role'],
+      });
+      if (membership && [WorkspaceRole.ADMIN, WorkspaceRole.OWNER].includes(membership.role)) {
+        return;
+      }
+    }
+    throw new ForbiddenException('Недостаточно прав для изменения выписки');
+  }
 
   async create(
     user: User,
@@ -108,22 +139,47 @@ export class StatementsService {
     page: number = 1,
     limit: number = 20,
   ): Promise<{ data: Statement[]; total: number; page: number; limit: number }> {
-    const [data, total] = await this.statementRepository.findAndCount({
-      where: { userId },
-      relations: ['googleSheet'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const workspaceId = await this.getWorkspaceId(userId);
+
+    const qb = this.statementRepository
+      .createQueryBuilder('statement')
+      .leftJoinAndSelect('statement.googleSheet', 'googleSheet')
+      .leftJoinAndSelect('statement.user', 'owner')
+      .orderBy('statement.created_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    if (workspaceId) {
+      qb.where('owner.workspaceId = :workspaceId', { workspaceId });
+    } else {
+      qb.where('statement.userId = :userId', { userId });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
 
     return { data, total, page, limit };
   }
 
   async findOne(id: string, userId: string): Promise<Statement> {
-    const statement = await this.statementRepository.findOne({
-      where: { id, userId },
-      relations: ['transactions', 'googleSheet'],
-    });
+    const workspaceId = await this.getWorkspaceId(userId);
+
+    const qb = this.statementRepository
+      .createQueryBuilder('statement')
+      .leftJoinAndSelect('statement.transactions', 'transactions')
+      .leftJoinAndSelect('statement.googleSheet', 'googleSheet')
+      .leftJoinAndSelect('statement.user', 'owner')
+      .where('statement.id = :id', { id });
+
+    if (workspaceId) {
+      qb.andWhere('(statement.userId = :userId OR owner.workspaceId = :workspaceId)', {
+        userId,
+        workspaceId,
+      });
+    } else {
+      qb.andWhere('statement.userId = :userId', { userId });
+    }
+
+    const statement = await qb.getOne();
 
     if (!statement) {
       throw new NotFoundException('Statement not found');
@@ -138,6 +194,7 @@ export class StatementsService {
     updateDto: UpdateStatementDto,
   ): Promise<Statement> {
     const statement = await this.findOne(id, userId);
+    await this.ensureCanModify(statement, userId);
 
     if (updateDto.balanceStart !== undefined) {
       statement.balanceStart =
@@ -182,6 +239,7 @@ export class StatementsService {
 
   async remove(id: string, userId: string): Promise<void> {
     const statement = await this.findOne(id, userId);
+    await this.ensureCanModify(statement, userId);
 
     // Log to audit before deletion
     await this.auditLogRepository.save({
@@ -211,6 +269,7 @@ export class StatementsService {
 
   async reprocess(id: string, userId: string): Promise<Statement> {
     const statement = await this.findOne(id, userId);
+    await this.ensureCanModify(statement, userId);
 
     statement.status = StatementStatus.UPLOADED;
     statement.errorMessage = null;

@@ -8,6 +8,8 @@ import {
   Statement,
   Transaction,
   Category,
+  User,
+  WorkspaceMember,
 } from '../../entities';
 
 /**
@@ -21,6 +23,8 @@ import {
       Statement,
       Transaction,
       Category,
+      User,
+      WorkspaceMember,
     ]),
   ],
   controllers: [StorageController],
@@ -28,6 +32,5 @@ import {
   exports: [StorageService],
 })
 export class StorageModule {}
-
 
 
