@@ -1,0 +1,64 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  Unique,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Workspace } from './workspace.entity';
+import { User } from './user.entity';
+
+export enum WorkspaceRole {
+  OWNER = 'owner',
+  ADMIN = 'admin',
+  MEMBER = 'member',
+}
+
+@Entity('workspace_members')
+@Unique(['workspaceId', 'userId'])
+export class WorkspaceMember {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ name: 'workspace_id' })
+  workspaceId: string;
+
+  @ManyToOne(() => Workspace, (workspace) => workspace.members, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'workspace_id' })
+  workspace: Workspace;
+
+  @Column({ name: 'user_id' })
+  userId: string;
+
+  @ManyToOne(() => User, (user) => user.workspaceMemberships, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'user_id' })
+  user: User;
+
+  @Column({
+    name: 'role',
+    type: 'varchar',
+    length: 16,
+    default: WorkspaceRole.MEMBER,
+  })
+  role: WorkspaceRole;
+
+  @Column({ name: 'invited_by_id', nullable: true })
+  invitedById: string | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'invited_by_id' })
+  invitedBy: User | null;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+}

@@ -5,6 +5,8 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Statement } from './statement.entity';
 import { GoogleSheet } from './google-sheet.entity';
@@ -12,6 +14,8 @@ import { TelegramReport } from './telegram-report.entity';
 import { Category } from './category.entity';
 import { Branch } from './branch.entity';
 import { Wallet } from './wallet.entity';
+import { Workspace } from './workspace.entity';
+import { WorkspaceMember } from './workspace-member.entity';
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -42,6 +46,13 @@ export class User {
     default: UserRole.USER,
   })
   role: UserRole;
+
+  @ManyToOne(() => Workspace, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'workspace_id' })
+  workspace: Workspace | null;
+
+  @Column({ name: 'workspace_id', nullable: true })
+  workspaceId: string | null;
 
   @Column({ name: 'google_id', nullable: true })
   googleId: string | null;
@@ -89,5 +100,7 @@ export class User {
 
   @OneToMany(() => Wallet, (wallet) => wallet.user)
   wallets: Wallet[];
-}
 
+  @OneToMany(() => WorkspaceMember, (membership) => membership.user)
+  workspaceMemberships: WorkspaceMember[];
+}

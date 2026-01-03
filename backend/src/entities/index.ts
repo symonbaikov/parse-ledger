@@ -15,5 +15,7 @@ export * from './parsing-rule.entity';
 export * from './audit-log.entity';
 export * from './shared-link.entity';
 export * from './file-permission.entity';
-
+export * from './workspace.entity';
+export * from './workspace-member.entity';
+export * from './workspace-invitation.entity';
 
