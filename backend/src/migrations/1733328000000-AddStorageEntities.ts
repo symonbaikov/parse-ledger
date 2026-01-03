@@ -113,26 +113,41 @@ export class AddStorageEntities1733328000000 implements MigrationInterface {
       }),
     );
 
-    // Create foreign keys for shared_links
-    await queryRunner.createForeignKey(
-      'shared_links',
-      new TableForeignKey({
-        columnNames: ['statement_id'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'statements',
-        onDelete: 'CASCADE',
-      }),
-    );
+    // Create foreign keys for shared_links (if table exists and constraint doesn't)
+    const sharedLinksTable = await queryRunner.getTable('shared_links');
+    if (sharedLinksTable) {
+      const hasFk1 = sharedLinksTable.foreignKeys.some(
+        (fk) => fk.columnNames.includes('statement_id') && 
+                fk.referencedTableName === 'statements'
+      );
+      if (!hasFk1) {
+        await queryRunner.createForeignKey(
+          'shared_links',
+          new TableForeignKey({
+            columnNames: ['statement_id'],
+            referencedColumnNames: ['id'],
+            referencedTableName: 'statements',
+            onDelete: 'CASCADE',
+          }),
+        );
+      }
 
-    await queryRunner.createForeignKey(
-      'shared_links',
-      new TableForeignKey({
-        columnNames: ['user_id'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'users',
-        onDelete: 'CASCADE',
-      }),
-    );
+      const hasFk2 = sharedLinksTable.foreignKeys.some(
+        (fk) => fk.columnNames.includes('user_id') && 
+                fk.referencedTableName === 'users'
+      );
+      if (!hasFk2) {
+        await queryRunner.createForeignKey(
+          'shared_links',
+          new TableForeignKey({
+            columnNames: ['user_id'],
+            referencedColumnNames: ['id'],
+            referencedTableName: 'users',
+            onDelete: 'CASCADE',
+          }),
+        );
+      }
+    }
 
     // Create file_permissions table
     await queryRunner.createTable(
@@ -224,36 +239,57 @@ export class AddStorageEntities1733328000000 implements MigrationInterface {
       }),
     );
 
-    // Create foreign keys for file_permissions
-    await queryRunner.createForeignKey(
-      'file_permissions',
-      new TableForeignKey({
-        columnNames: ['statement_id'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'statements',
-        onDelete: 'CASCADE',
-      }),
-    );
+    // Create foreign keys for file_permissions (if table exists and constraint doesn't)
+    const filePermissionsTable = await queryRunner.getTable('file_permissions');
+    if (filePermissionsTable) {
+      const hasFk1 = filePermissionsTable.foreignKeys.some(
+        (fk) => fk.columnNames.includes('statement_id') && 
+                fk.referencedTableName === 'statements'
+      );
+      if (!hasFk1) {
+        await queryRunner.createForeignKey(
+          'file_permissions',
+          new TableForeignKey({
+            columnNames: ['statement_id'],
+            referencedColumnNames: ['id'],
+            referencedTableName: 'statements',
+            onDelete: 'CASCADE',
+          }),
+        );
+      }
 
-    await queryRunner.createForeignKey(
-      'file_permissions',
-      new TableForeignKey({
-        columnNames: ['user_id'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'users',
-        onDelete: 'CASCADE',
-      }),
-    );
+      const hasFk2 = filePermissionsTable.foreignKeys.some(
+        (fk) => fk.columnNames.includes('user_id') && 
+                fk.referencedTableName === 'users'
+      );
+      if (!hasFk2) {
+        await queryRunner.createForeignKey(
+          'file_permissions',
+          new TableForeignKey({
+            columnNames: ['user_id'],
+            referencedColumnNames: ['id'],
+            referencedTableName: 'users',
+            onDelete: 'CASCADE',
+          }),
+        );
+      }
 
-    await queryRunner.createForeignKey(
-      'file_permissions',
-      new TableForeignKey({
-        columnNames: ['granted_by_id'],
-        referencedColumnNames: ['id'],
-        referencedTableName: 'users',
-        onDelete: 'CASCADE',
-      }),
-    );
+      const hasFk3 = filePermissionsTable.foreignKeys.some(
+        (fk) => fk.columnNames.includes('granted_by_id') && 
+                fk.referencedTableName === 'users'
+      );
+      if (!hasFk3) {
+        await queryRunner.createForeignKey(
+          'file_permissions',
+          new TableForeignKey({
+            columnNames: ['granted_by_id'],
+            referencedColumnNames: ['id'],
+            referencedTableName: 'users',
+            onDelete: 'CASCADE',
+          }),
+        );
+      }
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

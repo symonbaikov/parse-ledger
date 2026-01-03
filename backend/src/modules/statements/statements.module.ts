@@ -5,11 +5,12 @@ import { StatementsService } from './statements.service';
 import { Statement } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
+import { User, WorkspaceMember } from '../../entities';
 import { ParsingModule } from '../parsing/parsing.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Statement, Transaction, AuditLog]),
+    TypeOrmModule.forFeature([Statement, Transaction, AuditLog, User, WorkspaceMember]),
     ParsingModule,
   ],
   controllers: [StatementsController],
@@ -17,4 +18,3 @@ import { ParsingModule } from '../parsing/parsing.module';
   exports: [StatementsService],
 })
 export class StatementsModule {}
-
