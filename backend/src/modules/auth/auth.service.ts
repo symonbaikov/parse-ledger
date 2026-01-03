@@ -8,7 +8,13 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole } from '../../entities/user.entity';
+import {
+  User,
+  UserRole,
+  Workspace,
+  WorkspaceMember,
+  WorkspaceRole,
+} from '../../entities';
 import { ROLE_PERMISSIONS } from '../../common/enums/permissions.enum';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -21,6 +27,10 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(Workspace)
+    private workspaceRepository: Repository<Workspace>,
+    @InjectRepository(WorkspaceMember)
+    private workspaceMemberRepository: Repository<WorkspaceMember>,
     private jwtService: JwtService,
   ) {}
 
@@ -46,6 +56,27 @@ export class AuthService {
     });
 
     const savedUser = await this.userRepository.save(user);
+
+    const workspaceName = registerDto.company?.trim()
+      ? `${registerDto.company.trim()} workspace`
+      : `${registerDto.name || registerDto.email} workspace`;
+
+    const workspace = this.workspaceRepository.create({
+      name: workspaceName,
+      ownerId: savedUser.id,
+    });
+
+    const savedWorkspace = await this.workspaceRepository.save(workspace);
+
+    savedUser.workspaceId = savedWorkspace.id;
+    await this.userRepository.save(savedUser);
+
+    await this.workspaceMemberRepository.save({
+      workspaceId: savedWorkspace.id,
+      userId: savedUser.id,
+      role: WorkspaceRole.OWNER,
+      invitedById: savedUser.id,
+    });
 
     return this.generateTokens(savedUser);
   }
@@ -149,10 +180,10 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+        workspaceId: user.workspaceId || null,
       },
       access_token,
       refresh_token,
     };
   }
 }
-

@@ -7,11 +7,11 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
-import { User } from '../../entities/user.entity';
+import { User, Workspace, WorkspaceMember } from '../../entities';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Workspace, WorkspaceMember]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -35,4 +35,3 @@ import { User } from '../../entities/user.entity';
   exports: [AuthService],
 })
 export class AuthModule {}
-

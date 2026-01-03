@@ -4,11 +4,11 @@ export class AuthResponseDto {
     email: string;
     name: string;
     role: string;
+    workspaceId?: string | null;
   };
   access_token: string;
   refresh_token: string;
 }
-
 
 
 
