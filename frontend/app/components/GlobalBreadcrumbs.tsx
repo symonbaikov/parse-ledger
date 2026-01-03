@@ -19,6 +19,7 @@ const LABELS: Record<string, string> = {
   'custom-tables/import/google-sheets': 'Google Sheets',
   'settings': 'Настройки',
   'settings/profile': 'Профиль',
+  'settings/workspace': 'Рабочее пространство',
   'settings/telegram': 'Telegram',
   'google-sheets': 'Google Sheets',
   'google-sheets/callback': 'Callback',

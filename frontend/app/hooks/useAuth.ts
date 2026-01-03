@@ -9,6 +9,7 @@ interface User {
   email: string;
   name: string;
   role: string;
+  workspaceId?: string | null;
   permissions?: string[] | null;
   telegramId?: string | null;
   telegramChatId?: string | null;
@@ -59,4 +60,3 @@ export function useAuth() {
 
   return { user, loading, logout };
 }
-

@@ -23,6 +23,7 @@ import {
   Plug,
   Edit3,
   Table,
+  Users,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -148,6 +149,14 @@ export default function Navigation() {
                   >
                     <Settings size={16} className="mr-2" />
                     Настройки
+                  </Link>
+                  <Link
+                    href="/settings/workspace"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <Users size={16} className="mr-2" />
+                    Рабочее пространство
                   </Link>
                   <Link
                     href="/integrations"
