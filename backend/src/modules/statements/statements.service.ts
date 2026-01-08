@@ -145,7 +145,7 @@ export class StatementsService {
       .createQueryBuilder('statement')
       .leftJoinAndSelect('statement.googleSheet', 'googleSheet')
       .leftJoinAndSelect('statement.user', 'owner')
-      .orderBy('statement.created_at', 'DESC')
+      .orderBy('statement.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
 

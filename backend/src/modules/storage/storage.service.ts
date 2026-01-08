@@ -90,7 +90,7 @@ export class StorageService {
             : 'statement.userId = :userId',
           workspaceId ? { workspaceId } : { userId },
         )
-        .orderBy('statement.created_at', 'DESC')
+        .orderBy('statement.createdAt', 'DESC')
         .getMany();
 
       // Get all statements shared with user (if permissions table exists)

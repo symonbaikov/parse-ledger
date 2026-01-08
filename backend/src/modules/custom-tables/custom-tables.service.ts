@@ -268,7 +268,7 @@ export class CustomTablesService {
         .createQueryBuilder('table')
         .leftJoinAndSelect('table.category', 'category')
         .leftJoin('table.user', 'owner')
-        .orderBy('table.created_at', 'DESC');
+        .orderBy('table.createdAt', 'DESC');
 
       if (workspaceId) {
         qb.where('owner.workspaceId = :workspaceId', { workspaceId });
