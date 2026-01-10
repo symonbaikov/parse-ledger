@@ -89,16 +89,6 @@ export class StatementsService {
     // Calculate file hash
     const fileHash = await calculateFileHash(file.path);
 
-    // Check for duplicates
-    const existingStatement = await this.statementRepository.findOne({
-      where: { fileHash },
-    });
-
-    if (existingStatement) {
-      // Return existing statement if duplicate found
-      return existingStatement;
-    }
-
     // Create new statement
     const statement = this.statementRepository.create({
       userId: user.id,
@@ -273,6 +263,7 @@ export class StatementsService {
 
     statement.status = StatementStatus.UPLOADED;
     statement.errorMessage = null;
+    statement.processedAt = null;
     await this.statementRepository.save(statement);
 
     // Start processing asynchronously

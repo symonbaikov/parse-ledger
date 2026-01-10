@@ -55,6 +55,7 @@ describe('StatementProcessingService', () => {
 
   const classificationService = {
     classifyTransaction: jest.fn(async () => ({ categoryId: 'cat-1' })),
+    determineMajorityCategory: jest.fn(async () => ({ categoryId: 'cat-1', type: 'expense' as any })),
   };
 
   const parsedStatement: ParsedStatement = {

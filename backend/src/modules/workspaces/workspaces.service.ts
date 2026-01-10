@@ -9,7 +9,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
+import { render } from '@react-email/render';
+import * as React from 'react';
 import {
   User,
   UserRole,
@@ -19,6 +21,10 @@ import {
   WorkspaceMember,
   WorkspaceRole,
 } from '../../entities';
+import {
+  WorkspaceInvitationEmail,
+  workspaceInvitationEmailText,
+} from '../../emails/workspace-invitation.email';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
 
@@ -155,7 +161,13 @@ export class WorkspacesService {
       existingInvitation.token = uuidv4();
       const updated = await this.invitationRepository.save(existingInvitation);
       const invitationLink = this.buildInvitationLink(updated.token);
-      await this.sendInvitationEmail(email, workspace.name, invitationLink);
+      await this.sendInvitationEmail({
+        email,
+        workspaceName: workspace.name,
+        invitationLink,
+        invitedBy: currentUser.name || currentUser.email,
+        role,
+      });
       return { invitation: updated, invitationLink };
     }
 
@@ -171,7 +183,13 @@ export class WorkspacesService {
 
     const savedInvitation = await this.invitationRepository.save(invitation);
     const invitationLink = this.buildInvitationLink(savedInvitation.token);
-    await this.sendInvitationEmail(email, workspace.name, invitationLink);
+    await this.sendInvitationEmail({
+      email,
+      workspaceName: workspace.name,
+      invitationLink,
+      invitedBy: currentUser.name || currentUser.email,
+      role,
+    });
 
     return { invitation: savedInvitation, invitationLink };
   }
@@ -254,37 +272,62 @@ export class WorkspacesService {
     };
   }
 
-  private async sendInvitationEmail(email: string, workspaceName: string, link: string) {
-    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  private async sendInvitationEmail(params: {
+    email: string;
+    workspaceName: string;
+    invitationLink: string;
+    invitedBy?: string | null;
+    role?: WorkspaceRole | null;
+  }) {
+    const resendApiKey = process.env.RESEND_API_KEY;
+    const resendFrom = process.env.RESEND_FROM;
+
+    if (!resendApiKey || !resendFrom) {
       console.warn(
-        `[Workspaces] SMTP не настроен, ссылка приглашения для ${email}: ${link}`,
+        `[Workspaces] Resend не настроен (нужны RESEND_API_KEY и RESEND_FROM), ссылка приглашения для ${params.email}: ${params.invitationLink}`,
       );
       return;
     }
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
+    const roleLabels: Record<string, string> = {
+      owner: 'Владелец',
+      admin: 'Администратор',
+      member: 'Участник',
+    };
+
+    const emailReact = React.createElement(WorkspaceInvitationEmail, {
+      workspaceName: params.workspaceName,
+      invitationLink: params.invitationLink,
+      invitedBy: params.invitedBy,
+      roleLabel: params.role ? roleLabels[params.role] || params.role : null,
     });
 
+    const resend = new Resend(resendApiKey);
+
     try {
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || 'no-reply@finflow',
-        to: email,
-        subject: `Приглашение в рабочее пространство ${workspaceName}`,
-        html: `
-          <p>Вы приглашены в рабочее пространство <strong>${workspaceName}</strong>.</p>
-          <p>Чтобы присоединиться, перейдите по ссылке: <a href="${link}">${link}</a></p>
-          <p>Ссылка действует 7 дней.</p>
-        `,
+      const html = await render(emailReact);
+      const { error } = await resend.emails.send({
+        from: resendFrom,
+        to: params.email,
+        subject: `Приглашение в рабочее пространство ${params.workspaceName}`,
+        html,
+        text: workspaceInvitationEmailText({
+          workspaceName: params.workspaceName,
+          invitationLink: params.invitationLink,
+          invitedBy: params.invitedBy,
+          roleLabel: params.role ? roleLabels[params.role] || params.role : null,
+        }),
+        replyTo: process.env.RESEND_REPLY_TO || undefined,
       });
+
+      if (error) {
+        console.warn('[Workspaces] Не удалось отправить email приглашения через Resend:', error.message);
+      }
     } catch (error) {
-      console.warn('[Workspaces] Не удалось отправить email приглашения:', (error as Error)?.message);
+      console.warn(
+        '[Workspaces] Не удалось отправить email приглашения через Resend:',
+        (error as Error)?.message,
+      );
     }
   }
 }
