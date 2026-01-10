@@ -7,11 +7,13 @@ import {
   ManyToOne,
   OneToMany,
   JoinColumn,
+  AfterLoad,
 } from 'typeorm';
 import { User } from './user.entity';
 import { GoogleSheet } from './google-sheet.entity';
 import { Transaction } from './transaction.entity';
 import { Category } from './category.entity';
+import { normalizeFilename } from '../common/utils/filename.util';
 
 export enum StatementStatus {
   UPLOADED = 'uploaded',
@@ -162,4 +164,11 @@ export class Statement {
   // Relations
   @OneToMany(() => Transaction, (transaction) => transaction.statement)
   transactions: Transaction[];
+
+  @AfterLoad()
+  private normalizeFileNameAfterLoad() {
+    if (this.fileName) {
+      this.fileName = normalizeFilename(this.fileName);
+    }
+  }
 }

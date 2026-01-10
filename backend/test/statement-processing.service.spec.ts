@@ -2,14 +2,18 @@ import { StatementProcessingService } from '../src/modules/parsing/services/stat
 import { Statement, StatementStatus, FileType, BankName } from '../src/entities/statement.entity';
 import { Transaction } from '../src/entities/transaction.entity';
 import { ParsedStatement } from '../src/modules/parsing/interfaces/parsed-statement.interface';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 describe('StatementProcessingService', () => {
+  const tempFilePath = path.join(os.tmpdir(), 'sample.pdf');
   const statement: Statement = {
     id: 'stmt-1',
     userId: 'user-1',
     user: null as any,
     fileName: 'sample.pdf',
-    filePath: '/tmp/sample.pdf',
+    filePath: tempFilePath,
     fileType: FileType.PDF,
     fileSize: 1024,
     fileHash: 'hash',
@@ -112,6 +116,9 @@ describe('StatementProcessingService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     savedTransactions.length = 0;
+
+    fs.writeFileSync(tempFilePath, Buffer.from('%PDF-1.4\n%stub\n'));
+
     service = new StatementProcessingService(
       statementRepository as any,
       transactionRepository as any,
@@ -124,6 +131,14 @@ describe('StatementProcessingService', () => {
     (service as any).aiValidator = {
       isAvailable: () => false,
     };
+  });
+
+  afterEach(() => {
+    try {
+      fs.unlinkSync(tempFilePath);
+    } catch {
+      // ignore
+    }
   });
 
   it('fills statement metadata and transactions with parsed details', async () => {

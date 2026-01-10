@@ -27,7 +27,9 @@ import { UpdatePermissionDto } from './dto/update-permission.dto';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 import * as path from 'path';
+import { Readable } from 'stream';
 
 const uploadBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 
@@ -208,6 +210,16 @@ export class StorageService {
     throw new NotFoundException('File not found on disk');
   }
 
+  private async getFileData(statementId: string): Promise<Buffer | null> {
+    const withData = await this.statementRepository
+      .createQueryBuilder('statement')
+      .addSelect('statement.fileData')
+      .where('statement.id = :id', { id: statementId })
+      .getOne();
+
+    return ((withData as any)?.fileData as Buffer | null | undefined) ?? null;
+  }
+
   /**
    * Get file details with transactions
    */
@@ -319,16 +331,8 @@ export class StorageService {
       throw new NotFoundException('File not found');
     }
 
-    // Check if user has download permission
-    await this.checkFileAccess(userId, statementId, 'download');
-
-    const filePath = await this.resolveFilePath(statement.filePath);
-
-    return {
-      filePath,
-      fileName: statement.fileName,
-      mimeType: this.getMimeType(statement.fileType),
-    };
+    const { stream, fileName, mimeType } = await this.getFileStream(statement, userId, 'download');
+    return { stream, fileName, mimeType };
   }
 
   /**
@@ -343,16 +347,70 @@ export class StorageService {
       throw new NotFoundException('File not found');
     }
 
-    // Check if user has permission to view
-    await this.checkFileAccess(userId, statementId, 'view');
+    const { stream, fileName, mimeType } = await this.getFileStream(statement, userId, 'view');
+    return { stream, fileName, mimeType };
+  }
 
-    const filePath = await this.resolveFilePath(statement.filePath);
+  async getSharedDownloadStream(statementId: string): Promise<{
+    stream: NodeJS.ReadableStream;
+    fileName: string;
+    mimeType: string;
+  }> {
+    const statement = await this.statementRepository.findOne({
+      where: { id: statementId },
+    });
 
-    return {
-      filePath,
-      fileName: statement.fileName,
-      mimeType: this.getMimeType(statement.fileType),
-    };
+    if (!statement) {
+      throw new NotFoundException('File not found');
+    }
+
+    try {
+      const filePath = await this.resolveFilePath(statement.filePath);
+      return {
+        stream: fsSync.createReadStream(filePath),
+        fileName: statement.fileName,
+        mimeType: this.getMimeType(statement.fileType),
+      };
+    } catch {
+      const fileData = await this.getFileData(statement.id);
+      if (!fileData) {
+        throw new NotFoundException('File not found on disk');
+      }
+
+      return {
+        stream: Readable.from(fileData),
+        fileName: statement.fileName,
+        mimeType: this.getMimeType(statement.fileType),
+      };
+    }
+  }
+
+  private async getFileStream(
+    statement: Statement,
+    userId: string,
+    action: 'view' | 'download',
+  ): Promise<{ stream: NodeJS.ReadableStream; fileName: string; mimeType: string }> {
+    await this.checkFileAccess(userId, statement.id, action);
+
+    try {
+      const filePath = await this.resolveFilePath(statement.filePath);
+      return {
+        stream: fsSync.createReadStream(filePath),
+        fileName: statement.fileName,
+        mimeType: this.getMimeType(statement.fileType),
+      };
+    } catch {
+      const fileData = await this.getFileData(statement.id);
+      if (!fileData) {
+        throw new NotFoundException('File not found on disk');
+      }
+
+      return {
+        stream: Readable.from(fileData),
+        fileName: statement.fileName,
+        mimeType: this.getMimeType(statement.fileType),
+      };
+    }
   }
 
   /**

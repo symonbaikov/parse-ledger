@@ -19,6 +19,7 @@ import { getFileTypeFromMime } from '../../common/utils/file-validator.util';
 import { AuditLog, AuditAction } from '../../entities/audit-log.entity';
 import { StatementProcessingService } from '../parsing/services/statement-processing.service';
 import { UpdateStatementDto } from './dto/update-statement.dto';
+import { normalizeFilename } from '../../common/utils/filename.util';
 
 const uploadBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 
@@ -100,7 +101,7 @@ export class StatementsService {
     const statement = this.statementRepository.create({
       userId: user.id,
       googleSheetId: googleSheetId || null,
-      fileName: file.originalname,
+      fileName: normalizeFilename(file.originalname),
       filePath: file.path,
       fileType: getFileTypeFromMime(file.mimetype) as FileType,
       fileSize: file.size,

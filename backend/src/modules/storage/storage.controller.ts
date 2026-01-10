@@ -23,8 +23,6 @@ import { GrantPermissionDto } from './dto/grant-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { AccessSharedLinkDto } from './dto/access-shared-link.dto';
 import { UpdateFileCategoryDto } from './dto/update-file-category.dto';
-import * as fs from 'fs';
-import * as path from 'path';
 
 /**
  * Storage controller for file management, sharing, and permissions
@@ -79,7 +77,7 @@ export class StorageController {
     @CurrentUser() user: any,
     @Res() res: Response,
   ) {
-    const { filePath, fileName, mimeType } = await this.storageService.getFilePreview(
+    const { stream, fileName, mimeType } = await this.storageService.getFilePreview(
       statementId,
       user.id,
     );
@@ -87,7 +85,23 @@ export class StorageController {
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
 
-    return res.sendFile(filePath);
+    stream.on('error', (err: any) => {
+      const status =
+        err?.code === 'ENOENT' || err?.code === 'EISDIR'
+          ? HttpStatus.NOT_FOUND
+          : HttpStatus.INTERNAL_SERVER_ERROR;
+      if (!res.headersSent) {
+        res.status(status).json({
+          error: {
+            code: status === HttpStatus.NOT_FOUND ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR',
+            message: status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to read file',
+          },
+        });
+      } else {
+        res.destroy(err);
+      }
+    });
+    stream.pipe(res);
   }
 
   /**
@@ -100,7 +114,7 @@ export class StorageController {
     @CurrentUser() user: any,
     @Res() res: Response,
   ) {
-    const { filePath, fileName, mimeType } = await this.storageService.downloadFile(
+    const { stream, fileName, mimeType } = await this.storageService.downloadFile(
       statementId,
       user.id,
     );
@@ -108,8 +122,23 @@ export class StorageController {
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
 
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    stream.on('error', (err: any) => {
+      const status =
+        err?.code === 'ENOENT' || err?.code === 'EISDIR'
+          ? HttpStatus.NOT_FOUND
+          : HttpStatus.INTERNAL_SERVER_ERROR;
+      if (!res.headersSent) {
+        res.status(status).json({
+          error: {
+            code: status === HttpStatus.NOT_FOUND ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR',
+            message: status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to download file',
+          },
+        });
+      } else {
+        res.destroy(err);
+      }
+    });
+    stream.pipe(res);
   }
 
   /**
@@ -203,18 +232,32 @@ export class StorageController {
       return;
     }
 
-    const uploadBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
-    const filePath = path.isAbsolute(statement.filePath)
-      ? statement.filePath
-      : path.join(uploadBaseDir, path.basename(statement.filePath));
-    const fileName = statement.fileName;
-    const mimeType = this.getMimeType(statement.fileType);
+    const { stream, fileName, mimeType } = await this.storageService.getSharedDownloadStream(
+      statement.id,
+    );
 
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
 
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    stream.on('error', (err: any) => {
+      const status =
+        err?.code === 'ENOENT' || err?.code === 'EISDIR'
+          ? HttpStatus.NOT_FOUND
+          : HttpStatus.INTERNAL_SERVER_ERROR;
+      if (!res.headersSent) {
+        res.status(status).json({
+          error: {
+            code: status === HttpStatus.NOT_FOUND ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR',
+            message:
+              status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to download file',
+          },
+        });
+      } else {
+        res.destroy(err);
+      }
+    });
+
+    stream.pipe(res);
   }
 
   /**

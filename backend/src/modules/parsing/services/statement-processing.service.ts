@@ -1,6 +1,9 @@
 import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { Statement, StatementStatus } from '../../../entities/statement.entity';
 import { Transaction, TransactionType } from '../../../entities/transaction.entity';
 import { ParserFactoryService } from './parser-factory.service';
@@ -27,6 +30,59 @@ export class StatementProcessingService {
     @Inject(forwardRef(() => GoogleSheetsService))
     private googleSheetsService?: GoogleSheetsService,
   ) {}
+
+  private getFileExtension(statement: Statement): string {
+    switch (statement.fileType) {
+      case 'pdf':
+        return 'pdf';
+      case 'xlsx':
+        return 'xlsx';
+      case 'csv':
+        return 'csv';
+      case 'image':
+        return 'jpg';
+      default:
+        return 'bin';
+    }
+  }
+
+  private async ensureFileAvailable(statement: Statement): Promise<{
+    filePath: string;
+    tempFilePath?: string;
+  }> {
+    if (statement.filePath && fs.existsSync(statement.filePath)) {
+      return { filePath: statement.filePath };
+    }
+
+    const withData = await this.statementRepository
+      .createQueryBuilder('statement')
+      .addSelect('statement.fileData')
+      .where('statement.id = :id', { id: statement.id })
+      .getOne();
+
+    let fileData: Buffer | null | undefined = (withData as any)?.fileData;
+
+    if (!fileData && statement.fileHash) {
+      const alternative = await this.statementRepository
+        .createQueryBuilder('statement')
+        .addSelect('statement.fileData')
+        .where('statement.userId = :userId', { userId: statement.userId })
+        .andWhere('statement.fileHash = :fileHash', { fileHash: statement.fileHash })
+        .andWhere('statement.fileData IS NOT NULL')
+        .orderBy('statement.createdAt', 'DESC')
+        .getOne();
+      fileData = (alternative as any)?.fileData;
+    }
+
+    if (!fileData) {
+      throw new Error(`File not found: ${statement.filePath}`);
+    }
+
+    const ext = this.getFileExtension(statement);
+    const tempFilePath = path.join(os.tmpdir(), `finflow-statement-${statement.id}-${Date.now()}.${ext}`);
+    await fs.promises.writeFile(tempFilePath, fileData);
+    return { filePath: tempFilePath, tempFilePath };
+  }
 
   async processStatement(statementId: string): Promise<Statement> {
     const startTime = Date.now();
@@ -56,7 +112,14 @@ export class StatementProcessingService {
     addLog('info', `Starting processing of statement ${statementId}`);
     addLog('info', `File: ${statement.fileName} (${statement.fileType}, ${statement.fileSize} bytes)`);
 
+    let tempFilePath: string | undefined;
+    let processingFilePath = statement.filePath;
+
     try {
+      const ensured = await this.ensureFileAvailable(statement);
+      processingFilePath = ensured.filePath;
+      tempFilePath = ensured.tempFilePath;
+
       // Update status to processing
       statement.status = StatementStatus.PROCESSING;
       statement.parsingDetails = parsingDetails;
@@ -66,7 +129,7 @@ export class StatementProcessingService {
       addLog('info', `Detecting bank and format for file type: ${statement.fileType}`);
       const detectStartTime = Date.now();
       const { bankName, formatVersion } = await this.parserFactory.detectBankAndFormat(
-        statement.filePath,
+        processingFilePath,
         statement.fileType,
       );
       const detectTime = Date.now() - detectStartTime;
@@ -83,7 +146,7 @@ export class StatementProcessingService {
       const parser = await this.parserFactory.getParser(
         bankName,
         statement.fileType,
-        statement.filePath,
+        processingFilePath,
       );
 
       if (!parser) {
@@ -100,7 +163,7 @@ export class StatementProcessingService {
       // Parse statement
       addLog('info', 'Starting PDF text extraction...');
       const parseStartTime = Date.now();
-      let parsedStatement = await parser.parse(statement.filePath);
+      let parsedStatement = await parser.parse(processingFilePath);
       const parseTime = Date.now() - parseStartTime;
       
       addLog('info', `Parsing completed in ${parseTime}ms`);
@@ -110,7 +173,7 @@ export class StatementProcessingService {
       if (this.aiValidator.isAvailable()) {
         addLog('info', 'Running AI reconciliation between PDF and parsed result...');
         const aiResult = await this.aiValidator.reconcileFromPdf(
-          statement.filePath,
+          processingFilePath,
           parsedStatement,
         );
         parsedStatement = aiResult.corrected;
@@ -217,6 +280,10 @@ export class StatementProcessingService {
       
       this.logger.error(`Error processing statement ${statementId}:`, error);
       throw error;
+    } finally {
+      if (tempFilePath) {
+        fs.promises.unlink(tempFilePath).catch(() => undefined);
+      }
     }
   }
 
