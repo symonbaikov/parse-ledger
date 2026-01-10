@@ -19,7 +19,11 @@ cp .env.example .env
 Для отправки email-приглашений в рабочие пространства добавьте:
 
 - `APP_URL` — базовый URL фронтенда (используется в ссылках приглашений)
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` — SMTP параметры; если они не заданы, ссылка всё равно вернётся в ответе API, но письмо отправлено не будет.
+- `RESEND_API_KEY` — API ключ Resend
+- `RESEND_FROM` — From адрес, например `"FinFlow <noreply@your-domain.com>"`
+- `RESEND_REPLY_TO` — опционально, Reply-To адрес
+
+Если `RESEND_API_KEY` или `RESEND_FROM` не заданы, ссылка всё равно вернётся в ответе API, но письмо отправлено не будет.
 
 ## Запуск базы данных
 
@@ -76,7 +80,6 @@ src/
 API доступно по адресу: `http://localhost:3001/api/v1`
 
 Health check: `GET /api/v1/health`
-
 
 
 

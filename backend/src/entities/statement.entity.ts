@@ -71,7 +71,7 @@ export class Statement {
   @Column({ name: 'file_size' })
   fileSize: number;
 
-  @Column({ name: 'file_hash', unique: true })
+  @Column({ name: 'file_hash' })
   fileHash: string;
 
   @Column({
