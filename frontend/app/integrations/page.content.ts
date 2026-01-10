@@ -1,0 +1,50 @@
+import { t, type Dictionary } from 'intlayer';
+
+const content = {
+  key: 'integrationsPage',
+  content: {
+    title: t({ ru: 'Интеграции', en: 'Integrations', kk: 'Интеграциялар' }),
+    subtitle: t({
+      ru: 'Подключайте внешние сервисы и автоматизируйте обмен данными.',
+      en: 'Connect external services and automate data exchange.',
+      kk: 'Сыртқы сервистерді қосып, деректер алмасуын автоматтандырыңыз.',
+    }),
+    sections: {
+      connected: t({ ru: 'Подключено', en: 'Connected', kk: 'Қосылған' }),
+      available: t({ ru: 'Доступно к подключению', en: 'Available', kk: 'Қолжетімді' }),
+    },
+    empty: {
+      connected: t({ ru: 'Пока нет активных интеграций.', en: 'No active integrations yet.', kk: 'Әзірше белсенді интеграциялар жоқ.' }),
+      available: t({ ru: 'Нет доступных интеграций.', en: 'No integrations available.', kk: 'Қолжетімді интеграциялар жоқ.' }),
+    },
+    cards: {
+      googleSheets: {
+        description: t({
+          ru: 'Отправляйте распарсенные транзакции в выбранную таблицу.',
+          en: 'Send parsed transactions to a selected spreadsheet.',
+          kk: 'Өңделген транзакцияларды таңдалған кестеге жіберіңіз.',
+        }),
+        badge: t({ ru: 'Доступно', en: 'Available', kk: 'Қолжетімді' }),
+        actions: {
+          connect: t({ ru: 'Подключить', en: 'Connect', kk: 'Қосу' }),
+          docs: t({ ru: 'Документация', en: 'Documentation', kk: 'Құжаттама' }),
+        },
+      },
+      telegram: {
+        description: t({
+          ru: 'Получайте уведомления и отправляйте выписки через бота.',
+          en: 'Receive notifications and send statements via a bot.',
+          kk: 'Хабарламалар алып, үзінділерді бот арқылы жіберіңіз.',
+        }),
+        badge: t({ ru: 'Скоро', en: 'Coming soon', kk: 'Жақында' }),
+        actions: {
+          setup: t({ ru: 'Настроить бота', en: 'Set up bot', kk: 'Ботты баптау' }),
+          guide: t({ ru: 'Руководство', en: 'Guide', kk: 'Нұсқаулық' }),
+        },
+      },
+    },
+  },
+} satisfies Dictionary;
+
+export default content;
+

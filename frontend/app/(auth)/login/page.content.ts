@@ -1,0 +1,45 @@
+import { t, type Dictionary } from 'intlayer';
+
+const content = {
+  key: 'loginPage',
+  content: {
+    title: t({
+      ru: 'С возвращением',
+      en: 'Welcome back',
+      kk: 'Қайта келдіңіз',
+    }),
+    subtitle: t({
+      ru: 'Войдите, чтобы продолжить работу в FinFlow',
+      en: 'Log in to continue using FinFlow',
+      kk: 'FinFlow қолдануды жалғастыру үшін кіріңіз',
+    }),
+    passwordLabel: t({
+      ru: 'Пароль',
+      en: 'Password',
+      kk: 'Құпиясөз',
+    }),
+    submit: t({
+      ru: 'Войти',
+      en: 'Log in',
+      kk: 'Кіру',
+    }),
+    noAccount: t({
+      ru: 'Нет аккаунта? Зарегистрируйтесь',
+      en: "Don't have an account? Sign up",
+      kk: 'Аккаунт жоқ па? Тіркеліңіз',
+    }),
+    rightTagline: t({
+      ru: 'Платформа для обработки банковских выписок',
+      en: 'A platform for bank statement processing',
+      kk: 'Банк үзінділерін өңдеуге арналған платформа',
+    }),
+    loginFailed: t({
+      ru: 'Не удалось выполнить вход. Попробуйте ещё раз.',
+      en: 'Failed to log in. Please try again.',
+      kk: 'Кіру мүмкін болмады. Қайтадан көріңіз.',
+    }),
+  },
+} satisfies Dictionary;
+
+export default content;
+
