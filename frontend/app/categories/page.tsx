@@ -31,6 +31,7 @@ import { Icon } from '@iconify/react';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
 import toast from 'react-hot-toast';
+import { useIntlayer } from 'next-intlayer';
 
 interface Category {
   id: string;
@@ -70,6 +71,7 @@ const PREDEFINED_COLORS = [
 ];
 
 export default function CategoriesPage() {
+  const t = useIntlayer('categoriesPage');
   const theme = useTheme();
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -101,7 +103,7 @@ export default function CategoriesPage() {
       setCategories(response.data);
     } catch (error) {
       console.error('Failed to load categories:', error);
-      toast.error('Не удалось загрузить категории');
+      toast.error(t.toasts.loadFailed.value);
     } finally {
       setLoading(false);
     }
@@ -147,32 +149,32 @@ export default function CategoriesPage() {
 
       if (editingCategory) {
         await apiClient.put(`/categories/${editingCategory.id}`, data);
-        toast.success('Категория обновлена');
+        toast.success(t.toasts.updated.value);
       } else {
         await apiClient.post('/categories', data);
-        toast.success('Категория создана');
+        toast.success(t.toasts.created.value);
       }
 
       await loadCategories();
       handleCloseDialog();
     } catch (error) {
       console.error('Failed to save category:', error);
-      toast.error('Не удалось сохранить категорию');
+      toast.error(t.toasts.saveFailed.value);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Вы уверены, что хотите удалить эту категорию?')) {
+    if (!confirm(t.confirmDelete.value)) {
       return;
     }
 
     try {
       await apiClient.delete(`/categories/${id}`);
       await loadCategories();
-      toast.success('Категория удалена');
+      toast.success(t.toasts.deleted.value);
     } catch (error) {
       console.error('Failed to delete category:', error);
-      toast.error('Не удалось удалить категорию');
+      toast.error(t.toasts.deleteFailed.value);
     }
   };
 
@@ -194,11 +196,11 @@ export default function CategoriesPage() {
       const url = response.data?.url || response.data;
       if (url) {
         setFormData((prev) => ({ ...prev, icon: url }));
-        toast.success('Иконка загружена');
+        toast.success(t.toasts.iconUploaded.value);
       }
     } catch (error) {
       console.error('Failed to upload icon:', error);
-      toast.error('Не удалось загрузить иконку. Попробуйте ещё раз.');
+      toast.error(t.toasts.iconUploadFailed.value);
     } finally {
       setUploadingIcon(false);
       if (iconInputRef.current) {
@@ -212,10 +214,10 @@ export default function CategoriesPage() {
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
            <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
-             Категории
+             {t.title}
            </Typography>
            <Typography variant="body1" color="text.secondary">
-             Управляйте категориями расходов и доходов
+             {t.subtitle}
            </Typography>
         </Box>
         <Button 
@@ -224,12 +226,12 @@ export default function CategoriesPage() {
           onClick={() => handleOpenDialog()}
           sx={{ borderRadius: 2, px: 3, py: 1 }}
         >
-          Добавить
+          {t.add}
         </Button>
       </Box>
 
       {loading ? (
-        <Typography>Загрузка...</Typography>
+        <Typography>{t.loading}</Typography>
       ) : (
         <Grid container spacing={3}>
           {categories.map((category) => (
@@ -279,7 +281,7 @@ export default function CategoriesPage() {
                       {category.name}
                     </Typography>
                     <Chip
-                      label={category.type === 'income' ? 'Доход' : 'Расход'}
+                      label={category.type === 'income' ? t.type.income : t.type.expense}
                       color={category.type === 'income' ? 'success' : 'error'}
                       size="small"
                       variant="outlined"
@@ -288,12 +290,12 @@ export default function CategoriesPage() {
                   </Box>
                 </CardContent>
                 <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
-                   <Tooltip title="Редактировать">
+                   <Tooltip title={t.actions.edit.value}>
                     <IconButton size="small" onClick={() => handleOpenDialog(category)}>
                       <Edit fontSize="small" />
                     </IconButton>
                    </Tooltip>
-                   <Tooltip title="Удалить">
+                   <Tooltip title={t.actions.delete.value}>
                     <IconButton
                       size="small"
                       color="error"
@@ -311,7 +313,7 @@ export default function CategoriesPage() {
 
       <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 'bold' }}>
-          {editingCategory ? 'Редактировать категорию' : 'Создать категорию'}
+          {editingCategory ? t.dialog.editTitle : t.dialog.createTitle}
         </DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
@@ -319,22 +321,23 @@ export default function CategoriesPage() {
             {/* Name and Type */}
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
-                label="Название"
+                label={t.dialog.nameLabel.value}
+                placeholder={t.dialog.placeholderName.value}
                 fullWidth
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
               <FormControl sx={{ minWidth: 120 }}>
-                <InputLabel>Тип</InputLabel>
+                <InputLabel>{t.type.label}</InputLabel>
                 <Select
                   value={formData.type}
-                  label="Тип"
+                  label={t.type.label.value}
                   onChange={(e) =>
                     setFormData({ ...formData, type: e.target.value as 'income' | 'expense' })
                   }
                 >
-                  <MenuItem value="income">Доход</MenuItem>
-                  <MenuItem value="expense">Расход</MenuItem>
+                  <MenuItem value="income">{t.type.income}</MenuItem>
+                  <MenuItem value="expense">{t.type.expense}</MenuItem>
                 </Select>
               </FormControl>
             </Box>
@@ -342,7 +345,7 @@ export default function CategoriesPage() {
             {/* Icon Picker */}
             <Box>
               <Typography variant="subtitle2" gutterBottom>
-                Выберите иконку
+                {t.dialog.chooseIcon}
               </Typography>
               <input
                 type="file"
@@ -393,7 +396,7 @@ export default function CategoriesPage() {
                 {resolveIconUrl(formData.icon) && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Typography variant="body2" color="text.secondary">
-                      Загруженная иконка:
+                      {t.dialog.uploadedIcon}
                     </Typography>
                     <Box
                       component="img"
@@ -410,7 +413,7 @@ export default function CategoriesPage() {
                   disabled={uploadingIcon}
                   sx={{ ml: 'auto' }}
                 >
-                  {uploadingIcon ? 'Загрузка...' : 'Загрузить иконку'}
+                  {uploadingIcon ? t.dialog.uploading : t.dialog.uploadIcon}
                 </Button>
               </Box>
             </Box>
@@ -418,7 +421,7 @@ export default function CategoriesPage() {
             {/* Color Picker (Preset colors) */}
              <Box>
               <Typography variant="subtitle2" gutterBottom>
-                Выберите цвет
+                {t.dialog.chooseColor}
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {PREDEFINED_COLORS.map((color) => (
@@ -449,7 +452,9 @@ export default function CategoriesPage() {
 
             {/* Preview Section */}
              <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="body2" color="text.secondary">Предпросмотр:</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t.dialog.preview}
+                </Typography>
                 <Box
                     sx={{
                       width: 48,
@@ -474,16 +479,18 @@ export default function CategoriesPage() {
                     )}
                   </Box>
                   <Typography variant="subtitle1" fontWeight="bold">
-                    {formData.name || 'Название категории'}
+                    {formData.name || t.dialog.placeholderName}
                   </Typography>
              </Box>
 
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleCloseDialog} color="inherit">Отмена</Button>
+          <Button onClick={handleCloseDialog} color="inherit">
+            {t.dialog.cancel}
+          </Button>
           <Button onClick={handleSave} variant="contained" disabled={!formData.name}>
-            Сохранить
+            {t.dialog.save}
           </Button>
         </DialogActions>
       </Dialog>

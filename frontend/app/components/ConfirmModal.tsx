@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { X, AlertTriangle } from 'lucide-react';
+import { useIntlayer } from 'next-intlayer';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -20,11 +21,15 @@ export default function ConfirmModal({
   onConfirm,
   title,
   message,
-  confirmText = 'Подтвердить',
-  cancelText = 'Отмена',
+  confirmText,
+  cancelText,
   isDestructive = false,
 }: ConfirmModalProps) {
   if (!isOpen) return null;
+
+  const t = useIntlayer('confirmModal');
+  const resolvedConfirmText = confirmText ?? t.buttons.confirm.value;
+  const resolvedCancelText = cancelText ?? t.buttons.cancel.value;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto overflow-x-hidden bg-black/50 backdrop-blur-sm p-4 md:inset-0 animate-in fade-in duration-200">
@@ -47,7 +52,7 @@ export default function ConfirmModal({
               className="text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center transaction-colors"
             >
               <X size={20} />
-              <span className="sr-only">Закрыть</span>
+              <span className="sr-only">{t.sr.close}</span>
             </button>
           </div>
 
@@ -65,7 +70,7 @@ export default function ConfirmModal({
               type="button"
               className="py-2 px-4 text-sm font-medium text-gray-700 bg-white rounded-full border border-gray-300 hover:bg-gray-50 focus:ring-4 focus:outline-none focus:ring-gray-200 transition-colors"
             >
-              {cancelText}
+              {resolvedCancelText}
             </button>
             <button
               onClick={() => {
@@ -80,7 +85,7 @@ export default function ConfirmModal({
                   : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-300'}
               `}
             >
-              {confirmText}
+              {resolvedConfirmText}
             </button>
           </div>
         </div>

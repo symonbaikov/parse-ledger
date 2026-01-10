@@ -14,6 +14,7 @@ import {
 import apiClient from '@/app/lib/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface GoogleSheetConnection {
   id: string;
@@ -50,6 +51,8 @@ const encodeOauthState = (payload: Record<string, unknown>): string | null => {
 
 export default function GoogleSheetsIntegrationPage() {
   const { user, loading: authLoading } = useAuth();
+  const t = useIntlayer('googleSheetsIntegrationPage');
+  const { locale } = useLocale();
   const [sheetUrl, setSheetUrl] = useState('');
   const [sheetName, setSheetName] = useState('');
   const [worksheetName, setWorksheetName] = useState('');
@@ -76,7 +79,7 @@ export default function GoogleSheetsIntegrationPage() {
       setConnections(items);
     } catch (err) {
       console.error('Failed to load google sheets', err);
-      setError('Не удалось загрузить подключённые таблицы');
+      setError(t.errors.loadConnections.value);
     } finally {
       setLoadingList(false);
     }
@@ -94,7 +97,7 @@ export default function GoogleSheetsIntegrationPage() {
     });
     const url = resp.data?.url;
     if (!url) {
-      throw new Error('Не удалось получить ссылку для авторизации Google');
+      throw new Error(t.errors.missingAuthUrl.value);
     }
     window.location.href = url;
   };
@@ -102,8 +105,8 @@ export default function GoogleSheetsIntegrationPage() {
   const handleConnect = async () => {
     const parsedId = parseSpreadsheetId(sheetUrl);
     if (!parsedId) {
-      setError('Укажите ID или ссылку на таблицу');
-      toast.error('Укажите ID или ссылку на таблицу');
+      setError(t.errors.sheetIdMissing.value);
+      toast.error(t.errors.sheetIdMissing.value);
       return;
     }
 
@@ -111,14 +114,14 @@ export default function GoogleSheetsIntegrationPage() {
       setSubmitting(true);
       setError(null);
       setSuccess(null);
-      toast.success('Открываем Google авторизацию…');
+      toast.success(t.toasts.openingAuth.value);
       await startOauth({
         sheetId: parsedId,
         sheetName,
         worksheetName,
       });
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Не удалось подключить таблицу';
+      const message = err?.response?.data?.message || t.errors.connectFailed.value;
       setError(message);
       toast.error(message);
     } finally {
@@ -132,11 +135,11 @@ export default function GoogleSheetsIntegrationPage() {
       setError(null);
       setSuccess(null);
       await apiClient.put(`/google-sheets/${id}/sync`, {});
-      setSuccess('Синхронизация запущена');
-      toast.success('Синхронизация запущена');
+      setSuccess(t.toasts.syncStarted.value);
+      toast.success(t.toasts.syncStarted.value);
       await loadConnections();
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Не удалось синхронизировать';
+      const message = err?.response?.data?.message || t.errors.syncFailed.value;
       setError(message);
       toast.error(message);
     } finally {
@@ -150,11 +153,11 @@ export default function GoogleSheetsIntegrationPage() {
       setError(null);
       setSuccess(null);
       await apiClient.delete(`/google-sheets/${id}`);
-      setSuccess('Подключение отключено');
-      toast.success('Подключение отключено');
+      setSuccess(t.toasts.removed.value);
+      toast.success(t.toasts.removed.value);
       await loadConnections();
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Не удалось отключить таблицу';
+      const message = err?.response?.data?.message || t.errors.removeFailed.value;
       setError(message);
       toast.error(message);
     } finally {
@@ -179,9 +182,9 @@ export default function GoogleSheetsIntegrationPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm text-center">
-          <p className="text-gray-800 font-semibold mb-2">Войдите, чтобы подключить Google Sheets</p>
+          <p className="text-gray-800 font-semibold mb-2">{t.loginRequired.title}</p>
           <p className="text-sm text-gray-600">
-            Авторизация нужна для создания привязки таблицы к вашему аккаунту.
+            {t.loginRequired.subtitle}
           </p>
         </div>
       </div>
@@ -195,10 +198,9 @@ export default function GoogleSheetsIntegrationPage() {
           <Plug className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Подключение Google Sheets</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t.header.title}</h1>
           <p className="text-secondary mt-1">
-            Укажите таблицу и лист, куда будут отправляться данные. После подключения вставьте
-            Apps Script из документации для отправки вебхуков.
+            {t.header.subtitle}
           </p>
         </div>
       </div>
@@ -228,45 +230,45 @@ export default function GoogleSheetsIntegrationPage() {
                 <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Шаг 1</p>
-                <h2 className="text-lg font-semibold text-gray-900">Добавить таблицу</h2>
+                <p className="text-sm text-gray-500">{t.step1.label}</p>
+                <h2 className="text-lg font-semibold text-gray-900">{t.step1.title}</h2>
               </div>
             </div>
 
             <div className="space-y-3">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">Ссылка или ID таблицы</span>
+                <span className="text-sm font-medium text-gray-700">{t.step1.sheetUrlLabel}</span>
                 <input
                   type="text"
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="https://docs.google.com/spreadsheets/d/… или 1A2B3C…"
+                  placeholder={t.step1.sheetUrlPlaceholder.value}
                   value={sheetUrl}
                   onChange={(e) => setSheetUrl(e.target.value)}
                 />
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">Название в системе</span>
+                <span className="text-sm font-medium text-gray-700">{t.step1.nameLabel}</span>
                 <input
                   type="text"
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Например: Выписки Казахстан"
+                  placeholder={t.step1.namePlaceholder.value}
                   value={sheetName}
                   onChange={(e) => setSheetName(e.target.value)}
                 />
                 <div className="mt-1 text-xs text-gray-500">
-                  Если оставить пустым — используем название из Google Sheets.
+                  {t.step1.nameHelp}
                 </div>
               </label>
 
               <label className="block">
                 <span className="text-sm font-medium text-gray-700">
-                  Имя листа (опционально, если не Sheet1)
+                  {t.step1.worksheetLabel}
                 </span>
                 <input
                   type="text"
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                  placeholder="Например: Отгрузки"
+                  placeholder={t.step1.worksheetPlaceholder.value}
                   value={worksheetName}
                   onChange={(e) => setWorksheetName(e.target.value)}
                 />
@@ -279,7 +281,7 @@ export default function GoogleSheetsIntegrationPage() {
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-                Авторизоваться и подключить
+                {t.step1.connectButton}
               </button>
             </div>
           </div>
@@ -290,13 +292,12 @@ export default function GoogleSheetsIntegrationPage() {
                 <Plug className="h-5 w-5 text-indigo-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Шаг 2</p>
-                <h2 className="text-lg font-semibold text-gray-900">Настроить Apps Script</h2>
+                <p className="text-sm text-gray-500">{t.step2.label}</p>
+                <h2 className="text-lg font-semibold text-gray-900">{t.step2.title}</h2>
               </div>
             </div>
             <p className="text-sm text-gray-600 mb-3">
-              Скопируйте скрипт из нашей инструкции и поставьте триггер onEdit, чтобы отправлять
-              изменения по вебхуку.
+              {t.step2.description}
             </p>
             <div className="flex flex-wrap gap-2">
               <a
@@ -305,7 +306,7 @@ export default function GoogleSheetsIntegrationPage() {
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                Инструкция по Apps Script
+                {t.step2.appsScriptDoc}
                 <ExternalLink className="h-4 w-4" />
               </a>
               <a
@@ -314,13 +315,15 @@ export default function GoogleSheetsIntegrationPage() {
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                Открыть Google Sheets
+                {t.step2.openSheets}
                 <ExternalLink className="h-4 w-4" />
               </a>
             </div>
             <div className="mt-3 rounded-lg bg-gray-50 border border-dashed border-gray-200 px-3 py-2 text-xs text-gray-600">
-              Эндпоинт вебхука: <code className="font-mono">/api/v1/integrations/google-sheets/update</code> <br />
-              Заголовок: <code className="font-mono">X-Webhook-Token: &lt;ваш токен&gt;</code>
+              {t.step2.webhookEndpointLabel.value}:{' '}
+              <code className="font-mono">/api/v1/integrations/google-sheets/update</code> <br />
+              {t.step2.webhookHeaderLabel.value}:{' '}
+              <code className="font-mono">X-Webhook-Token: &lt;{t.step2.webhookTokenHint.value}&gt;</code>
             </div>
           </div>
         </div>
@@ -328,8 +331,8 @@ export default function GoogleSheetsIntegrationPage() {
         <div className="space-y-3">
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-semibold text-gray-900">Подключённые таблицы</h3>
-              <span className="text-xs text-gray-500">Автообновление по вебхуку</span>
+              <h3 className="text-base font-semibold text-gray-900">{t.list.title}</h3>
+              <span className="text-xs text-gray-500">{t.list.subtitle}</span>
             </div>
 
             {loadingList ? (
@@ -343,7 +346,7 @@ export default function GoogleSheetsIntegrationPage() {
               </div>
             ) : emptyState ? (
               <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                Пока нет подключений. Добавьте первую таблицу через форму слева.
+                {t.list.empty}
               </div>
             ) : (
               <div className="space-y-3">
@@ -359,11 +362,11 @@ export default function GoogleSheetsIntegrationPage() {
                             <span className="font-semibold text-gray-900">{item.sheetName}</span>
                             {item.oauthConnected === false ? (
                               <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 border border-amber-100">
-                                <AlertCircle className="h-3 w-3 mr-1" /> Нужен OAuth
+                                <AlertCircle className="h-3 w-3 mr-1" /> {t.list.badges.oauthNeeded}
                               </span>
                             ) : (
                               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-100">
-                                <CheckCircle2 className="h-3 w-3 mr-1" /> Активно
+                                <CheckCircle2 className="h-3 w-3 mr-1" /> {t.list.badges.active}
                               </span>
                             )}
                           </div>
@@ -371,11 +374,15 @@ export default function GoogleSheetsIntegrationPage() {
                             ID: {item.sheetId}
                           </p>
                           {item.worksheetName && (
-                            <p className="text-xs text-gray-500">Лист: {item.worksheetName}</p>
+                            <p className="text-xs text-gray-500">
+                              {t.list.fields.worksheetPrefix.value}: {item.worksheetName}
+                            </p>
                           )}
                           <p className="text-xs text-gray-500">
-                            Последняя синхронизация:{' '}
-                            {item.lastSync ? new Date(item.lastSync).toLocaleString() : '—'}
+                            {t.list.fields.lastSyncPrefix.value}:{' '}
+                            {item.lastSync
+                              ? new Date(item.lastSync).toLocaleString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US')
+                              : t.list.dash}
                           </p>
                         </div>
                       </div>
@@ -387,7 +394,7 @@ export default function GoogleSheetsIntegrationPage() {
                             className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                           >
                             <Plug className="h-4 w-4" />
-                            Авторизовать
+                            {t.list.actions.authorize}
                           </button>
                         )}
                         <button
@@ -401,7 +408,7 @@ export default function GoogleSheetsIntegrationPage() {
                           ) : (
                             <RefreshCcw className="h-4 w-4" />
                           )}
-                          Синхронизировать
+                          {t.list.actions.sync}
                         </button>
                         <button
                           type="button"
@@ -414,7 +421,7 @@ export default function GoogleSheetsIntegrationPage() {
                           ) : (
                             <Trash2 className="h-4 w-4" />
                           )}
-                          Отключить
+                          {t.list.actions.disconnect}
                         </button>
                       </div>
                     </div>

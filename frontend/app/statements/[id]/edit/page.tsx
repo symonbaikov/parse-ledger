@@ -43,6 +43,7 @@ import {
 } from '@mui/material';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface CategoryOption {
   id: string;
@@ -136,10 +137,18 @@ const normalizeNumberInput = (value?: number | string | null) => {
   return typeof value === 'string' ? value : value.toString();
 };
 
+const resolveLocale = (locale: string) => {
+  if (locale === 'ru') return 'ru-RU';
+  if (locale === 'kk') return 'kk-KZ';
+  return 'en-US';
+};
+
 export default function EditStatementPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const t = useIntlayer('statementEditPage');
+  const { locale } = useLocale();
   const statementId = params.id as string;
 
   const [statement, setStatement] = useState<Statement | null>(null);
@@ -206,7 +215,7 @@ export default function EditStatementPage() {
         ),
       });
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Не удалось загрузить данные');
+      setError(err.response?.data?.error?.message || t.errors.loadData.value);
     } finally {
       setLoading(false);
       setOptionsLoading(false);
@@ -266,7 +275,7 @@ export default function EditStatementPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Не удалось сохранить транзакцию');
+      setError(err.response?.data?.error?.message || t.errors.saveTransaction.value);
     }
   };
 
@@ -308,7 +317,7 @@ export default function EditStatementPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Не удалось обновить данные выписки');
+      setError(err.response?.data?.error?.message || t.errors.updateStatement.value);
     } finally {
       setMetadataSaving(false);
     }
@@ -320,7 +329,7 @@ export default function EditStatementPage() {
   };
 
   const handleDelete = async (transactionId: string) => {
-    if (!confirm('Вы уверены, что хотите удалить эту транзакцию?')) {
+    if (!confirm(t.confirms.deleteOne.value)) {
       return;
     }
 
@@ -330,13 +339,13 @@ export default function EditStatementPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Не удалось удалить транзакцию');
+      setError(err.response?.data?.error?.message || t.errors.deleteTransaction.value);
     }
   };
 
   const handleBulkUpdate = async () => {
     if (selectedRows.size === 0) {
-      setError('Выберите хотя бы одну транзакцию');
+      setError(t.errors.selectAtLeastOneTransaction.value);
       return;
     }
 
@@ -354,7 +363,7 @@ export default function EditStatementPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Не удалось обновить транзакции');
+      setError(err.response?.data?.error?.message || t.errors.updateTransactions.value);
     } finally {
       setSaving(false);
     }
@@ -362,11 +371,11 @@ export default function EditStatementPage() {
 
   const handleBulkDelete = async () => {
     if (selectedRows.size === 0) {
-      setError('Выберите хотя бы одну транзакцию');
+      setError(t.errors.selectAtLeastOneTransaction.value);
       return;
     }
 
-    if (!confirm(`Вы уверены, что хотите удалить ${selectedRows.size} транзакций?`)) {
+    if (!confirm(`${t.confirms.deleteManyPrefix.value}${selectedRows.size}${t.confirms.deleteManySuffix.value}`)) {
       return;
     }
 
@@ -380,7 +389,7 @@ export default function EditStatementPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Не удалось удалить транзакции');
+      setError(err.response?.data?.error?.message || t.errors.deleteTransactions.value);
     } finally {
       setSaving(false);
     }
@@ -388,7 +397,7 @@ export default function EditStatementPage() {
 
   const handleOpenBulkCategory = () => {
     if (selectedRows.size === 0) {
-      setError('Выберите транзакции, чтобы назначить категорию');
+      setError(t.errors.selectTransactionsForCategory.value);
       return;
     }
     setBulkCategoryDialogOpen(true);
@@ -396,7 +405,7 @@ export default function EditStatementPage() {
 
   const handleApplyBulkCategory = async () => {
     if (!bulkCategoryId) {
-      setError('Выберите категорию для назначения');
+      setError(t.errors.selectCategoryToApply.value);
       return;
     }
 
@@ -415,7 +424,7 @@ export default function EditStatementPage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Не удалось назначить категорию');
+      setError(err.response?.data?.error?.message || t.errors.assignCategory.value);
     } finally {
       setSaving(false);
     }
@@ -429,17 +438,17 @@ export default function EditStatementPage() {
   }
 
   const columnDefs: ColumnDef[] = [
-    { key: 'transactionDate', label: 'Дата операции' },
-    { key: 'documentNumber', label: 'Номер документа' },
-    { key: 'counterpartyName', label: 'Наименование контрагента', multiline: true },
-    { key: 'counterpartyBin', label: 'БИН/номер счёта контрагента' },
-    { key: 'counterpartyBank', label: 'Реквизиты банка контрагента', multiline: true },
-    { key: 'debit', label: 'Дебет' },
-    { key: 'credit', label: 'Кредит' },
-    { key: 'paymentPurpose', label: 'Назначение платежа', multiline: true },
-    { key: 'categoryId', label: 'Категория' },
-    { key: 'branchId', label: 'Филиал' },
-    { key: 'walletId', label: 'Кошелек' },
+    { key: 'transactionDate', label: t.columns.transactionDate.value },
+    { key: 'documentNumber', label: t.columns.documentNumber.value },
+    { key: 'counterpartyName', label: t.columns.counterpartyName.value, multiline: true },
+    { key: 'counterpartyBin', label: t.columns.counterpartyBin.value },
+    { key: 'counterpartyBank', label: t.columns.counterpartyBank.value, multiline: true },
+    { key: 'debit', label: t.columns.debit.value },
+    { key: 'credit', label: t.columns.credit.value },
+    { key: 'paymentPurpose', label: t.columns.paymentPurpose.value, multiline: true },
+    { key: 'categoryId', label: t.columns.categoryId.value },
+    { key: 'branchId', label: t.columns.branchId.value },
+    { key: 'walletId', label: t.columns.walletId.value },
   ];
 
   const mandatoryColumns: ColumnKey[] = columnDefs.map((col) => col.key);
@@ -461,13 +470,13 @@ export default function EditStatementPage() {
 
   const formatNumber = (value?: number) =>
     value !== undefined && value !== null
-      ? value.toLocaleString('ru-RU', { minimumFractionDigits: 2 })
+      ? value.toLocaleString(resolveLocale(locale), { minimumFractionDigits: 2 })
       : '-';
 
   const renderDisplayCell = (transaction: Transaction, column: ColumnDef) => {
     switch (column.key) {
       case 'transactionDate':
-        return new Date(transaction.transactionDate).toLocaleDateString('ru-RU');
+        return new Date(transaction.transactionDate).toLocaleDateString(resolveLocale(locale));
       case 'documentNumber':
         return transaction.documentNumber || '-';
       case 'counterpartyName':
@@ -499,7 +508,7 @@ export default function EditStatementPage() {
         ) : (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'warning.main' }}>
             <WarningAmber fontSize="small" />
-            <span>Нет категории</span>
+            <span>{t.labels.noCategory}</span>
           </Box>
         );
       case 'branchId':
@@ -550,13 +559,13 @@ export default function EditStatementPage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             <TextField
               {...commonTextFieldProps}
-              placeholder="БИН"
+              placeholder={t.labels.binPlaceholder.value}
               value={edited.counterpartyBin ?? transaction.counterpartyBin ?? ''}
               onChange={(e) => handleFieldChange(transaction.id, 'counterpartyBin', e.target.value)}
             />
             <TextField
               {...commonTextFieldProps}
-              placeholder="Номер счёта"
+              placeholder={t.labels.accountNumberPlaceholder.value}
               value={edited.counterpartyAccount ?? transaction.counterpartyAccount ?? ''}
               onChange={(e) =>
                 handleFieldChange(transaction.id, 'counterpartyAccount', e.target.value)
@@ -600,10 +609,10 @@ export default function EditStatementPage() {
             onChange={(e) =>
               handleFieldChange(transaction.id, 'categoryId', e.target.value || null)
             }
-            placeholder="Категория"
+            placeholder={t.labels.category.value}
             disabled={optionsLoading}
           >
-            <MenuItem value="">Без категории</MenuItem>
+            <MenuItem value="">{t.labels.noCategoryOption}</MenuItem>
             {availableCategories.map((cat) => (
               <MenuItem key={cat.id} value={cat.id}>
                 {cat.name}
@@ -621,10 +630,10 @@ export default function EditStatementPage() {
             onChange={(e) =>
               handleFieldChange(transaction.id, 'branchId', e.target.value || null)
             }
-            placeholder="Филиал"
+            placeholder={t.labels.branch.value}
             disabled={optionsLoading}
           >
-            <MenuItem value="">Без филиала</MenuItem>
+            <MenuItem value="">{t.labels.noBranchOption}</MenuItem>
             {branches.map((branch) => (
               <MenuItem key={branch.id} value={branch.id}>
                 {branch.name}
@@ -641,10 +650,10 @@ export default function EditStatementPage() {
             onChange={(e) =>
               handleFieldChange(transaction.id, 'walletId', e.target.value || null)
             }
-            placeholder="Кошелек"
+            placeholder={t.labels.wallet.value}
             disabled={optionsLoading}
           >
-            <MenuItem value="">Без кошелька</MenuItem>
+            <MenuItem value="">{t.labels.noWalletOption}</MenuItem>
             {wallets.map((wallet) => (
               <MenuItem key={wallet.id} value={wallet.id}>
                 {wallet.name}
@@ -670,13 +679,14 @@ export default function EditStatementPage() {
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
           <Button startIcon={<ArrowBack />} onClick={() => router.back()}>
-            Назад
+            {t.labels.back}
           </Button>
           <Typography variant="h5" component="h1" sx={{ mt: 2 }}>
-            Редактирование выписки: {statement?.fileName}
+            {t.labels.editTitlePrefix}
+            {statement?.fileName}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {statement?.totalTransactions} транзакций
+            {statement?.totalTransactions} {t.labels.transactionsCount}
           </Typography>
         </Box>
         {selectedRows.size > 0 && (
@@ -687,7 +697,7 @@ export default function EditStatementPage() {
               startIcon={<Category />}
               disabled={saving}
             >
-              Назначить категорию
+              {t.labels.assignCategory}
             </Button>
             <Button
               variant="contained"
@@ -695,7 +705,9 @@ export default function EditStatementPage() {
               disabled={saving}
               startIcon={saving ? <CircularProgress size={20} /> : <Save />}
             >
-              Сохранить выбранные ({selectedRows.size})
+              {t.labels.saveSelectedPrefix}
+              {selectedRows.size}
+              {t.labels.saveSelectedSuffix}
             </Button>
             <Button
               variant="outlined"
@@ -704,7 +716,7 @@ export default function EditStatementPage() {
               disabled={saving}
               startIcon={<Delete />}
             >
-              Удалить выбранные
+              {t.labels.deleteSelected}
             </Button>
           </Box>
         )}
@@ -718,20 +730,19 @@ export default function EditStatementPage() {
 
       {success && (
         <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(false)}>
-          Изменения успешно сохранены!
+          {t.labels.changesSaved}
         </Alert>
       )}
 
       <Alert severity="info" sx={{ mb: 2 }}>
-        После загрузки сразу переходите к проверке: строки без категории подсвечены, выберите им
-        категорию вручную или через массовое действие.
+        {t.labels.infoHint}
       </Alert>
 
       <Paper sx={{ mb: 3, p: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Info color="primary" />
-            <Typography variant="h6">Информация о выписке</Typography>
+            <Typography variant="h6">{t.labels.statementInfoTitle}</Typography>
           </Box>
           <Button
             variant="contained"
@@ -739,138 +750,138 @@ export default function EditStatementPage() {
             onClick={handleMetadataSave}
             disabled={metadataSaving}
           >
-            Сохранить данные выписки
+            {t.labels.saveStatementData}
           </Button>
         </Box>
 
         <Box sx={{ mt: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
           <TextField
-            label="Период с"
+            label={t.labels.periodFrom.value}
             type="date"
             value={metadataForm.statementDateFrom}
             onChange={(e) => handleMetadataChange('statementDateFrom', e.target.value)}
             InputLabelProps={{ shrink: true }}
             helperText={
               statement?.parsingDetails?.metadataExtracted?.dateFrom
-                ? `Из файла: ${new Date(
+                ? `${t.labels.fromFilePrefix.value}${new Date(
                     statement.parsingDetails.metadataExtracted.dateFrom,
-                  ).toLocaleDateString('ru-RU')}`
+                  ).toLocaleDateString(resolveLocale(locale))}`
                 : undefined
             }
           />
           <TextField
-            label="Период по"
+            label={t.labels.periodTo.value}
             type="date"
             value={metadataForm.statementDateTo}
             onChange={(e) => handleMetadataChange('statementDateTo', e.target.value)}
             InputLabelProps={{ shrink: true }}
             helperText={
               statement?.parsingDetails?.metadataExtracted?.dateTo
-                ? `Из файла: ${new Date(
+                ? `${t.labels.fromFilePrefix.value}${new Date(
                     statement.parsingDetails.metadataExtracted.dateTo,
-                  ).toLocaleDateString('ru-RU')}`
+                  ).toLocaleDateString(resolveLocale(locale))}`
                 : undefined
             }
           />
           <TextField
-            label="Остаток на начало"
+            label={t.labels.balanceStart.value}
             type="number"
             value={metadataForm.balanceStart}
             onChange={(e) => handleMetadataChange('balanceStart', e.target.value)}
             helperText={
               statement?.parsingDetails?.metadataExtracted?.balanceStart !== undefined
-                ? `Из файла: ${statement.parsingDetails.metadataExtracted.balanceStart}`
-                : 'Укажите вручную, если не подтянулось'
+                ? `${t.labels.fromFilePrefix.value}${statement.parsingDetails.metadataExtracted.balanceStart}`
+                : t.labels.enterManuallyHint.value
             }
           />
           <TextField
-            label="Остаток на конец"
+            label={t.labels.balanceEnd.value}
             type="number"
             value={metadataForm.balanceEnd}
             onChange={(e) => handleMetadataChange('balanceEnd', e.target.value)}
             helperText={
               statement?.parsingDetails?.metadataExtracted?.balanceEnd !== undefined
-                ? `Из файла: ${statement.parsingDetails.metadataExtracted.balanceEnd}`
+                ? `${t.labels.fromFilePrefix.value}${statement.parsingDetails.metadataExtracted.balanceEnd}`
                 : undefined
             }
           />
         </Box>
 
         {statement?.parsingDetails && (
-          <Accordion sx={{ mt: 2 }}>
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="subtitle1">Детали парсинга</Typography>
-              </Box>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Общая информация
-                  </Typography>
-                  <Typography variant="body2">
-                    Банк: {statement.parsingDetails.detectedBank || '—'}
-                  </Typography>
-                  <Typography variant="body2">
-                    Формат: {statement.parsingDetails.detectedFormat || '—'}
-                  </Typography>
-                  <Typography variant="body2">
-                    Парсер: {statement.parsingDetails.parserUsed || '—'}
-                  </Typography>
-                  <Typography variant="body2">
-                    Время обработки:{' '}
-                    {statement.parsingDetails.processingTime
-                      ? `${statement.parsingDetails.processingTime}ms`
-                      : '—'}
-                  </Typography>
+            <Accordion sx={{ mt: 2 }}>
+              <AccordionSummary expandIcon={<ExpandMore />}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography variant="subtitle1">{t.labels.parsingDetails}</Typography>
                 </Box>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      {t.labels.generalInfo}
+                    </Typography>
+                    <Typography variant="body2">
+                      {t.labels.bank}: {statement.parsingDetails.detectedBank || '—'}
+                    </Typography>
+                    <Typography variant="body2">
+                      {t.labels.format}: {statement.parsingDetails.detectedFormat || '—'}
+                    </Typography>
+                    <Typography variant="body2">
+                      {t.labels.parser}: {statement.parsingDetails.parserUsed || '—'}
+                    </Typography>
+                    <Typography variant="body2">
+                      {t.labels.processingTime}:{' '}
+                      {statement.parsingDetails.processingTime
+                        ? `${statement.parsingDetails.processingTime}ms`
+                        : '—'}
+                    </Typography>
+                  </Box>
 
                 {statement.parsingDetails.metadataExtracted && (
                   <Box>
                     <Typography variant="subtitle2" color="text.secondary">
-                      Извлеченные метаданные
+                      {t.labels.extractedMetadata}
                     </Typography>
                     <Typography variant="body2">
-                      Счет: {statement.parsingDetails.metadataExtracted.accountNumber || '—'}
+                      {t.labels.account}: {statement.parsingDetails.metadataExtracted.accountNumber || '—'}
                     </Typography>
                     <Typography variant="body2">
-                      Период:{' '}
+                      {t.labels.period}:{' '}
                       {statement.parsingDetails.metadataExtracted.dateFrom
                         ? new Date(
                             statement.parsingDetails.metadataExtracted.dateFrom,
-                          ).toLocaleDateString('ru-RU')
+                          ).toLocaleDateString(resolveLocale(locale))
                         : '—'}{' '}
                       -{' '}
                       {statement.parsingDetails.metadataExtracted.dateTo
                         ? new Date(
                             statement.parsingDetails.metadataExtracted.dateTo,
-                          ).toLocaleDateString('ru-RU')
+                          ).toLocaleDateString(resolveLocale(locale))
                         : '—'}
                     </Typography>
                     <Typography variant="body2">
-                      Остаток на начало:{' '}
+                      {t.labels.balanceStart}:{' '}
                       {statement.parsingDetails.metadataExtracted.balanceStart ?? '—'}
                     </Typography>
                     <Typography variant="body2">
-                      Остаток на конец: {statement.parsingDetails.metadataExtracted.balanceEnd ?? '—'}
+                      {t.labels.balanceEnd}: {statement.parsingDetails.metadataExtracted.balanceEnd ?? '—'}
                     </Typography>
                   </Box>
                 )}
 
                 <Box>
                   <Typography variant="subtitle2" color="text.secondary">
-                    Статистика парсинга
+                    {t.labels.parsingStats}
                   </Typography>
                   <Typography variant="body2">
-                    Найдено транзакций: {statement.parsingDetails.transactionsFound ?? '—'}
+                    {t.labels.foundTransactions}: {statement.parsingDetails.transactionsFound ?? '—'}
                   </Typography>
                   <Typography variant="body2">
-                    Создано транзакций: {statement.parsingDetails.transactionsCreated ?? '—'}
+                    {t.labels.createdTransactions}: {statement.parsingDetails.transactionsCreated ?? '—'}
                   </Typography>
                   {statement.parsingDetails.totalLinesProcessed && (
                     <Typography variant="body2">
-                      Обработано строк: {statement.parsingDetails.totalLinesProcessed}
+                      {t.labels.processedLines}: {statement.parsingDetails.totalLinesProcessed}
                     </Typography>
                   )}
                 </Box>
@@ -878,7 +889,7 @@ export default function EditStatementPage() {
                 {statement.parsingDetails.errors && statement.parsingDetails.errors.length > 0 && (
                   <Box>
                     <Typography variant="subtitle2" color="error">
-                      Ошибки ({statement.parsingDetails.errors.length})
+                      {t.labels.errors} ({statement.parsingDetails.errors.length})
                     </Typography>
                     {statement.parsingDetails.errors.map((error, idx) => (
                       <Alert key={idx} severity="error" sx={{ mt: 1 }}>
@@ -891,7 +902,7 @@ export default function EditStatementPage() {
                 {statement.parsingDetails.warnings && statement.parsingDetails.warnings.length > 0 && (
                   <Box>
                     <Typography variant="subtitle2" color="warning.main">
-                      Предупреждения ({statement.parsingDetails.warnings.length})
+                      {t.labels.warnings} ({statement.parsingDetails.warnings.length})
                     </Typography>
                     {statement.parsingDetails.warnings.map((warning, idx) => (
                       <Alert key={idx} severity="warning" sx={{ mt: 1 }}>
@@ -905,7 +916,9 @@ export default function EditStatementPage() {
                   statement.parsingDetails.logEntries.length > 0 && (
                     <Box>
                       <Typography variant="subtitle2" color="text.secondary">
-                        Лог обработки ({statement.parsingDetails.logEntries.length} записей)
+                        {t.labels.processingLogPrefix}
+                        {statement.parsingDetails.logEntries.length}
+                        {t.labels.processingLogSuffix}
                       </Typography>
                       <Box
                         sx={{
@@ -932,7 +945,7 @@ export default function EditStatementPage() {
                             }}
                           >
                             <span style={{ opacity: 0.7 }}>
-                              {new Date(log.timestamp).toLocaleTimeString('ru-RU')}
+                              {new Date(log.timestamp).toLocaleTimeString(resolveLocale(locale))}
                             </span>{' '}
                             <span style={{ fontWeight: 'bold' }}>
                               [{log.level.toUpperCase()}]
@@ -965,7 +978,7 @@ export default function EditStatementPage() {
               {visibleColumns.map((col) => (
                 <TableCell key={col.key}>{col.label}</TableCell>
               ))}
-              <TableCell>Действия</TableCell>
+              <TableCell>{t.labels.actions}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -1040,17 +1053,21 @@ export default function EditStatementPage() {
       </TableContainer>
 
       <Dialog open={bulkCategoryDialogOpen} onClose={() => setBulkCategoryDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Назначить категорию ({selectedRows.size} шт.)</DialogTitle>
+        <DialogTitle>
+          {t.labels.bulkCategoryTitlePrefix}
+          {selectedRows.size}
+          {t.labels.bulkCategoryTitleSuffix}
+        </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
           <TextField
             select
-            label="Категория"
+            label={t.labels.category.value}
             fullWidth
             value={bulkCategoryId}
             onChange={(e) => setBulkCategoryId(e.target.value)}
-            helperText="Категория будет применена ко всем выбранным транзакциям"
+            helperText={t.labels.bulkCategoryHelper.value}
           >
-            <MenuItem value="">Не выбрано</MenuItem>
+            <MenuItem value="">{t.labels.notSelected}</MenuItem>
             {flattenCategories(categories).map((cat) => (
               <MenuItem key={cat.id} value={cat.id}>
                 {cat.name}
@@ -1059,14 +1076,14 @@ export default function EditStatementPage() {
           </TextField>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setBulkCategoryDialogOpen(false)}>Отмена</Button>
+          <Button onClick={() => setBulkCategoryDialogOpen(false)}>{t.labels.cancel}</Button>
           <Button
             variant="contained"
             startIcon={saving ? <CircularProgress size={18} /> : <CheckCircle />}
             onClick={handleApplyBulkCategory}
             disabled={saving}
           >
-            Применить
+            {t.labels.apply}
           </Button>
         </DialogActions>
       </Dialog>

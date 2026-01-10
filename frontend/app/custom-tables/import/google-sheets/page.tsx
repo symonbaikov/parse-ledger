@@ -8,6 +8,7 @@ import { Icon } from '@iconify/react';
 import toast from 'react-hot-toast';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useIntlayer } from 'next-intlayer';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
 type LayoutType = 'auto' | 'flat' | 'matrix';
@@ -48,6 +49,7 @@ interface PreviewResponse {
 export default function GoogleSheetsImportPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const t = useIntlayer('customTablesImportGoogleSheetsPage');
 
   const [connections, setConnections] = useState<GoogleSheetConnection[]>([]);
   const [loadingConnections, setLoadingConnections] = useState(false);
@@ -91,7 +93,7 @@ export default function GoogleSheetsImportPage() {
       setConnections(Array.isArray(items) ? items : []);
     } catch (error) {
       console.error('Failed to load google sheets connections:', error);
-      toast.error('Не удалось загрузить Google Sheets подключения');
+      toast.error(t.toasts.loadConnectionsFailed.value);
     } finally {
       setLoadingConnections(false);
     }
@@ -118,13 +120,13 @@ export default function GoogleSheetsImportPage() {
     if (!selectedConnection) return;
     const nextWorksheet = selectedConnection.worksheetName || '';
     setWorksheetName((prev) => prev || nextWorksheet);
-    setTableName((prev) => prev || selectedConnection.sheetName || 'Импорт из Google Sheets');
+    setTableName((prev) => prev || selectedConnection.sheetName || t.defaults.tableName.value);
   }, [selectedConnection]);
 
   const handlePreview = async () => {
     if (!googleSheetId) return;
     if (selectedConnection?.oauthConnected === false) {
-      toast.error('Подключение Google Sheets требует OAuth. Переподключите таблицу в разделе «Интеграции».');
+      toast.error(t.toasts.oauthRequired.value);
       return;
     }
     setLoadingPreview(true);
@@ -142,12 +144,12 @@ export default function GoogleSheetsImportPage() {
       setColumns(data.columns || []);
       setHeaderRowIndex(data.headerRowIndex ?? headerRowIndex);
       if (!tableName.trim()) {
-        setTableName(selectedConnection?.sheetName || 'Импорт из Google Sheets');
+        setTableName(selectedConnection?.sheetName || t.defaults.tableName.value);
       }
-      toast.success('Превью готово');
+      toast.success(t.toasts.previewReady.value);
     } catch (error: any) {
       console.error('Preview failed:', error);
-      const message = error?.response?.data?.message || 'Не удалось получить превью';
+      const message = error?.response?.data?.message || t.toasts.previewFailed.value;
       toast.error(message);
     } finally {
       setLoadingPreview(false);
@@ -179,7 +181,7 @@ export default function GoogleSheetsImportPage() {
       const result = response.data?.data || response.data;
       const nextJobId = result?.jobId;
       if (!nextJobId) {
-        toast.error('Не удалось запустить импорт');
+        toast.error(t.toasts.importStartFailed.value);
         return;
       }
       setJobId(nextJobId);
@@ -187,10 +189,10 @@ export default function GoogleSheetsImportPage() {
       setJobProgress(0);
       setJobStage('queued');
       setJobError('');
-      toast.success('Импорт запущен');
+      toast.success(t.toasts.importStarted.value);
     } catch (error: any) {
       console.error('Commit failed:', error);
-      const message = error?.response?.data?.message || 'Не удалось выполнить импорт';
+      const message = error?.response?.data?.message || t.toasts.importFailed.value;
       toast.error(message);
     } finally {
       setCommitting(false);
@@ -216,7 +218,7 @@ export default function GoogleSheetsImportPage() {
 
         if (status === 'done') {
           const tableId = payload?.result?.tableId;
-          toast.success('Импорт завершён');
+          toast.success(t.toasts.importDone.value);
           if (tableId) {
             router.push(`/custom-tables/${tableId}`);
           } else {
@@ -226,7 +228,7 @@ export default function GoogleSheetsImportPage() {
         }
 
         if (status === 'failed') {
-          toast.error(payload?.error || 'Импорт завершился с ошибкой');
+          toast.error(payload?.error || t.toasts.importError.value);
           return;
         }
       } catch (error) {
@@ -256,7 +258,7 @@ export default function GoogleSheetsImportPage() {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600">
-          Войдите в систему, чтобы импортировать таблицу.
+          {t.auth.loginRequired}
         </div>
       </div>
     );
@@ -269,25 +271,25 @@ export default function GoogleSheetsImportPage() {
           <FileSpreadsheet className="h-6 w-6" />
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold text-gray-900">Импорт из Google Sheets</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t.header.title}</h1>
           <p className="text-secondary mt-1">
-            Превью → настройка колонок → импорт в автономную таблицу FinFlow.
+            {t.header.subtitle}
           </p>
         </div>
         <Link
           href="/custom-tables"
           className="text-sm text-gray-600 hover:text-gray-900"
         >
-          Назад
+          {t.header.back}
         </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1 space-y-4">
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold text-gray-900 mb-3">Источник</div>
+            <div className="text-sm font-semibold text-gray-900 mb-3">{t.source.title}</div>
             <label className="block mb-3">
-              <span className="text-sm font-medium text-gray-700">Подключение Google Sheet</span>
+              <span className="text-sm font-medium text-gray-700">{t.source.connectionLabel}</span>
               <select
                 value={googleSheetId}
                 onChange={(e) => {
@@ -297,42 +299,40 @@ export default function GoogleSheetsImportPage() {
         }}
         className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
       >
-        <option value="">— выберите —</option>
+        <option value="">{t.source.selectPlaceholder}</option>
         {connections.map((c) => (
                   <option key={c.id} value={c.id} disabled={c.oauthConnected === false}>
                     {c.sheetName}
-                    {c.oauthConnected === false ? ' (нужна OAuth)' : ''}
+                    {c.oauthConnected === false ? t.source.oauthNeededSuffix.value : ''}
                   </option>
                 ))}
               </select>
             </label>
 
             <label className="block mb-3">
-              <span className="text-sm font-medium text-gray-700">Лист (worksheet)</span>
+              <span className="text-sm font-medium text-gray-700">{t.source.worksheetLabel}</span>
               <input
                 value={worksheetName}
                 onChange={(e) => setWorksheetName(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                placeholder="Например: Реестр платежей"
+                placeholder={t.source.worksheetPlaceholder.value}
               />
-              <div className="mt-1 text-xs text-gray-500">
-                Если не указать — используем лист из подключения или первый лист.
-              </div>
+              <div className="mt-1 text-xs text-gray-500">{t.source.worksheetHelp}</div>
             </label>
 
             <label className="block mb-3">
-              <span className="text-sm font-medium text-gray-700">Range (опционально)</span>
+              <span className="text-sm font-medium text-gray-700">{t.source.rangeLabel}</span>
               <input
                 value={range}
                 onChange={(e) => setRange(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                placeholder="Например: A1:Z200"
+                placeholder={t.source.rangePlaceholder.value}
               />
             </label>
 
             <div className="grid grid-cols-2 gap-3 mb-3">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">Header row (index)</span>
+                <span className="text-sm font-medium text-gray-700">{t.source.headerOffsetLabel}</span>
                 <input
                   type="number"
                   min={0}
@@ -340,19 +340,19 @@ export default function GoogleSheetsImportPage() {
                   onChange={(e) => setHeaderRowIndex(Number(e.target.value))}
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 />
-                <div className="mt-1 text-xs text-gray-500">0 = первая строка used range</div>
+                <div className="mt-1 text-xs text-gray-500">{t.source.headerOffsetHelp}</div>
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">Layout</span>
+                <span className="text-sm font-medium text-gray-700">{t.source.layoutLabel}</span>
                 <select
                   value={layoutType}
                   onChange={(e) => setLayoutType(e.target.value as LayoutType)}
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
-                  <option value="auto">Auto</option>
-                  <option value="flat">Flat</option>
-                  <option value="matrix">Matrix</option>
+                  <option value="auto">{t.source.layoutAuto}</option>
+                  <option value="flat">{t.source.layoutFlat}</option>
+                  <option value="matrix">{t.source.layoutMatrix}</option>
                 </select>
               </label>
             </div>
@@ -363,26 +363,26 @@ export default function GoogleSheetsImportPage() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {(loadingPreview || loadingConnections) && <Loader2 className="h-4 w-4 animate-spin" />}
-              {loadingConnections ? 'Загрузка...' : 'Сделать превью'}
+              {loadingConnections ? t.source.previewButtonLoading : t.source.previewButton}
             </button>
             {loadingConnections && (
-              <div className="mt-2 text-xs text-gray-500">Загружаем подключения…</div>
+              <div className="mt-2 text-xs text-gray-500">{t.source.loadingConnections}</div>
             )}
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="text-sm font-semibold text-gray-900 mb-3">Результат</div>
+            <div className="text-sm font-semibold text-gray-900 mb-3">{t.result.title}</div>
             <label className="block mb-3">
-              <span className="text-sm font-medium text-gray-700">Название таблицы</span>
+              <span className="text-sm font-medium text-gray-700">{t.result.tableNameLabel}</span>
               <input
                 value={tableName}
                 onChange={(e) => setTableName(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
-                placeholder="Например: Реестр платежей"
+                placeholder={t.result.tableNamePlaceholder.value}
               />
             </label>
             <label className="block mb-3">
-              <span className="text-sm font-medium text-gray-700">Описание (опционально)</span>
+              <span className="text-sm font-medium text-gray-700">{t.result.descriptionLabel}</span>
               <input
                 value={tableDescription}
                 onChange={(e) => setTableDescription(e.target.value)}
@@ -391,13 +391,13 @@ export default function GoogleSheetsImportPage() {
             </label>
 
             <label className="block mb-3">
-              <span className="text-sm font-medium text-gray-700">Категория (иконка/цвет)</span>
+              <span className="text-sm font-medium text-gray-700">{t.result.categoryLabel}</span>
               <select
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
               >
-                <option value="">Без категории</option>
+                <option value="">{t.result.noCategory}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -419,7 +419,7 @@ export default function GoogleSheetsImportPage() {
                       );
                     })()}
                   </span>
-                  <span>Иконка/цвет будут взяты из категории</span>
+                  <span>{t.result.categoryHint}</span>
                 </div>
               )}
             </label>
@@ -431,7 +431,7 @@ export default function GoogleSheetsImportPage() {
                 onChange={(e) => setImportData(e.target.checked)}
                 className="h-4 w-4"
               />
-              Импортировать данные (кроме заголовка)
+              {t.result.importDataCheckbox}
             </label>
 
             <button
@@ -440,26 +440,26 @@ export default function GoogleSheetsImportPage() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {committing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {jobId ? 'Импорт выполняется…' : 'Импортировать'}
+              {jobId ? t.result.importRunning : t.result.importButton}
             </button>
             {jobId ? (
               <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-semibold text-gray-900">Прогресс</div>
+                  <div className="text-sm font-semibold text-gray-900">{t.result.progressTitle}</div>
                   <div className="text-sm font-semibold text-gray-700">{Math.round(jobProgress)}%</div>
                 </div>
                 <div className="mt-2 h-2 w-full rounded-full bg-gray-100 overflow-hidden">
                   <div className="h-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, jobProgress))}%` }} />
                 </div>
                 <div className="mt-2 text-xs text-gray-600">
-                  Статус: <span className="font-medium">{jobStatus || '—'}</span>{' '}
+                  {t.result.statusLabel.value}: <span className="font-medium">{jobStatus || t.result.dash.value}</span>{' '}
                   {jobStage ? <span className="text-gray-500">({jobStage})</span> : null}
                 </div>
                 {jobError ? <div className="mt-2 text-xs text-red-600 break-words">{jobError}</div> : null}
               </div>
             ) : null}
             {!preview && (
-              <div className="mt-2 text-xs text-gray-500">Сначала сделайте превью.</div>
+              <div className="mt-2 text-xs text-gray-500">{t.result.needPreviewHint}</div>
             )}
           </div>
         </div>
@@ -468,16 +468,16 @@ export default function GoogleSheetsImportPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-gray-900">Превью</div>
+                <div className="text-sm font-semibold text-gray-900">{t.preview.title}</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Used range, sample и стили. В commit будут считаны все данные.
+                  {t.preview.subtitle}
                 </div>
               </div>
               {preview && (
                 <div className="text-xs text-gray-500 text-right">
                   <div>{preview.usedRange.a1}</div>
                   <div>
-                    {preview.usedRange.rowsCount}×{preview.usedRange.colsCount}, layout: {preview.layoutSuggested}
+                    {preview.usedRange.rowsCount}×{preview.usedRange.colsCount}, {t.preview.layoutPrefix.value}: {preview.layoutSuggested}
                   </div>
                 </div>
               )}
@@ -485,14 +485,14 @@ export default function GoogleSheetsImportPage() {
 
             {!preview ? (
               <div className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-                Выберите подключение и нажмите “Сделать превью”.
+                {t.preview.hint}
               </div>
             ) : (
               <div className="mt-4 overflow-x-auto">
                 <table className="min-w-full text-xs">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="px-2 py-2 text-left font-semibold text-gray-700">Row</th>
+                      <th className="px-2 py-2 text-left font-semibold text-gray-700">{t.preview.rowHeader}</th>
                       {preview.columns.slice(0, 12).map((c) => (
                         <th key={c.index} className="px-2 py-2 text-left font-semibold text-gray-700">
                           {c.title}
@@ -534,9 +534,9 @@ export default function GoogleSheetsImportPage() {
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-sm font-semibold text-gray-900">Колонки</div>
+                <div className="text-sm font-semibold text-gray-900">{t.columns.title}</div>
                 <div className="text-xs text-gray-500 mt-1">
-                  Можно отключать/переименовывать и менять тип. Тип используется для UI и валидаций.
+                  {t.columns.subtitle}
                 </div>
               </div>
               {preview && (
@@ -544,24 +544,24 @@ export default function GoogleSheetsImportPage() {
                   onClick={() => setColumns((prev) => prev.map((c) => ({ ...c, include: true })))}
                   className="text-xs text-primary hover:text-primary-hover"
                 >
-                  Включить все
+                  {t.columns.enableAll}
                 </button>
               )}
             </div>
 
             {!preview ? (
               <div className="mt-4 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-                Колонки появятся после превью.
+                {t.columns.appearAfterPreview}
               </div>
             ) : (
               <div className="mt-4 overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[84px]">Вкл</th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[84px]">{t.columns.tableHeaders.enabled}</th>
                       <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[80px]">A1</th>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700">Название</th>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[180px]">Тип</th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-700">{t.columns.tableHeaders.name}</th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[180px]">{t.columns.tableHeaders.type}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -603,12 +603,12 @@ export default function GoogleSheetsImportPage() {
                             }
                             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                           >
-                            <option value="text">Текст</option>
-                            <option value="number">Число</option>
-                            <option value="date">Дата</option>
-                            <option value="boolean">Да/Нет</option>
-                            <option value="select">Выбор</option>
-                            <option value="multi_select">Мультивыбор</option>
+                            <option value="text">{t.columns.types.text}</option>
+                            <option value="number">{t.columns.types.number}</option>
+                            <option value="date">{t.columns.types.date}</option>
+                            <option value="boolean">{t.columns.types.boolean}</option>
+                            <option value="select">{t.columns.types.select}</option>
+                            <option value="multi_select">{t.columns.types.multiSelect}</option>
                           </select>
                         </td>
                       </tr>

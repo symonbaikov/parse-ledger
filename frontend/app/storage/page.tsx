@@ -38,6 +38,7 @@ import { alpha } from '@mui/material/styles';
 import api from '../lib/api';
 import { DocumentTypeIcon } from '../components/DocumentTypeIcon';
 import toast from 'react-hot-toast';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface StorageFile {
   id: string;
@@ -77,6 +78,8 @@ interface CategoryOption {
  */
 export default function StoragePage() {
   const router = useRouter();
+  const t = useIntlayer('storagePage');
+  const { locale } = useLocale();
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,7 +107,7 @@ export default function StoragePage() {
       setFiles(response.data);
     } catch (error) {
       console.error('Failed to load files:', error);
-      toast.error('Не удалось загрузить файлы');
+      toast.error(t.toasts.loadFilesFailed.value);
     } finally {
       setLoading(false);
     }
@@ -117,7 +120,7 @@ export default function StoragePage() {
       setCategories(response.data || []);
     } catch (error) {
       console.error('Failed to load categories:', error);
-      toast.error('Не удалось загрузить категории');
+      toast.error(t.toasts.loadCategoriesFailed.value);
     } finally {
       setCategoriesLoading(false);
     }
@@ -150,21 +153,21 @@ export default function StoragePage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-      toast.success('Файл скачан');
+      toast.success(t.toasts.downloaded.value);
     } catch (error) {
       console.error('Failed to download file:', error);
-      toast.error('Не удалось скачать файл');
+      toast.error(t.toasts.downloadFailed.value);
     }
   };
 
   const handleShare = (fileId: string) => {
     router.push(`/storage/${fileId}?tab=share`);
-    toast.success('Открыто окно доступа');
+    toast.success(t.toasts.shareOpened.value);
   };
 
   const handleManagePermissions = (fileId: string) => {
     router.push(`/storage/${fileId}?tab=permissions`);
-    toast.success('Открыто управление правами');
+    toast.success(t.toasts.permissionsOpened.value);
   };
 
   const handleCategoryChange = async (fileId: string, categoryId: string) => {
@@ -184,10 +187,10 @@ export default function StoragePage() {
             : file,
         ),
       );
-      toast.success('Категория обновлена');
+      toast.success(t.toasts.categoryUpdated.value);
     } catch (error) {
       console.error('Failed to update file category:', error);
-      toast.error('Не удалось обновить категорию файла');
+      toast.error(t.toasts.categoryUpdateFailed.value);
     }
   };
 
@@ -199,7 +202,7 @@ export default function StoragePage() {
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
+    return date.toLocaleDateString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -223,15 +226,15 @@ export default function StoragePage() {
   const getStatusLabel = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
-        return 'Завершено';
+        return t.statusLabels.completed.value;
       case 'processing':
-        return 'Обрабатывается';
+        return t.statusLabels.processing.value;
       case 'error':
-        return 'Ошибка';
+        return t.statusLabels.error.value;
       case 'uploaded':
-        return 'Загружено';
+        return t.statusLabels.uploaded.value;
       case 'parsed':
-        return 'Распарсено';
+        return t.statusLabels.parsed.value;
       default:
         return status;
     }
@@ -240,15 +243,15 @@ export default function StoragePage() {
   const getPermissionLabel = (permission?: string | null) => {
     switch ((permission || '').toLowerCase()) {
       case 'owner':
-        return 'Владелец';
+        return t.permission.owner.value;
       case 'editor':
-        return 'Редактор';
+        return t.permission.editor.value;
       case 'viewer':
-        return 'Просмотр';
+        return t.permission.viewer.value;
       case 'downloader':
-        return 'Скачивание';
+        return t.permission.downloader.value;
       default:
-        return 'Доступ';
+        return t.permission.access.value;
     }
   };
 
@@ -306,10 +309,10 @@ export default function StoragePage() {
       <Box sx={{ mb: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box>
           <Typography variant="h5" sx={{ mb: 1, color: '#111827', fontWeight: 600, letterSpacing: '-0.01em' }}>
-            Хранилище
+            {t.title}
           </Typography>
           <Typography variant="body2" sx={{ color: '#6B7280', maxWidth: 600 }}>
-            Управляйте загруженными файлами и документами
+            {t.subtitle}
           </Typography>
         </Box>
         {/* Potentially add a primary action button here if needed in future */}
@@ -329,7 +332,7 @@ export default function StoragePage() {
         {/* Controls Bar */}
         <Box sx={{ p: 2.5, display: 'flex', gap: 2, borderBottom: '1px solid #F3F4F6', alignItems: 'center' }}>
           <TextField
-            placeholder="Поиск по файлам..."
+            placeholder={t.searchPlaceholder.value}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             size="small"
@@ -368,9 +371,9 @@ export default function StoragePage() {
               fontSize: '0.875rem',
               '&:hover': { bgcolor: '#F9FAFB', color: '#111827' }
             }}
-          >
-            Фильтры {filtersApplied && <Box component="span" sx={{ ml: 1, display: 'inline-flex', width: 6, height: 6, borderRadius: '50%', bgcolor: '#3B82F6' }} />}
-          </Button>
+	          >
+	            {t.filters.button} {filtersApplied && <Box component="span" sx={{ ml: 1, display: 'inline-flex', width: 6, height: 6, borderRadius: '50%', bgcolor: '#3B82F6' }} />}
+	          </Button>
         </Box>
 
         {/* Files Table */}
@@ -378,15 +381,15 @@ export default function StoragePage() {
           <Table sx={{ minWidth: 800 }}>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ pl: 3, py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Имя файла</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Банк</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Счет</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Размер</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Статус</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Категория</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Доступ</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Создано</TableCell>
-                <TableCell align="right" sx={{ pr: 3, py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>Действия</TableCell>
+                <TableCell sx={{ pl: 3, py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.fileName}</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.bank}</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.account}</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.size}</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.status}</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.category}</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.access}</TableCell>
+                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.createdAt}</TableCell>
+                <TableCell align="right" sx={{ pr: 3, py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.actions}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -405,8 +408,8 @@ export default function StoragePage() {
                       <Box sx={{ p: 3, bgcolor: '#F9FAFB', borderRadius: '50%' }}>
                          <Search size={32} className="text-gray-300" />
                       </Box>
-                      <Typography variant="body1" sx={{ color: '#374151', fontWeight: 500 }}>Файлы не найдены</Typography>
-                      <Typography variant="body2" sx={{ color: '#9CA3AF' }}>Попробуйте изменить параметры поиска или фильтры</Typography>
+                      <Typography variant="body1" sx={{ color: '#374151', fontWeight: 500 }}>{t.empty.title}</Typography>
+                      <Typography variant="body2" sx={{ color: '#9CA3AF' }}>{t.empty.subtitle}</Typography>
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -448,7 +451,7 @@ export default function StoragePage() {
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                 <Share2 size={12} className="text-blue-500" />
                                 <Typography variant="caption" sx={{ color: '#3B82F6', fontWeight: 500 }}>
-                                    {file.sharedLinksCount} shared
+                                    {file.sharedLinksCount} {t.sharedLinksShort}
                                 </Typography>
                             </Box>
                           )}
@@ -500,7 +503,7 @@ export default function StoragePage() {
                               categories.find((cat) => cat.id === selected) || file.category;
 
                             if (!selectedCategory) {
-                              return <Typography variant="body2" sx={{ color: '#9CA3AF' }}>Выбрать</Typography>;
+                              return <Typography variant="body2" sx={{ color: '#9CA3AF' }}>{t.categoryCell.choose}</Typography>;
                             }
 
                             return (
@@ -514,7 +517,7 @@ export default function StoragePage() {
                           }}
                         >
                           <MenuItem value="">
-                            <Typography variant="body2" color="text.secondary">Без категории</Typography>
+                            <Typography variant="body2" color="text.secondary">{t.categoryCell.none}</Typography>
                           </MenuItem>
                           {categories.map((cat) => (
                             <MenuItem key={cat.id} value={cat.id}>
@@ -537,7 +540,7 @@ export default function StoragePage() {
                             fontWeight: 500,
                             fontSize: '0.75rem' 
                         }}>
-                           {file.isOwner ? 'Владелец' : getPermissionLabel(file.permissionType)}
+                           {file.isOwner ? t.permission.owner.value : getPermissionLabel(file.permissionType)}
                         </Typography>
                     </TableCell>
                     <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
@@ -604,13 +607,13 @@ export default function StoragePage() {
           if (selectedFile) handleView(selectedFile.id);
           handleMenuClose();
         }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
-           <Eye size={16} /> Просмотр
+           <Eye size={16} /> {t.actions.view}
         </MenuItem>
         <MenuItem onClick={() => {
           if (selectedFile) handleDownload(selectedFile.id, selectedFile.fileName);
           handleMenuClose();
         }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
-           <Download size={16} /> Скачать
+           <Download size={16} /> {t.actions.download}
         </MenuItem>
         {selectedFile?.isOwner && (
           <>
@@ -618,13 +621,13 @@ export default function StoragePage() {
               if (selectedFile) handleShare(selectedFile.id);
               handleMenuClose();
             }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
-               <Share2 size={16} /> Поделиться
+               <Share2 size={16} /> {t.actions.share}
             </MenuItem>
             <MenuItem onClick={() => {
               if (selectedFile) handleManagePermissions(selectedFile.id);
               handleMenuClose();
             }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
-               <Icon icon="mdi:shield-account-outline" width={16} /> Доступ
+               <Icon icon="mdi:shield-account-outline" width={16} /> {t.actions.permissions}
             </MenuItem>
           </>
         )}
@@ -653,7 +656,7 @@ export default function StoragePage() {
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#111827' }}>
-            Фильтры
+            {t.filters.title}
             </Typography>
             <Button 
                 size="small" 
@@ -667,13 +670,13 @@ export default function StoragePage() {
                     '&:hover': { color: '#111827', bgcolor: 'transparent' } 
                 }}
             >
-                Сбросить
+                {t.filters.reset}
             </Button>
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           <FormControl size="small" fullWidth>
             <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
-              Статус
+              {t.filters.status}
             </Typography>
             <Select
               value={filters.status}
@@ -687,7 +690,7 @@ export default function StoragePage() {
               }}
             >
               <MenuItem value="">
-                <Typography variant="body2" color="text.secondary">Все</Typography>
+                <Typography variant="body2" color="text.secondary">{t.filters.all}</Typography>
               </MenuItem>
               {statusOptions.map((status) => (
                 <MenuItem key={status} value={status}>
@@ -699,7 +702,7 @@ export default function StoragePage() {
 
           <FormControl size="small" fullWidth>
             <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
-              Банк
+              {t.filters.bank}
             </Typography>
             <Select
               value={filters.bank}
@@ -713,7 +716,7 @@ export default function StoragePage() {
               }}
             >
               <MenuItem value="">
-                 <Typography variant="body2" color="text.secondary">Все</Typography>
+                 <Typography variant="body2" color="text.secondary">{t.filters.all}</Typography>
               </MenuItem>
               {bankOptions.map((bank) => (
                 <MenuItem key={bank} value={bank}>
@@ -725,7 +728,7 @@ export default function StoragePage() {
 
           <FormControl size="small" fullWidth>
             <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
-              Категория
+              {t.filters.category}
             </Typography>
             <Select
               value={filters.categoryId}
@@ -739,7 +742,7 @@ export default function StoragePage() {
               }}
             >
               <MenuItem value="">
-                 <Typography variant="body2" color="text.secondary">Все</Typography>
+                 <Typography variant="body2" color="text.secondary">{t.filters.all}</Typography>
               </MenuItem>
               {categories.map((cat) => (
                 <MenuItem key={cat.id} value={cat.id}>
@@ -751,7 +754,7 @@ export default function StoragePage() {
 
           <FormControl size="small" fullWidth>
             <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
-              Тип доступа
+              {t.filters.accessType}
             </Typography>
             <Select
               value={filters.ownership}
@@ -765,10 +768,10 @@ export default function StoragePage() {
               }}
             >
               <MenuItem value="">
-                 <Typography variant="body2" color="text.secondary">Все</Typography>
+                 <Typography variant="body2" color="text.secondary">{t.filters.all}</Typography>
               </MenuItem>
-              <MenuItem value="owned">Мои файлы</MenuItem>
-              <MenuItem value="shared">Доступные мне</MenuItem>
+              <MenuItem value="owned">{t.filters.owned}</MenuItem>
+              <MenuItem value="shared">{t.filters.shared}</MenuItem>
             </Select>
           </FormControl>
 
@@ -786,7 +789,7 @@ export default function StoragePage() {
                 '&:hover': { bgcolor: '#1F2937', boxShadow: 'none' }
             }}
           >
-            Применить
+            {t.filters.apply}
           </Button>
         </Box>
       </Popover>

@@ -33,6 +33,7 @@ import {
   Link as LinkIcon,
 } from '@mui/icons-material';
 import api from '../lib/api';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface SharedLink {
   id: string;
@@ -54,28 +55,10 @@ interface ShareDialogProps {
   onLinksUpdate: () => void;
 }
 
-const getPermissionLabel = (permission: string) => {
-  switch (permission) {
-    case 'view':
-      return 'Просмотр';
-    case 'download':
-      return 'Просмотр и скачивание';
-    case 'edit':
-      return 'Полный доступ';
-    default:
-      return permission;
-  }
-};
-
-const getStatusLabel = (status: string) => {
-  switch (status) {
-    case 'active':
-      return 'Активна';
-    case 'expired':
-      return 'Истекла';
-    default:
-      return status;
-  }
+const resolveDateLocale = (locale: string) => {
+  if (locale === 'ru') return 'ru-RU';
+  if (locale === 'kk') return 'kk-KZ';
+  return 'en-US';
 };
 
 /**
@@ -88,6 +71,8 @@ export default function ShareDialog({
   sharedLinks,
   onLinksUpdate,
 }: ShareDialogProps) {
+  const t = useIntlayer('shareDialog');
+  const { locale } = useLocale();
   const [permission, setPermission] = useState('view');
   const [expiresAt, setExpiresAt] = useState('');
   const [password, setPassword] = useState('');
@@ -145,11 +130,35 @@ export default function ShareDialog({
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
+    return date.toLocaleDateString(resolveDateLocale(locale), {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const getPermissionLabel = (permissionValue: string) => {
+    switch (permissionValue) {
+      case 'view':
+        return t.permissionLabel.view;
+      case 'download':
+        return t.permissionLabel.download;
+      case 'edit':
+        return t.permissionLabel.edit;
+      default:
+        return permissionValue;
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'active':
+        return t.statusLabel.active;
+      case 'expired':
+        return t.statusLabel.expired;
+      default:
+        return status;
+    }
   };
 
   return (
@@ -157,26 +166,26 @@ export default function ShareDialog({
       {/* Create new link section */}
       <Paper sx={{ p: 3, mb: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Создать новую ссылку
+          {t.createTitle}
         </Typography>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <FormControl fullWidth>
-            <InputLabel>Уровень доступа</InputLabel>
+            <InputLabel>{t.accessLevel.label}</InputLabel>
             <Select
               value={permission}
-              label="Уровень доступа"
+              label={t.accessLevel.label.value}
               onChange={e => setPermission(e.target.value)}
             >
-              <MenuItem value="view">Только просмотр</MenuItem>
-              <MenuItem value="download">Просмотр и скачивание</MenuItem>
-              <MenuItem value="edit">Полный доступ</MenuItem>
+              <MenuItem value="view">{t.accessLevel.view}</MenuItem>
+              <MenuItem value="download">{t.accessLevel.download}</MenuItem>
+              <MenuItem value="edit">{t.accessLevel.edit}</MenuItem>
             </Select>
           </FormControl>
 
           <TextField
             fullWidth
-            label="Срок действия (опционально)"
+            label={t.expiresAt.value}
             type="datetime-local"
             value={expiresAt}
             onChange={e => setExpiresAt(e.target.value)}
@@ -185,21 +194,21 @@ export default function ShareDialog({
 
           <TextField
             fullWidth
-            label="Пароль (опционально)"
+            label={t.password.label.value}
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            helperText="Добавьте пароль для дополнительной защиты"
+            helperText={t.password.help.value}
           />
 
           <TextField
             fullWidth
-            label="Описание (опционально)"
+            label={t.description.label.value}
             multiline
             rows={2}
             value={description}
             onChange={e => setDescription(e.target.value)}
-            helperText="Добавьте заметку о том, для кого эта ссылка"
+            helperText={t.description.help.value}
           />
 
           <FormControlLabel
@@ -209,7 +218,7 @@ export default function ShareDialog({
                 onChange={e => setAllowAnonymous(e.target.checked)}
               />
             }
-            label="Разрешить доступ по ссылке без авторизации"
+            label={t.allowAnonymous.value}
           />
 
           <Button
@@ -218,11 +227,11 @@ export default function ShareDialog({
             disabled={creating}
             startIcon={<LinkIcon />}
           >
-            Создать ссылку
+            {t.createButton}
           </Button>
 
           {copiedToken && (
-            <Alert severity="success">Ссылка создана и скопирована в буфер обмена!</Alert>
+            <Alert severity="success">{t.createdCopied}</Alert>
           )}
         </Box>
       </Paper>
@@ -230,11 +239,11 @@ export default function ShareDialog({
       {/* Existing links */}
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" gutterBottom>
-          Активные ссылки ({sharedLinks.length})
+          {t.activeLinks.value} ({sharedLinks.length})
         </Typography>
 
         {sharedLinks.length === 0 ? (
-          <Typography color="text.secondary">Пока нет активных ссылок для этого файла</Typography>
+          <Typography color="text.secondary">{t.noLinks}</Typography>
         ) : (
           <List>
             {sharedLinks.map(link => (
@@ -258,7 +267,7 @@ export default function ShareDialog({
                       />
                       {link.expiresAt && (
                         <Chip
-                          label={`До ${formatDate(link.expiresAt)}`}
+                          label={`${t.untilPrefix.value} ${formatDate(link.expiresAt)}`}
                           size="small"
                           variant="outlined"
                         />
@@ -273,13 +282,13 @@ export default function ShareDialog({
                         </Typography>
                       )}
                       <Typography variant="caption" color="text.secondary">
-                        Создана: {formatDate(link.createdAt)} • Переходов: {link.accessCount}
+                        {t.createdPrefix.value}: {formatDate(link.createdAt)} • {t.visitsPrefix.value}: {link.accessCount}
                       </Typography>
                     </Box>
                   }
                 />
                 <ListItemSecondaryAction>
-                  <Tooltip title="Копировать ссылку">
+                  <Tooltip title={t.tooltips.copy.value}>
                     <IconButton
                       edge="end"
                       onClick={() => handleCopyLink(link.token)}
@@ -288,7 +297,7 @@ export default function ShareDialog({
                       <CopyIcon />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Удалить">
+                  <Tooltip title={t.tooltips.delete.value}>
                     <IconButton edge="end" onClick={() => handleDeleteLink(link.id)}>
                       <DeleteIcon />
                     </IconButton>

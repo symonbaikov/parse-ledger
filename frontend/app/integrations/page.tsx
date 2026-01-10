@@ -3,51 +3,53 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { CheckCircle2, ExternalLink, Plug } from 'lucide-react';
-
-const integrations = [
-  {
-    key: 'google-sheets',
-    active: true,
-    name: 'Google Sheets',
-    description: 'Отправляйте распарсенные транзакции в выбранную таблицу.',
-    badge: 'Доступно',
-    icon: (
-      <Image
-        src="/icons/icons8-google-sheets-48.png"
-        alt="Google Sheets"
-        width={32}
-        height={32}
-        className="rounded"
-      />
-    ),
-    actions: [
-      { label: 'Подключить', href: '/integrations/google-sheets' },
-      { label: 'Документация', href: 'https://support.google.com/docs', external: true },
-    ],
-  },
-  {
-    key: 'telegram',
-    active: false,
-    name: 'Telegram',
-    description: 'Получайте уведомления и отправляйте выписки через бота.',
-    badge: 'Скоро',
-    icon: (
-      <Image
-        src="/icons/icons8-telegram-48.png"
-        alt="Telegram"
-        width={32}
-        height={32}
-        className="rounded"
-      />
-    ),
-    actions: [
-      { label: 'Настроить бота', href: '/settings/telegram' },
-      { label: 'Руководство', href: 'https://core.telegram.org/bots', external: true },
-    ],
-  },
-];
+import { useIntlayer } from 'next-intlayer';
 
 export default function IntegrationsPage() {
+  const t = useIntlayer('integrationsPage');
+  const integrations = [
+    {
+      key: 'google-sheets',
+      active: true,
+      name: 'Google Sheets',
+      description: t.cards.googleSheets.description,
+      badge: t.cards.googleSheets.badge,
+      icon: (
+        <Image
+          src="/icons/icons8-google-sheets-48.png"
+          alt="Google Sheets"
+          width={32}
+          height={32}
+          className="rounded"
+        />
+      ),
+      actions: [
+        { label: t.cards.googleSheets.actions.connect, href: '/integrations/google-sheets' },
+        { label: t.cards.googleSheets.actions.docs, href: 'https://support.google.com/docs', external: true },
+      ],
+    },
+    {
+      key: 'telegram',
+      active: false,
+      name: 'Telegram',
+      description: t.cards.telegram.description,
+      badge: t.cards.telegram.badge,
+      icon: (
+        <Image
+          src="/icons/icons8-telegram-48.png"
+          alt="Telegram"
+          width={32}
+          height={32}
+          className="rounded"
+        />
+      ),
+      actions: [
+        { label: t.cards.telegram.actions.setup, href: '/settings/telegram' },
+        { label: t.cards.telegram.actions.guide, href: 'https://core.telegram.org/bots', external: true },
+      ],
+    },
+  ];
+
   const active = integrations.filter((item) => item.active);
   const available = integrations.filter((item) => !item.active);
 
@@ -58,20 +60,20 @@ export default function IntegrationsPage() {
           <Plug className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Интеграции</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
           <p className="text-secondary mt-1">
-            Подключайте внешние сервисы и автоматизируйте обмен данными.
+            {t.subtitle}
           </p>
         </div>
       </div>
 
       <div className="space-y-6">
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Подключено</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.sections.connected}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {active.length === 0 && (
               <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                Пока нет активных интеграций.
+                {t.empty.connected}
               </div>
             )}
             {active.map((item) => (
@@ -93,7 +95,7 @@ export default function IntegrationsPage() {
                       {item.actions.map((action) =>
                         action.external ? (
                           <a
-                            key={action.label}
+                            key={action.href}
                             href={action.href}
                             target="_blank"
                             rel="noreferrer"
@@ -104,7 +106,7 @@ export default function IntegrationsPage() {
                           </a>
                         ) : (
                           <Link
-                            key={action.label}
+                            key={action.href}
                             href={action.href}
                             className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-full border border-primary text-primary hover:bg-primary/10"
                           >
@@ -121,11 +123,11 @@ export default function IntegrationsPage() {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">Доступно к подключению</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.sections.available}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {available.length === 0 && (
               <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                Нет доступных интеграций.
+                {t.empty.available}
               </div>
             )}
             {available.map((item) => (
@@ -147,7 +149,7 @@ export default function IntegrationsPage() {
                       {item.actions.map((action) =>
                         action.external ? (
                           <a
-                            key={action.label}
+                            key={action.href}
                             href={action.href}
                             target="_blank"
                             rel="noreferrer"
@@ -158,7 +160,7 @@ export default function IntegrationsPage() {
                           </a>
                         ) : (
                           <Link
-                            key={action.label}
+                            key={action.href}
                             href={action.href}
                             className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-full border border-primary text-primary hover:bg-primary/10"
                           >

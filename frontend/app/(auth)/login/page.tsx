@@ -16,11 +16,13 @@ import {
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import apiClient from '@/app/lib/api';
+import { useIntlayer } from 'next-intlayer';
 
 export default function LoginPage() {
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const t = useIntlayer('loginPage');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -46,7 +48,7 @@ export default function LoginPage() {
       window.location.href = '/';
     } catch (err: any) {
       setError(
-        err.response?.data?.error?.message || 'Не удалось выполнить вход. Попробуйте ещё раз.',
+        err.response?.data?.error?.message || t.loginFailed.value,
       );
     } finally {
       setLoading(false);
@@ -113,10 +115,10 @@ export default function LoginPage() {
           </Box>
 
           <Typography component="h1" variant="h4" gutterBottom fontWeight="bold" color="text.primary">
-            С возвращением
+            {t.title}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-            Войдите, чтобы продолжить работу в FinFlow
+            {t.subtitle}
           </Typography>
 
           {error && (
@@ -126,7 +128,7 @@ export default function LoginPage() {
           )}
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-            <TextField
+	            <TextField
               margin="normal"
               required
               fullWidth
@@ -146,8 +148,8 @@ export default function LoginPage() {
               margin="normal"
               required
               fullWidth
-              name="password"
-              label="Пароль"
+	              name="password"
+	              label={t.passwordLabel.value}
               type="password"
               id="password"
               autoComplete="current-password"
@@ -165,14 +167,14 @@ export default function LoginPage() {
               size="large"
               sx={{ py: 1.5, borderRadius: 2, fontSize: '1rem', textTransform: 'none', boxShadow: 'none' }}
               disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Войти'}
-            </Button>
-            <Box textAlign="center" sx={{ mt: 3 }}>
-              <Link href="/register" variant="body2" sx={{ textDecoration: 'none', fontWeight: 500 }}>
-                Нет аккаунта? Зарегистрируйтесь
-              </Link>
-            </Box>
+	            >
+	              {loading ? <CircularProgress size={24} color="inherit" /> : t.submit}
+	            </Button>
+	            <Box textAlign="center" sx={{ mt: 3 }}>
+	              <Link href="/register" variant="body2" sx={{ textDecoration: 'none', fontWeight: 500 }}>
+	                {t.noAccount}
+	              </Link>
+	            </Box>
           </Box>
         </Box>
       </Grid>
@@ -235,14 +237,14 @@ export default function LoginPage() {
           }}
         />
 
-        <Box sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 4 }}>
-          <Typography variant="h2" fontWeight="bold" gutterBottom>
-            FinFlow
-          </Typography>
-          <Typography variant="h5" sx={{ opacity: 0.8, maxWidth: 500 }}>
-            Платформа для обработки банковских выписок
-          </Typography>
-        </Box>
+	        <Box sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 4 }}>
+	          <Typography variant="h2" fontWeight="bold" gutterBottom>
+	            FinFlow
+	          </Typography>
+	          <Typography variant="h5" sx={{ opacity: 0.8, maxWidth: 500 }}>
+	            {t.rightTagline}
+	          </Typography>
+	        </Box>
       </Grid>
     </Grid>
   );

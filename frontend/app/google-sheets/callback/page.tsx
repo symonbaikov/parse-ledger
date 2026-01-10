@@ -15,6 +15,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import apiClient from '@/app/lib/api';
+import { useIntlayer } from 'next-intlayer';
 
 const decodeOauthState = (raw: string): Record<string, any> | null => {
   try {
@@ -31,6 +32,7 @@ const decodeOauthState = (raw: string): Record<string, any> | null => {
 function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useIntlayer('googleSheetsCallbackPage');
   const code = searchParams.get('code');
   const oauthError = searchParams.get('error');
   const oauthState = searchParams.get('state');
@@ -45,12 +47,12 @@ function CallbackContent() {
 
   useEffect(() => {
     if (!code && !oauthError) {
-      setError('Не удалось получить код авторизации Google.');
+      setError(t.errors.missingCode.value);
     }
     if (oauthError) {
-      setError(`Google OAuth ошибка: ${oauthError}`);
+      setError(`${t.errors.oauthErrorPrefix.value}: ${oauthError}`);
     }
-  }, [code, oauthError]);
+  }, [code, oauthError, t]);
 
   useEffect(() => {
     if (!oauthState) return;
@@ -73,7 +75,7 @@ function CallbackContent() {
   const handleSubmit = async () => {
     if (!code) return;
     if (!sheetId.trim()) {
-      setError('Введите ID таблицы Google Sheet');
+      setError(t.errors.sheetIdRequired.value);
       return;
     }
     setLoading(true);
@@ -90,7 +92,7 @@ function CallbackContent() {
         router.push(redirectTo);
       }, 1500);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Не удалось подключить Google Sheet');
+      setError(err.response?.data?.message || t.errors.connectFailed.value);
     } finally {
       setLoading(false);
     }
@@ -100,10 +102,10 @@ function CallbackContent() {
     <Container maxWidth="sm" sx={{ mt: 6 }}>
       <Paper sx={{ p: 4 }}>
         <Typography variant="h5" gutterBottom>
-          Подключение Google Sheets
+          {t.title}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Авторизация в Google завершена. Укажите ID таблицы, чтобы сохранить подключение.
+          {t.subtitle}
         </Typography>
 
         {error && (
@@ -113,35 +115,35 @@ function CallbackContent() {
         )}
         {success && (
           <Alert severity="success" sx={{ mb: 2 }}>
-            Подключение сохранено. Перенаправляем на загрузку…
+            {t.success}
           </Alert>
         )}
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField
-            label="ID таблицы"
+            label={t.fields.sheetId.value}
             value={sheetId}
             onChange={(e) => setSheetId(e.target.value)}
-            placeholder="Например: 1AbCdEf..."
+            placeholder={t.fields.sheetIdPlaceholder.value}
             required
           />
           <TextField
-            label="Название подключения (опционально)"
+            label={t.fields.connectionName.value}
             value={sheetName}
             onChange={(e) => setSheetName(e.target.value)}
-            placeholder="Например: Финансы 2025"
+            placeholder={t.fields.connectionNamePlaceholder.value}
           />
           <TextField
-            label="Лист (опционально)"
+            label={t.fields.worksheet.value}
             value={worksheetName}
             onChange={(e) => setWorksheetName(e.target.value)}
-            placeholder="Лист1"
+            placeholder={t.fields.worksheetPlaceholder.value}
           />
           <Button variant="contained" onClick={handleSubmit} disabled={loading || !code}>
-            {loading ? <CircularProgress size={20} /> : 'Сохранить подключение'}
+            {loading ? <CircularProgress size={20} /> : t.actions.save}
           </Button>
           <Button variant="text" onClick={() => router.push('/upload')}>
-            Вернуться к загрузке
+            {t.actions.backToUpload}
           </Button>
         </Box>
       </Paper>

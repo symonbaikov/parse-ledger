@@ -15,10 +15,12 @@ import {
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import apiClient from '@/app/lib/api';
+import { useIntlayer } from 'next-intlayer';
 
 export default function RegisterPage() {
   const router = useRouter();
   const theme = useTheme();
+  const t = useIntlayer('registerPage');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -52,7 +54,7 @@ export default function RegisterPage() {
       window.location.href = '/';
     } catch (err: any) {
       setError(
-        err.response?.data?.error?.message || 'Не удалось зарегистрироваться. Попробуйте ещё раз.',
+        err.response?.data?.error?.message || t.registerFailed.value,
       );
     } finally {
       setLoading(false);
@@ -119,10 +121,10 @@ export default function RegisterPage() {
           </Box>
 
           <Typography component="h1" variant="h4" gutterBottom fontWeight="bold" color="text.primary">
-            Создайте аккаунт
+            {t.title}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-            Присоединяйтесь к FinFlow
+            {t.subtitle}
           </Typography>
 
           {error && (
@@ -132,12 +134,12 @@ export default function RegisterPage() {
           )}
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-            <TextField
+	            <TextField
               margin="normal"
               required
               fullWidth
               id="name"
-              label="Полное имя"
+	              label={t.fullNameLabel.value}
               name="name"
               autoComplete="name"
               autoFocus
@@ -147,7 +149,7 @@ export default function RegisterPage() {
                 sx: { borderRadius: 2, bgcolor: 'background.default' }
               }}
             />
-            <TextField
+	            <TextField
               margin="normal"
               required
               fullWidth
@@ -165,23 +167,23 @@ export default function RegisterPage() {
               margin="normal"
               required
               fullWidth
-              name="password"
-              label="Пароль"
+	              name="password"
+	              label={t.passwordLabel.value}
               type="password"
               id="password"
               autoComplete="new-password"
               value={formData.password}
               onChange={handleChange}
-              helperText="Минимум 8 символов"
+	              helperText={t.passwordHelper.value}
               InputProps={{
                 sx: { borderRadius: 2, bgcolor: 'background.default' }
               }}
             />
-            <TextField
+	            <TextField
               margin="normal"
               fullWidth
               id="company"
-              label="Компания (опционально)"
+	              label={t.companyLabel.value}
               name="company"
               value={formData.company}
               onChange={handleChange}
@@ -197,14 +199,14 @@ export default function RegisterPage() {
               size="large"
               sx={{ py: 1.5, borderRadius: 2, fontSize: '1rem', textTransform: 'none', boxShadow: 'none' }}
               disabled={loading}
-            >
-              {loading ? <CircularProgress size={24} color="inherit" /> : 'Зарегистрироваться'}
-            </Button>
-            <Box textAlign="center" sx={{ mt: 3 }}>
-              <Link href="/login" variant="body2" sx={{ textDecoration: 'none', fontWeight: 500 }}>
-                Уже есть аккаунт? Войти
-              </Link>
-            </Box>
+	            >
+	              {loading ? <CircularProgress size={24} color="inherit" /> : t.submit}
+	            </Button>
+	            <Box textAlign="center" sx={{ mt: 3 }}>
+	              <Link href="/login" variant="body2" sx={{ textDecoration: 'none', fontWeight: 500 }}>
+	                {t.haveAccount}
+	              </Link>
+	            </Box>
           </Box>
         </Box>
       </Grid>
@@ -267,16 +269,15 @@ export default function RegisterPage() {
           }}
         />
 
-        <Box sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 4 }}>
-          <Typography variant="h2" fontWeight="bold" gutterBottom>
-            Присоединяйтесь к FinFlow
-          </Typography>
-          <Typography variant="h5" sx={{ opacity: 0.8, maxWidth: 500 }}>
-            Автоматизируйте финансы уже сегодня
-          </Typography>
-        </Box>
+	        <Box sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 4 }}>
+	          <Typography variant="h2" fontWeight="bold" gutterBottom>
+	            {t.rightTitle}
+	          </Typography>
+	          <Typography variant="h5" sx={{ opacity: 0.8, maxWidth: 500 }}>
+	            {t.rightTagline}
+	          </Typography>
+	        </Box>
       </Grid>
     </Grid>
   );
 }
-

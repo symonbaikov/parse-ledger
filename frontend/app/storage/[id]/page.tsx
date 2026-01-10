@@ -30,6 +30,7 @@ import api from '../../lib/api';
 import TransactionsView from '../../components/TransactionsView';
 import ShareDialog from '../../components/ShareDialog';
 import PermissionsPanel from '../../components/PermissionsPanel';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface StatementCategory {
   id: string;
@@ -75,6 +76,8 @@ export default function FileDetailsPage() {
   const searchParams = useSearchParams();
   const fileId = params.id as string;
   const initialTab = searchParams.get('tab') || 'transactions';
+  const t = useIntlayer('storageDetailsPage');
+  const { locale } = useLocale();
 
   const [details, setDetails] = useState<FileDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -151,7 +154,7 @@ export default function FileDetailsPage() {
       const message =
         (error as any)?.response?.data?.error?.message ||
         (error as any)?.response?.data?.message ||
-        'Не удалось загрузить превью файла';
+        t.toasts.previewFailed.value;
       setPreviewError(message);
       setPreviewUrl(null);
     } finally {
@@ -185,7 +188,7 @@ export default function FileDetailsPage() {
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
+    return date.toLocaleDateString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -201,28 +204,28 @@ export default function FileDetailsPage() {
   const getPermissionLabel = (permission?: string | null) => {
     switch ((permission || '').toLowerCase()) {
       case 'owner':
-        return 'Владелец';
+        return t.permission.owner.value;
       case 'editor':
-        return 'Редактор';
+        return t.permission.editor.value;
       case 'viewer':
-        return 'Просмотр';
+        return t.permission.viewer.value;
       case 'downloader':
-        return 'Скачивание';
+        return t.permission.downloader.value;
       default:
-        return 'Доступ';
+        return t.permission.access.value;
     }
   };
 
   const getStatusLabel = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
-        return 'Завершено';
+        return t.status.completed.value;
       case 'processing':
-        return 'Обрабатывается';
+        return t.status.processing.value;
       case 'error':
-        return 'Ошибка';
+        return t.status.error.value;
       case 'uploaded':
-        return 'Загружено';
+        return t.status.uploaded.value;
       default:
         return status;
     }
@@ -231,7 +234,7 @@ export default function FileDetailsPage() {
   if (loading) {
     return (
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <Typography>Загрузка...</Typography>
+        <Typography>{t.loading}</Typography>
       </Container>
     );
   }
@@ -239,7 +242,7 @@ export default function FileDetailsPage() {
   if (!details) {
     return (
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <Typography>Файл не найден</Typography>
+        <Typography>{t.notFound}</Typography>
       </Container>
     );
   }
@@ -270,7 +273,7 @@ export default function FileDetailsPage() {
               color="success"
             />
             <Chip
-              label={isOwner ? 'Владелец' : getPermissionLabel(userPermission)}
+              label={isOwner ? t.permission.owner.value : getPermissionLabel(userPermission)}
               size="small"
               color={isOwner ? 'success' : 'default'}
               variant={isOwner ? 'filled' : 'outlined'}
@@ -278,23 +281,23 @@ export default function FileDetailsPage() {
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title="Скачать файл">
+          <Tooltip title={t.actions.downloadTooltip.value}>
             <Button
               variant="outlined"
               startIcon={<DownloadIcon />}
               onClick={handleDownload}
             >
-              Скачать
+              {t.actions.download}
             </Button>
           </Tooltip>
           {(isOwner || userPermission === 'editor') && (
-            <Tooltip title="Поделиться файлом">
+            <Tooltip title={t.actions.shareTooltip.value}>
               <Button
                 variant="contained"
                 startIcon={<ShareIcon />}
                 onClick={handleShare}
               >
-                Поделиться
+                {t.actions.share}
               </Button>
             </Tooltip>
           )}
@@ -327,7 +330,7 @@ export default function FileDetailsPage() {
           <Card>
             <CardContent>
               <Typography variant="body2" color="text.secondary">
-                Размер файла
+                {t.cards.size}
               </Typography>
               <Typography variant="h6">
                 {formatFileSize(statement.fileSize)}
@@ -337,7 +340,7 @@ export default function FileDetailsPage() {
           <Card>
             <CardContent>
               <Typography variant="body2" color="text.secondary">
-                Транзакций
+                {t.cards.transactions}
               </Typography>
               <Typography variant="h6">
                 {transactions.length}
@@ -347,7 +350,7 @@ export default function FileDetailsPage() {
           <Card>
             <CardContent>
               <Typography variant="body2" color="text.secondary">
-                Загружено
+                {t.cards.uploadedAt}
               </Typography>
               <Typography variant="h6">
                 {formatDate(statement.createdAt)}
@@ -357,10 +360,10 @@ export default function FileDetailsPage() {
           <Card>
             <CardContent>
               <Typography variant="body2" color="text.secondary">
-                Счет
+                {t.cards.account}
               </Typography>
               <Typography variant="h6">
-                {statement.metadata?.accountNumber || '—'}
+                {statement.metadata?.accountNumber || t.cards.dash.value}
               </Typography>
             </CardContent>
           </Card>
@@ -380,7 +383,7 @@ export default function FileDetailsPage() {
         >
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              Предпросмотр файла
+              {t.preview.title}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               <Button
@@ -389,7 +392,7 @@ export default function FileDetailsPage() {
                 onClick={loadPreview}
                 disabled={previewLoading}
               >
-                Обновить
+                {t.preview.refresh}
               </Button>
               {previewUrl && (
                 <Button
@@ -397,7 +400,7 @@ export default function FileDetailsPage() {
                   variant="text"
                   onClick={() => previewUrl && window.open(previewUrl, '_blank')}
                 >
-                  Открыть в новой вкладке
+                  {t.preview.openNewTab}
                 </Button>
               )}
             </Box>
@@ -422,7 +425,7 @@ export default function FileDetailsPage() {
               {previewError}
               <Box sx={{ mt: 1 }}>
                 <Button size="small" onClick={loadPreview}>
-                  Попробовать снова
+                  {t.preview.retry}
                 </Button>
               </Box>
             </Alert>
@@ -442,7 +445,7 @@ export default function FileDetailsPage() {
             >
               <iframe
                 src={previewUrl}
-                title="Предпросмотр файла"
+                title={t.preview.iframeTitle.value}
                 style={{
                   width: '100%',
                   height: '100%',
@@ -454,7 +457,7 @@ export default function FileDetailsPage() {
 
           {!previewLoading && !previewError && !previewUrl && (
             <Alert severity="info" sx={{ flex: 1 }}>
-              Превью появится после загрузки файла. Если формат не поддерживает онлайн-просмотр, скачайте файл.
+              {t.preview.empty}
             </Alert>
           )}
         </Paper>
@@ -468,9 +471,9 @@ export default function FileDetailsPage() {
           indicatorColor="primary"
           textColor="primary"
         >
-          <Tab label={`Транзакции (${transactions.length})`} />
-          <Tab label={`Ссылки (${sharedLinks.length})`} />
-          {isOwner && <Tab label={`Права доступа (${permissions.length})`} />}
+          <Tab label={`${t.tabs.transactions.value} (${transactions.length})`} />
+          <Tab label={`${t.tabs.links.value} (${sharedLinks.length})`} />
+          {isOwner && <Tab label={`${t.tabs.permissions.value} (${permissions.length})`} />}
         </Tabs>
       </Paper>
 

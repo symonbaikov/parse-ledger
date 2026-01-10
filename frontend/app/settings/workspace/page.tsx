@@ -20,6 +20,7 @@ import { Copy, MailPlus, Shield, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useIntlayer } from 'next-intlayer';
 
 type WorkspaceOverview = {
   workspace: { id: string; name: string; ownerId?: string | null; createdAt?: string };
@@ -36,14 +37,9 @@ type WorkspaceOverview = {
   }>;
 };
 
-const roleLabels: Record<string, string> = {
-  owner: 'Владелец',
-  admin: 'Администратор',
-  member: 'Участник',
-};
-
 export default function WorkspaceSettingsPage() {
   const { user, loading } = useAuth();
+  const t = useIntlayer('settingsWorkspacePage');
   const [overview, setOverview] = useState<WorkspaceOverview | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -69,7 +65,7 @@ export default function WorkspaceSettingsPage() {
       setOverview(response.data);
     } catch (err: any) {
       setFetchError(
-        err?.response?.data?.message || 'Не удалось загрузить рабочее пространство',
+        err?.response?.data?.message || t.errors.loadOverview.value,
       );
     }
   };
@@ -85,11 +81,11 @@ export default function WorkspaceSettingsPage() {
       });
       setInviteEmail('');
       setInviteLink(response.data?.invitationLink);
-      toast.success('Приглашение отправлено');
+      toast.success(t.toasts.inviteSent.value);
       await loadOverview();
     } catch (err: any) {
       const message =
-        err?.response?.data?.message || 'Не удалось отправить приглашение';
+        err?.response?.data?.message || t.errors.inviteFailed.value;
       toast.error(message);
     } finally {
       setInviteLoading(false);
@@ -100,9 +96,9 @@ export default function WorkspaceSettingsPage() {
     if (!link) return;
     try {
       await navigator.clipboard.writeText(link);
-      toast.success('Ссылка скопирована');
+      toast.success(t.toasts.linkCopied.value);
     } catch {
-      toast.error('Не удалось скопировать ссылку');
+      toast.error(t.errors.copyFailed.value);
     }
   };
 
@@ -117,20 +113,26 @@ export default function WorkspaceSettingsPage() {
   if (!user) {
     return (
       <Container maxWidth="md" sx={{ py: 6 }}>
-        <Alert severity="warning">Войдите, чтобы управлять рабочим пространством.</Alert>
+        <Alert severity="warning">{t.authRequired}</Alert>
       </Container>
     );
   }
+
+  const roleLabels: Record<string, string> = {
+    owner: t.roles.owner.value,
+    admin: t.roles.admin.value,
+    member: t.roles.member.value,
+  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack spacing={3}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 1 }}>
-            Рабочее пространство
+            {t.title}
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Приглашайте коллег по email и управляйте доступом.
+            {t.subtitle}
           </Typography>
         </Box>
 
@@ -150,7 +152,7 @@ export default function WorkspaceSettingsPage() {
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Users size={18} />
                     <Typography variant="h6" fontWeight={600}>
-                      Участники
+                      {t.members.title}
                     </Typography>
                   </Stack>
                   <Stack spacing={1.5}>
@@ -193,12 +195,12 @@ export default function WorkspaceSettingsPage() {
                   <Stack direction="row" spacing={1} alignItems="center">
                     <MailPlus size={18} />
                     <Typography variant="h6" fontWeight={600}>
-                      Пригласить по email
+                      {t.invite.title}
                     </Typography>
                   </Stack>
                   {!isOwnerOrAdmin && (
                     <Alert severity="info">
-                      Только владелец или администратор может отправлять приглашения.
+                      {t.invite.onlyAdminHint}
                     </Alert>
                   )}
                   <TextField
@@ -212,14 +214,14 @@ export default function WorkspaceSettingsPage() {
                   />
                   <TextField
                     select
-                    label="Роль"
+                    label={t.roles.roleLabel.value}
                     value={inviteRole}
                     onChange={(e) => setInviteRole(e.target.value)}
                     fullWidth
                     disabled={!isOwnerOrAdmin}
                   >
-                    <MenuItem value="member">Участник</MenuItem>
-                    <MenuItem value="admin">Администратор</MenuItem>
+                    <MenuItem value="member">{t.roles.member}</MenuItem>
+                    <MenuItem value="admin">{t.roles.admin}</MenuItem>
                   </TextField>
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <Button
@@ -228,7 +230,7 @@ export default function WorkspaceSettingsPage() {
                       startIcon={<Shield size={16} />}
                       disabled={!isOwnerOrAdmin || inviteLoading}
                     >
-                      {inviteLoading ? <CircularProgress size={20} color="inherit" /> : 'Отправить приглашение'}
+                      {inviteLoading ? <CircularProgress size={20} color="inherit" /> : t.invite.send}
                     </Button>
                   </Box>
                   {inviteLink && (
@@ -240,7 +242,7 @@ export default function WorkspaceSettingsPage() {
                         </IconButton>
                       }
                     >
-                      Ссылка на приглашение: {inviteLink}
+                      {t.invite.inviteLinkLabel}: {inviteLink}
                     </Alert>
                   )}
                 </Stack>
@@ -250,17 +252,17 @@ export default function WorkspaceSettingsPage() {
         )}
 
         {overview && (
-          <Card variant="outlined">
-            <CardContent>
-              <Stack spacing={2}>
-                <Typography variant="h6" fontWeight={600}>
-                  Ожидающие приглашения
-                </Typography>
-                {overview.invitations.length === 0 && (
-                  <Typography variant="body2" color="text.secondary">
-                    Пока нет активных приглашений.
+            <Card variant="outlined">
+              <CardContent>
+                <Stack spacing={2}>
+                  <Typography variant="h6" fontWeight={600}>
+                    {t.pending.title}
                   </Typography>
-                )}
+                  {overview.invitations.length === 0 && (
+                    <Typography variant="body2" color="text.secondary">
+                      {t.pending.empty}
+                    </Typography>
+                  )}
                 <Stack spacing={1.5}>
                   {overview.invitations.map((invite) => {
                     const link =
@@ -285,11 +287,11 @@ export default function WorkspaceSettingsPage() {
                             {invite.email}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            Роль: {roleLabels[invite.role] || invite.role}
+                            {t.roles.roleLabel}: {roleLabels[invite.role] || invite.role}
                           </Typography>
                           {invite.expiresAt && (
                             <Typography variant="caption" color="text.secondary">
-                              Действительно до: {new Date(invite.expiresAt).toLocaleDateString()}
+                              {t.pending.validUntil}: {new Date(invite.expiresAt).toLocaleDateString()}
                             </Typography>
                           )}
                         </Box>
@@ -299,7 +301,7 @@ export default function WorkspaceSettingsPage() {
                           startIcon={<Copy size={14} />}
                           onClick={() => copyLink(link)}
                         >
-                          Копировать ссылку
+                          {t.pending.copyLink}
                         </Button>
                       </Box>
                     );

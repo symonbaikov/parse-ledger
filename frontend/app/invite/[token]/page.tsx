@@ -16,10 +16,12 @@ import {
 } from '@mui/material';
 import { ShieldCheck } from 'lucide-react';
 import apiClient from '@/app/lib/api';
+import { useIntlayer } from 'next-intlayer';
 
 export default function AcceptInvitePage() {
   const params = useParams<{ token: string }>();
   const router = useRouter();
+  const t = useIntlayer('invitePage');
   const tokenParam = params?.token;
   const token = Array.isArray(tokenParam) ? tokenParam[0] : tokenParam;
 
@@ -41,10 +43,10 @@ export default function AcceptInvitePage() {
         password: form.password || undefined,
       });
       setSuccess(
-        response.data?.message || 'Приглашение принято. Теперь можно войти в систему.',
+        response.data?.message || t.messages.acceptedFallback.value,
       );
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Не удалось принять приглашение');
+      setError(err?.response?.data?.message || t.errors.acceptFailed.value);
     } finally {
       setLoading(false);
     }
@@ -53,7 +55,7 @@ export default function AcceptInvitePage() {
   if (!token) {
     return (
       <Container maxWidth="sm" sx={{ py: 8 }}>
-        <Alert severity="error">Некорректная ссылка приглашения</Alert>
+        <Alert severity="error">{t.invalidLink}</Alert>
       </Container>
     );
   }
@@ -66,12 +68,11 @@ export default function AcceptInvitePage() {
             <Box display="flex" alignItems="center" gap={1}>
               <ShieldCheck size={24} />
               <Typography variant="h5" fontWeight={700}>
-                Присоединиться к рабочему пространству
+                {t.title}
               </Typography>
             </Box>
             <Typography variant="body2" color="text.secondary">
-              Если у вас уже есть аккаунт на этот email, заполнение имени и пароля не обязательно.
-              Новым пользователям потребуется задать пароль.
+              {t.subtitle}
             </Typography>
 
             {error && <Alert severity="error">{error}</Alert>}
@@ -80,15 +81,15 @@ export default function AcceptInvitePage() {
             <Box component="form" onSubmit={handleSubmit}>
               <Stack spacing={2}>
                 <TextField
-                  label="Имя"
+                  label={t.fields.name.value}
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   fullWidth
                 />
                 <TextField
-                  label="Пароль"
+                  label={t.fields.password.value}
                   type="password"
-                  helperText="Минимум 8 символов (только для новых аккаунтов)"
+                  helperText={t.fields.passwordHelp.value}
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   fullWidth
@@ -99,7 +100,7 @@ export default function AcceptInvitePage() {
                     onClick={() => router.push('/login')}
                     disabled={loading}
                   >
-                    Войти
+                    {t.actions.login}
                   </Button>
                   <Button
                     type="submit"
@@ -107,7 +108,7 @@ export default function AcceptInvitePage() {
                     disabled={loading}
                     startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
                   >
-                    Принять приглашение
+                    {t.actions.accept}
                   </Button>
                 </Stack>
               </Stack>

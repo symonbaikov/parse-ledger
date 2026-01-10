@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { enUS, kk, ru } from 'date-fns/locale';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { Icon } from '@iconify/react';
@@ -23,6 +23,7 @@ import {
 import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
 import apiClient from '@/app/lib/api';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 type BaseTabKey = 'cash' | 'raw' | 'debit' | 'credit';
 type CustomFieldTabKey = `field:${string}`;
@@ -92,8 +93,22 @@ const CUSTOM_FIELD_ICONS = [
   'mdi:star',
 ];
 
+const resolveLocale = (locale: string) => {
+  if (locale === 'ru') return 'ru-RU';
+  if (locale === 'kk') return 'kk-KZ';
+  return 'en-US';
+};
+
+const resolveDateFnsLocale = (locale: string) => {
+  if (locale === 'ru') return ru;
+  if (locale === 'kk') return kk;
+  return enUS;
+};
+
 export default function DataEntryPage() {
   const router = useRouter();
+  const t = useIntlayer('dataEntryPage');
+  const { locale } = useLocale();
   const { user, loading } = useAuth();
   const customFieldRef = useRef<HTMLDivElement | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>('cash');
@@ -133,46 +148,46 @@ export default function DataEntryPage() {
   const [exportingTable, setExportingTable] = useState(false);
   const [syncingTable, setSyncingTable] = useState(false);
   const [customFieldHighlight, setCustomFieldHighlight] = useState(false);
+  const dateFnsLocale = useMemo(() => resolveDateFnsLocale(locale), [locale]);
   const currencies = useMemo(
     () => [
-      { code: 'KZT', label: 'KZT (Казахстан)' },
-      { code: 'USD', label: 'USD (США)' },
-      { code: 'EUR', label: 'EUR (Еврозона)' },
-      { code: 'RUB', label: 'RUB (Россия)' },
+      { code: 'KZT', label: t.currencies.kzt.value },
+      { code: 'USD', label: t.currencies.usd.value },
+      { code: 'EUR', label: t.currencies.eur.value },
+      { code: 'RUB', label: t.currencies.rub.value },
     ],
-    [],
+    [t],
   );
 
   const tabMeta: Record<BaseTabKey | 'custom', { label: string; icon: ReactNode; description: string }> = useMemo(
     () => ({
       cash: {
-        label: 'Наличные',
+        label: t.tabs.cash.label.value,
         icon: <DollarSign className="h-4 w-4" />,
-        description: 'Остатки наличных средств.',
+        description: t.tabs.cash.description.value,
       },
       raw: {
-        label: 'Сырьё',
+        label: t.tabs.raw.label.value,
         icon: <ClipboardList className="h-4 w-4" />,
-        description: 'Остатки по сырью или материалам.',
+        description: t.tabs.raw.description.value,
       },
       debit: {
-        label: 'Дебет',
+        label: t.tabs.debit.label.value,
         icon: <TrendingUp className="h-4 w-4" />,
-        description: 'Дебетовые операции / приход.',
+        description: t.tabs.debit.description.value,
       },
       credit: {
-        label: 'Кредит',
+        label: t.tabs.credit.label.value,
         icon: <TrendingDown className="h-4 w-4" />,
-        description: 'Кредитовые операции / расход.',
+        description: t.tabs.credit.description.value,
       },
       custom: {
-        label: 'Пользовательская',
+        label: t.tabs.custom.label.value,
         icon: <Plus className="h-4 w-4" />,
-        description:
-          'Создайте пользовательскую вкладку (название + иконка). После создания она появится сверху рядом с другими вкладками.',
+        description: t.tabs.custom.description.value,
       },
     }),
-    [],
+    [t],
   );
 
   const handleChange = (tab: TabKey, field: keyof FormState, value: string) => {
@@ -188,17 +203,17 @@ export default function DataEntryPage() {
   const handleSubmit = (tab: TabKey) => {
     const payload = forms[tab] || initialForm;
     if (tab === 'custom') {
-      setStatus({ type: 'error', message: 'Для этой вкладки используйте создание колонки' });
+      setStatus({ type: 'error', message: t.errors.useColumnCreationForTab.value });
       return;
     }
     if (!payload.date || !payload.amount) {
-      setStatus({ type: 'error', message: 'Заполните дату и сумму' });
+      setStatus({ type: 'error', message: t.errors.fillDateAndAmount.value });
       return;
     }
 
     const amountNum = Number(payload.amount);
     if (Number.isNaN(amountNum)) {
-      setStatus({ type: 'error', message: 'Сумма должна быть числом' });
+      setStatus({ type: 'error', message: t.errors.amountMustBeNumber.value });
       return;
     }
 
@@ -247,11 +262,11 @@ export default function DataEntryPage() {
             customFieldIcon: initialForm.customFieldIcon,
           },
         }));
-        setStatus({ type: 'success', message: 'Данные сохранены' });
-        toast.success('Запись сохранена');
+        setStatus({ type: 'success', message: t.status.dataSaved.value });
+        toast.success(t.status.entrySaved.value);
       })
       .catch((err) => {
-        const message = err?.response?.data?.message || 'Не удалось сохранить данные';
+        const message = err?.response?.data?.message || t.errors.saveFailed.value;
         setStatus({ type: 'error', message });
         toast.error(message);
       })
@@ -272,7 +287,7 @@ export default function DataEntryPage() {
     if (tab === 'custom') return tabMeta.custom.label;
     const fieldId = getFieldId(tab);
     const field = customFields.find((f) => f.id === fieldId);
-    return field?.name || 'Пользовательская';
+    return field?.name || t.tabs.custom.label.value;
   };
 
   const getTabIcon = (tab: TabKey): ReactNode => {
@@ -299,13 +314,13 @@ export default function DataEntryPage() {
   const renderIconPreview = (icon: string, className?: string) => {
     if (!icon) return null;
     if (icon.startsWith('http')) {
-      return <img src={icon} alt="icon" className={`h-5 w-5 ${className || ''}`} />;
+      return <img src={icon} alt={t.labels.iconAlt.value} className={`h-5 w-5 ${className || ''}`} />;
     }
     if (icon.startsWith('/uploads')) {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
       const baseUrl = apiUrl.replace('/api/v1', '');
       const fullUrl = baseUrl + icon;
-      return <img src={fullUrl} alt="icon" className={`h-5 w-5 ${className || ''}`} />;
+      return <img src={fullUrl} alt={t.labels.iconAlt.value} className={`h-5 w-5 ${className || ''}`} />;
     }
     return <Icon icon={icon} className={`h-5 w-5 ${className || ''}`} />;
   };
@@ -313,7 +328,7 @@ export default function DataEntryPage() {
   const formatDate = (value: string) => {
     if (!value) return '—';
     try {
-      return new Date(value).toLocaleDateString();
+      return new Date(value).toLocaleDateString(resolveLocale(locale));
     } catch {
       return value;
     }
@@ -341,7 +356,7 @@ export default function DataEntryPage() {
         }));
       })
       .catch((err) => {
-        const message = err?.response?.data?.message || 'Не удалось загрузить записи';
+        const message = err?.response?.data?.message || t.errors.loadEntriesFailed.value;
         setError(message);
         toast.error(message);
       })
@@ -370,7 +385,7 @@ export default function DataEntryPage() {
         }));
       })
       .catch((err) => {
-        const message = err?.response?.data?.message || 'Не удалось загрузить записи';
+        const message = err?.response?.data?.message || t.errors.loadEntriesFailed.value;
         setError(message);
         toast.error(message);
       })
@@ -388,7 +403,7 @@ export default function DataEntryPage() {
         setCustomFields(items);
       })
       .catch((err) => {
-        const message = err?.response?.data?.message || 'Не удалось загрузить пользовательские колонки';
+        const message = err?.response?.data?.message || t.errors.loadCustomColumnsFailed.value;
         setError(message);
         toast.error(message);
       })
@@ -407,7 +422,7 @@ export default function DataEntryPage() {
         setDataEntryTables(linked);
       })
       .catch((err) => {
-        const message = err?.response?.data?.message || 'Не удалось загрузить таблицы';
+        const message = err?.response?.data?.message || t.errors.loadTablesFailed.value;
         setError(message);
         toast.error(message);
       });
@@ -416,7 +431,7 @@ export default function DataEntryPage() {
   const createCustomField = () => {
     const name = newCustomFieldName.trim();
     if (!name) {
-      setStatus({ type: 'error', message: 'Укажите название колонки' });
+      setStatus({ type: 'error', message: t.errors.columnNameRequired.value });
       return;
     }
     setCreatingCustomField(true);
@@ -429,17 +444,17 @@ export default function DataEntryPage() {
       .then((resp) => {
         const createdRaw: CustomField = resp.data?.data || resp.data;
         const created: CustomField = { ...createdRaw, entriesCount: 0 };
-        setCustomFields((prev) => {
-          const next = [...prev, created].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      setCustomFields((prev) => {
+          const next = [...prev, created].sort((a, b) => a.name.localeCompare(b.name, resolveLocale(locale)));
           return next;
         });
         setActiveTab(`field:${created.id}`);
         setNewCustomFieldName('');
-        setStatus({ type: 'success', message: 'Пользовательская колонка создана' });
-        toast.success('Колонка создана');
+        setStatus({ type: 'success', message: t.status.columnCreated.value });
+        toast.success(t.status.columnCreatedToast.value);
       })
       .catch((err) => {
-        const message = err?.response?.data?.message || 'Не удалось создать колонку';
+        const message = err?.response?.data?.message || t.errors.createColumnFailed.value;
         setStatus({ type: 'error', message });
         toast.error(message);
       })
@@ -460,11 +475,11 @@ export default function DataEntryPage() {
           delete next[`field:${id}`];
           return next;
         });
-        setStatus({ type: 'success', message: 'Колонка удалена' });
-        toast.success('Колонка удалена');
+        setStatus({ type: 'success', message: t.status.columnDeleted.value });
+        toast.success(t.status.columnDeleted.value);
       })
       .catch((err) => {
-        const message = err?.response?.data?.message || 'Не удалось удалить колонку';
+        const message = err?.response?.data?.message || t.errors.deleteColumnFailed.value;
         setStatus({ type: 'error', message });
         toast.error(message);
       });
@@ -509,7 +524,7 @@ export default function DataEntryPage() {
       closeDeleteDialog();
       router.push(`/custom-tables/${tableId}`);
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Не удалось скопировать в таблицу';
+      const message = err?.response?.data?.message || t.errors.copyToTableFailed.value;
       setStatus({ type: 'error', message });
     } finally {
       setExportingTabToTable(false);
@@ -531,9 +546,9 @@ export default function DataEntryPage() {
       });
       if (activeTab === `field:${deleteDialog.fieldId}`) setActiveTab('cash');
       closeDeleteDialog();
-      setStatus({ type: 'success', message: 'Вкладка удалена' });
+      setStatus({ type: 'success', message: t.status.tabDeleted.value });
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Не удалось удалить вкладку';
+      const message = err?.response?.data?.message || t.errors.deleteTabFailed.value;
       setStatus({ type: 'error', message });
     } finally {
       setDeletingTab(false);
@@ -563,7 +578,7 @@ export default function DataEntryPage() {
         throw new Error('URL missing');
       }
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Не удалось загрузить иконку';
+      const message = err?.response?.data?.message || t.errors.uploadIconFailed.value;
       setStatus({ type: 'error', message });
     } finally {
       setUploadingIcon(false);
@@ -587,8 +602,8 @@ export default function DataEntryPage() {
         type: 'success',
         message:
           typeof rowsCreated === 'number'
-            ? `Синхронизировано (${rowsCreated} строк)`
-            : 'Синхронизировано',
+            ? `${t.status.syncedWithRowsPrefix.value}${rowsCreated}${t.status.syncedWithRowsSuffix.value}`
+            : t.status.synced.value,
       });
       const syncedAt = payload?.syncedAt || payload?.dataEntrySyncedAt;
       if (syncedAt) {
@@ -597,7 +612,7 @@ export default function DataEntryPage() {
         );
       }
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Не удалось синхронизировать';
+      const message = err?.response?.data?.message || t.errors.syncFailed.value;
       setStatus({ type: 'error', message });
     } finally {
       setSyncingTable(false);
@@ -637,7 +652,7 @@ export default function DataEntryPage() {
         router.push(`/custom-tables/${tableId}`);
       }
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Не удалось создать таблицу';
+      const message = err?.response?.data?.message || t.errors.createTableFailed.value;
       setStatus({ type: 'error', message });
     } finally {
       setExportingTable(false);
@@ -688,10 +703,10 @@ export default function DataEntryPage() {
             ),
           );
         }
-        setStatus({ type: 'success', message: 'Запись удалена' });
+        setStatus({ type: 'success', message: t.status.entryDeleted.value });
       })
       .catch((err) => {
-        const message = err?.response?.data?.message || 'Не удалось удалить запись';
+        const message = err?.response?.data?.message || t.errors.deleteEntryFailed.value;
         setStatus({ type: 'error', message });
       })
       .finally(() => setRemovingId(null));
@@ -700,7 +715,7 @@ export default function DataEntryPage() {
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-gray-500">
-        Загрузка...
+        {t.labels.loading}
       </div>
     );
   }
@@ -709,8 +724,8 @@ export default function DataEntryPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm text-center">
-          <p className="text-gray-800 font-semibold mb-2">Войдите, чтобы вводить данные.</p>
-          <p className="text-sm text-gray-600">Авторизация необходима для сохранения записей.</p>
+          <p className="text-gray-800 font-semibold mb-2">{t.labels.signInTitle}</p>
+          <p className="text-sm text-gray-600">{t.labels.signInSubtitle}</p>
         </div>
       </div>
     );
@@ -724,10 +739,8 @@ export default function DataEntryPage() {
             <Droplets className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Ввод данных</h1>
-            <p className="text-secondary mt-1">
-              Фиксируйте остатки налички, сырья и движения по дебету/кредиту.
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900">{t.labels.title}</h1>
+            <p className="text-secondary mt-1">{t.labels.subtitle}</p>
           </div>
         </div>
 
@@ -739,7 +752,7 @@ export default function DataEntryPage() {
             className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {exportingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <Table className="h-4 w-4" />}
-            Действия с таблицами
+            {t.labels.tableActions}
           </button>
 
           {exportMenuOpen && (
@@ -752,7 +765,7 @@ export default function DataEntryPage() {
                   disabled={exportingTable || syncingTable}
                   className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Создать таблицу по текущей вкладке —{' '}
+                  {t.labels.createTableForTabPrefix}
                   <span className="font-semibold">{getTabLabel(activeTab)}</span>
                 </button>
                 <button
@@ -761,7 +774,7 @@ export default function DataEntryPage() {
                   disabled={exportingTable || syncingTable}
                   className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Создать единую таблицу по всей базе «Ввод данных»
+                  {t.labels.createSingleTable}
                 </button>
                 {linkedTable && (
                   <button
@@ -773,11 +786,11 @@ export default function DataEntryPage() {
                     {syncingTable ? (
                       <span className="inline-flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Синхронизация…
+                        {t.labels.syncing}
                       </span>
                     ) : (
                       <>
-                        Синхронизировать с таблицей —{' '}
+                        {t.labels.syncWithTablePrefix}
                         <span className="font-semibold">{linkedTable.name}</span>
                       </>
                     )}
@@ -849,22 +862,22 @@ export default function DataEntryPage() {
                           const field = customFields.find((f) => f.id === fieldId);
                           if (field) openDeleteDialog(field);
                         }
-                      }}
-                      className="ml-1 inline-flex items-center justify-center h-6 w-6 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50"
-                      title="Удалить вкладку"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </span>
-                  )}
+	                      }}
+	                      className="ml-1 inline-flex items-center justify-center h-6 w-6 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50"
+	                      title={t.labels.deleteTabTitle.value}
+	                    >
+	                      <Trash2 className="h-4 w-4" />
+	                    </span>
+	                  )}
                 </button>
               );
             })}
         </div>
 
 		        <div className="p-4 space-y-4">
-		          <div className="text-sm text-gray-600">
+			          <div className="text-sm text-gray-600">
                 {isFieldTab(activeTab)
-                  ? `Ввод данных для вкладки «${getTabLabel(activeTab)}».`
+                  ? `${t.labels.dataEntryForTabPrefix.value}${getTabLabel(activeTab)}${t.labels.dataEntryForTabSuffix.value}`
                   : currentMeta.description}
               </div>
 
@@ -877,16 +890,16 @@ export default function DataEntryPage() {
 	                }`}
 	              >
 	                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-	                  <label className="block md:col-span-2">
-	                    <span className="text-sm font-medium text-gray-700 block mb-1">Название колонки</span>
-	                    <input
-	                      type="text"
-	                      value={newCustomFieldName}
-	                      onChange={(e) => setNewCustomFieldName(e.target.value)}
-	                      placeholder="Например: Проект"
-	                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-	                    />
-	                  </label>
+		                  <label className="block md:col-span-2">
+		                    <span className="text-sm font-medium text-gray-700 block mb-1">{t.labels.columnNameLabel}</span>
+		                    <input
+		                      type="text"
+		                      value={newCustomFieldName}
+		                      onChange={(e) => setNewCustomFieldName(e.target.value)}
+		                      placeholder={t.labels.columnNamePlaceholder.value}
+		                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+		                    />
+		                  </label>
 
 	                  <div className="flex items-center justify-between gap-2">
                     <button
@@ -895,21 +908,21 @@ export default function DataEntryPage() {
                         setCalendarOpen(false);
                         setExportMenuOpen(false);
                         setCustomIconOpen((v) => !v);
-                      }}
-                      className="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                      title="Выбрать иконку"
-                    >
-                      {renderIconPreview(newCustomFieldIcon || 'mdi:tag')}
-                      <span className="text-sm font-semibold">Иконка</span>
-                    </button>
+	                      }}
+	                      className="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+	                      title={t.labels.chooseIconTitle.value}
+	                    >
+	                      {renderIconPreview(newCustomFieldIcon || 'mdi:tag')}
+	                      <span className="text-sm font-semibold">{t.labels.iconLabel}</span>
+	                    </button>
 	                    <button
 	                      type="button"
 	                      onClick={createCustomField}
-	                      disabled={creatingCustomField}
-	                      className="inline-flex items-center justify-center h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-hover disabled:opacity-50"
-	                    >
-	                      {creatingCustomField ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Создать'}
-	                    </button>
+		                      disabled={creatingCustomField}
+		                      className="inline-flex items-center justify-center h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-hover disabled:opacity-50"
+		                    >
+		                      {creatingCustomField ? <Loader2 className="h-4 w-4 animate-spin" /> : t.labels.create}
+		                    </button>
 	                  </div>
 	                </div>
 
@@ -948,18 +961,18 @@ export default function DataEntryPage() {
 	                          disabled={uploadingIcon}
 	                          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-white py-2 text-sm font-semibold hover:bg-primary-hover disabled:opacity-50 transition-all"
 	                        >
-	                          {uploadingIcon ? (
-	                            <>
-	                              <Loader2 className="h-4 w-4 animate-spin" />
-	                              Загрузка...
-	                            </>
-	                          ) : (
-	                            'Загрузить иконку'
-	                          )}
-	                        </button>
-	                      </div>
-	                    </div>
-	                  </>
+		                          {uploadingIcon ? (
+		                            <>
+		                              <Loader2 className="h-4 w-4 animate-spin" />
+		                              {t.labels.loading}
+		                            </>
+		                          ) : (
+		                            t.labels.uploadIcon
+		                          )}
+		                        </button>
+		                      </div>
+		                    </div>
+		                  </>
 	                )}
 	              </div>
                 <input
@@ -970,13 +983,13 @@ export default function DataEntryPage() {
                   onChange={handleIconFileChange}
                 />
 
-	              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-	                <div className="flex items-center justify-between mb-2">
-	                  <h3 className="font-semibold text-gray-900">Мои колонки</h3>
-	                  <span className="text-xs text-gray-500">
-	                    {loadingCustomFields ? 'Загрузка…' : `${customFields.length} шт`}
-	                  </span>
-	                </div>
+		              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+		                <div className="flex items-center justify-between mb-2">
+		                  <h3 className="font-semibold text-gray-900">{t.labels.myColumns}</h3>
+		                  <span className="text-xs text-gray-500">
+		                    {loadingCustomFields ? t.labels.loadingEllipsis : `${customFields.length} ${t.labels.piecesShort.value}`}
+		                  </span>
+		                </div>
 	                <div className="divide-y divide-gray-100">
 	                  {customFields.map((field) => (
 	                    <div key={field.id} className="py-2 flex items-center justify-between">
@@ -986,35 +999,35 @@ export default function DataEntryPage() {
 	                      </div>
 		                      <button
 		                        type="button"
-		                        onClick={() => openDeleteDialog(field)}
-		                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-		                      >
-		                        <Trash2 className="h-4 w-4" /> Удалить
-		                      </button>
-	                    </div>
-	                  ))}
-	                  {!loadingCustomFields && customFields.length === 0 && (
-	                    <div className="py-6 text-sm text-gray-500 text-center">Пока нет созданных колонок</div>
-	                  )}
-	                </div>
-	              </div>
+			                        onClick={() => openDeleteDialog(field)}
+			                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+			                      >
+			                        <Trash2 className="h-4 w-4" /> {t.labels.delete}
+			                      </button>
+		                    </div>
+		                  ))}
+		                  {!loadingCustomFields && customFields.length === 0 && (
+		                    <div className="py-6 text-sm text-gray-500 text-center">{t.labels.noColumnsYet}</div>
+		                  )}
+		                </div>
+		              </div>
 	            </div>
 	          ) : (
 	            <>
-	              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-	            <div className="relative">
-	              <span className="text-sm font-medium text-gray-700 block mb-1">Дата</span>
-	              <div 
-                className={`w-full rounded-lg border bg-white px-3 py-2 text-sm flex items-center justify-between cursor-pointer transition-colors ${
-                   calendarOpen ? 'border-primary ring-1 ring-primary' : 'border-gray-200 hover:border-gray-300'
-                }`}
+		              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+		            <div className="relative">
+		              <span className="text-sm font-medium text-gray-700 block mb-1">{t.labels.date}</span>
+		              <div 
+	                className={`w-full rounded-lg border bg-white px-3 py-2 text-sm flex items-center justify-between cursor-pointer transition-colors ${
+	                   calendarOpen ? 'border-primary ring-1 ring-primary' : 'border-gray-200 hover:border-gray-300'
+	                }`}
                 onClick={() => setCalendarOpen(!calendarOpen)}
               >
-                 <span className={currentForm.date ? 'text-gray-900' : 'text-gray-400'}>
-                    {currentForm.date 
-                      ? format(new Date(currentForm.date), 'd MMMM yyyy', { locale: ru }) 
-                      : 'Выберите дату'}
-                 </span>
+	                 <span className={currentForm.date ? 'text-gray-900' : 'text-gray-400'}>
+	                    {currentForm.date 
+	                      ? format(new Date(currentForm.date), 'd MMMM yyyy', { locale: dateFnsLocale }) 
+	                      : t.labels.selectDate}
+	                 </span>
                  <CalendarIcon className="h-4 w-4 text-gray-500" />
               </div>
 
@@ -1037,45 +1050,45 @@ export default function DataEntryPage() {
                      <DayPicker
                        mode="single"
                        selected={currentForm.date ? new Date(currentForm.date) : undefined}
-                       onSelect={(day) => {
-                         if (day) {
-                           handleChange(activeTab, 'date', format(day, 'yyyy-MM-dd'));
-                           setCalendarOpen(false);
-                         }
-                       }}
-                       locale={ru}
-                       className="rounded-lg"
-                     />
+	                       onSelect={(day) => {
+	                         if (day) {
+	                           handleChange(activeTab, 'date', format(day, 'yyyy-MM-dd'));
+	                           setCalendarOpen(false);
+	                         }
+	                       }}
+	                       locale={dateFnsLocale}
+	                       className="rounded-lg"
+	                     />
                   </div>
                 </>
 	              )}
 	            </div>
 
-	            <label className="block">
-              <span className="text-sm font-medium text-gray-700 block mb-1">Сумма</span>
-              <input
-                type="number"
-                value={currentForm.amount}
-                onChange={(e) => handleChange(activeTab, 'amount', e.target.value)}
-                placeholder="0.00"
+		            <label className="block">
+	              <span className="text-sm font-medium text-gray-700 block mb-1">{t.labels.amount}</span>
+	              <input
+	                type="number"
+	                value={currentForm.amount}
+	                onChange={(e) => handleChange(activeTab, 'amount', e.target.value)}
+	                placeholder="0.00"
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
               />
 	            </label>
 
-	            <label className="block">
-              <span className="text-sm font-medium text-gray-700 block mb-1">Комментарий</span>
-              <input
-                type="text"
-                value={currentForm.note}
-                onChange={(e) => handleChange(activeTab, 'note', e.target.value)}
-                placeholder="Например, инкассация / поставщик / склад"
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-              />
-	            </label>
+		            <label className="block">
+	              <span className="text-sm font-medium text-gray-700 block mb-1">{t.labels.comment}</span>
+	              <input
+	                type="text"
+	                value={currentForm.note}
+	                onChange={(e) => handleChange(activeTab, 'note', e.target.value)}
+	                placeholder={t.labels.commentPlaceholder.value}
+	                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+	              />
+		            </label>
 
-	            <label className="block">
-              <span className="text-sm font-medium text-gray-700 block mb-1">Валюта</span>
-              <div className="mt-1 w-full rounded-lg border border-gray-200 bg-white text-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+		            <label className="block">
+	              <span className="text-sm font-medium text-gray-700 block mb-1">{t.labels.currency}</span>
+	              <div className="mt-1 w-full rounded-lg border border-gray-200 bg-white text-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                 <select
                   className="w-full bg-transparent px-3 py-2 outline-none"
                   value={currentForm.currency}
@@ -1108,40 +1121,43 @@ export default function DataEntryPage() {
 
 	          </div>
 
-	              <div className="flex justify-end pt-2">
-	                <button
-	                  onClick={() => handleSubmit(activeTab)}
-	                  disabled={saving}
-	                  className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
-	                >
-	                  Сохранить запись
-	                </button>
-	              </div>
+		              <div className="flex justify-end pt-2">
+		                <button
+		                  onClick={() => handleSubmit(activeTab)}
+		                  disabled={saving}
+		                  className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
+		                >
+		                  {t.labels.saveEntry}
+		                </button>
+		              </div>
 	            </>
 	          )}
 	        </div>
 	      </div>
 
       {(isBaseTab(activeTab) || isFieldTab(activeTab)) && (
-      <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 bg-gray-50/50 rounded-t-xl">
-          <div className="flex items-center gap-2">
-            <Droplets className="h-5 w-5 text-primary" />
-		            <h3 className="font-semibold text-gray-900">Последние записи — {getTabLabel(activeTab)}</h3>
-          </div>
-          <span className="text-xs text-gray-500 font-medium">Отображаются последние записи из базы</span>
-        </div>
-
-        {loadingList ? (
-          <div className="px-4 py-8 text-center text-sm text-gray-500">Загрузка данных...</div>
-          ) : currentEntries.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
-             <div className="bg-gray-100 p-3 rounded-full mb-3">
-                <ClipboardList className="h-6 w-6 text-gray-400" />
-             </div>
-             Пока нет записей для этой вкладки
-          </div>
-        ) : (
+	      <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
+	        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 bg-gray-50/50 rounded-t-xl">
+	          <div className="flex items-center gap-2">
+	            <Droplets className="h-5 w-5 text-primary" />
+			            <h3 className="font-semibold text-gray-900">
+			              {t.labels.recentEntriesTitlePrefix}
+			              {getTabLabel(activeTab)}
+			            </h3>
+	          </div>
+	          <span className="text-xs text-gray-500 font-medium">{t.labels.recentEntriesHint}</span>
+	        </div>
+	
+	        {loadingList ? (
+	          <div className="px-4 py-8 text-center text-sm text-gray-500">{t.labels.loadingData}</div>
+	          ) : currentEntries.length === 0 ? (
+	          <div className="px-4 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
+	             <div className="bg-gray-100 p-3 rounded-full mb-3">
+	                <ClipboardList className="h-6 w-6 text-gray-400" />
+	             </div>
+	             {t.labels.noEntriesForTab}
+	          </div>
+	        ) : (
           <div className="divide-y divide-gray-100">
             {currentEntries.map((entry) => (
               <div key={entry.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50/80 transition-colors group">
@@ -1150,9 +1166,9 @@ export default function DataEntryPage() {
 	                     <p className="text-sm font-bold text-gray-900">{format(new Date(entry.date), 'dd.MM.yyyy')}</p>
 	                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{getTabLabel(activeTab)}</span>
 	                  </div>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    {entry.note || 'Без комментария'}
-                    {entry.customFieldName && entry.customFieldValue ? (
+	                  <p className="text-xs text-gray-600 mt-0.5">
+	                    {entry.note || t.labels.noComment.value}
+	                    {entry.customFieldName && entry.customFieldValue ? (
                       <span className="inline-flex items-center gap-1">
                         <span className="mx-1">•</span>
                         {entry.customFieldIcon ? (
@@ -1166,20 +1182,20 @@ export default function DataEntryPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-gray-900 font-mono">
-                      {Number(entry.amount || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2 })}
-                    </p>
+	                  <div className="text-right">
+	                    <p className="text-sm font-bold text-gray-900 font-mono">
+	                      {Number(entry.amount || 0).toLocaleString(resolveLocale(locale), { minimumFractionDigits: 2 })}
+	                    </p>
                     <div className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold text-right">
                       {entry.currency || 'KZT'}
                     </div>
                   </div>
                   <button
                     onClick={() => handleDelete(entry.id)}
-                    disabled={removingId === entry.id}
-                    className="p-2 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-                    title="Удалить запись"
-                  >
+	                    disabled={removingId === entry.id}
+	                    className="p-2 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+	                    title={t.labels.deleteEntryTitle.value}
+	                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -1195,19 +1211,22 @@ export default function DataEntryPage() {
           <div className="fixed inset-0 z-40 bg-black/30" onClick={closeDeleteDialog} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-2xl">
-              <div className="p-5">
-                <h3 className="text-lg font-bold text-gray-900">Удалить вкладку</h3>
-                <p className="mt-2 text-sm text-gray-600">
-                  Вкладка: <span className="font-semibold text-gray-900">{deleteDialog.fieldName}</span>
-                </p>
-                {deleteDialog.entriesCount > 0 ? (
-                  <p className="mt-2 text-sm text-gray-600">
-                    Внутри есть данные ({deleteDialog.entriesCount}). Перед удалением можно скопировать их в таблицу.
-                  </p>
-                ) : (
-                  <p className="mt-2 text-sm text-gray-600">Данных нет — вкладка будет удалена.</p>
-                )}
-              </div>
+	              <div className="p-5">
+	                <h3 className="text-lg font-bold text-gray-900">{t.labels.deleteTabTitle}</h3>
+	                <p className="mt-2 text-sm text-gray-600">
+	                  {t.labels.tabLabel}{' '}
+	                  <span className="font-semibold text-gray-900">{deleteDialog.fieldName}</span>
+	                </p>
+	                {deleteDialog.entriesCount > 0 ? (
+	                  <p className="mt-2 text-sm text-gray-600">
+	                    {t.labels.tabHasDataPrefix.value}
+	                    {deleteDialog.entriesCount}
+	                    {t.labels.tabHasDataSuffix.value}
+	                  </p>
+	                ) : (
+	                  <p className="mt-2 text-sm text-gray-600">{t.labels.tabNoData}</p>
+	                )}
+	              </div>
 
               <div className="flex flex-col gap-2 border-t border-gray-100 p-4">
                 {deleteDialog.entriesCount > 0 && (
@@ -1216,26 +1235,26 @@ export default function DataEntryPage() {
                     onClick={exportTabToCustomTableAndDelete}
                     disabled={exportingTabToTable || deletingTab}
                     className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
-                  >
-                    {exportingTabToTable ? 'Копирование…' : 'Скопировать в таблицу и удалить'}
-                  </button>
-                )}
+	                  >
+	                    {exportingTabToTable ? t.labels.copying : t.labels.copyAndDelete}
+	                  </button>
+	                )}
                 <button
                   type="button"
                   onClick={deleteTabOnly}
                   disabled={exportingTabToTable || deletingTab}
-                  className="w-full rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-                >
-                  {deletingTab ? 'Удаление…' : 'Удалить вкладку'}
-                </button>
+	                  className="w-full rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+	                >
+	                  {deletingTab ? t.labels.deleting : t.labels.deleteTabTitle}
+	                </button>
                 <button
                   type="button"
                   onClick={closeDeleteDialog}
-                  disabled={exportingTabToTable || deletingTab}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  Отмена
-                </button>
+	                  disabled={exportingTabToTable || deletingTab}
+	                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+	                >
+	                  {t.labels.cancel}
+	                </button>
               </div>
             </div>
           </div>

@@ -34,6 +34,7 @@ import {
   Edit as EditIcon,
 } from '@mui/icons-material';
 import api from '../lib/api';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface Permission {
   id: string;
@@ -66,6 +67,8 @@ export default function PermissionsPanel({
   permissions,
   onPermissionsUpdate,
 }: PermissionsPanelProps) {
+  const t = useIntlayer('permissionsPanel');
+  const { locale } = useLocale();
   const [grantDialogOpen, setGrantDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null);
@@ -104,7 +107,7 @@ export default function PermissionsPanel({
       // Reload permissions
       onPermissionsUpdate();
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Не удалось предоставить доступ');
+      setError(err.response?.data?.error?.message || t.errors.grantFailed.value);
     } finally {
       setGranting(false);
     }
@@ -127,14 +130,14 @@ export default function PermissionsPanel({
       setSelectedPermission(null);
       onPermissionsUpdate();
     } catch (err: any) {
-      setError(err.response?.data?.error?.message || 'Не удалось обновить права');
+      setError(err.response?.data?.error?.message || t.errors.updateFailed.value);
     } finally {
       setGranting(false);
     }
   };
 
   const handleRevokePermission = async (permissionId: string) => {
-    if (!confirm('Вы уверены, что хотите отозвать права доступа?')) {
+    if (!confirm(t.confirmRevoke.value)) {
       return;
     }
 
@@ -156,7 +159,7 @@ export default function PermissionsPanel({
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
+    return date.toLocaleDateString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -164,13 +167,13 @@ export default function PermissionsPanel({
   };
 
   const getPermissionLabel = (type: string): string => {
-    const labels: Record<string, string> = {
-      owner: 'Владелец',
-      editor: 'Редактор',
-      viewer: 'Просмотр',
-      downloader: 'Скачивание',
+    const labelMap: Record<string, string> = {
+      owner: t.permission.owner.value,
+      editor: t.permission.editor.value,
+      viewer: t.permission.viewer.value,
+      downloader: t.permission.downloader.value,
     };
-    return labels[type] || type;
+    return labelMap[type] || type;
   };
 
   const getPermissionColor = (type: string) => {
@@ -187,30 +190,32 @@ export default function PermissionsPanel({
     <Box>
       <Paper sx={{ p: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h6">Права доступа ({permissions.length})</Typography>
+          <Typography variant="h6">
+            {t.title.value} ({permissions.length})
+          </Typography>
           <Button
             variant="contained"
             startIcon={<AddPersonIcon />}
             onClick={() => setGrantDialogOpen(true)}
           >
-            Предоставить доступ
+            {t.grantAccess}
           </Button>
         </Box>
 
         {permissions.length === 0 ? (
-          <Alert severity="info">Пока никому не предоставлен доступ к этому файлу</Alert>
+          <Alert severity="info">{t.empty}</Alert>
         ) : (
           <TableContainer>
             <Table>
               <TableHead>
                 <TableRow>
-                  <TableCell>Пользователь</TableCell>
-                  <TableCell>Права</TableCell>
-                  <TableCell>Может поделиться</TableCell>
-                  <TableCell>Срок действия</TableCell>
-                  <TableCell>Предоставил</TableCell>
-                  <TableCell>Создано</TableCell>
-                  <TableCell align="center">Действия</TableCell>
+                  <TableCell>{t.table.user}</TableCell>
+                  <TableCell>{t.table.rights}</TableCell>
+                  <TableCell>{t.table.canReshare}</TableCell>
+                  <TableCell>{t.table.expires}</TableCell>
+                  <TableCell>{t.table.grantedBy}</TableCell>
+                  <TableCell>{t.table.createdAt}</TableCell>
+                  <TableCell align="center">{t.table.actions}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -226,7 +231,7 @@ export default function PermissionsPanel({
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={permission.canReshare ? 'Да' : 'Нет'}
+                        label={permission.canReshare ? t.values.yes : t.values.no}
                         size="small"
                         color={permission.canReshare ? 'success' : 'default'}
                         variant="outlined"
@@ -240,18 +245,18 @@ export default function PermissionsPanel({
                           variant="outlined"
                         />
                       ) : (
-                        'Бессрочно'
+                        t.values.forever
                       )}
                     </TableCell>
                     <TableCell>{permission.grantedBy.email}</TableCell>
                     <TableCell>{formatDate(permission.createdAt)}</TableCell>
                     <TableCell align="center">
-                      <Tooltip title="Редактировать">
+                      <Tooltip title={t.tooltips.edit.value}>
                         <IconButton size="small" onClick={() => handleEditClick(permission)}>
                           <EditIcon />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Отозвать">
+                      <Tooltip title={t.tooltips.revoke.value}>
                         <IconButton
                           size="small"
                           onClick={() => handleRevokePermission(permission.id)}
@@ -275,58 +280,58 @@ export default function PermissionsPanel({
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Предоставить доступ</DialogTitle>
+        <DialogTitle>{t.dialogs.grantTitle}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
             {error && <Alert severity="error">{error}</Alert>}
 
             <TextField
               fullWidth
-              label="Email или ID пользователя"
+              label={t.dialogs.userIdOrEmail.value}
               value={userEmail}
               onChange={e => setUserEmail(e.target.value)}
-              helperText="Введите email пользователя, которому хотите предоставить доступ"
+              helperText={t.dialogs.userIdOrEmailHelp.value}
             />
 
             <FormControl fullWidth>
-              <InputLabel>Уровень доступа</InputLabel>
+              <InputLabel>{t.dialogs.accessLevel}</InputLabel>
               <Select
                 value={permissionType}
-                label="Уровень доступа"
+                label={t.dialogs.accessLevel.value}
                 onChange={e => setPermissionType(e.target.value)}
               >
-                <MenuItem value="viewer">Просмотр</MenuItem>
-                <MenuItem value="downloader">Просмотр и скачивание</MenuItem>
-                <MenuItem value="editor">Редактирование</MenuItem>
+                <MenuItem value="viewer">{t.permission.viewer}</MenuItem>
+                <MenuItem value="downloader">{t.permission.viewDownloadLong}</MenuItem>
+                <MenuItem value="editor">{t.permission.editorLong}</MenuItem>
               </Select>
             </FormControl>
 
             <TextField
               fullWidth
-              label="Срок действия (опционально)"
+              label={t.dialogs.expiresAt.value}
               type="datetime-local"
               value={expiresAt}
               onChange={e => setExpiresAt(e.target.value)}
               InputLabelProps={{ shrink: true }}
-              helperText="Оставьте пустым для бессрочного доступа"
+              helperText={t.dialogs.expiresAtHelp.value}
             />
 
             <FormControlLabel
               control={
                 <Switch checked={canReshare} onChange={e => setCanReshare(e.target.checked)} />
               }
-              label="Разрешить делиться с другими"
+              label={t.dialogs.reshare.value}
             />
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setGrantDialogOpen(false)}>Отмена</Button>
+          <Button onClick={() => setGrantDialogOpen(false)}>{t.dialogs.cancel}</Button>
           <Button
             variant="contained"
             onClick={handleGrantPermission}
             disabled={!userEmail || granting}
           >
-            Предоставить доступ
+            {t.dialogs.grant}
           </Button>
         </DialogActions>
       </Dialog>
@@ -338,27 +343,27 @@ export default function PermissionsPanel({
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle>Редактировать права доступа</DialogTitle>
+        <DialogTitle>{t.dialogs.editTitle}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
             {error && <Alert severity="error">{error}</Alert>}
 
             <FormControl fullWidth>
-              <InputLabel>Уровень доступа</InputLabel>
+              <InputLabel>{t.dialogs.accessLevel}</InputLabel>
               <Select
                 value={permissionType}
-                label="Уровень доступа"
+                label={t.dialogs.accessLevel.value}
                 onChange={e => setPermissionType(e.target.value)}
               >
-                <MenuItem value="viewer">Просмотр</MenuItem>
-                <MenuItem value="downloader">Просмотр и скачивание</MenuItem>
-                <MenuItem value="editor">Редактирование</MenuItem>
+                <MenuItem value="viewer">{t.permission.viewer}</MenuItem>
+                <MenuItem value="downloader">{t.permission.viewDownloadLong}</MenuItem>
+                <MenuItem value="editor">{t.permission.editorLong}</MenuItem>
               </Select>
             </FormControl>
 
             <TextField
               fullWidth
-              label="Срок действия (опционально)"
+              label={t.dialogs.expiresAt.value}
               type="datetime-local"
               value={expiresAt}
               onChange={e => setExpiresAt(e.target.value)}
@@ -369,14 +374,14 @@ export default function PermissionsPanel({
               control={
                 <Switch checked={canReshare} onChange={e => setCanReshare(e.target.checked)} />
               }
-              label="Разрешить делиться с другими"
+              label={t.dialogs.reshare.value}
             />
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Отмена</Button>
+          <Button onClick={() => setEditDialogOpen(false)}>{t.dialogs.cancel}</Button>
           <Button variant="contained" onClick={handleUpdatePermission} disabled={granting}>
-            Сохранить
+            {t.dialogs.save}
           </Button>
         </DialogActions>
       </Dialog>

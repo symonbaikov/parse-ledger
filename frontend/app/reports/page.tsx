@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import apiClient from '../lib/api';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
 
@@ -104,8 +105,18 @@ type CustomTableListItem = {
   description?: string | null;
 };
 
-const formatCurrency = (value: number) =>
-  `${value.toLocaleString('ru-RU', { minimumFractionDigits: 2 })} KZT`;
+const resolveLocale = (locale: string) => {
+  if (locale === 'ru') return 'ru-RU';
+  if (locale === 'kk') return 'kk-KZ';
+  return 'en-US';
+};
+
+const formatCurrency = (value: number, locale: string) =>
+  new Intl.NumberFormat(resolveLocale(locale), {
+    style: 'currency',
+    currency: 'KZT',
+    minimumFractionDigits: 2,
+  }).format(value);
 
 const InfoCard = ({
   title,
@@ -132,6 +143,8 @@ const InfoCard = ({
 };
 
 export default function ReportsPage() {
+  const t = useIntlayer('reportsPage');
+  const { locale } = useLocale();
   const [tab, setTab] = useState<'sheets' | 'statements' | 'local'>('sheets');
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(false);
@@ -159,7 +172,7 @@ export default function ReportsPage() {
       setData(payload);
       setDays(windowDays);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Не удалось загрузить отчёт');
+      setError(err?.response?.data?.message || t.errors.loadReport.value);
     } finally {
       setLoading(false);
     }
@@ -173,7 +186,7 @@ export default function ReportsPage() {
       const payload = resp.data?.data || resp.data;
       setStatementSummary(payload);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Не удалось загрузить статистику по выпискам');
+      setError(err?.response?.data?.message || t.errors.loadStatementsStats.value);
     } finally {
       setLoadingStatementSummary(false);
     }
@@ -195,7 +208,7 @@ export default function ReportsPage() {
       const ids = items.map((t) => t.id);
       setSelectedTableIds((prev) => (prev.length ? prev : ids));
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Не удалось загрузить таблицы');
+      setError(err?.response?.data?.message || t.errors.loadTables.value);
     } finally {
       setLoadingLocalTables(false);
       setLocalTablesLoaded(true);
@@ -215,7 +228,7 @@ export default function ReportsPage() {
       setLocalSummary(payload);
       setLocalDays(windowDays);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Не удалось загрузить локальный отчёт');
+      setError(err?.response?.data?.message || t.errors.loadLocalReport.value);
     } finally {
       setLoadingLocalSummary(false);
     }
@@ -229,7 +242,7 @@ export default function ReportsPage() {
       const payload = resp.data?.data || resp.data || [];
       setStatements(payload);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Не удалось загрузить данные по выпискам');
+      setError(err?.response?.data?.message || t.errors.loadStatementsData.value);
     } finally {
       setLoadingStatements(false);
     }
@@ -263,13 +276,13 @@ export default function ReportsPage() {
     if (!data) return undefined;
     return {
       tooltip: { trigger: 'axis' },
-      legend: { data: ['Приход', 'Расход'] },
+      legend: { data: [t.labels.income.value, t.labels.expense.value] },
       grid: { left: 30, right: 30, bottom: 30, top: 30 },
       xAxis: { type: 'category', data: data.timeseries.map((p) => p.date) },
       yAxis: { type: 'value' },
       series: [
         {
-          name: 'Приход',
+          name: t.labels.income.value,
           type: 'line',
           smooth: true,
           data: data.timeseries.map((p) => p.income),
@@ -278,7 +291,7 @@ export default function ReportsPage() {
           itemStyle: { color: '#10b981' },
         },
         {
-          name: 'Расход',
+          name: t.labels.expense.value,
           type: 'line',
           smooth: true,
           data: data.timeseries.map((p) => p.expense),
@@ -288,19 +301,19 @@ export default function ReportsPage() {
         },
       ],
     };
-  }, [data]);
+  }, [data, t]);
 
   const localCashflowOption = useMemo(() => {
     if (!localSummary) return undefined;
     return {
       tooltip: { trigger: 'axis' },
-      legend: { data: ['Приход', 'Расход'] },
+      legend: { data: [t.labels.income.value, t.labels.expense.value] },
       grid: { left: 30, right: 30, bottom: 30, top: 30 },
       xAxis: { type: 'category', data: localSummary.timeseries.map((p) => p.date) },
       yAxis: { type: 'value' },
       series: [
         {
-          name: 'Приход',
+          name: t.labels.income.value,
           type: 'line',
           smooth: true,
           data: localSummary.timeseries.map((p) => p.income),
@@ -309,7 +322,7 @@ export default function ReportsPage() {
           itemStyle: { color: '#10b981' },
         },
         {
-          name: 'Расход',
+          name: t.labels.expense.value,
           type: 'line',
           smooth: true,
           data: localSummary.timeseries.map((p) => p.expense),
@@ -319,7 +332,7 @@ export default function ReportsPage() {
         },
       ],
     };
-  }, [localSummary]);
+  }, [localSummary, t]);
 
   const expensePieOption = useMemo(() => {
     if (!data) return undefined;
@@ -328,7 +341,7 @@ export default function ReportsPage() {
       legend: { top: 'bottom' },
       series: [
         {
-          name: 'Расходы',
+          name: t.labels.expense.value,
           type: 'pie',
           radius: ['30%', '70%'],
           roseType: 'radius',
@@ -339,7 +352,7 @@ export default function ReportsPage() {
         },
       ],
     };
-  }, [data]);
+  }, [data, t]);
 
   const localExpensePieOption = useMemo(() => {
     if (!localSummary) return undefined;
@@ -348,7 +361,7 @@ export default function ReportsPage() {
       legend: { top: 'bottom' },
       series: [
         {
-          name: 'Расходы',
+          name: t.labels.expense.value,
           type: 'pie',
           radius: ['30%', '70%'],
           roseType: 'radius',
@@ -359,7 +372,7 @@ export default function ReportsPage() {
         },
       ],
     };
-  }, [localSummary]);
+  }, [localSummary, t]);
 
   const incomeBarOption = useMemo(() => {
     if (!data) return undefined;
@@ -450,7 +463,7 @@ export default function ReportsPage() {
 
       const dateKey = s.createdAt ? s.createdAt.split('T')[0] : '—';
       timeseriesMap.set(dateKey, (timeseriesMap.get(dateKey) || 0) + 1);
-      const bankKey = s.bankName || 'Без банка';
+      const bankKey = s.bankName || t.labels.withoutBank.value;
       bankMap.set(bankKey, (bankMap.get(bankKey) || 0) + 1);
       statusMap.set(s.status, (statusMap.get(s.status) || 0) + 1);
     });
@@ -469,7 +482,7 @@ export default function ReportsPage() {
       banks: Array.from(bankMap.entries()).map(([name, value]) => ({ name, value })),
       statuses: Array.from(statusMap.entries()).map(([name, value]) => ({ name, value })),
     };
-  }, [statements]);
+  }, [statements, t]);
 
   const statementsLineOption = useMemo(() => {
     const ts = parsedStatements.timeseries;
@@ -480,7 +493,7 @@ export default function ReportsPage() {
       yAxis: { type: 'value' },
       series: [
         {
-          name: 'Выписки',
+          name: t.labels.statements.value,
           type: 'line',
           smooth: true,
           data: ts.map((p) => p.count),
@@ -490,7 +503,7 @@ export default function ReportsPage() {
         },
       ],
     };
-  }, [parsedStatements.timeseries]);
+  }, [parsedStatements.timeseries, t]);
 
   const statementsPieOption = useMemo(() => {
     return {
@@ -498,14 +511,14 @@ export default function ReportsPage() {
       legend: { top: 'bottom' },
       series: [
         {
-          name: 'Банки',
+          name: t.labels.banks.value,
           type: 'pie',
           radius: ['30%', '70%'],
           data: parsedStatements.banks.map((b) => ({ name: b.name, value: b.value })),
         },
       ],
     };
-  }, [parsedStatements.banks]);
+  }, [parsedStatements.banks, t]);
 
   const statementsBarOption = useMemo(() => {
     return {
@@ -527,11 +540,8 @@ export default function ReportsPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Отчёты</h1>
-          <p className="text-secondary mt-1">
-            Сводка приходов, расходов и чистого потока. Переключайтесь между данными Google Sheets,
-            парсингом выписок и локальными таблицами.
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">{t.labels.title}</h1>
+          <p className="text-secondary mt-1">{t.labels.subtitle}</p>
         </div>
       </div>
 
@@ -545,7 +555,7 @@ export default function ReportsPage() {
                 : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
             }`}
           >
-            Google Sheets
+            {t.labels.tabSheets}
           </button>
           <button
             onClick={() => setTab('local')}
@@ -555,7 +565,7 @@ export default function ReportsPage() {
                 : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
             }`}
           >
-            Локально
+            {t.labels.tabLocal}
           </button>
           <button
             onClick={() => setTab('statements')}
@@ -565,7 +575,7 @@ export default function ReportsPage() {
                 : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
             }`}
           >
-            Парсинг выписок
+            {t.labels.tabStatements}
           </button>
         </div>
       </div>
@@ -590,7 +600,7 @@ export default function ReportsPage() {
                     : 'border-gray-200 text-gray-700 hover:border-primary hover:text-primary'
                 }`}
               >
-                {d} дн
+                {d} {t.labels.daysShort}
               </button>
             ))}
             <button
@@ -603,34 +613,42 @@ export default function ReportsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
             <InfoCard
-              title="Приход"
-              value={formatCurrency(data?.totals.income || 0)}
+              title={t.labels.income.value}
+              value={formatCurrency(data?.totals.income || 0, locale)}
               accent="green"
               icon={<ArrowUp className="h-4 w-4 text-emerald-500" />}
             />
             <InfoCard
-              title="Расход"
-              value={formatCurrency(data?.totals.expense || 0)}
+              title={t.labels.expense.value}
+              value={formatCurrency(data?.totals.expense || 0, locale)}
               accent="red"
               icon={<ArrowDown className="h-4 w-4 text-red-500" />}
             />
             <InfoCard
-              title="Чистый поток"
-              value={formatCurrency(data?.totals.net || 0)}
+              title={t.labels.net.value}
+              value={formatCurrency(data?.totals.net || 0, locale)}
               accent={(data?.totals.net || 0) >= 0 ? 'green' : 'red'}
               icon={<TrendingUp className="h-4 w-4 text-primary" />}
             />
-            <InfoCard title="Строк" value={`${data?.totals.rows || 0}`} icon={<Download className="h-4 w-4 text-primary" />} />
+            <InfoCard
+              title={t.labels.rows.value}
+              value={`${data?.totals.rows || 0}`}
+              icon={<Download className="h-4 w-4 text-primary" />}
+            />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">Динамика по дням</h3>
-                <span className="text-xs text-gray-500">За последние {days} дней</span>
+                <h3 className="font-semibold text-gray-900">{t.labels.dailyTrend}</h3>
+                <span className="text-xs text-gray-500">
+                  {t.labels.lastDaysPrefix.value} {days} {t.labels.daysSuffix.value}
+                </span>
               </div>
               {loading ? (
-                <div className="h-64 flex items-center justify-center text-gray-500">Загрузка…</div>
+                <div className="h-64 flex items-center justify-center text-gray-500">
+                  {t.labels.loadingEllipsis}
+                </div>
               ) : (
                 <ReactECharts
                   style={{ height: 320 }}
@@ -644,11 +662,13 @@ export default function ReportsPage() {
 
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">Категории расходов</h3>
-                <span className="text-xs text-gray-500">Top-10</span>
+                <h3 className="font-semibold text-gray-900">{t.labels.expensesCategories}</h3>
+                <span className="text-xs text-gray-500">{t.labels.topTen}</span>
               </div>
               {loading ? (
-                <div className="h-64 flex items-center justify-center text-gray-500">Загрузка…</div>
+                <div className="h-64 flex items-center justify-center text-gray-500">
+                  {t.labels.loadingEllipsis}
+                </div>
               ) : (
                 <ReactECharts style={{ height: 280 }} option={expensePieOption} notMerge lazyUpdate />
               )}
@@ -658,11 +678,13 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">Приходы по контрагентам</h3>
-                <span className="text-xs text-gray-500">Top-10</span>
+                <h3 className="font-semibold text-gray-900">{t.labels.incomeByCounterparty}</h3>
+                <span className="text-xs text-gray-500">{t.labels.topTen}</span>
               </div>
               {loading ? (
-                <div className="h-64 flex items-center justify-center text-gray-500">Загрузка…</div>
+                <div className="h-64 flex items-center justify-center text-gray-500">
+                  {t.labels.loadingEllipsis}
+                </div>
               ) : (
                 <ReactECharts style={{ height: 280 }} option={incomeBarOption} notMerge lazyUpdate />
               )}
@@ -670,27 +692,28 @@ export default function ReportsPage() {
 
             <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">Последние операции</h3>
-                <span className="text-xs text-gray-500">20 строк</span>
+                <h3 className="font-semibold text-gray-900">{t.labels.lastOperations}</h3>
+                <span className="text-xs text-gray-500">{t.labels.twentyRows}</span>
               </div>
               <div className="divide-y divide-gray-100">
                 {(data?.recent || []).map((row) => (
                   <div key={row.id} className="py-3 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-gray-900">
-                        {row.counterparty || 'Без названия'} · #{row.rowNumber}
+                        {row.counterparty || t.labels.withoutName.value} · #{row.rowNumber}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {row.category || 'Без категории'} · {new Date(row.updatedAt).toLocaleString()}
+                        {row.category || t.labels.withoutCategory.value} ·{' '}
+                        {new Date(row.updatedAt).toLocaleString(resolveLocale(locale))}
                       </p>
                     </div>
                     <div className={`text-sm font-semibold ${row.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                      {formatCurrency(row.amount)}
+                      {formatCurrency(row.amount, locale)}
                     </div>
                   </div>
                 ))}
                 {(data?.recent || []).length === 0 && (
-                  <div className="py-6 text-sm text-gray-500 text-center">Нет данных за выбранный период</div>
+                  <div className="py-6 text-sm text-gray-500 text-center">{t.labels.noDataPeriod}</div>
                 )}
               </div>
             </div>
@@ -711,7 +734,7 @@ export default function ReportsPage() {
                     : 'border-gray-200 text-gray-700 hover:border-primary hover:text-primary'
                 }`}
               >
-                {d} дн
+                {d} {t.labels.daysShort}
               </button>
             ))}
             <button
@@ -727,7 +750,7 @@ export default function ReportsPage() {
 
           <details className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <summary className="cursor-pointer select-none font-semibold text-gray-900">
-              Таблицы для отчёта{' '}
+              {t.labels.tablesForReport}{' '}
               <span className="text-sm font-normal text-gray-500">
                 ({selectedTableIds.length}/{customTables.length})
               </span>
@@ -740,7 +763,7 @@ export default function ReportsPage() {
                 className="rounded-full border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 hover:border-primary"
                 disabled={loadingLocalTables || customTables.length === 0}
               >
-                Выбрать все
+                {t.labels.selectAll}
               </button>
               <button
                 type="button"
@@ -748,9 +771,9 @@ export default function ReportsPage() {
                 className="rounded-full border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 hover:border-primary"
                 disabled={loadingLocalTables || selectedTableIds.length === 0}
               >
-                Очистить
+                {t.labels.clear}
               </button>
-              {loadingLocalTables && <span className="text-sm text-gray-500">Загрузка таблиц…</span>}
+              {loadingLocalTables && <span className="text-sm text-gray-500">{t.labels.loadingTables}</span>}
             </div>
 
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
@@ -783,38 +806,38 @@ export default function ReportsPage() {
                 );
               })}
               {!loadingLocalTables && localTablesLoaded && customTables.length === 0 && (
-                <div className="text-sm text-gray-500">Нет таблиц в разделе «Таблицы».</div>
+                <div className="text-sm text-gray-500">{t.labels.noTables}</div>
               )}
             </div>
           </details>
 
           {selectedTableIds.length === 0 ? (
             <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm text-sm text-gray-500 text-center">
-              Выберите хотя бы одну таблицу для формирования отчёта.
+              {t.labels.selectAtLeastOneTable}
             </div>
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
                 <InfoCard
-                  title="Приход"
-                  value={formatCurrency(localSummary?.totals.income || 0)}
+                  title={t.labels.income.value}
+                  value={formatCurrency(localSummary?.totals.income || 0, locale)}
                   accent="green"
                   icon={<ArrowUp className="h-4 w-4 text-emerald-500" />}
                 />
                 <InfoCard
-                  title="Расход"
-                  value={formatCurrency(localSummary?.totals.expense || 0)}
+                  title={t.labels.expense.value}
+                  value={formatCurrency(localSummary?.totals.expense || 0, locale)}
                   accent="red"
                   icon={<ArrowDown className="h-4 w-4 text-red-500" />}
                 />
                 <InfoCard
-                  title="Чистый поток"
-                  value={formatCurrency(localSummary?.totals.net || 0)}
+                  title={t.labels.net.value}
+                  value={formatCurrency(localSummary?.totals.net || 0, locale)}
                   accent={(localSummary?.totals.net || 0) >= 0 ? 'green' : 'red'}
                   icon={<TrendingUp className="h-4 w-4 text-primary" />}
                 />
                 <InfoCard
-                  title="Строк"
+                  title={t.labels.rows.value}
                   value={`${localSummary?.totals.rows || 0}`}
                   icon={<Download className="h-4 w-4 text-primary" />}
                 />
@@ -823,11 +846,15 @@ export default function ReportsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">Динамика по дням</h3>
-                    <span className="text-xs text-gray-500">За последние {localDays} дней</span>
+                    <h3 className="font-semibold text-gray-900">{t.labels.dailyTrend}</h3>
+                    <span className="text-xs text-gray-500">
+                      {t.labels.lastDaysPrefix.value} {localDays} {t.labels.daysSuffix.value}
+                    </span>
                   </div>
                   {loadingLocalSummary ? (
-                    <div className="h-64 flex items-center justify-center text-gray-500">Загрузка…</div>
+                    <div className="h-64 flex items-center justify-center text-gray-500">
+                      {t.labels.loadingEllipsis}
+                    </div>
                   ) : (
                     <ReactECharts style={{ height: 320 }} option={localCashflowOption} notMerge lazyUpdate theme="light" />
                   )}
@@ -835,11 +862,13 @@ export default function ReportsPage() {
 
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">Категории расходов</h3>
-                    <span className="text-xs text-gray-500">Top-10</span>
+                    <h3 className="font-semibold text-gray-900">{t.labels.expensesCategories}</h3>
+                    <span className="text-xs text-gray-500">{t.labels.topTen}</span>
                   </div>
                   {loadingLocalSummary ? (
-                    <div className="h-64 flex items-center justify-center text-gray-500">Загрузка…</div>
+                    <div className="h-64 flex items-center justify-center text-gray-500">
+                      {t.labels.loadingEllipsis}
+                    </div>
                   ) : (
                     <ReactECharts style={{ height: 280 }} option={localExpensePieOption} notMerge lazyUpdate />
                   )}
@@ -849,11 +878,13 @@ export default function ReportsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">Приходы по контрагентам</h3>
-                    <span className="text-xs text-gray-500">Top-10</span>
+                    <h3 className="font-semibold text-gray-900">{t.labels.incomeByCounterparty}</h3>
+                    <span className="text-xs text-gray-500">{t.labels.topTen}</span>
                   </div>
                   {loadingLocalSummary ? (
-                    <div className="h-64 flex items-center justify-center text-gray-500">Загрузка…</div>
+                    <div className="h-64 flex items-center justify-center text-gray-500">
+                      {t.labels.loadingEllipsis}
+                    </div>
                   ) : (
                     <ReactECharts style={{ height: 280 }} option={localIncomeBarOption} notMerge lazyUpdate />
                   )}
@@ -861,19 +892,19 @@ export default function ReportsPage() {
 
                 <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">Последние операции</h3>
-                    <span className="text-xs text-gray-500">20 строк</span>
+                    <h3 className="font-semibold text-gray-900">{t.labels.lastOperations}</h3>
+                    <span className="text-xs text-gray-500">{t.labels.twentyRows}</span>
                   </div>
                   <div className="divide-y divide-gray-100">
                     {(localSummary?.recent || []).map((row) => (
                       <div key={row.id} className="py-3 flex items-center justify-between">
                         <div>
                           <p className="text-sm font-semibold text-gray-900">
-                            {row.counterparty || 'Без названия'} · #{row.rowNumber}
+                            {row.counterparty || t.labels.withoutName.value} · #{row.rowNumber}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {row.tableName} · {row.category || 'Без категории'} ·{' '}
-                            {new Date(row.updatedAt).toLocaleString()}
+                            {row.tableName} · {row.category || t.labels.withoutCategory.value} ·{' '}
+                            {new Date(row.updatedAt).toLocaleString(resolveLocale(locale))}
                           </p>
                         </div>
                         <div
@@ -881,14 +912,12 @@ export default function ReportsPage() {
                             row.amount >= 0 ? 'text-emerald-600' : 'text-red-600'
                           }`}
                         >
-                          {formatCurrency(row.amount)}
+                          {formatCurrency(row.amount, locale)}
                         </div>
                       </div>
                     ))}
                     {(localSummary?.recent || []).length === 0 && (
-                      <div className="py-6 text-sm text-gray-500 text-center">
-                        Нет данных за выбранный период
-                      </div>
+                      <div className="py-6 text-sm text-gray-500 text-center">{t.labels.noDataPeriod}</div>
                     )}
                   </div>
                 </div>
@@ -897,25 +926,28 @@ export default function ReportsPage() {
               {(localSummary?.tables || []).length > 0 && (
                 <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">Сводка по таблицам</h3>
-                    <span className="text-xs text-gray-500">{localSummary?.tables.length} шт</span>
+                    <h3 className="font-semibold text-gray-900">{t.labels.tablesSummary}</h3>
+                    <span className="text-xs text-gray-500">
+                      {localSummary?.tables.length} {t.labels.piecesShort}
+                    </span>
                   </div>
                   <div className="divide-y divide-gray-100">
-                    {(localSummary?.tables || []).map((t) => (
-                      <div key={t.id} className="py-3 flex items-center justify-between">
+                    {(localSummary?.tables || []).map((table) => (
+                      <div key={table.id} className="py-3 flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">{t.name}</p>
+                          <p className="text-sm font-semibold text-gray-900">{table.name}</p>
                           <p className="text-xs text-gray-500">
-                            Строк: {t.rows} · Приход: {formatCurrency(t.income)} · Расход:{' '}
-                            {formatCurrency(t.expense)}
+                            {t.labels.rows.value}: {table.rows} · {t.labels.income.value}:{' '}
+                            {formatCurrency(table.income, locale)} · {t.labels.expense.value}:{' '}
+                            {formatCurrency(table.expense, locale)}
                           </p>
                         </div>
                         <div
                           className={`text-sm font-semibold ${
-                            t.net >= 0 ? 'text-emerald-600' : 'text-red-600'
+                            table.net >= 0 ? 'text-emerald-600' : 'text-red-600'
                           }`}
                         >
-                          {formatCurrency(t.net)}
+                          {formatCurrency(table.net, locale)}
                         </div>
                       </div>
                     ))}
@@ -937,26 +969,30 @@ export default function ReportsPage() {
               }}
               className="rounded-full border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 hover:border-primary flex items-center gap-2"
             >
-              <RefreshCcw className="h-4 w-4" /> Обновить
+              <RefreshCcw className="h-4 w-4" /> {t.labels.refresh}
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
-            <InfoCard title="Всего" value={`${parsedStatements.total}`} icon={<FileText className="h-4 w-4 text-primary" />} />
             <InfoCard
-              title="Обработано"
+              title={t.labels.total.value}
+              value={`${parsedStatements.total}`}
+              icon={<FileText className="h-4 w-4 text-primary" />}
+            />
+            <InfoCard
+              title={t.labels.processed.value}
               value={`${parsedStatements.processed}`}
               accent="green"
               icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />}
             />
             <InfoCard
-              title="В процессе"
+              title={t.labels.inProgress.value}
               value={`${parsedStatements.processing}`}
               accent="blue"
               icon={<RefreshCcw className="h-4 w-4 text-primary" />}
             />
             <InfoCard
-              title="Ошибки"
+              title={t.labels.errorsLabel.value}
               value={`${parsedStatements.errors}`}
               accent="red"
               icon={<AlertTriangle className="h-4 w-4 text-red-500" />}
@@ -965,25 +1001,25 @@ export default function ReportsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
             <InfoCard
-              title="Приход"
-              value={formatCurrency(statementSummary?.totals.income || 0)}
+              title={t.labels.income.value}
+              value={formatCurrency(statementSummary?.totals.income || 0, locale)}
               accent="green"
               icon={<ArrowDown className="h-4 w-4 text-emerald-500" />}
             />
             <InfoCard
-              title="Расход"
-              value={formatCurrency(statementSummary?.totals.expense || 0)}
+              title={t.labels.expense.value}
+              value={formatCurrency(statementSummary?.totals.expense || 0, locale)}
               accent="red"
               icon={<ArrowUp className="h-4 w-4 text-red-500" />}
             />
             <InfoCard
-              title="Чистый поток"
-              value={formatCurrency(statementSummary?.totals.net || 0)}
+              title={t.labels.net.value}
+              value={formatCurrency(statementSummary?.totals.net || 0, locale)}
               accent={(statementSummary?.totals.net || 0) >= 0 ? 'green' : 'red'}
               icon={<TrendingUp className="h-4 w-4 text-primary" />}
             />
             <InfoCard
-              title="Операции"
+              title={t.labels.operations.value}
               value={`${statementSummary?.totals.rows || 0}`}
               icon={<FileText className="h-4 w-4 text-primary" />}
             />
@@ -992,11 +1028,13 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">Динамика загрузок</h3>
-                <span className="text-xs text-gray-500">По датам загрузки</span>
+                <h3 className="font-semibold text-gray-900">{t.labels.uploadsTrend}</h3>
+                <span className="text-xs text-gray-500">{t.labels.byUploadDates}</span>
               </div>
               {loadingStatements || loadingStatementSummary ? (
-                <div className="h-64 flex items-center justify-center text-gray-500">Загрузка…</div>
+                <div className="h-64 flex items-center justify-center text-gray-500">
+                  {t.labels.loadingEllipsis}
+                </div>
               ) : (
                 <ReactECharts
                   style={{ height: 320 }}
@@ -1010,11 +1048,13 @@ export default function ReportsPage() {
 
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">Банки</h3>
-                <span className="text-xs text-gray-500">Top</span>
+                <h3 className="font-semibold text-gray-900">{t.labels.banks}</h3>
+                <span className="text-xs text-gray-500">{t.labels.top}</span>
               </div>
               {loadingStatements ? (
-                <div className="h-64 flex items-center justify-center text-gray-500">Загрузка…</div>
+                <div className="h-64 flex items-center justify-center text-gray-500">
+                  {t.labels.loadingEllipsis}
+                </div>
               ) : (
                 <ReactECharts style={{ height: 280 }} option={statementsPieOption} notMerge lazyUpdate />
               )}
@@ -1024,11 +1064,13 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">Статусы</h3>
-                <span className="text-xs text-gray-500">Распределение</span>
+                <h3 className="font-semibold text-gray-900">{t.labels.statuses}</h3>
+                <span className="text-xs text-gray-500">{t.labels.distribution}</span>
               </div>
               {loadingStatements ? (
-                <div className="h-64 flex items-center justify-center text-gray-500">Загрузка…</div>
+                <div className="h-64 flex items-center justify-center text-gray-500">
+                  {t.labels.loadingEllipsis}
+                </div>
               ) : (
                 <ReactECharts style={{ height: 280 }} option={statementsBarOption} notMerge lazyUpdate />
               )}
@@ -1036,13 +1078,13 @@ export default function ReportsPage() {
 
             <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-900">Последние загрузки</h3>
-                <span className="text-xs text-gray-500">до 10 записей</span>
+                <h3 className="font-semibold text-gray-900">{t.labels.latestUploads}</h3>
+                <span className="text-xs text-gray-500">{t.labels.upToTen}</span>
               </div>
               {loadingStatements ? (
-                <div className="py-6 text-sm text-gray-500 text-center">Загрузка...</div>
+                <div className="py-6 text-sm text-gray-500 text-center">{t.labels.loadingEllipsis}</div>
               ) : statements.length === 0 ? (
-                <div className="py-6 text-sm text-gray-500 text-center">Нет данных</div>
+                <div className="py-6 text-sm text-gray-500 text-center">{t.labels.noData}</div>
               ) : (
                 <div className="divide-y divide-gray-100">
                   {statements.slice(0, 10).map((s) => (
@@ -1050,12 +1092,14 @@ export default function ReportsPage() {
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{s.fileName}</p>
                         <p className="text-xs text-gray-500">
-                          {s.bankName || '—'} · {new Date(s.createdAt).toLocaleString()}
+                          {s.bankName || '—'} · {new Date(s.createdAt).toLocaleString(resolveLocale(locale))}
                         </p>
                       </div>
                       <div className="text-right text-xs text-gray-600">
                         <p className="font-semibold capitalize">{s.status}</p>
-                        <p>{s.totalTransactions || 0} транзакций</p>
+                        <p>
+                          {s.totalTransactions || 0} {t.labels.transactionsCount}
+                        </p>
                       </div>
                     </div>
                   ))}

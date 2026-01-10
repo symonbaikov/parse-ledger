@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { Container, Typography, Box, Button, CircularProgress } from '@mui/material';
 import Link from 'next/link';
 import { useAuth } from './hooks/useAuth';
+import { useIntlayer } from 'next-intlayer';
 
 export default function Home() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const t = useIntlayer('homePage');
 
   useEffect(() => {
     if (!loading && user) {
@@ -53,13 +55,13 @@ export default function Home() {
           sx={{ fontWeight: 700, mb: 2 }}
         >
           FinFlow
-        </Typography>
-        <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 4, opacity: 0.9 }}>
-          Профессиональная система обработки банковских выписок
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 6, fontSize: '1.2rem', opacity: 0.8 }}>
-          Автоматизируйте финансовые процессы с точностью и скоростью.
-        </Typography>
+	        </Typography>
+	        <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 4, opacity: 0.9 }}>
+	          {t.tagline}
+	        </Typography>
+	        <Typography variant="body1" sx={{ mb: 6, fontSize: '1.2rem', opacity: 0.8 }}>
+	          {t.description}
+	        </Typography>
         <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
           <Button
             variant="contained"
@@ -73,9 +75,9 @@ export default function Home() {
               px: 4,
               py: 1.5,
             }}
-          >
-            Войти
-          </Button>
+	          >
+	            {t.login}
+	          </Button>
           <Button
             variant="outlined"
             component={Link}
@@ -88,9 +90,9 @@ export default function Home() {
               px: 4,
               py: 1.5,
             }}
-          >
-            Зарегистрироваться
-          </Button>
+	          >
+	            {t.register}
+	          </Button>
         </Box>
       </Container>
     </Box>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { Icon } from '@iconify/react';
 import { Trash2 } from 'lucide-react';
 import { AgGridReact } from 'ag-grid-react';
+import { useIntlayer, useLocale } from 'next-intlayer';
 import type {
   CellMouseDownEvent,
   CellMouseOverEvent,
@@ -129,7 +130,10 @@ function EditableColumnHeader(
   }
 
   return (
-    <div className="flex items-center justify-between gap-1" title={isSystem ? undefined : 'Двойной клик — переименовать'}>
+    <div
+      className="flex items-center justify-between gap-1"
+      title={isSystem ? undefined : params.context?.tooltips?.rename}
+    >
       <div
         onDoubleClick={startEditing}
         className={saving ? 'opacity-60 flex-1 truncate inline-flex items-center gap-1' : 'flex-1 truncate inline-flex items-center gap-1'}
@@ -146,7 +150,7 @@ function EditableColumnHeader(
             params.onDeleteColumn?.(colId);
           }}
           className="h-6 w-6 flex items-center justify-center rounded border border-transparent text-gray-400 hover:text-red-500 hover:border-red-200"
-          title="Удалить колонку"
+          title={params.context?.tooltips?.deleteColumn}
         >
           ×
         </button>
@@ -361,50 +365,6 @@ const agFilterModelToRowFilters = (model: any, columnsByKey: Map<string, CustomT
   return result;
 };
 
-const ruLocaleText: Record<string, string> = {
-  // Common
-  loadingOoo: 'Загрузка...',
-  noRowsToShow: 'Нет строк для отображения',
-  enabled: 'Включено',
-  disabled: 'Отключено',
-
-  // Filters
-  filterOoo: 'Фильтр...',
-  equals: 'Равно',
-  notEqual: 'Не равно',
-  blank: 'Пусто',
-  notBlank: 'Не пусто',
-  empty: 'Выберите',
-  lessThan: 'Меньше',
-  greaterThan: 'Больше',
-  lessThanOrEqual: 'Меньше или равно',
-  greaterThanOrEqual: 'Больше или равно',
-  inRange: 'В диапазоне',
-  inRangeStart: 'От',
-  inRangeEnd: 'До',
-  contains: 'Содержит',
-  notContains: 'Не содержит',
-  startsWith: 'Начинается с',
-  endsWith: 'Заканчивается на',
-  andCondition: 'И',
-  orCondition: 'ИЛИ',
-  applyFilter: 'Применить',
-  resetFilter: 'Сбросить',
-  clearFilter: 'Очистить',
-  cancelFilter: 'Отмена',
-
-  // Filter panels / column menu
-  columns: 'Колонки',
-  filters: 'Фильтры',
-  pinColumn: 'Закрепить колонку',
-  valueColumns: 'Колонки значений',
-  pivotMode: 'Режим сводной таблицы',
-  groups: 'Группы строк',
-  rowGroupColumnsEmptyMessage: 'Перетащите сюда для группировки',
-  valuesColumnsEmptyMessage: 'Перетащите сюда для значений',
-  pivotsColumnsEmptyMessage: 'Перетащите сюда для заголовков',
-};
-
 export function CustomTableAgGrid(props: {
   tableId: string;
   columns: CustomTableColumn[];
@@ -424,6 +384,8 @@ export function CustomTableAgGrid(props: {
   onDeleteColumn?: (columnKey: string) => void;
   onSelectedRowIdsChange: (rowIds: string[]) => void;
 }) {
+  const t = useIntlayer('customTableAgGrid');
+  const { locale } = useLocale();
   const gridApiRef = useRef<any>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const columnsByKey = useMemo(() => new Map(props.columns.map((c) => [c.key, c])), [props.columns]);
@@ -819,7 +781,7 @@ export function CustomTableAgGrid(props: {
         return (
           <button
             type="button"
-            title="Удалить"
+            title={t.tooltips.deleteRow.value}
             disabled={!canDelete}
             onClick={(e) => {
               e.stopPropagation();
@@ -928,6 +890,49 @@ export function CustomTableAgGrid(props: {
     };
   }, [props.loadingRows, props.hasMore, props.rows.length, props.onLoadMore]);
 
+  const localeText = useMemo(() => {
+    if (locale === 'en') return undefined;
+    const l = t.agGrid;
+    return {
+      loadingOoo: l.loadingOoo.value,
+      noRowsToShow: l.noRowsToShow.value,
+      enabled: l.enabled.value,
+      disabled: l.disabled.value,
+      filterOoo: l.filterOoo.value,
+      equals: l.equals.value,
+      notEqual: l.notEqual.value,
+      blank: l.blank.value,
+      notBlank: l.notBlank.value,
+      empty: l.empty.value,
+      lessThan: l.lessThan.value,
+      greaterThan: l.greaterThan.value,
+      lessThanOrEqual: l.lessThanOrEqual.value,
+      greaterThanOrEqual: l.greaterThanOrEqual.value,
+      inRange: l.inRange.value,
+      inRangeStart: l.inRangeStart.value,
+      inRangeEnd: l.inRangeEnd.value,
+      contains: l.contains.value,
+      notContains: l.notContains.value,
+      startsWith: l.startsWith.value,
+      endsWith: l.endsWith.value,
+      andCondition: l.andCondition.value,
+      orCondition: l.orCondition.value,
+      applyFilter: l.applyFilter.value,
+      resetFilter: l.resetFilter.value,
+      clearFilter: l.clearFilter.value,
+      cancelFilter: l.cancelFilter.value,
+      columns: l.columns.value,
+      filters: l.filters.value,
+      pinColumn: l.pinColumn.value,
+      valueColumns: l.valueColumns.value,
+      pivotMode: l.pivotMode.value,
+      groups: l.groups.value,
+      rowGroupColumnsEmptyMessage: l.rowGroupColumnsEmptyMessage.value,
+      valuesColumnsEmptyMessage: l.valuesColumnsEmptyMessage.value,
+      pivotsColumnsEmptyMessage: l.pivotsColumnsEmptyMessage.value,
+    } satisfies Record<string, string>;
+  }, [locale, t.agGrid]);
+
   return (
     <div
       ref={rootRef}
@@ -938,7 +943,13 @@ export function CustomTableAgGrid(props: {
         {headerCssRules ? <style>{headerCssRules}</style> : null}
         <AgGridReact<CustomTableGridRow>
           rowData={props.rows}
-          localeText={ruLocaleText}
+          localeText={localeText}
+          context={{
+            tooltips: {
+              rename: t.tooltips.rename.value,
+              deleteColumn: t.tooltips.deleteColumn.value,
+            },
+          }}
           getRowId={(p) => {
             const id = (p.data as any)?.id;
             if (typeof id === 'string' && id.trim()) return id;

@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
 import ConfirmModal from '@/app/components/ConfirmModal';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface Category {
   id: string;
@@ -50,6 +51,8 @@ const extractErrorMessage = (error: any): string | null => {
 export default function CustomTablesPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const t = useIntlayer('customTablesPage');
+  const { locale } = useLocale();
   const [items, setItems] = useState<CustomTableItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [statements, setStatements] = useState<StatementItem[]>([]);
@@ -88,7 +91,7 @@ export default function CustomTablesPage() {
       setItems(Array.isArray(payload) ? payload : []);
     } catch (error) {
       console.error('Failed to load custom tables:', error);
-      toast.error(extractErrorMessage(error) || 'Не удалось загрузить таблицы');
+      toast.error(extractErrorMessage(error) || t.toasts.loadTablesFailed.value);
     } finally {
       setLoading(false);
     }
@@ -102,7 +105,7 @@ export default function CustomTablesPage() {
       setStatements(Array.isArray(payload) ? payload : []);
     } catch (error) {
       console.error('Failed to load statements:', error);
-      toast.error(extractErrorMessage(error) || 'Не удалось загрузить выписки');
+      toast.error(extractErrorMessage(error) || t.toasts.loadStatementsFailed.value);
     } finally {
       setStatementsLoading(false);
     }
@@ -125,7 +128,7 @@ export default function CustomTablesPage() {
         categoryId: form.categoryId ? form.categoryId : undefined,
       });
       const created = response.data?.data || response.data;
-      toast.success('Таблица создана');
+      toast.success(t.toasts.created.value);
       setCreateOpen(false);
       setForm({ name: '', description: '', categoryId: '' });
       if (created?.id) {
@@ -135,7 +138,7 @@ export default function CustomTablesPage() {
       await loadTables();
     } catch (error) {
       console.error('Failed to create custom table:', error);
-      toast.error(extractErrorMessage(error) || 'Не удалось создать таблицу');
+      toast.error(extractErrorMessage(error) || t.toasts.createFailed.value);
     } finally {
       setCreating(false);
     }
@@ -150,7 +153,7 @@ export default function CustomTablesPage() {
 
   const handleCreateFromStatements = async () => {
     if (!selectedStatementIds.length) {
-      toast.error('Выберите хотя бы одну выписку');
+      toast.error(t.toasts.selectAtLeastOneStatement.value);
       return;
     }
     setCreatingFromStatements(true);
@@ -164,7 +167,7 @@ export default function CustomTablesPage() {
       });
       const data = response.data?.data || response.data;
       const tableId = data?.tableId || data?.id;
-      toast.success('Таблица создана из выписки');
+      toast.success(t.toasts.createdFromStatement.value);
       setCreateFromStatementsOpen(false);
       setSelectedStatementIds([]);
       if (tableId) {
@@ -174,7 +177,7 @@ export default function CustomTablesPage() {
       await loadTables();
     } catch (error) {
       console.error('Failed to create from statements:', error);
-      toast.error(extractErrorMessage(error) || 'Не удалось создать таблицу из выписки');
+      toast.error(extractErrorMessage(error) || t.toasts.createFromStatementFailed.value);
     } finally {
       setCreatingFromStatements(false);
     }
@@ -187,14 +190,14 @@ export default function CustomTablesPage() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    const toastId = toast.loading('Удаление...');
+    const toastId = toast.loading(t.toasts.deleting.value);
     try {
       await apiClient.delete(`/custom-tables/${deleteTarget.id}`);
-      toast.success('Таблица удалена', { id: toastId });
+      toast.success(t.toasts.deleted.value, { id: toastId });
       await loadTables();
     } catch (error) {
       console.error('Failed to delete custom table:', error);
-      toast.error('Не удалось удалить таблицу', { id: toastId });
+      toast.error(t.toasts.deleteFailed.value, { id: toastId });
     } finally {
       setDeleteTarget(null);
     }
@@ -202,7 +205,7 @@ export default function CustomTablesPage() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">Загрузка...</div>
+      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">{t.auth.loading}</div>
     );
   }
 
@@ -210,7 +213,7 @@ export default function CustomTablesPage() {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600">
-          Войдите в систему, чтобы просматривать таблицы.
+          {t.auth.loginRequired}
         </div>
       </div>
     );
@@ -224,9 +227,9 @@ export default function CustomTablesPage() {
             <TableIcon className="h-6 w-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Таблицы</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t.header.title}</h1>
             <p className="text-secondary mt-1">
-              Пользовательские таблицы внутри FinFlow (в т.ч. импорт из Google Sheets).
+              {t.header.subtitle}
             </p>
           </div>
         </div>
@@ -236,7 +239,7 @@ export default function CustomTablesPage() {
           className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover transition-colors"
         >
           <Plus className="h-4 w-4" />
-          Создать
+          {t.actions.create}
         </button>
       </div>
 
@@ -247,55 +250,55 @@ export default function CustomTablesPage() {
           className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           <FileSpreadsheet className="h-4 w-4 text-blue-600" />
-          Из выписки
+          {t.actions.fromStatement}
         </button>
         <Link
           href="/custom-tables/import/google-sheets"
           className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
-          Импорт из Google Sheets
+          {t.actions.importGoogleSheets}
         </Link>
       </div>
 
       {createFromStatementsOpen && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="text-sm font-semibold text-gray-900">Создать таблицу из выписки</div>
+            <div className="text-sm font-semibold text-gray-900">{t.createFromStatements.title}</div>
             <button
               onClick={() => setCreateFromStatementsOpen(false)}
               className="text-sm text-gray-500 hover:text-gray-900"
             >
-              Закрыть
+              {t.actions.close}
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Название (опционально)</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.createFromStatements.nameOptional}</label>
               <input
                 value={createFromStatementsForm.name}
                 onChange={(e) => setCreateFromStatementsForm((prev) => ({ ...prev, name: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="Например: Платежи из выписки"
+                placeholder={t.createFromStatements.namePlaceholder.value}
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Описание (опционально)</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.createFromStatements.descriptionOptional}</label>
               <input
                 value={createFromStatementsForm.description}
                 onChange={(e) => setCreateFromStatementsForm((prev) => ({ ...prev, description: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="Опционально"
+                placeholder={t.createFromStatements.descriptionPlaceholder.value}
               />
             </div>
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Выписки</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.createFromStatements.statements}</label>
               <div className="max-h-44 overflow-auto rounded-lg border border-gray-200 p-2">
                 {statementsLoading ? (
-                  <div className="text-sm text-gray-500 px-2 py-1">Загрузка...</div>
+                  <div className="text-sm text-gray-500 px-2 py-1">{t.createFromStatements.statementsLoading}</div>
                 ) : statements.length === 0 ? (
-                  <div className="text-sm text-gray-500 px-2 py-1">Нет выписок</div>
+                  <div className="text-sm text-gray-500 px-2 py-1">{t.createFromStatements.statementsEmpty}</div>
                 ) : (
                   <div className="space-y-1">
                     {statements.map((s) => {
@@ -335,7 +338,7 @@ export default function CustomTablesPage() {
                   </div>
                 )}
               </div>
-              <div className="mt-1 text-[11px] text-gray-500">Доступны только обработанные выписки с транзакциями</div>
+              <div className="mt-1 text-[11px] text-gray-500">{t.createFromStatements.hint}</div>
             </div>
           </div>
 
@@ -344,14 +347,14 @@ export default function CustomTablesPage() {
               onClick={() => setCreateFromStatementsOpen(false)}
               className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              Отмена
+              {t.actions.cancel}
             </button>
             <button
               onClick={handleCreateFromStatements}
               disabled={!selectedStatementIds.length || creatingFromStatements}
               className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {creatingFromStatements ? 'Создание...' : 'Создать'}
+              {creatingFromStatements ? t.createFromStatements.creating.value : t.actions.create}
             </button>
           </div>
         </div>
@@ -360,7 +363,7 @@ export default function CustomTablesPage() {
       {createOpen && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="text-sm font-semibold text-gray-900">Новая таблица</div>
+            <div className="text-sm font-semibold text-gray-900">{t.create.title}</div>
             <button
               onClick={() => {
                 setCreateOpen(false);
@@ -368,36 +371,36 @@ export default function CustomTablesPage() {
               }}
               className="text-sm text-gray-500 hover:text-gray-900"
             >
-              Закрыть
+              {t.actions.close}
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Название</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.create.name}</label>
               <input
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="Например: Реестр платежей"
+                placeholder={t.create.namePlaceholder.value}
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Описание</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.create.description}</label>
               <input
                 value={form.description}
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="Опционально"
+                placeholder={t.create.descriptionPlaceholder.value}
               />
             </div>
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Категория (иконка/цвет)</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.create.category}</label>
               <select
                 value={form.categoryId}
                 onChange={(e) => setForm((prev) => ({ ...prev, categoryId: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
-                <option value="">Без категории</option>
+                <option value="">{t.create.noCategory}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -419,7 +422,7 @@ export default function CustomTablesPage() {
                       );
                     })()}
                   </span>
-                  <span>Иконка/цвет будут взяты из категории</span>
+                  <span>{t.create.categoryHint}</span>
                 </div>
               )}
             </div>
@@ -432,14 +435,14 @@ export default function CustomTablesPage() {
               }}
               className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              Отмена
+              {t.actions.cancel}
             </button>
             <button
               onClick={handleCreate}
               disabled={!canCreate || creating}
               className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {creating ? 'Создание...' : 'Создать'}
+              {creating ? t.create.creating.value : t.actions.create}
             </button>
           </div>
         </div>
@@ -447,11 +450,11 @@ export default function CustomTablesPage() {
 
       {loading ? (
         <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600">
-          Загрузка...
+          {t.loading}
         </div>
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-6 text-sm text-gray-600">
-          Таблиц пока нет. Создайте первую таблицу или импортируйте из Google Sheets.
+          {t.empty}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -494,15 +497,22 @@ export default function CustomTablesPage() {
                     confirmDelete(table);
                   }}
                   className="inline-flex items-center justify-center h-9 w-9 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-red-600"
-                  title="Удалить"
+                  title={t.actions.delete.value}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
               <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-                <div className="truncate">Источник: {table.source === 'google_sheets_import' ? 'Google Sheets' : 'Manual'}</div>
                 <div className="truncate">
-                  {table.createdAt ? new Date(table.createdAt).toLocaleDateString() : ''}
+                  {t.sources.label.value}:{' '}
+                  {table.source === 'google_sheets_import' ? t.sources.googleSheets.value : t.sources.manual.value}
+                </div>
+                <div className="truncate">
+                  {table.createdAt
+                    ? new Date(table.createdAt).toLocaleDateString(
+                        locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US',
+                      )
+                    : ''}
                 </div>
               </div>
             </div>
@@ -517,14 +527,14 @@ export default function CustomTablesPage() {
           setDeleteTarget(null);
         }}
         onConfirm={handleDelete}
-        title="Удалить таблицу?"
+        title={t.confirmDelete.title.value}
         message={
           deleteTarget
-            ? `Таблица “${deleteTarget.name}” будет удалена вместе со всеми строками и колонками.`
-            : 'Таблица будет удалена вместе со всеми строками и колонками.'
+            ? `${t.confirmDelete.messageWithNamePrefix.value}${deleteTarget.name}${t.confirmDelete.messageWithNameSuffix.value}`
+            : t.confirmDelete.messageNoName.value
         }
-        confirmText="Удалить"
-        cancelText="Отмена"
+        confirmText={t.confirmDelete.confirm.value}
+        cancelText={t.confirmDelete.cancel.value}
         isDestructive
       />
     </div>

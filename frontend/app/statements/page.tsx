@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   UploadCloud, 
@@ -21,6 +21,7 @@ import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
 import ConfirmModal from '@/app/components/ConfirmModal';
 import { DocumentTypeIcon } from '@/app/components/DocumentTypeIcon';
+import { useIntlayer } from 'next-intlayer';
 
 interface Statement {
   id: string;
@@ -60,7 +61,9 @@ const extractErrorMessage = async (response: Response) => {
 export default function StatementsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const t = useIntlayer('statementsPage');
   const [statements, setStatements] = useState<Statement[]>([]);
+  const statementsRef = useRef<Statement[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewingFile, setViewingFile] = useState<string | null>(null);
   const [fileViewUrl, setFileViewUrl] = useState<string | null>(null);
@@ -85,9 +88,17 @@ export default function StatementsPage() {
     }
   }, [user]);
 
-  const loadStatements = async () => {
+  useEffect(() => {
+    statementsRef.current = statements;
+  }, [statements]);
+
+  const loadStatements = async (opts?: { silent?: boolean; notifyOnCompletion?: boolean }) => {
     try {
-      setLoading(true);
+      const { silent = false, notifyOnCompletion = false } = opts || {};
+      const prevStatements = statementsRef.current;
+      const prevStatusById = new Map(prevStatements.map((s) => [s.id, s.status]));
+      if (!silent) setLoading(true);
+
       const response = await apiClient.get('/statements');
       const statementsData = response.data.data || response.data;
       const statementsWithFileType = Array.isArray(statementsData)
@@ -96,24 +107,57 @@ export default function StatementsPage() {
             fileType: stmt.fileType || stmt.file_type || 'pdf',
           }))
         : statementsData;
+
+      if (notifyOnCompletion && Array.isArray(statementsWithFileType)) {
+        const processedStatuses = new Set(['parsed', 'validated', 'completed']);
+        for (const next of statementsWithFileType) {
+          const prevStatus = prevStatusById.get(next.id);
+          if (!prevStatus) continue;
+
+          const startedButNotFinished = prevStatus === 'processing' || prevStatus === 'uploaded';
+          const finished = next.status !== 'processing' && next.status !== 'uploaded';
+          if (!startedButNotFinished || !finished) continue;
+
+          if (processedStatuses.has(next.status)) {
+            toast.success(`${t.notify.donePrefix.value}: ${next.fileName}`);
+          } else if (next.status === 'error') {
+            toast.error(`${t.notify.errorPrefix.value}: ${next.fileName}`);
+          } else {
+            toast.success(`${t.notify.donePrefix.value}: ${next.fileName}`);
+          }
+        }
+      }
+
       setStatements(statementsWithFileType);
     } catch (error) {
       console.error('Failed to load statements:', error);
-      toast.error('Не удалось загрузить список выписок');
+      toast.error(t.loadListError.value);
     } finally {
-      setLoading(false);
+      const { silent = false } = opts || {};
+      if (!silent) setLoading(false);
     }
   };
 
+  useEffect(() => {
+    const hasProcessing = statements.some(
+      (s) => s.status === 'processing' || (s.status === 'uploaded' && !s.processedAt),
+    );
+    if (!hasProcessing) return;
+    const interval = setInterval(() => {
+      loadStatements({ silent: true, notifyOnCompletion: true });
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [statements]);
+
   const handleReprocess = async (id: string) => {
-    const toastId = toast.loading('Запуск обработки...');
+    const toastId = toast.loading(t.reprocessStart.value);
     try {
       await apiClient.post(`/statements/${id}/reprocess`);
       await loadStatements();
-      toast.success('Обработка запущена успешно', { id: toastId });
+      toast.success(t.reprocessSuccess.value, { id: toastId });
     } catch (error) {
       console.error('Failed to reprocess statement:', error);
-      toast.error('Ошибка при запуске обработки', { id: toastId });
+      toast.error(t.reprocessError.value, { id: toastId });
     }
   };
 
@@ -125,14 +169,14 @@ export default function StatementsPage() {
   const handleDelete = async () => {
     if (!statementToDelete) return;
 
-    const toastId = toast.loading('Удаление...');
+    const toastId = toast.loading(t.deleteLoading.value);
     try {
       await apiClient.delete(`/statements/${statementToDelete}`);
       await loadStatements();
-      toast.success('Выписка удалена', { id: toastId });
+      toast.success(t.deleteSuccess.value, { id: toastId });
     } catch (error) {
       console.error('Failed to delete statement:', error);
-      toast.error('Ошибка при удалении', { id: toastId });
+      toast.error(t.deleteError.value, { id: toastId });
     }
     setStatementToDelete(null);
   };
@@ -148,7 +192,7 @@ export default function StatementsPage() {
     ];
     const filtered = files.filter((f) => allowed.includes(f.type));
     if (filtered.length === 0) {
-      toast.error('Неподдерживаемый формат файла');
+      toast.error(t.uploadModal.unsupportedFormat.value);
       return;
     }
     setUploadFiles((prev) => [...prev, ...filtered].slice(0, 5));
@@ -171,7 +215,7 @@ export default function StatementsPage() {
 
   const handleUpload = async () => {
     if (uploadFiles.length === 0) {
-      toast.error('Выберите хотя бы один файл');
+      toast.error(t.uploadModal.pickAtLeastOne.value);
       return;
     }
     setUploading(true);
@@ -183,12 +227,12 @@ export default function StatementsPage() {
       await apiClient.post('/statements/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      toast.success('Файлы загружены, начата обработка');
+      toast.success(t.uploadModal.uploadedProcessing.value);
       setUploadFiles([]);
       setUploadModalOpen(false);
       await loadStatements();
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Не удалось загрузить файлы';
+      const message = err?.response?.data?.message || t.uploadModal.uploadFailed.value;
       setUploadError(message);
       toast.error(message);
     } finally {
@@ -199,21 +243,23 @@ export default function StatementsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
+      case 'parsed':
+      case 'validated':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
-            <CheckCircle2 size={12} className="mr-1" /> Завершено
+            <CheckCircle2 size={12} className="mr-1" /> {t.status.completed}
           </span>
         );
       case 'processing':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-            <Loader2 size={12} className="mr-1 animate-spin" /> Обработка
+            <Loader2 size={12} className="mr-1 animate-spin" /> {t.status.processing}
           </span>
         );
       case 'error':
         return (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
-            <AlertCircle size={12} className="mr-1" /> Ошибка
+            <AlertCircle size={12} className="mr-1" /> {t.status.error}
           </span>
         );
       default:
@@ -230,7 +276,7 @@ export default function StatementsPage() {
   };
 
   const handleDownloadFile = async (id: string, fileName: string) => {
-    const toastId = toast.loading('Скачивание файла...');
+    const toastId = toast.loading(t.download.loading.value);
     try {
       const token = localStorage.getItem('access_token');
       const response = await fetch(
@@ -252,14 +298,14 @@ export default function StatementsPage() {
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
-        toast.success('Файл успешно скачан', { id: toastId });
+        toast.success(t.download.success.value, { id: toastId });
       } else {
         const message = await extractErrorMessage(response);
         throw new Error(message || 'Download failed');
       }
     } catch (error) {
       console.error('Failed to download file:', error);
-      toast.error((error as Error).message || 'Не удалось скачать файл', { id: toastId });
+      toast.error((error as Error).message || t.download.failed.value, { id: toastId });
     }
   };
 
@@ -282,11 +328,11 @@ export default function StatementsPage() {
         setViewingFile(id);
       } else {
         const message = await extractErrorMessage(response);
-        toast.error(message || 'Не удалось открыть файл');
+        toast.error(message || t.viewFile.failed.value);
       }
     } catch (error) {
       console.error('Failed to load file:', error);
-      toast.error('Не удалось открыть файл');
+      toast.error(t.viewFile.failed.value);
     }
   };
 
@@ -308,7 +354,7 @@ export default function StatementsPage() {
       setLogEntries(details?.logEntries || details?.log_entries || []);
     } catch (error) {
       console.error('Failed to load logs:', error);
-      toast.error('Не удалось получить логи обработки');
+      toast.error(t.logs.openFailed.value);
     } finally {
       setLogLoading(false);
     }
@@ -349,9 +395,11 @@ export default function StatementsPage() {
       {/* Header / CTA Section */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Банковские выписки</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {t.title}
+          </h1>
           <p className="text-secondary mt-1">
-            Управляйте загруженными файлами, отслеживайте статус обработки и экспортируйте данные.
+            {t.subtitle}
           </p>
         </div>
         <button
@@ -359,14 +407,14 @@ export default function StatementsPage() {
           className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
         >
           <UploadCloud className="-ml-1 mr-2 h-5 w-5" />
-          Загрузить выписку
+          {t.uploadStatement}
         </button>
       </div>
 
       {/* Content Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
-           <h2 className="text-lg font-semibold text-gray-900">Все выписки</h2>
+           <h2 className="text-lg font-semibold text-gray-900">{t.allStatements}</h2>
         </div>
         
         {loading ? (
@@ -378,43 +426,47 @@ export default function StatementsPage() {
             <div className="mx-auto h-16 w-16 text-gray-300 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
               <File className="h-8 w-8" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900">Нет загруженных файлов</h3>
-            <p className="mt-1 text-gray-500">Загрузите свою первую банковскую выписку, чтобы начать работу.</p>
+            <h3 className="text-lg font-medium text-gray-900">
+              {t.empty.title}
+            </h3>
+            <p className="mt-1 text-gray-500">
+              {t.empty.description}
+            </p>
             <div className="mt-6">
               <button
                 onClick={() => setUploadModalOpen(true)}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
               >
                 <UploadCloud className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
-                Загрузить файл
+                {t.uploadModal.uploadFiles}
               </button>
             </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50/50">
-                <tr>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[40%]">
-                    Файл
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-[15%]">
-                    Статус
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[15%] hidden md:table-cell">
-                    Банк
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%] hidden lg:table-cell">
-                    Транзакции
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%]">
-                    Дата
-                  </th>
-                  <th scope="col" className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%]">
-                    Действия
-                  </th>
-                </tr>
-              </thead>
+	              <thead className="bg-gray-50/50">
+	                <tr>
+	                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[40%]">
+	                    {t.table.file}
+	                  </th>
+	                  <th scope="col" className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-[15%]">
+	                    {t.table.status}
+	                  </th>
+	                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[15%] hidden md:table-cell">
+	                    {t.table.bank}
+	                  </th>
+	                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%] hidden lg:table-cell">
+	                    {t.table.transactions}
+	                  </th>
+	                  <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%]">
+	                    {t.table.date}
+	                  </th>
+	                  <th scope="col" className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%]">
+	                    {t.table.actions}
+	                  </th>
+	                </tr>
+	              </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {statements.map((statement) => (
                   <tr
@@ -454,11 +506,11 @@ export default function StatementsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap hidden lg:table-cell">
-                      <div className="text-sm font-medium text-gray-900">
-                        {statement.totalTransactions > 0 ? statement.totalTransactions : '—'} 
-                        <span className="text-gray-400 ml-1 font-normal text-xs">оп.</span>
-                      </div>
-                    </td>
+	                      <div className="text-sm font-medium text-gray-900">
+	                        {statement.totalTransactions > 0 ? statement.totalTransactions : '—'} 
+	                        <span className="text-gray-400 ml-1 font-normal text-xs">{t.table.opsShort}</span>
+	                      </div>
+	                    </td>
                     <td className="px-6 py-5 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="text-smfont-medium text-gray-900">
@@ -469,47 +521,50 @@ export default function StatementsPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleViewFile(statement.id)}
-                          className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all"
-                          title="Просмотреть"
-                        >
-                          <Eye size={20} />
-                        </button>
-                        <button
-                          onClick={() => handleDownloadFile(statement.id, statement.fileName)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
-                          title="Скачать"
-                        >
-                          <Download size={20} />
-                        </button>
-                        
-                        {(statement.status === 'processing' || statement.status === 'error' || logLoading) && (
-                           <button
-                             onClick={() => openLogs(statement.id, statement.fileName)}
-                             className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all"
-                             title="Логи"
-                           >
-                             <Terminal size={20} />
-                           </button>
-                        )}
+	                    <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
+	                      <div className="flex items-center justify-end gap-2">
+		                        <button
+		                          onClick={() => handleViewFile(statement.id)}
+		                          className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all"
+		                          title={t.actions.view.value}
+		                        >
+		                          <Eye size={20} />
+		                        </button>
+		                        <button
+		                          onClick={() => handleDownloadFile(statement.id, statement.fileName)}
+		                          className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+		                          title={t.actions.download.value}
+		                        >
+		                          <Download size={20} />
+		                        </button>
 
-                        {statement.status === 'error' && (
-                          <button
-                            onClick={() => handleReprocess(statement.id)}
-                            className="p-2 rounded-lg text-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all"
-                            title="Повторить"
-                          >
+	                        <button
+	                          onClick={() => openLogs(statement.id, statement.fileName)}
+	                          disabled={logLoading && logStatementId === statement.id}
+	                          className={`p-2 rounded-lg transition-all ${
+	                            logLoading && logStatementId === statement.id
+	                              ? 'text-gray-300 cursor-not-allowed'
+	                              : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
+		                          }`}
+		                          title={t.actions.logs.value}
+		                        >
+		                          <Terminal size={20} />
+		                        </button>
+
+	                        {statement.status === 'error' && (
+	                          <button
+		                            onClick={() => handleReprocess(statement.id)}
+		                            className="p-2 rounded-lg text-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all"
+		                            title={t.actions.retry.value}
+		                          >
                             <RefreshCw size={20} />
                           </button>
                         )}
                         <button
-                          onClick={() => confirmDelete(statement.id)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                          title="Удалить"
-                        >
+	                          onClick={() => confirmDelete(statement.id)}
+	                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all"
+	                          title={t.actions.delete.value}
+	                        >
                           <Trash2 size={20} />
                         </button>
                       </div>
@@ -536,9 +591,9 @@ export default function StatementsPage() {
             {/* Header */}
             <div className="px-8 pt-8 pb-4 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-gray-900">Загрузка файлов</h3>
+                <h3 className="text-xl font-bold text-gray-900">{t.uploadModal.title}</h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Поддерживаются PDF, Excel, CSV и изображения
+                  {t.uploadModal.subtitle}
                 </p>
               </div>
               <button
@@ -579,11 +634,11 @@ export default function StatementsPage() {
                     <UploadCloud className="h-8 w-8 text-primary" />
                   </div>
                   <p className="text-base font-medium text-gray-900">
-                    Нажмите для выбора 
-                    <span className="font-normal text-gray-500"> или перетащите файлы</span>
+                    {t.uploadModal.dropHint1}{' '}
+                    <span className="font-normal text-gray-500">{t.uploadModal.dropHint2}</span>
                   </p>
                   <p className="mt-2 text-xs text-gray-400">
-                    Максимум 5 файлов до 10 МБ каждый
+                    {t.uploadModal.maxHint}
                   </p>
                 </div>
               </div>
@@ -604,7 +659,7 @@ export default function StatementsPage() {
                             {file.name}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {(file.size / 1024 / 1024).toFixed(2)} МБ
+                            {(file.size / 1024 / 1024).toFixed(2)} {t.uploadModal.mbShort}
                           </p>
                         </div>
                       </div>
@@ -631,7 +686,7 @@ export default function StatementsPage() {
                 className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
                 disabled={uploading}
               >
-                Отмена
+                {t.uploadModal.cancel}
               </button>
               <button
                 onClick={handleUpload}
@@ -639,7 +694,7 @@ export default function StatementsPage() {
                 className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
               >
                 {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {uploading ? 'Загрузка...' : 'Загрузить файлы'}
+                {uploading ? t.uploadModal.uploading : t.uploadModal.uploadFiles}
               </button>
             </div>
           </div>
@@ -650,10 +705,10 @@ export default function StatementsPage() {
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDelete}
-        title="Удалить выписку?"
-        message="Вы уверены, что хотите удалить эту выписку? Это действие нельзя отменить, и файл будет удален из хранилища."
-        confirmText="Удалить"
-        cancelText="Отмена"
+        title={t.confirmDelete.title.value}
+        message={t.confirmDelete.message.value}
+        confirmText={t.confirmDelete.confirm.value}
+        cancelText={t.confirmDelete.cancel.value}
         isDestructive={true}
       />
 
@@ -661,7 +716,7 @@ export default function StatementsPage() {
       {viewingFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+	            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
               <div className="flex items-center">
                  <div className="mr-3 p-1.5 bg-white rounded shadow-sm border border-gray-100">
                     <DocumentTypeIcon
@@ -685,11 +740,11 @@ export default function StatementsPage() {
             
             <div className="flex-1 bg-gray-100 relative">
               {fileViewUrl ? (
-                <iframe
-                  src={fileViewUrl}
-                  className="w-full h-full border-0"
-                  title="Предпросмотр файла"
-                />
+	                <iframe
+	                  src={fileViewUrl}
+	                  className="w-full h-full border-0"
+	                  title={t.viewFile.previewTitle.value}
+	                />
               ) : (
                 <div className="flex justify-center items-center h-full">
                   <Loader2 className="h-10 w-10 text-primary animate-spin" />
@@ -697,13 +752,13 @@ export default function StatementsPage() {
               )}
             </div>
             
-            <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-end space-x-3">
-              <button 
-                onClick={handleCloseView}
-                className="px-4 py-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 font-medium text-sm transition-colors"
-              >
-                Закрыть
-              </button>
+	            <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-end space-x-3">
+	              <button 
+	                onClick={handleCloseView}
+	                className="px-4 py-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 font-medium text-sm transition-colors"
+	              >
+	                {t.viewFile.close}
+	              </button>
               <button
                 onClick={() => {
                    const statement = statements.find(s => s.id === viewingFile);
@@ -711,25 +766,25 @@ export default function StatementsPage() {
                      handleDownloadFile(viewingFile, statement.fileName);
                    }
                 }}
-                className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary-hover font-medium text-sm shadow-sm flex items-center transition-colors"
-              >
-                <Download size={16} className="mr-2" />
-                Скачать файл
-              </button>
-            </div>
+	                className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary-hover font-medium text-sm shadow-sm flex items-center transition-colors"
+	              >
+	                <Download size={16} className="mr-2" />
+	                {t.viewFile.download}
+	              </button>
+	            </div>
           </div>
         </div>
       )}
 
       {/* Logs modal */}
-      {logStatementId && (
+	      {logStatementId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col">
-            <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-              <div>
-                <div className="text-sm text-gray-500">Логи обработки</div>
-                <div className="text-lg font-semibold text-gray-900">{logStatementName}</div>
-              </div>
+	            <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+	              <div>
+	                <div className="text-sm text-gray-500">{t.logs.title}</div>
+	                <div className="text-lg font-semibold text-gray-900">{logStatementName}</div>
+	              </div>
               <button
                 onClick={closeLogs}
                 className="p-2 rounded-full hover:bg-gray-200 text-gray-500 transition-colors"
@@ -738,13 +793,13 @@ export default function StatementsPage() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {logLoading ? (
+	              {logLoading ? (
                 <div className="flex items-center justify-center py-10">
                   <Loader2 className="h-6 w-6 text-primary animate-spin" />
                 </div>
-              ) : logEntries.length === 0 ? (
-                <div className="py-8 text-center text-gray-500">Логи пока отсутствуют</div>
-              ) : (
+	              ) : logEntries.length === 0 ? (
+	                <div className="py-8 text-center text-gray-500">{t.logs.empty}</div>
+	              ) : (
                 <ul className="divide-y divide-gray-100">
                   {logEntries.map((entry, idx) => (
                     <li key={`${entry.timestamp}-${idx}`} className="px-5 py-3 flex items-start space-x-3">
@@ -769,13 +824,13 @@ export default function StatementsPage() {
                   ))}
                 </ul>
               )}
-            </div>
-            <div className="px-5 py-3 border-t border-gray-200 bg-white text-sm text-gray-500">
-              Обновляется каждые 3 секунды. Закройте окно, чтобы остановить.
-            </div>
-          </div>
-        </div>
-      )}
+	            </div>
+	            <div className="px-5 py-3 border-t border-gray-200 bg-white text-sm text-gray-500">
+	              {t.logs.autoRefresh}
+	            </div>
+	          </div>
+	        </div>
+	      )}
     </div>
   );
 }

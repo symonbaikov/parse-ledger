@@ -20,6 +20,7 @@ import {
 import { useParams } from 'next/navigation';
 import api from '../../lib/api';
 import TransactionsView from '../../components/TransactionsView';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface SharedFileAccess {
   statement: any;
@@ -28,25 +29,14 @@ interface SharedFileAccess {
   canDownload: boolean;
 }
 
-const getPermissionLabel = (permission: string) => {
-  switch (permission) {
-    case 'view':
-      return 'Просмотр';
-    case 'download':
-      return 'Просмотр и скачивание';
-    case 'edit':
-      return 'Редактирование';
-    default:
-      return permission;
-  }
-};
-
 /**
  * Public page for accessing shared files
  */
 export default function SharedFilePage() {
   const params = useParams();
   const token = params.token as string;
+  const t = useIntlayer('sharedFilePage');
+  const { locale } = useLocale();
 
   const [access, setAccess] = useState<SharedFileAccess | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,9 +61,9 @@ export default function SharedFilePage() {
     } catch (err: any) {
       if (err.response?.status === 401) {
         setNeedsPassword(true);
-        setError('Требуется пароль для доступа к файлу');
+        setError(t.errors.passwordRequired.value);
       } else {
-        setError(err.response?.data?.error?.message || 'Не удалось загрузить файл');
+        setError(err.response?.data?.error?.message || t.errors.loadFailed.value);
       }
     } finally {
       setLoading(false);
@@ -108,7 +98,7 @@ export default function SharedFilePage() {
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU', {
+    return date.toLocaleDateString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -124,7 +114,7 @@ export default function SharedFilePage() {
   if (loading) {
     return (
       <Container maxWidth="lg" sx={{ mt: 8, mb: 4 }}>
-        <Typography align="center">Загрузка...</Typography>
+        <Typography align="center">{t.loading}</Typography>
       </Container>
     );
   }
@@ -136,17 +126,17 @@ export default function SharedFilePage() {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
             <LockIcon sx={{ fontSize: 64, color: 'primary.main' }} />
             <Typography variant="h5" align="center">
-              Защищенный файл
+              {t.protected.title}
             </Typography>
             <Typography variant="body1" color="text.secondary" align="center">
-              Для доступа к этому файлу требуется пароль
+              {t.protected.subtitle}
             </Typography>
 
             {error && <Alert severity="error" sx={{ width: '100%' }}>{error}</Alert>}
 
             <TextField
               fullWidth
-              label="Пароль"
+              label={t.protected.passwordLabel.value}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -160,7 +150,7 @@ export default function SharedFilePage() {
               onClick={handlePasswordSubmit}
               disabled={!password}
             >
-              Открыть файл
+              {t.protected.open}
             </Button>
           </Box>
         </Paper>
@@ -171,7 +161,7 @@ export default function SharedFilePage() {
   if (error || !access) {
     return (
       <Container maxWidth="lg" sx={{ mt: 8, mb: 4 }}>
-        <Alert severity="error">{error || 'Файл не найден'}</Alert>
+        <Alert severity="error">{error || t.errors.notFound.value}</Alert>
       </Container>
     );
   }
@@ -186,9 +176,9 @@ export default function SharedFilePage() {
           {statement.fileName}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Chip label="Общий доступ" size="small" color="info" />
+          <Chip label={t.header.badge.value} size="small" color="info" />
           <Chip label={statement.bankName} size="small" variant="outlined" />
-          <Chip label={`Права: ${getPermissionLabel(permission)}`} size="small" />
+          <Chip label={`${t.permission.prefix.value}: ${getPermissionLabel(permission, t)}`} size="small" />
           {canDownload && (
             <Button
               variant="contained"
@@ -197,7 +187,7 @@ export default function SharedFilePage() {
               onClick={handleDownload}
               sx={{ ml: 'auto' }}
             >
-              Скачать
+              {t.header.download}
             </Button>
           )}
         </Box>
@@ -218,7 +208,7 @@ export default function SharedFilePage() {
         <Card>
           <CardContent>
             <Typography variant="body2" color="text.secondary">
-              Банк
+              {t.cards.bank}
             </Typography>
             <Typography variant="h6">{statement.bankName}</Typography>
           </CardContent>
@@ -226,7 +216,7 @@ export default function SharedFilePage() {
         <Card>
           <CardContent>
             <Typography variant="body2" color="text.secondary">
-              Размер файла
+              {t.cards.fileSize}
             </Typography>
             <Typography variant="h6">
               {formatFileSize(statement.fileSize)}
@@ -236,7 +226,7 @@ export default function SharedFilePage() {
         <Card>
           <CardContent>
             <Typography variant="body2" color="text.secondary">
-              Транзакций
+              {t.cards.transactions}
             </Typography>
             <Typography variant="h6">{transactions.length}</Typography>
           </CardContent>
@@ -244,10 +234,10 @@ export default function SharedFilePage() {
         <Card>
           <CardContent>
             <Typography variant="body2" color="text.secondary">
-              Счет
+              {t.cards.account}
             </Typography>
             <Typography variant="h6">
-              {statement.metadata?.accountNumber || '—'}
+              {statement.metadata?.accountNumber || t.cards.dash.value}
             </Typography>
           </CardContent>
         </Card>
@@ -257,15 +247,28 @@ export default function SharedFilePage() {
       {transactions.length > 0 ? (
         <Box>
           <Typography variant="h6" gutterBottom>
-            Транзакции
+            {t.transactionsTitle}
           </Typography>
           <TransactionsView transactions={transactions} />
         </Box>
       ) : (
         <Alert severity="info">
-          У вас нет прав на просмотр транзакций. Обратитесь к владельцу файла для получения доступа.
+          {t.errors.noTransactionsAccess}
         </Alert>
       )}
     </Container>
   );
 }
+
+const getPermissionLabel = (permission: string, t: any) => {
+  switch (permission) {
+    case 'view':
+      return t.permission.view.value;
+    case 'download':
+      return t.permission.download.value;
+    case 'edit':
+      return t.permission.edit.value;
+    default:
+      return permission;
+  }
+};

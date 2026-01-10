@@ -26,6 +26,7 @@ import {
 import { Refresh, Delete, Error as ErrorIcon } from '@mui/icons-material';
 import Link from 'next/link';
 import apiClient from '../lib/api';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface Statement {
   id: string;
@@ -48,6 +49,8 @@ interface AuditLog {
 }
 
 export default function AdminPage() {
+  const t = useIntlayer('adminPage');
+  const { locale } = useLocale();
   const [tab, setTab] = useState(0);
   const [statements, setStatements] = useState<Statement[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -73,7 +76,7 @@ export default function AdminPage() {
       setStatements(response.data.data || []);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Ошибка загрузки выписок');
+      setError(error.response?.data?.message || t.errors.loadStatements.value);
     } finally {
       setStatementsLoading(false);
     }
@@ -89,7 +92,7 @@ export default function AdminPage() {
       setAuditLogs([]);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Ошибка загрузки аудит-лога');
+      setError(error.response?.data?.message || t.errors.loadAudit.value);
     } finally {
       setStatementsLoading(false);
     }
@@ -100,19 +103,19 @@ export default function AdminPage() {
       await apiClient.post(`/statements/${statementId}/reprocess`);
       loadStatements();
     } catch {
-      setError('Ошибка повторной обработки');
+      setError(t.errors.reprocess.value);
     }
   };
 
   const handleDelete = async (statementId: string) => {
-    if (!confirm('Вы уверены, что хотите удалить эту выписку?')) {
+    if (!confirm(t.confirmDelete.value)) {
       return;
     }
     try {
       await apiClient.delete(`/statements/${statementId}`);
       loadStatements();
     } catch {
-      setError('Ошибка удаления выписки');
+      setError(t.errors.delete.value);
     }
   };
 
@@ -132,11 +135,11 @@ export default function AdminPage() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'Завершено';
+        return t.status.completed.value;
       case 'processing':
-        return 'Обрабатывается';
+        return t.status.processing.value;
       case 'error':
-        return 'Ошибка';
+        return t.status.error.value;
       default:
         return status;
     }
@@ -151,14 +154,14 @@ export default function AdminPage() {
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Административная панель
+        {t.title}
       </Typography>
 
       <Paper sx={{ mt: 3 }}>
         <Tabs value={tab} onChange={(_, newValue) => setTab(newValue)}>
-          <Tab label="Журнал выписок" />
-          <Tab label="Управление пользователями" />
-          <Tab label="Аудит-лог" />
+          <Tab label={t.tabs.statementsLog.value} />
+          <Tab label={t.tabs.users.value} />
+          <Tab label={t.tabs.audit.value} />
         </Tabs>
 
         <Box sx={{ p: 3 }}>
@@ -180,13 +183,13 @@ export default function AdminPage() {
             <Box>
               <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
                 <TextField
-                  label="Поиск"
+                  label={t.search.value}
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   sx={{ flexGrow: 1 }}
                 />
                 <Button variant="outlined" startIcon={<Refresh />} onClick={loadStatements}>
-                  Обновить
+                  {t.refresh}
                 </Button>
               </Box>
 
@@ -194,14 +197,14 @@ export default function AdminPage() {
                 <Table>
                   <TableHead>
                     <TableRow>
-                      <TableCell>Файл</TableCell>
-                      <TableCell>Тип</TableCell>
-                      <TableCell>Банк</TableCell>
-                      <TableCell>Статус</TableCell>
-                      <TableCell>Операций</TableCell>
-                      <TableCell>Дата загрузки</TableCell>
-                      <TableCell>Дата обработки</TableCell>
-                      <TableCell>Действия</TableCell>
+                      <TableCell>{t.table.file}</TableCell>
+                      <TableCell>{t.table.type}</TableCell>
+                      <TableCell>{t.table.bank}</TableCell>
+                      <TableCell>{t.table.status}</TableCell>
+                      <TableCell>{t.table.transactions}</TableCell>
+                      <TableCell>{t.table.uploadedAt}</TableCell>
+                      <TableCell>{t.table.processedAt}</TableCell>
+                      <TableCell>{t.table.actions}</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -225,11 +228,11 @@ export default function AdminPage() {
                         </TableCell>
                         <TableCell>{statement.totalTransactions || 0}</TableCell>
                         <TableCell>
-                          {new Date(statement.createdAt).toLocaleDateString('ru-RU')}
+                          {new Date(statement.createdAt).toLocaleDateString(locale)}
                         </TableCell>
                         <TableCell>
                           {statement.processedAt
-                            ? new Date(statement.processedAt).toLocaleDateString('ru-RU')
+                            ? new Date(statement.processedAt).toLocaleDateString(locale)
                             : '-'}
                         </TableCell>
                         <TableCell>
@@ -265,10 +268,10 @@ export default function AdminPage() {
           {tab === 1 && (
             <Box>
               <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                Перейдите на страницу управления пользователями для настройки прав доступа.
+                {t.usersTab.hint}
               </Typography>
               <Button variant="contained" component={Link} href="/admin/users">
-                Управление пользователями
+                {t.usersTab.button}
               </Button>
             </Box>
           )}
@@ -277,16 +280,16 @@ export default function AdminPage() {
             <Box>
               {auditLogs.length === 0 ? (
                 <Typography variant="body1" color="text.secondary">
-                  Аудит-лог будет доступен после реализации соответствующего endpoint
+                  {t.auditTab.empty}
                 </Typography>
               ) : (
                 <TableContainer>
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Действие</TableCell>
-                        <TableCell>Описание</TableCell>
-                        <TableCell>Дата</TableCell>
+                        <TableCell>{t.auditTab.action}</TableCell>
+                        <TableCell>{t.auditTab.description}</TableCell>
+                        <TableCell>{t.auditTab.date}</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -294,7 +297,7 @@ export default function AdminPage() {
                         <TableRow key={log.id}>
                           <TableCell>{log.action}</TableCell>
                           <TableCell>{log.description || '-'}</TableCell>
-                          <TableCell>{new Date(log.createdAt).toLocaleString('ru-RU')}</TableCell>
+                          <TableCell>{new Date(log.createdAt).toLocaleString(locale)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -307,7 +310,7 @@ export default function AdminPage() {
       </Paper>
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Детали ошибки</DialogTitle>
+        <DialogTitle>{t.errorDialog.title}</DialogTitle>
         <DialogContent>
           {selectedStatement?.errorMessage && (
             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
@@ -316,7 +319,7 @@ export default function AdminPage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>Закрыть</Button>
+          <Button onClick={() => setDialogOpen(false)}>{t.errorDialog.close}</Button>
         </DialogActions>
       </Dialog>
     </Container>

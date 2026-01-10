@@ -16,6 +16,7 @@ import {
   TablePagination,
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface Transaction {
   id: string;
@@ -51,17 +52,19 @@ type ColumnDef = {
  * Component for displaying transactions list with search and pagination
  */
 export default function TransactionsView({ transactions }: TransactionsViewProps) {
+  const t = useIntlayer('transactionsView');
+  const { locale } = useLocale();
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ru-RU');
+    return date.toLocaleDateString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US');
   };
 
   const formatAmount = (amount: number, currency?: string): string => {
-    return new Intl.NumberFormat('ru-RU', {
+    return new Intl.NumberFormat(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', {
       style: 'currency',
       currency: currency || 'KZT',
       minimumFractionDigits: 2,
@@ -80,11 +83,11 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
   const getTypeLabel = (type: string) => {
     switch (type) {
       case 'INCOME':
-        return 'Приход';
+        return t.type.income;
       case 'EXPENSE':
-        return 'Расход';
+        return t.type.expense;
       case 'TRANSFER':
-        return 'Перевод';
+        return t.type.transfer;
       default:
         return type;
     }
@@ -133,32 +136,32 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
     ];
 
     const labelMap: Record<string, string> = {
-      transactionDate: 'Дата',
-      documentNumber: 'Номер документа',
-      counterpartyName: 'Контрагент',
-      counterpartyBin: 'БИН',
-      paymentPurpose: 'Назначение платежа',
-      debit: 'Дебет',
-      credit: 'Кредит',
-      currency: 'Валюта',
-      exchangeRate: 'Курс',
-      transactionType: 'Тип',
-      category: 'Категория',
-      article: 'Статья',
-      amountForeign: 'Сумма в валюте',
-      branch: 'Филиал',
-      wallet: 'Кошелёк',
+      transactionDate: t.columns.transactionDate.value,
+      documentNumber: t.columns.documentNumber.value,
+      counterpartyName: t.columns.counterpartyName.value,
+      counterpartyBin: t.columns.counterpartyBin.value,
+      paymentPurpose: t.columns.paymentPurpose.value,
+      debit: t.columns.debit.value,
+      credit: t.columns.credit.value,
+      currency: t.columns.currency.value,
+      exchangeRate: t.columns.exchangeRate.value,
+      transactionType: t.columns.transactionType.value,
+      category: t.columns.category.value,
+      article: t.columns.article.value,
+      amountForeign: t.columns.amountForeign.value,
+      branch: t.columns.branch.value,
+      wallet: t.columns.wallet.value,
     };
 
     const renderers: Record<string, (tx: Transaction) => React.ReactNode> = {
       transactionDate: tx => formatDate(tx.transactionDate),
-      debit: tx => (tx.debit > 0 ? formatAmount(tx.debit, tx.currency) : '—'),
-      credit: tx => (tx.credit > 0 ? formatAmount(tx.credit, tx.currency) : '—'),
+      debit: tx => (tx.debit > 0 ? formatAmount(tx.debit, tx.currency) : t.dash),
+      credit: tx => (tx.credit > 0 ? formatAmount(tx.credit, tx.currency) : t.dash),
       currency: tx => tx.currency || 'KZT',
       exchangeRate: tx =>
         tx.exchangeRate
-          ? tx.exchangeRate.toLocaleString('ru-RU', { minimumFractionDigits: 2 })
-          : '—',
+          ? tx.exchangeRate.toLocaleString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', { minimumFractionDigits: 2 })
+          : t.dash,
       transactionType: tx => (
         <Chip
           label={getTypeLabel(tx.transactionType)}
@@ -167,17 +170,17 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
         />
       ),
       category: tx =>
-        tx.category?.name ? <Chip label={tx.category.name} size="small" variant="outlined" /> : '—',
-      branch: tx => tx.branch?.name || '—',
-      wallet: tx => tx.wallet?.name || '—',
-      paymentPurpose: tx => tx.paymentPurpose || '—',
-      counterpartyName: tx => tx.counterpartyName || '—',
-      counterpartyBin: tx => tx.counterpartyBin || '—',
-      documentNumber: tx => tx.documentNumber || '—',
+        tx.category?.name ? <Chip label={tx.category.name} size="small" variant="outlined" /> : t.dash,
+      branch: tx => tx.branch?.name || t.dash.value,
+      wallet: tx => tx.wallet?.name || t.dash.value,
+      paymentPurpose: tx => tx.paymentPurpose || t.dash.value,
+      counterpartyName: tx => tx.counterpartyName || t.dash.value,
+      counterpartyBin: tx => tx.counterpartyBin || t.dash.value,
+      documentNumber: tx => tx.documentNumber || t.dash.value,
       amountForeign: tx =>
         tx.amountForeign
-          ? tx.amountForeign.toLocaleString('ru-RU', { minimumFractionDigits: 2 })
-          : '—',
+          ? tx.amountForeign.toLocaleString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', { minimumFractionDigits: 2 })
+          : t.dash,
     };
 
     const columns: ColumnDef[] = [];
@@ -201,10 +204,10 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
         render: (tx: Transaction) => {
           const value = (tx as any)[key];
           if (value === null || value === undefined || value === '') {
-            return '—';
+            return t.dash;
           }
           if (typeof value === 'number') {
-            return value.toLocaleString('ru-RU');
+            return value.toLocaleString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US');
           }
           if (typeof value === 'object') {
             return value.name || JSON.stringify(value);
@@ -215,7 +218,11 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
     });
 
     return columns;
-  }, [transactions]);
+  }, [transactions, locale, t]);
+
+  const getLabelDisplayedRows = ({ from, to, count }: { from: number; to: number; count: number }) => {
+    return `${from}-${to} ${t.pagination.of.value} ${count}`;
+  };
 
   return (
     <Box>
@@ -223,7 +230,7 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
       <Box sx={{ mb: 2 }}>
         <TextField
           fullWidth
-          placeholder="Поиск по контрагенту, назначению или категории..."
+          placeholder={t.searchPlaceholder.value}
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           InputProps={{
@@ -250,7 +257,7 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
             {paginatedTransactions.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={availableColumns.length || 1} align="center">
-                  Транзакции не найдены
+                  {t.empty}
                 </TableCell>
               </TableRow>
             ) : (
@@ -276,8 +283,8 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
             setRowsPerPage(parseInt(e.target.value, 10));
             setPage(0);
           }}
-          labelRowsPerPage="Строк на странице:"
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`}
+          labelRowsPerPage={t.pagination.rowsPerPage.value}
+          labelDisplayedRows={getLabelDisplayedRows}
         />
       </TableContainer>
     </Box>

@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../hooks/useAuth';
 import { usePermissions } from '../hooks/usePermissions';
+import { useIntlayer, useLocale } from 'next-intlayer';
 import {
   FileText,
   Database,
@@ -24,15 +25,45 @@ import {
   Edit3,
   Table,
   Users,
+  Languages,
+  ArrowLeft,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+type AppLanguage = 'ru' | 'en' | 'kk';
 
 export default function Navigation() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const { isAdmin, hasPermission } = usePermissions();
+  const { locale, availableLocales, setLocale } = useLocale();
+  const { nav, userMenu, languageModal, languages: languageNames } = useIntlayer('navigation');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [languageModalOpen, setLanguageModalOpen] = useState(false);
+  const [languageDraft, setLanguageDraft] = useState<AppLanguage>('ru');
+  const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
+
+  const languages = useMemo(
+    () =>
+      [
+        { code: 'ru' as const, label: languageNames.ru.value, note: languageModal.defaultLanguageNote.value },
+        { code: 'en' as const, label: languageNames.en.value },
+        { code: 'kk' as const, label: languageNames.kk.value },
+      ].filter((l) => availableLocales.map(String).includes(l.code)) satisfies Array<{
+        code: AppLanguage;
+        label: string;
+        note?: string;
+      }>,
+    [availableLocales, languageModal.defaultLanguageNote, languageNames],
+  );
+
+  const languageLabel = useMemo(() => {
+    const normalizedLocale = (locale as AppLanguage) || 'ru';
+    return languages.find((l) => l.code === normalizedLocale)?.label ?? languageNames.ru.value;
+  }, [locale, languages, languageNames.ru.value]);
+
+  const normalizedLocale = (locale as AppLanguage) || 'ru';
 
   if (!user) {
     return null;
@@ -40,37 +71,37 @@ export default function Navigation() {
 
   const navItems = [
     {
-      label: 'Выписки',
+      label: nav.statements,
       path: '/statements',
       icon: <FileText size={20} />,
       permission: 'statement.view',
     },
     {
-      label: 'Хранилище',
+      label: nav.storage,
       path: '/storage',
       icon: <Database size={20} />,
       permission: 'statement.view',
     },
     {
-      label: 'Ввод данных',
+      label: nav.dataEntry,
       path: '/data-entry',
       icon: <Edit3 size={20} />,
       permission: 'statement.upload',
     },
     {
-      label: 'Таблицы',
+      label: nav.tables,
       path: '/custom-tables',
       icon: <Table size={20} />,
       permission: 'statement.view',
     },
     {
-      label: 'Отчёты',
+      label: nav.reports,
       path: '/reports',
       icon: <BarChart size={20} />,
       permission: 'report.view',
     },
     {
-      label: 'Категории',
+      label: nav.categories,
       path: '/categories',
       icon: <Tags size={20} />,
       permission: 'category.view',
@@ -127,7 +158,9 @@ export default function Navigation() {
                    <User size={16} className="text-gray-500" />
                 </div>
                 <div className="flex items-center mt-1">
-                  <span className="truncate max-w-[80px] hidden sm:block">Профиль</span>
+                  <span className="truncate max-w-[80px] hidden sm:block">
+                    {userMenu.profile}
+                  </span>
                   <ChevronDown size={12} className="ml-0.5" />
                 </div>
               </button>
@@ -148,7 +181,7 @@ export default function Navigation() {
                     onClick={() => setUserMenuOpen(false)}
                   >
                     <Settings size={16} className="mr-2" />
-                    Настройки
+                    {userMenu.settings}
                   </Link>
                   <Link
                     href="/settings/workspace"
@@ -156,40 +189,55 @@ export default function Navigation() {
                     onClick={() => setUserMenuOpen(false)}
                   >
                     <Users size={16} className="mr-2" />
-                    Рабочее пространство
+                    {userMenu.workspace}
                   </Link>
-                  <Link
-                    href="/integrations"
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    <Plug size={16} className="mr-2" />
-                    Интеграции
-                  </Link>
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+  	                  <Link
+  	                    href="/integrations"
+  	                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+  	                    onClick={() => setUserMenuOpen(false)}
+  	                   >
+  	                    <Plug size={16} className="mr-2" />
+  	                    {userMenu.integrations}
+  	                  </Link>
+  	                  <button
+	                    onClick={() => {
+	                      setUserMenuOpen(false);
+	                      setLanguageDraft(normalizedLocale);
+	                      setLanguagePickerOpen(false);
+	                      setLanguageModalOpen(true);
+	                    }}
+	                    className="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+	                  >
+	                    <span className="flex items-center">
+	                      <Languages size={16} className="mr-2" />
+	                      {userMenu.language}
+	                    </span>
+	                    <span className="text-xs text-gray-500">{languageLabel}</span>
+	                  </button>
+	                  {isAdmin && (
+	                    <Link
+	                      href="/admin"
+	                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => setUserMenuOpen(false)}
                     >
                       <Shield size={16} className="mr-2" />
-                      Админка
+                      {userMenu.admin}
                     </Link>
                   )}
                   <button
                     onClick={() => {
                       setUserMenuOpen(false);
                       logout();
-                      toast.success('Вы успешно вышли из системы');
+                      toast.success(userMenu.logoutSuccess.value);
                     }}
                     className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     <LogOut size={16} className="mr-2" />
-                    Выйти
-                  </button>
-                </div>
-              )}
-            </div>
+                    {userMenu.logout}
+	                  </button>
+	                </div>
+	              )}
+	            </div>
 
             {/* Mobile menu button */}
             <div className="flex items-center md:hidden">
@@ -205,9 +253,9 @@ export default function Navigation() {
       </div>
 
       {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
-          <div className="pt-2 pb-3 space-y-1">
+	      {mobileMenuOpen && (
+	        <div className="md:hidden border-t border-gray-200 bg-white">
+	          <div className="pt-2 pb-3 space-y-1">
             {visibleNavItems.map((item) => (
               <Link
                 key={item.path}
@@ -226,7 +274,135 @@ export default function Navigation() {
             ))}
           </div>
         </div>
-      )}
-    </header>
-  );
+	      )}
+
+	      {languageModalOpen && (
+	        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+	          <div
+	            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+	            onClick={() => {
+	              setLanguageModalOpen(false);
+	              setLanguagePickerOpen(false);
+	            }}
+	          />
+	          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl ring-1 ring-gray-900/5 overflow-hidden">
+	            <div className="px-6 py-4 border-b border-gray-100">
+	              <div className="flex items-start justify-between gap-3">
+	                <div>
+	                  <div className="text-sm text-gray-500">
+	                    {languageModal.sectionLabel}
+	                  </div>
+	                  <div className="text-lg font-semibold text-gray-900">
+	                    {languageModal.title}
+	                  </div>
+	                </div>
+	                {languagePickerOpen && (
+	                  <button
+	                    onClick={() => setLanguagePickerOpen(false)}
+	                    className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+	                    title={languageModal.back.value}
+	                  >
+	                    <ArrowLeft size={18} />
+	                  </button>
+	                )}
+	              </div>
+	            </div>
+	            <div className="px-6 py-4">
+	              <div className="h-[260px] flex flex-col">
+	                {!languagePickerOpen ? (
+	                  <div className="flex-1 flex flex-col justify-between">
+	                    <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
+	                      <div className="text-xs text-gray-500">
+	                        {languageModal.currentLanguageLabel}
+	                      </div>
+	                      <div className="mt-1 text-base font-semibold text-gray-900">
+	                        {languages.find((l) => l.code === languageDraft)?.label ?? languageNames.ru.value}
+	                      </div>
+	                      <div className="mt-3">
+	                        <button
+	                          onClick={() => setLanguagePickerOpen(true)}
+	                          className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-gray-900 text-white hover:bg-gray-800 transition-colors text-sm"
+	                        >
+	                          {languageModal.changeLanguage}
+	                        </button>
+	                      </div>
+	                    </div>
+
+	                    <div className="mt-4 text-xs text-gray-500">
+	                      {languageModal.footerHint}
+	                    </div>
+	                  </div>
+	                ) : (
+	                  <>
+	                    <div className="text-xs text-gray-500 mb-2">
+	                      {languageModal.availableLanguagesLabel}
+	                    </div>
+	                    <div className="flex-1 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2">
+	                      <div className="space-y-2">
+	                        {languages
+	                          .filter((l) => l.code !== languageDraft)
+	                          .map((lang) => (
+	                            <button
+	                              key={lang.code}
+	                              type="button"
+	                              onClick={() => {
+	                                setLanguageDraft(lang.code);
+	                                setLanguagePickerOpen(false);
+	                              }}
+	                              className="w-full flex items-center justify-between rounded-lg px-3 py-3 hover:bg-gray-50 transition-colors"
+	                            >
+	                              <div className="flex flex-col items-start">
+	                                <span className="text-sm font-medium text-gray-900">
+	                                  {lang.label}
+	                                </span>
+	                                {lang.note && (
+	                                  <span className="text-xs text-gray-500">{lang.note}</span>
+	                                )}
+	                              </div>
+	                              <span className="text-xs text-gray-400">
+	                                {languageModal.chooseAction}
+	                              </span>
+	                            </button>
+	                          ))}
+	                      </div>
+	                    </div>
+	                    <div className="mt-3 text-xs text-gray-500">
+	                      {languageModal.scrollHint}
+	                    </div>
+	                  </>
+	                )}
+	              </div>
+	            </div>
+	            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50/50">
+	              <button
+	                onClick={() => {
+	                  setLanguageModalOpen(false);
+	                  setLanguagePickerOpen(false);
+	                }}
+	                className="px-4 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-white transition-colors text-sm"
+	              >
+	                {languageModal.cancel}
+	              </button>
+	              <button
+	                onClick={() => {
+	                  setLocale(languageDraft);
+	                  setLanguageModalOpen(false);
+	                  setLanguagePickerOpen(false);
+	                  const selectedLabel =
+	                    languages.find((l) => l.code === languageDraft)?.label ?? languageNames.ru.value;
+	                  toast.success(`${languageModal.savedToastPrefix.value}: ${selectedLabel}`);
+	                  setTimeout(() => {
+	                    window.location.reload();
+	                  }, 50);
+	                }}
+	                className="px-4 py-2 rounded-full bg-primary text-white hover:bg-primary-hover transition-colors text-sm"
+	              >
+	                {languageModal.save}
+	              </button>
+	            </div>
+	          </div>
+	        </div>
+	      )}
+	    </header>
+	  );
 }

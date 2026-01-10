@@ -32,6 +32,7 @@ import {
 } from '@mui/material';
 import { Edit, Save, Cancel } from '@mui/icons-material';
 import apiClient from '../../lib/api';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface User {
   id: string;
@@ -43,35 +44,37 @@ interface User {
   createdAt: string;
 }
 
-const ALL_PERMISSIONS = [
-  { value: 'statement.view', label: 'Просмотр выписок' },
-  { value: 'statement.upload', label: 'Загрузка выписок' },
-  { value: 'statement.delete', label: 'Удаление выписок' },
-  { value: 'statement.edit', label: 'Редактирование выписок' },
-  { value: 'transaction.view', label: 'Просмотр транзакций' },
-  { value: 'transaction.edit', label: 'Редактирование транзакций' },
-  { value: 'transaction.delete', label: 'Удаление транзакций' },
-  { value: 'transaction.bulk_update', label: 'Массовое обновление транзакций' },
-  { value: 'category.view', label: 'Просмотр категорий' },
-  { value: 'category.create', label: 'Создание категорий' },
-  { value: 'category.edit', label: 'Редактирование категорий' },
-  { value: 'category.delete', label: 'Удаление категорий' },
-  { value: 'branch.view', label: 'Просмотр филиалов' },
-  { value: 'branch.create', label: 'Создание филиалов' },
-  { value: 'branch.edit', label: 'Редактирование филиалов' },
-  { value: 'branch.delete', label: 'Удаление филиалов' },
-  { value: 'wallet.view', label: 'Просмотр кошельков' },
-  { value: 'wallet.create', label: 'Создание кошельков' },
-  { value: 'wallet.edit', label: 'Редактирование кошельков' },
-  { value: 'wallet.delete', label: 'Удаление кошельков' },
-  { value: 'report.view', label: 'Просмотр отчётов' },
-  { value: 'report.export', label: 'Экспорт отчётов' },
-  { value: 'google_sheet.view', label: 'Просмотр Google Sheets' },
-  { value: 'google_sheet.connect', label: 'Подключение Google Sheets' },
-  { value: 'google_sheet.sync', label: 'Синхронизация Google Sheets' },
-];
-
 export default function UsersManagementPage() {
+  const t = useIntlayer('adminUsersPage');
+  const { locale } = useLocale();
+  const ALL_PERMISSIONS = [
+    { value: 'statement.view', label: t.permissions.statementView.value },
+    { value: 'statement.upload', label: t.permissions.statementUpload.value },
+    { value: 'statement.delete', label: t.permissions.statementDelete.value },
+    { value: 'statement.edit', label: t.permissions.statementEdit.value },
+    { value: 'transaction.view', label: t.permissions.transactionView.value },
+    { value: 'transaction.edit', label: t.permissions.transactionEdit.value },
+    { value: 'transaction.delete', label: t.permissions.transactionDelete.value },
+    { value: 'transaction.bulk_update', label: t.permissions.transactionBulkUpdate.value },
+    { value: 'category.view', label: t.permissions.categoryView.value },
+    { value: 'category.create', label: t.permissions.categoryCreate.value },
+    { value: 'category.edit', label: t.permissions.categoryEdit.value },
+    { value: 'category.delete', label: t.permissions.categoryDelete.value },
+    { value: 'branch.view', label: t.permissions.branchView.value },
+    { value: 'branch.create', label: t.permissions.branchCreate.value },
+    { value: 'branch.edit', label: t.permissions.branchEdit.value },
+    { value: 'branch.delete', label: t.permissions.branchDelete.value },
+    { value: 'wallet.view', label: t.permissions.walletView.value },
+    { value: 'wallet.create', label: t.permissions.walletCreate.value },
+    { value: 'wallet.edit', label: t.permissions.walletEdit.value },
+    { value: 'wallet.delete', label: t.permissions.walletDelete.value },
+    { value: 'report.view', label: t.permissions.reportView.value },
+    { value: 'report.export', label: t.permissions.reportExport.value },
+    { value: 'google_sheet.view', label: t.permissions.googleSheetView.value },
+    { value: 'google_sheet.connect', label: t.permissions.googleSheetConnect.value },
+    { value: 'google_sheet.sync', label: t.permissions.googleSheetSync.value },
+  ];
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +96,7 @@ export default function UsersManagementPage() {
       setUsers(response.data.data || []);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Ошибка загрузки пользователей');
+      setError(error.response?.data?.message || t.errors.loadUsers.value);
     } finally {
       setLoading(false);
     }
@@ -107,7 +110,7 @@ export default function UsersManagementPage() {
       setPermissionsDialogOpen(true);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Ошибка загрузки прав');
+      setError(error.response?.data?.message || t.errors.loadPermissions.value);
     }
   };
 
@@ -124,7 +127,7 @@ export default function UsersManagementPage() {
       loadUsers();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Ошибка сохранения прав');
+      setError(error.response?.data?.message || t.errors.savePermissions.value);
     } finally {
       setSaving(false);
     }
@@ -141,7 +144,7 @@ export default function UsersManagementPage() {
       loadUsers();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Ошибка сброса прав');
+      setError(error.response?.data?.message || t.errors.resetPermissions.value);
     } finally {
       setSaving(false);
     }
@@ -161,7 +164,7 @@ export default function UsersManagementPage() {
       loadUsers();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Ошибка обновления роли');
+      setError(error.response?.data?.message || t.errors.updateRole.value);
     }
   };
 
@@ -171,7 +174,7 @@ export default function UsersManagementPage() {
       loadUsers();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Ошибка обновления статуса');
+      setError(error.response?.data?.message || t.errors.updateStatus.value);
     }
   };
 
@@ -184,7 +187,7 @@ export default function UsersManagementPage() {
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Управление пользователями
+        {t.title}
       </Typography>
 
       <Paper sx={{ mt: 3 }}>
@@ -197,13 +200,13 @@ export default function UsersManagementPage() {
 
           <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
             <TextField
-              label="Поиск"
+              label={t.search.value}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               sx={{ flexGrow: 1 }}
             />
             <Button variant="outlined" onClick={loadUsers} disabled={loading}>
-              Обновить
+              {t.refresh}
             </Button>
           </Box>
 
@@ -216,13 +219,13 @@ export default function UsersManagementPage() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Имя</TableCell>
-                    <TableCell>Роль</TableCell>
-                    <TableCell>Статус</TableCell>
-                    <TableCell>Права</TableCell>
-                    <TableCell>Дата регистрации</TableCell>
-                    <TableCell>Действия</TableCell>
+                    <TableCell>{t.table.email}</TableCell>
+                    <TableCell>{t.table.name}</TableCell>
+                    <TableCell>{t.table.role}</TableCell>
+                    <TableCell>{t.table.status}</TableCell>
+                    <TableCell>{t.table.permissions}</TableCell>
+                    <TableCell>{t.table.createdAt}</TableCell>
+                    <TableCell>{t.table.actions}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -236,15 +239,15 @@ export default function UsersManagementPage() {
                             value={user.role}
                             onChange={(e) => handleUpdateRole(user.id, e.target.value)}
                           >
-                            <MenuItem value="admin">Администратор</MenuItem>
-                            <MenuItem value="user">Пользователь</MenuItem>
-                            <MenuItem value="viewer">Наблюдатель</MenuItem>
+                            <MenuItem value="admin">{t.roles.admin}</MenuItem>
+                            <MenuItem value="user">{t.roles.user}</MenuItem>
+                            <MenuItem value="viewer">{t.roles.viewer}</MenuItem>
                           </Select>
                         </FormControl>
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={user.isActive ? 'Активен' : 'Неактивен'}
+                          label={user.isActive ? t.status.active : t.status.inactive}
                           color={user.isActive ? 'success' : 'default'}
                           size="small"
                           onClick={() => handleToggleActive(user)}
@@ -253,19 +256,21 @@ export default function UsersManagementPage() {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={user.permissions?.length || 'По умолчанию'}
+                          label={user.permissions?.length || t.permissionsChip.default.value}
                           color={user.permissions?.length ? 'primary' : 'default'}
                           size="small"
                         />
                       </TableCell>
                       <TableCell>
-                        {new Date(user.createdAt).toLocaleDateString('ru-RU')}
+                        {new Date(user.createdAt).toLocaleDateString(
+                          locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US',
+                        )}
                       </TableCell>
                       <TableCell>
                         <IconButton
                           size="small"
                           onClick={() => handleEditPermissions(user)}
-                          title="Управление правами"
+                          title={t.tooltips.managePermissions.value}
                         >
                           <Edit />
                         </IconButton>
@@ -289,12 +294,12 @@ export default function UsersManagementPage() {
         fullWidth
       >
         <DialogTitle>
-          Управление правами: {editingUser?.name} ({editingUser?.email})
+          {t.dialog.titlePrefix.value}: {editingUser?.name} ({editingUser?.email})
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Роль: <strong>{editingUser?.role}</strong>. Выберите дополнительные права доступа:
+              {t.dialog.rolePrefix.value}: <strong>{editingUser?.role}</strong>. {t.dialog.subtitleSuffix}
             </Typography>
             <FormGroup>
               {ALL_PERMISSIONS.map((perm) => (
@@ -314,7 +319,7 @@ export default function UsersManagementPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleResetPermissions} disabled={saving} color="warning">
-            Сбросить к умолчаниям
+            {t.dialog.resetDefaults}
           </Button>
           <Button
             onClick={() => {
@@ -323,18 +328,16 @@ export default function UsersManagementPage() {
             }}
             disabled={saving}
           >
-            Отмена
+            {t.dialog.cancel}
           </Button>
           <Button onClick={handleSavePermissions} variant="contained" disabled={saving}>
-            {saving ? <CircularProgress size={20} /> : 'Сохранить'}
+            {saving ? <CircularProgress size={20} /> : t.dialog.save}
           </Button>
         </DialogActions>
       </Dialog>
     </Container>
   );
 }
-
-
 
 
 

@@ -16,6 +16,7 @@ import {
 import { EmailOutlined, LockOutlined } from '@mui/icons-material';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useIntlayer } from 'next-intlayer';
 
 const parseError = (error: any, fallback: string) =>
   error?.response?.data?.message ||
@@ -24,6 +25,7 @@ const parseError = (error: any, fallback: string) =>
 
 export default function ProfileSettingsPage() {
   const { user, loading } = useAuth();
+  const t = useIntlayer('settingsProfilePage');
   const [email, setEmail] = useState('');
   const [emailPassword, setEmailPassword] = useState('');
   const [emailMessage, setEmailMessage] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export default function ProfileSettingsPage() {
     setEmailError(null);
 
     if (!emailPassword) {
-      setEmailError('Введите текущий пароль для подтверждения.');
+      setEmailError(t.validation.passwordRequiredForEmail.value);
       return;
     }
 
@@ -65,11 +67,11 @@ export default function ProfileSettingsPage() {
       });
 
       setEmailMessage(
-        response.data?.message || 'Email успешно обновлён.',
+        response.data?.message || t.emailCard.successFallback.value,
       );
       setEmailPassword('');
     } catch (err: any) {
-      setEmailError(parseError(err, 'Не удалось обновить email.'));
+      setEmailError(parseError(err, t.emailCard.errorFallback.value));
     } finally {
       setEmailLoading(false);
     }
@@ -81,7 +83,7 @@ export default function ProfileSettingsPage() {
     setPasswordError(null);
 
     if (passwords.next !== passwords.confirm) {
-      setPasswordError('Новый пароль и подтверждение не совпадают.');
+      setPasswordError(t.validation.passwordMismatch.value);
       return;
     }
 
@@ -93,11 +95,11 @@ export default function ProfileSettingsPage() {
       });
 
       setPasswordMessage(
-        response.data?.message || 'Пароль успешно обновлён.',
+        response.data?.message || t.passwordCard.successFallback.value,
       );
       setPasswords({ current: '', next: '', confirm: '' });
     } catch (err: any) {
-      setPasswordError(parseError(err, 'Не удалось обновить пароль.'));
+      setPasswordError(parseError(err, t.passwordCard.errorFallback.value));
     } finally {
       setPasswordLoading(false);
     }
@@ -115,7 +117,7 @@ export default function ProfileSettingsPage() {
     return (
       <Container maxWidth="md" sx={{ py: 6 }}>
         <Alert severity="warning">
-          Войдите в систему, чтобы управлять профилем.
+          {t.authRequired}
         </Alert>
       </Container>
     );
@@ -124,108 +126,108 @@ export default function ProfileSettingsPage() {
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Stack spacing={3}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 1 }}>
-            Настройки профиля
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Обновите контактный email и пароль. Изменения вступают в силу сразу после сохранения.
-          </Typography>
-        </Box>
+	        <Box>
+	          <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 1 }}>
+	            {t.title}
+	          </Typography>
+	          <Typography variant="body1" color="text.secondary">
+	            {t.subtitle}
+	          </Typography>
+	        </Box>
 
         <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
           <Stack spacing={2} component="form" onSubmit={handleEmailSubmit}>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <EmailOutlined color="primary" />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                Email
-              </Typography>
-            </Stack>
+	            <Stack direction="row" spacing={1} alignItems="center">
+	              <EmailOutlined color="primary" />
+	              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+	                {t.emailCard.title}
+	              </Typography>
+	            </Stack>
 
             {emailMessage && <Alert severity="success">{emailMessage}</Alert>}
             {emailError && <Alert severity="error">{emailError}</Alert>}
 
-            <TextField
-              label="Новый email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Текущий пароль"
-              type="password"
-              value={emailPassword}
-              onChange={(e) => setEmailPassword(e.target.value)}
-              fullWidth
-              required
-              helperText="Мы запрашиваем пароль, чтобы подтвердить смену email."
-            />
+	            <TextField
+	              label={t.emailCard.newEmailLabel.value}
+	              type="email"
+	              value={email}
+	              onChange={(e) => setEmail(e.target.value)}
+	              fullWidth
+	              required
+	            />
+	            <TextField
+	              label={t.emailCard.currentPasswordLabel.value}
+	              type="password"
+	              value={emailPassword}
+	              onChange={(e) => setEmailPassword(e.target.value)}
+	              fullWidth
+	              required
+	              helperText={t.emailCard.currentPasswordHelp.value}
+	            />
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={emailLoading}
-              >
-                {emailLoading ? <CircularProgress size={22} color="inherit" /> : 'Обновить email'}
-              </Button>
-            </Box>
-          </Stack>
-        </Paper>
+	              <Button
+	                type="submit"
+	                variant="contained"
+	                disabled={emailLoading}
+	              >
+	                {emailLoading ? <CircularProgress size={22} color="inherit" /> : t.emailCard.submit}
+	              </Button>
+	            </Box>
+	          </Stack>
+	        </Paper>
 
         <Paper elevation={0} sx={{ p: 3, border: '1px dashed', borderColor: 'divider' }}>
           <Stack spacing={2} component="form" onSubmit={handlePasswordSubmit}>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <LockOutlined color="primary" />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                Пароль
-              </Typography>
-            </Stack>
+	            <Stack direction="row" spacing={1} alignItems="center">
+	              <LockOutlined color="primary" />
+	              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+	                {t.passwordCard.title}
+	              </Typography>
+	            </Stack>
 
             {passwordMessage && <Alert severity="success">{passwordMessage}</Alert>}
             {passwordError && <Alert severity="error">{passwordError}</Alert>}
 
-            <TextField
-              label="Текущий пароль"
-              type="password"
-              value={passwords.current}
-              onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
-              fullWidth
-              required
-            />
+	            <TextField
+	              label={t.passwordCard.currentPasswordLabel.value}
+	              type="password"
+	              value={passwords.current}
+	              onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+	              fullWidth
+	              required
+	            />
             <Divider />
-            <TextField
-              label="Новый пароль"
-              type="password"
-              value={passwords.next}
-              onChange={(e) => setPasswords({ ...passwords, next: e.target.value })}
-              fullWidth
-              required
-              helperText="Минимум 8 символов."
-            />
-            <TextField
-              label="Подтвердите новый пароль"
-              type="password"
-              value={passwords.confirm}
-              onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
-              fullWidth
-              required
-            />
+	            <TextField
+	              label={t.passwordCard.newPasswordLabel.value}
+	              type="password"
+	              value={passwords.next}
+	              onChange={(e) => setPasswords({ ...passwords, next: e.target.value })}
+	              fullWidth
+	              required
+	              helperText={t.passwordCard.newPasswordHelp.value}
+	            />
+	            <TextField
+	              label={t.passwordCard.confirmPasswordLabel.value}
+	              type="password"
+	              value={passwords.confirm}
+	              onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+	              fullWidth
+	              required
+	            />
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <Button
-                type="submit"
-                variant="contained"
-                color="secondary"
-                disabled={passwordLoading}
-              >
-                {passwordLoading ? <CircularProgress size={22} color="inherit" /> : 'Обновить пароль'}
-              </Button>
-            </Box>
-          </Stack>
-        </Paper>
+	              <Button
+	                type="submit"
+	                variant="contained"
+	                color="secondary"
+	                disabled={passwordLoading}
+	              >
+	                {passwordLoading ? <CircularProgress size={22} color="inherit" /> : t.passwordCard.submit}
+	              </Button>
+	            </Box>
+	          </Stack>
+	        </Paper>
       </Stack>
     </Container>
   );

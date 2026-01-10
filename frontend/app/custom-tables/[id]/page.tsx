@@ -27,9 +27,10 @@ import { useAuth } from '@/app/hooks/useAuth';
 import ConfirmModal from '@/app/components/ConfirmModal';
 import { DayPicker } from 'react-day-picker';
 import { format } from 'date-fns';
-import { ru } from 'date-fns/locale';
+import { enUS, kk, ru } from 'date-fns/locale';
 import 'react-day-picker/style.css';
 import { CustomTableAgGrid } from './CustomTableAgGrid';
+import { useIntlayer, useLocale } from 'next-intlayer';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
 type EditingScope = 'name' | 'description' | 'both';
@@ -83,15 +84,6 @@ type RowFilterOp =
 
 type RowFilter = { col: string; op: RowFilterOp; value?: any };
 
-const COLUMN_TYPES: Array<{ value: ColumnType; label: string }> = [
-  { value: 'text', label: 'Текст' },
-  { value: 'number', label: 'Число' },
-  { value: 'date', label: 'Дата' },
-  { value: 'boolean', label: 'Да/Нет' },
-  { value: 'select', label: 'Выбор' },
-  { value: 'multi_select', label: 'Мультивыбор' },
-];
-
 const COLUMN_ICONS = [
   'mdi:tag',
   'mdi:briefcase',
@@ -113,7 +105,15 @@ export default function CustomTableDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const t = useIntlayer('customTableDetailPage');
+  const { locale } = useLocale();
   const tableId = params?.id;
+
+  const dateFnsLocale = useMemo(() => {
+    if (locale === 'ru') return ru;
+    if (locale === 'kk') return kk;
+    return enUS;
+  }, [locale]);
 
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -157,6 +157,18 @@ export default function CustomTableDetailPage() {
   const [calendarToOpen, setCalendarToOpen] = useState(false);
   const calendarFromRef = useRef<HTMLDivElement | null>(null);
   const calendarToRef = useRef<HTMLDivElement | null>(null);
+
+  const columnTypes = useMemo(
+    () => [
+      { value: 'text' as const, label: t.columnTypes.text.value },
+      { value: 'number' as const, label: t.columnTypes.number.value },
+      { value: 'date' as const, label: t.columnTypes.date.value },
+      { value: 'boolean' as const, label: t.columnTypes.boolean.value },
+      { value: 'select' as const, label: t.columnTypes.select.value },
+      { value: 'multi_select' as const, label: t.columnTypes.multiSelect.value },
+    ],
+    [t.columnTypes],
+  );
 
   const DEFAULT_COLUMN_WIDTH = 180;
   const MIN_COLUMN_WIDTH = 60;
@@ -232,7 +244,7 @@ export default function CustomTableDetailPage() {
       });
     } catch (error) {
       console.error('Failed to persist column width:', error);
-      toast.error('Не удалось сохранить ширину колонки');
+      toast.error(t.grid.columnWidthSaveFailed.value);
       setColumnWidths((prev) => ({ ...prev, [colKey]: prevWidth }));
     }
   };
@@ -344,7 +356,7 @@ export default function CustomTableDetailPage() {
       setCategoryId(currentCategoryId || '');
     } catch (error) {
       console.error('Failed to load table:', error);
-      toast.error('Не удалось загрузить таблицу');
+      toast.error(t.grid.loadTableFailed.value);
     } finally {
       setLoading(false);
     }
@@ -377,7 +389,7 @@ export default function CustomTableDetailPage() {
       setHasMore(next.length >= 50);
     } catch (error) {
       console.error('Failed to load rows:', error);
-      toast.error('Не удалось загрузить строки');
+      toast.error(t.grid.loadRowsFailed.value);
     } finally {
       setLoadingRows(false);
     }
@@ -398,7 +410,7 @@ export default function CustomTableDetailPage() {
   const requestFilters = useMemo<RowFilter[]>(() => {
     const result: RowFilter[] = [];
 
-    const toIsoDate = (date: Date) => format(date, 'yyyy-MM-dd', { locale: ru });
+    const toIsoDate = (date: Date) => format(date, 'yyyy-MM-dd', { locale: dateFnsLocale });
 
     for (const col of orderedColumns) {
       const state = columnFilters[col.key];
@@ -493,7 +505,7 @@ export default function CustomTableDetailPage() {
     const toOk = to && !Number.isNaN(to.getTime());
     if (!fromOk && !toOk) return [];
 
-    const toIsoDate = (date: Date) => format(date, 'yyyy-MM-dd', { locale: ru });
+    const toIsoDate = (date: Date) => format(date, 'yyyy-MM-dd', { locale: dateFnsLocale });
 
     if (fromOk && toOk) {
       return [{ col: dateFilterColKey, op: 'between', value: [toIsoDate(from!), toIsoDate(to!)] }];
@@ -515,7 +527,7 @@ export default function CustomTableDetailPage() {
 
   const formatFilterInputValue = (value: string | null, placeholder: string) => {
     const parsed = parseDateValue(value);
-    return parsed ? format(parsed, 'dd.MM.yyyy', { locale: ru }) : placeholder;
+    return parsed ? format(parsed, 'dd.MM.yyyy', { locale: dateFnsLocale }) : placeholder;
   };
 
   const hasActiveDateFilter = Boolean(dateFrom || dateTo);
@@ -653,7 +665,7 @@ export default function CustomTableDetailPage() {
         await loadTable();
       } catch (error) {
         console.error('Failed to persist column width:', error);
-        toast.error('Не удалось сохранить ширину колонки');
+        toast.error(t.grid.columnWidthSaveFailed.value);
         setColumnWidths((prev) => ({ ...prev, [colKey]: startWidth }));
       }
     };
@@ -724,10 +736,10 @@ export default function CustomTableDetailPage() {
         categoryId: nextCategoryId ? nextCategoryId : null,
       });
       await loadTable();
-      toast.success('Категория обновлена');
+      toast.success(t.category.updated.value);
     } catch (error) {
       console.error('Failed to update category:', error);
-      toast.error('Не удалось обновить категорию');
+      toast.error(t.category.updateFailed.value);
     }
   };
 
@@ -771,7 +783,7 @@ export default function CustomTableDetailPage() {
     if (scope !== 'description') {
       const name = metaDraft.name.trim();
       if (!name) {
-        toast.error('Введите название таблицы');
+        toast.error(t.meta.nameRequired.value);
         return;
       }
       payload.name = name;
@@ -794,10 +806,10 @@ export default function CustomTableDetailPage() {
       setEditingMeta(false);
       setEditingScope(null);
       await loadTable();
-      toast.success('Сохранено');
+      toast.success(t.meta.saved.value);
     } catch (error) {
       console.error('Failed to update table meta:', error);
-      toast.error('Не удалось сохранить изменения');
+      toast.error(t.meta.saveFailed.value);
     } finally {
       setSavingMeta(false);
     }
@@ -805,7 +817,7 @@ export default function CustomTableDetailPage() {
 
   const addRow = async () => {
     if (!tableId) return;
-    const toastId = toast.loading('Добавление строки...');
+    const toastId = toast.loading(t.addRow.loading.value);
     try {
       const response = await apiClient.post(`/custom-tables/${tableId}/rows`, { data: {} });
       const raw = response.data as any;
@@ -819,10 +831,10 @@ export default function CustomTableDetailPage() {
         throw new Error('Unexpected create row response');
       }
       setRows((prev) => [...prev, created]);
-      toast.success('Строка добавлена', { id: toastId });
+      toast.success(t.addRow.success.value, { id: toastId });
     } catch (error) {
       console.error('Failed to add row:', error);
-      toast.error('Не удалось добавить строку', { id: toastId });
+      toast.error(t.addRow.failed.value, { id: toastId });
     }
   };
 
@@ -837,7 +849,7 @@ export default function CustomTableDetailPage() {
       );
     } catch (error) {
       console.error('Failed to update cell:', error);
-      toast.error('Не удалось сохранить значение');
+      toast.error(t.grid.saveValueFailed.value);
     } finally {
       setSavingCell(null);
     }
@@ -870,7 +882,7 @@ export default function CustomTableDetailPage() {
       );
     } catch (error) {
       console.error('Failed to update row:', error);
-      toast.error('Не удалось сохранить изменения');
+      toast.error(t.meta.saveFailed.value);
     } finally {
       setSavingCell(null);
     }
@@ -878,7 +890,7 @@ export default function CustomTableDetailPage() {
 
   const applyRowFill = async (color: string | null) => {
     if (!selectedRowIds.length) {
-      toast.error('Выберите строки, к которым нужно применить заливку');
+      toast.error(t.fill.chooseRowsError.value);
       return;
     }
     setRowFillLoading(true);
@@ -895,10 +907,10 @@ export default function CustomTableDetailPage() {
         }
         await saveRowPatch(rowId, { styles: nextStyles });
       }
-      toast.success(color ? 'Заливка применена' : 'Заливка сброшена');
+      toast.success(color ? t.fill.applied.value : t.fill.clearedToast.value);
     } catch (error) {
       console.error('Failed to apply row fill:', error);
-      toast.error('Не удалось применить заливку');
+      toast.error(t.fill.applyFailed.value);
     } finally {
       setRowFillLoading(false);
     }
@@ -926,10 +938,10 @@ export default function CustomTableDetailPage() {
     try {
       await apiClient.patch(`/custom-tables/${tableId}/columns/${col.id}`, { title });
       await loadTable();
-      toast.success('Название колонки обновлено');
+      toast.success(t.renameColumn.success.value);
     } catch (error) {
       console.error('Failed to rename column:', error);
-      toast.error('Не удалось переименовать колонку');
+      toast.error(t.renameColumn.failed.value);
       throw error;
     }
   };
@@ -941,16 +953,16 @@ export default function CustomTableDetailPage() {
 
   const deleteColumn = async () => {
     if (!tableId || !deleteColumnTarget) return;
-    const toastId = toast.loading('Удаление колонки...');
+    const toastId = toast.loading(t.deleteColumn.loading.value);
     try {
       await apiClient.delete(`/custom-tables/${tableId}/columns/${deleteColumnTarget.id}`);
-      toast.success('Колонка удалена', { id: toastId });
+      toast.success(t.deleteColumn.success.value, { id: toastId });
       setDeleteColumnModalOpen(false);
       setDeleteColumnTarget(null);
       await loadTable();
     } catch (error) {
       console.error('Failed to delete column:', error);
-      toast.error('Не удалось удалить колонку', { id: toastId });
+      toast.error(t.deleteColumn.failed.value, { id: toastId });
     }
   };
 
@@ -961,16 +973,16 @@ export default function CustomTableDetailPage() {
 
   const deleteRow = async () => {
     if (!tableId || !deleteRowTarget) return;
-    const toastId = toast.loading('Удаление строки...');
+    const toastId = toast.loading(t.deleteRow.loading.value);
     try {
       await apiClient.delete(`/custom-tables/${tableId}/rows/${deleteRowTarget.id}`);
-      toast.success('Строка удалена', { id: toastId });
+      toast.success(t.deleteRow.success.value, { id: toastId });
       setRows((prev) => prev.filter((r) => r.id !== deleteRowTarget.id));
       setDeleteRowModalOpen(false);
       setDeleteRowTarget(null);
     } catch (error) {
       console.error('Failed to delete row:', error);
-      toast.error('Не удалось удалить строку', { id: toastId });
+      toast.error(t.deleteRow.failed.value, { id: toastId });
     }
   };
 
@@ -1002,12 +1014,12 @@ export default function CustomTableDetailPage() {
       const url = resp.data?.url || resp.data?.data?.url;
       if (url) {
         setNewColumnIcon(url);
-        toast.success('Иконка загружена');
+        toast.success(t.columnIcon.uploaded.value);
       } else {
         throw new Error('URL missing');
       }
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Не удалось загрузить иконку';
+      const message = err?.response?.data?.message || t.columnIcon.uploadFailed.value;
       toast.error(message);
     } finally {
       setUploadingColumnIcon(false);
@@ -1019,14 +1031,14 @@ export default function CustomTableDetailPage() {
     if (!tableId) return;
     const title = newColumn.title.trim();
     if (!title) return;
-    const toastId = toast.loading('Добавление колонки...');
+    const toastId = toast.loading(t.addColumn.loading.value);
     try {
       await apiClient.post(`/custom-tables/${tableId}/columns`, { 
         title, 
         type: newColumn.type,
         config: { icon: newColumnIcon }
       });
-      toast.success('Колонка добавлена', { id: toastId });
+      toast.success(t.addColumn.success.value, { id: toastId });
       setNewColumnOpen(false);
       setNewColumn({ title: '', type: 'text' });
       setNewColumnIcon('mdi:tag');
@@ -1034,13 +1046,13 @@ export default function CustomTableDetailPage() {
       await loadTable();
     } catch (error) {
       console.error('Failed to create column:', error);
-      toast.error('Не удалось добавить колонку', { id: toastId });
+      toast.error(t.addColumn.failed.value, { id: toastId });
     }
   };
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">Загрузка...</div>
+      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">{t.auth.loading}</div>
     );
   }
 
@@ -1048,7 +1060,7 @@ export default function CustomTableDetailPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600">
-          Войдите в систему, чтобы просматривать таблицу.
+          {t.auth.loginRequired}
         </div>
       </div>
     );
@@ -1058,7 +1070,7 @@ export default function CustomTableDetailPage() {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600">
-          Таблица не найдена.
+          {t.errors.notFound}
         </div>
       </div>
     );
@@ -1068,7 +1080,7 @@ export default function CustomTableDetailPage() {
   // Client-side only rendering to avoid hydration issues
   if (!mounted) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">Загрузка...</div>
+      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">{t.auth.loading}</div>
     );
   }
 
@@ -1098,11 +1110,11 @@ export default function CustomTableDetailPage() {
               className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span className={isFullscreen ? 'hidden sm:inline' : ''}>Назад</span>
+	              <span className={isFullscreen ? 'hidden sm:inline' : ''}>{t.nav.back}</span>
             </button>
             {!isFullscreen && (
                 <Link href="/custom-tables" className="text-sm text-gray-400 hover:text-gray-600">
-                / Таблицы
+	                / {t.nav.tables}
                 </Link>
             )}
           </div>
@@ -1139,7 +1151,7 @@ export default function CustomTableDetailPage() {
                       }}
                       disabled={savingMeta}
                       className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
-                      placeholder="Название таблицы"
+                      placeholder={t.meta.namePlaceholder.value}
                     />
                   )}
                   {(editingScope ?? 'both') !== 'name' && (
@@ -1149,7 +1161,7 @@ export default function CustomTableDetailPage() {
                       rows={1}
                       disabled={savingMeta}
                       className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
-                      placeholder="Описание таблицы"
+                      placeholder={t.meta.descriptionPlaceholder.value}
                     />
                   )}
                   <div className="flex items-center gap-2">
@@ -1160,10 +1172,10 @@ export default function CustomTableDetailPage() {
                         ((editingScope ?? 'both') !== 'description' && !metaDraft.name.trim())
                       }
                       className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Сохранить"
+                      title={t.meta.save.value}
                     >
                       <Save className="h-4 w-4" />
-                      <span className="ml-1 text-[11px]">Сохранить</span>
+                      <span className="ml-1 text-[11px]">{t.meta.save}</span>
                     </button>
                     <button
                       onClick={cancelEditMeta}
@@ -1171,7 +1183,7 @@ export default function CustomTableDetailPage() {
                       className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <X className="h-4 w-4" />
-                      <span className="ml-1 text-[11px]">Отмена</span>
+                      <span className="ml-1 text-[11px]">{t.meta.cancel}</span>
                     </button>
                   </div>
                 </div>
@@ -1181,7 +1193,7 @@ export default function CustomTableDetailPage() {
                   <button
                     onClick={handlePencilClick}
                     className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 bg-white text-gray-700 hover:border-primary hover:text-primary"
-                    title="Редактировать название и описание"
+                    title={t.meta.editTooltip.value}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
@@ -1192,9 +1204,9 @@ export default function CustomTableDetailPage() {
                     anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
                     transformOrigin={{ vertical: 'top', horizontal: 'center' }}
                   >
-                    <MenuItem onClick={() => handleSelectEditScope('name')}>Изменить название</MenuItem>
-                    <MenuItem onClick={() => handleSelectEditScope('description')}>Изменить описание</MenuItem>
-                    <MenuItem onClick={() => handleSelectEditScope('both')}>Название и описание</MenuItem>
+                    <MenuItem onClick={() => handleSelectEditScope('name')}>{t.meta.editMenu.name}</MenuItem>
+                    <MenuItem onClick={() => handleSelectEditScope('description')}>{t.meta.editMenu.description}</MenuItem>
+                    <MenuItem onClick={() => handleSelectEditScope('both')}>{t.meta.editMenu.both}</MenuItem>
                   </Menu>
                 </div>
               )}
@@ -1206,7 +1218,7 @@ export default function CustomTableDetailPage() {
                   onChange={(e) => updateCategory(e.target.value)}
                   className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 max-w-[150px]"
                 >
-                  <option value="">Без категории</option>
+                  <option value="">{t.category.none}</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -1236,7 +1248,7 @@ export default function CustomTableDetailPage() {
               >
                 <CalendarDays className={`h-4 w-4 ${dateFrom ? 'text-primary' : 'text-gray-600'}`} />
                 <span className="min-w-[80px] text-left">
-                  {dateFrom ? formatFilterInputValue(dateFrom, '') : 'Дата от'}
+                  {dateFrom ? formatFilterInputValue(dateFrom, '') : t.dateFilters.from.value}
                 </span>
                 {dateFrom ? (
                   <X
@@ -1254,7 +1266,7 @@ export default function CustomTableDetailPage() {
                   <DayPicker
                     mode="single"
                     selected={selectedDateFrom}
-                    locale={ru}
+                    locale={dateFnsLocale}
                     onSelect={(date) => {
                       if (!date) return;
                       setDateFrom(date.toISOString());
@@ -1279,7 +1291,7 @@ export default function CustomTableDetailPage() {
               >
                 <CalendarDays className={`h-4 w-4 ${dateTo ? 'text-primary' : 'text-gray-600'}`} />
                 <span className="min-w-[80px] text-left">
-                  {dateTo ? formatFilterInputValue(dateTo, '') : 'Дата до'}
+                  {dateTo ? formatFilterInputValue(dateTo, '') : t.dateFilters.to.value}
                 </span>
                 {dateTo ? (
                   <X
@@ -1297,7 +1309,7 @@ export default function CustomTableDetailPage() {
                   <DayPicker
                     mode="single"
                     selected={selectedDateTo}
-                    locale={ru}
+                    locale={dateFnsLocale}
                     onSelect={(date) => {
                       if (!date) return;
                       setDateTo(date.toISOString());
@@ -1315,7 +1327,7 @@ export default function CustomTableDetailPage() {
               onClick={() => setZoomLevel((z) => Math.max(0.5, z - 0.1))}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition hover:border-primary hover:text-primary disabled:opacity-50"
               disabled={zoomLevel <= 0.5}
-              title="Уменьшить масштаб"
+              title={t.zoom.out.value}
             >
               <ZoomOut className="h-4 w-4" />
             </button>
@@ -1326,7 +1338,7 @@ export default function CustomTableDetailPage() {
               onClick={() => setZoomLevel((z) => Math.min(1.5, z + 0.1))}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition hover:border-primary hover:text-primary disabled:opacity-50"
               disabled={zoomLevel >= 1.5}
-              title="Увеличить масштаб"
+              title={t.zoom.in.value}
             >
               <ZoomIn className="h-4 w-4" />
             </button>
@@ -1337,26 +1349,28 @@ export default function CustomTableDetailPage() {
               className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-700 transition hover:border-primary hover:text-primary"
             >
               <Columns className="h-4 w-4" />
-              <span>Колонка</span>
+              <span>{t.fill.column}</span>
             </button>
             <button
               onClick={addRow}
               className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-[11px] font-medium text-white transition hover:bg-primary-hover"
             >
               <Rows className="h-4 w-4" />
-              <span>Строка</span>
+              <span>{t.fill.row}</span>
             </button>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-semibold text-gray-500">
-              {selectedRowIds.length ? `Выбрано строк: ${selectedRowIds.length}` : 'Заливка строк'}
+              {selectedRowIds.length
+                ? `${t.fill.selectedRowsPrefix.value}: ${selectedRowIds.length}`
+                : t.fill.rowsFillTitle.value}
             </span>
             <input
               type="color"
               value={rowFillColor}
               onChange={(e) => setRowFillColor(e.target.value)}
               className="h-7 w-7 rounded-md border border-gray-200"
-              title="Цвет заливки"
+              title={t.fill.colorTooltip.value}
             />
             <button
               onClick={() => applyRowFill(rowFillColor)}
@@ -1367,7 +1381,7 @@ export default function CustomTableDetailPage() {
             >
               <span className="inline-flex items-center gap-1">
                 <PaintBucket className="h-4 w-4" />
-                <span>Заливка</span>
+                <span>{t.fill.fillButton}</span>
               </span>
             </button>
             <button
@@ -1377,7 +1391,7 @@ export default function CustomTableDetailPage() {
                 rowFillLoading || !selectedRowIds.length ? 'opacity-50 cursor-not-allowed' : ''
               } border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200`}
             >
-              Очистить
+              {t.fill.clear}
             </button>
           </div>
         </div>
@@ -1388,31 +1402,31 @@ export default function CustomTableDetailPage() {
            {/* Repurposed New Column Form */}
           <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Название колонки</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.addColumn.titleLabel}</label>
               <input
                 value={newColumn.title}
                 onChange={(e) => setNewColumn((prev) => ({ ...prev, title: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="Например: Сумма, Дата, Контрагент"
+                placeholder={t.addColumn.titlePlaceholder.value}
               />
             </div>
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Тип</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.addColumn.typeLabel}</label>
               <select
                 value={newColumn.type}
                 onChange={(e) => setNewColumn((prev) => ({ ...prev, type: e.target.value as ColumnType }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
-                {COLUMN_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
+                {columnTypes.map((typeItem) => (
+                  <option key={typeItem.value} value={typeItem.value}>
+                    {typeItem.label}
                   </option>
                 ))}
               </select>
             </div>
             <div className="md:col-span-1 relative">
                 {/* Icon Picker (Existing Logic) */}
-               <label className="block text-xs font-semibold text-gray-700 mb-1">Иконка</label>
+               <label className="block text-xs font-semibold text-gray-700 mb-1">{t.addColumn.iconLabel}</label>
               <button
                 type="button"
                 onClick={() => setColumnIconOpen((v) => !v)}
@@ -1421,7 +1435,7 @@ export default function CustomTableDetailPage() {
                  <div className="h-4 w-4">
                   {renderIconPreview(newColumnIcon || 'mdi:tag')}
                 </div>
-                <span className="text-sm font-semibold">Выбрать</span>
+                <span className="text-sm font-semibold">{t.addColumn.choose}</span>
               </button>
               {columnIconOpen && (
                  <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
@@ -1457,7 +1471,7 @@ export default function CustomTableDetailPage() {
                         disabled={uploadingColumnIcon}
                         className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-white py-2 text-sm font-semibold hover:bg-primary-hover disabled:opacity-50 transition-all"
                       >
-                        {uploadingColumnIcon ? 'Загрузка...' : 'Загрузить иконку'}
+                        {uploadingColumnIcon ? t.addColumn.uploading : t.addColumn.uploadIcon}
                       </button>
                     </div>
                  </div>
@@ -1479,7 +1493,7 @@ export default function CustomTableDetailPage() {
                 }}
                 className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
-                Отмена
+                {t.addColumn.cancel}
               </button>
               <button
                 onClick={createColumn}
@@ -1487,7 +1501,7 @@ export default function CustomTableDetailPage() {
                 className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="h-4 w-4" />
-                Сохранить
+                {t.addColumn.save}
               </button>
             </div>
           </div>
@@ -1553,7 +1567,7 @@ export default function CustomTableDetailPage() {
           disabled={!hasMore || loadingRows}
           className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loadingRows ? 'Загрузка...' : hasMore ? 'Загрузить ещё' : 'Больше нет строк'}
+          {loadingRows ? t.grid.loadingMore : hasMore ? t.grid.loadMore : t.grid.noMore}
         </button>
       </div>
 
@@ -1564,14 +1578,14 @@ export default function CustomTableDetailPage() {
           setDeleteColumnTarget(null);
         }}
         onConfirm={deleteColumn}
-        title="Удалить колонку?"
+        title={t.deleteColumn.confirmTitle.value}
         message={
           deleteColumnTarget
-            ? `Колонка “${deleteColumnTarget.title}” будет удалена. Значения в строках останутся в данных, но не будут отображаться (пока не добавите колонку снова).`
-            : 'Колонка будет удалена.'
+            ? `${t.deleteColumn.confirmWithNamePrefix.value}${deleteColumnTarget.title}${t.deleteColumn.confirmWithNameSuffix.value}`
+            : t.deleteColumn.confirmNoName.value
         }
-        confirmText="Удалить"
-        cancelText="Отмена"
+        confirmText={t.deleteColumn.confirm.value}
+        cancelText={t.deleteColumn.cancel.value}
         isDestructive
       />
 
@@ -1582,14 +1596,14 @@ export default function CustomTableDetailPage() {
           setDeleteRowTarget(null);
         }}
         onConfirm={deleteRow}
-        title="Удалить строку?"
+        title={t.deleteRow.confirmTitle.value}
         message={
           deleteRowTarget
-            ? `Строка #${deleteRowTarget.rowNumber} будет удалена.`
-            : 'Строка будет удалена.'
+            ? `${t.deleteRow.confirmWithNumberPrefix.value}${deleteRowTarget.rowNumber}${t.deleteRow.confirmWithNumberSuffix.value}`
+            : t.deleteRow.confirmNoNumber.value
         }
-        confirmText="Удалить"
-        cancelText="Отмена"
+        confirmText={t.deleteRow.confirm.value}
+        cancelText={t.deleteRow.cancel.value}
         isDestructive
       />
     </div>
