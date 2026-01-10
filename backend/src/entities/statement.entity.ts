@@ -61,6 +61,9 @@ export class Statement {
   @Column({ name: 'file_path' })
   filePath: string;
 
+  @Column({ name: 'file_data', type: 'bytea', nullable: true, select: false })
+  fileData: Buffer | null;
+
   @Column({
     name: 'file_type',
     type: 'enum',

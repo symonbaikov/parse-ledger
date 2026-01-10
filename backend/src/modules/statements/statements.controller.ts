@@ -95,20 +95,30 @@ export class StatementsController {
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.STATEMENT_VIEW)
   async getFile(@Param('id') id: string, @CurrentUser() user: User, @Res() res: Response) {
-    const filePath = await this.statementsService.getFilePath(id, user.id);
-    return res.download(filePath, (err) => {
-      if (err) {
-        const status = (err as any)?.code === 'ENOENT' ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR;
-        if (!res.headersSent) {
-          res.status(status).json({
-            error: {
-              code: status === HttpStatus.NOT_FOUND ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR',
-              message: status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to download file',
-            },
-          });
-        }
+    const { stream, fileName, mimeType } = await this.statementsService.getFileStream(id, user.id);
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+    );
+    stream.on('error', (err: any) => {
+      const status =
+        err?.code === 'ENOENT' || err?.code === 'EISDIR'
+          ? HttpStatus.NOT_FOUND
+          : HttpStatus.INTERNAL_SERVER_ERROR;
+      if (!res.headersSent) {
+        res.status(status).json({
+          error: {
+            code: status === HttpStatus.NOT_FOUND ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR',
+            message:
+              status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to download file',
+          },
+        });
+      } else {
+        res.destroy(err);
       }
     });
+    stream.pipe(res);
   }
 
   @Get(':id/view')

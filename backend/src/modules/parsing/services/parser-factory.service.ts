@@ -3,6 +3,7 @@ import { IParser } from '../interfaces/parser.interface';
 import { BerekeNewParser } from '../parsers/bereke-new.parser';
 import { BerekeOldParser } from '../parsers/bereke-old.parser';
 import { KaspiParser } from '../parsers/kaspi.parser';
+import { GenericPdfParser } from '../parsers/generic-pdf.parser';
 import { ExcelParser } from '../parsers/excel.parser';
 import { CsvParser } from '../parsers/csv.parser';
 import { BankName, FileType } from '../../../entities/statement.entity';
@@ -17,6 +18,7 @@ export class ParserFactoryService {
       new BerekeNewParser(),
       new BerekeOldParser(),
       new KaspiParser(),
+      new GenericPdfParser(),
       new ExcelParser(),
       new CsvParser(),
     ];
@@ -115,5 +117,4 @@ export class ParserFactoryService {
     return { bankName: BankName.OTHER };
   }
 }
-
 

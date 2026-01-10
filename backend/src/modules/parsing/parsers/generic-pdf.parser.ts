@@ -1,0 +1,87 @@
+import { BaseParser } from './base.parser';
+import { ParsedStatement } from '../interfaces/parsed-statement.interface';
+import { BankName, FileType } from '../../../entities/statement.entity';
+import { extractTablesFromPdf, extractTextFromPdf } from '../../../common/utils/pdf-parser.util';
+import { AiTransactionExtractor } from '../helpers/ai-transaction-extractor.helper';
+import { mapPdfTableRowsToTransactions } from '../helpers/pdf-table.helper';
+
+export class GenericPdfParser extends BaseParser {
+  private aiExtractor = new AiTransactionExtractor();
+
+  async canParse(bankName: BankName, fileType: FileType): Promise<boolean> {
+    return bankName === BankName.OTHER && fileType === FileType.PDF;
+  }
+
+  async parse(filePath: string): Promise<ParsedStatement> {
+    let text = '';
+    let tableRows: string[][] = [];
+
+    try {
+      text = await extractTextFromPdf(filePath);
+    } catch (error) {
+      console.warn('[GenericPdfParser] Failed to extract PDF text:', (error as Error)?.message);
+    }
+
+    try {
+      const extracted = await extractTablesFromPdf(filePath);
+      tableRows = extracted.rows || [];
+    } catch (error) {
+      console.warn('[GenericPdfParser] Failed to extract PDF tables:', (error as Error)?.message);
+    }
+
+    const detectedCurrency = detectCurrency(text) || 'KZT';
+    const tableTransactions = mapPdfTableRowsToTransactions(tableRows, {
+      defaultCurrency: detectedCurrency,
+      stopWords: ['итого', 'оборот', 'остаток'],
+    });
+
+    let transactions = tableTransactions;
+
+    if (!transactions.length && this.aiExtractor.isAvailable() && text.trim().length) {
+      try {
+        transactions = await this.aiExtractor.extractTransactions(text);
+      } catch (error) {
+        console.warn('[GenericPdfParser] AI extraction failed:', (error as Error)?.message);
+      }
+    }
+
+    const dateRange = this.extractDateRange(text);
+    const transactionDates = transactions.map((t) => t.transactionDate).filter(Boolean);
+    const minDate =
+      transactionDates.length > 0
+        ? new Date(Math.min(...transactionDates.map((d) => d.getTime())))
+        : null;
+    const maxDate =
+      transactionDates.length > 0
+        ? new Date(Math.max(...transactionDates.map((d) => d.getTime())))
+        : null;
+    const dateFrom = dateRange.from || minDate || new Date();
+    const dateTo = dateRange.to || maxDate || dateFrom;
+
+    const balanceStart =
+      this.extractBalance(text, 'Остаток на начало') ||
+      this.extractBalance(text, 'Остаток на начало периода') ||
+      this.extractBalance(text, 'Входящий остаток');
+    const balanceEnd =
+      this.extractBalance(text, 'Остаток на конец') ||
+      this.extractBalance(text, 'Остаток на конец периода') ||
+      this.extractBalance(text, 'Исходящий остаток');
+
+    return {
+      metadata: {
+        accountNumber: this.extractAccountNumber(text) || '',
+        currency: detectedCurrency,
+        dateFrom,
+        dateTo,
+        balanceStart,
+        balanceEnd,
+      },
+      transactions,
+    };
+  }
+}
+
+function detectCurrency(text: string): string | null {
+  const match = text.match(/\b(KZT|USD|EUR|RUB)\b/i);
+  return match ? match[1].toUpperCase() : null;
+}

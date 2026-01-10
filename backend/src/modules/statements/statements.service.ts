@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
+import { Readable } from 'stream';
 import { Statement, StatementStatus, FileType, BankName } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
@@ -88,6 +89,12 @@ export class StatementsService {
   ): Promise<Statement> {
     // Calculate file hash
     const fileHash = await calculateFileHash(file.path);
+    let fileData: Buffer | null = null;
+    try {
+      fileData = await fs.promises.readFile(file.path);
+    } catch (error) {
+      console.warn(`[Statements] Failed to read uploaded file for DB storage: ${(error as Error)?.message}`);
+    }
 
     // Create new statement
     const statement = this.statementRepository.create({
@@ -103,6 +110,15 @@ export class StatementsService {
     });
 
     const savedStatement = (await this.statementRepository.save(statement)) as unknown as Statement;
+    if (fileData) {
+      try {
+        await this.statementRepository.update(savedStatement.id, { fileData });
+      } catch (error) {
+        console.warn(
+          `[Statements] Failed to persist uploaded file in DB: ${(error as Error)?.message}`,
+        );
+      }
+    }
 
     // Log to audit
     await this.auditLogRepository.save({
@@ -322,42 +338,58 @@ export class StatementsService {
   async getFileInfo(
     id: string,
     userId: string,
-  ): Promise<{ filePath: string; fileName: string; mimeType: string }> {
+  ): Promise<{ fileName: string; mimeType: string; filePath?: string; fileData?: Buffer }> {
     const statement = await this.findOne(id, userId);
 
     const resolved = this.resolveFilePath(statement.filePath);
-    if (!resolved) throw new NotFoundException('File not found on disk');
-
-    // Determine MIME type based on file type
-    let mimeType = 'application/octet-stream';
-    switch (statement.fileType) {
-      case FileType.PDF:
-        mimeType = 'application/pdf';
-        break;
-      case FileType.XLSX:
-        mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-        break;
-      case FileType.CSV:
-        mimeType = 'text/csv';
-        break;
-      case FileType.IMAGE:
-        mimeType = 'image/jpeg';
-        break;
+    if (resolved) {
+      return {
+        filePath: resolved,
+        fileName: statement.fileName,
+        mimeType: this.getMimeType(statement.fileType),
+      };
     }
 
+    const statementFile = await this.statementRepository.findOne({
+      where: { id: statement.id },
+      select: ['id', 'fileData'],
+    });
+    const fileData = statementFile?.fileData ?? null;
+    if (!fileData) {
+      throw new NotFoundException('File not found on disk');
+    }
+
+    // Determine MIME type based on file type
     return {
-      filePath: resolved,
       fileName: statement.fileName,
-      mimeType,
+      fileData,
+      mimeType: this.getMimeType(statement.fileType),
     };
+  }
+
+  private getMimeType(fileType: FileType): string {
+    switch (fileType) {
+      case FileType.PDF:
+        return 'application/pdf';
+      case FileType.XLSX:
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case FileType.CSV:
+        return 'text/csv';
+      case FileType.IMAGE:
+        return 'image/jpeg';
+      default:
+        return 'application/octet-stream';
+    }
   }
 
   async getFileStream(
     id: string,
     userId: string,
-  ): Promise<{ stream: fs.ReadStream; fileName: string; mimeType: string }> {
+  ): Promise<{ stream: NodeJS.ReadableStream; fileName: string; mimeType: string }> {
     const info = await this.getFileInfo(id, userId);
-    const stream = fs.createReadStream(info.filePath);
+    const stream = info.filePath
+      ? fs.createReadStream(info.filePath)
+      : Readable.from(info.fileData as Buffer);
     return { stream, fileName: info.fileName, mimeType: info.mimeType };
   }
 }
