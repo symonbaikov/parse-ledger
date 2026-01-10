@@ -19,6 +19,7 @@ if [ ! -f "backend/.env" ]; then
 PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:3000
+APP_URL=http://localhost:3000
 
 # Database Configuration
 DATABASE_URL=postgresql://finflow:finflow@localhost:5432/finflow
@@ -40,6 +41,11 @@ GOOGLE_REDIRECT_URI=http://localhost:3001/api/v1/auth/google/callback
 
 # Telegram Bot Configuration (optional)
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
+
+# Resend (workspace invitations)
+RESEND_API_KEY=
+RESEND_FROM="FinFlow <noreply@your-domain.com>"
+RESEND_REPLY_TO=
 
 # Logging
 LOG_LEVEL=info
@@ -73,7 +79,6 @@ echo "2. Install dependencies: cd backend && npm install && cd ../frontend && np
 echo "3. Start backend: cd backend && npm run start:dev"
 echo "4. Start frontend: cd frontend && npm run dev"
 echo ""
-
 
 
 
