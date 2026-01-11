@@ -35,6 +35,7 @@ describe('StatementsService', () => {
       userRepository as any,
       {} as any,
       {} as any,
+      {} as any,
     );
 
     await service.findAll('user-1', 1, 20);
@@ -58,6 +59,7 @@ describe('StatementsService', () => {
       {} as any,
       {} as any,
       userRepository as any,
+      {} as any,
       {} as any,
       {} as any,
     );
@@ -91,6 +93,7 @@ describe('StatementsService', () => {
       {} as any,
       auditLogRepository as any,
       userRepository as any,
+      {} as any,
       {} as any,
       statementProcessingService as any,
     );
