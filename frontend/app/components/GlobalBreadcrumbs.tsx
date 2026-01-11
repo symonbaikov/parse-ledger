@@ -9,6 +9,11 @@ const HIDDEN_PATHS = new Set<string>(['/login', '/register', '/auth', '/auth/cal
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
+const resolveBreadcrumbHref = (slug: string) => {
+  if (slug === 'settings') return '/settings/profile';
+  return `/${slug}`;
+};
+
 export default function GlobalBreadcrumbs() {
   const pathname = usePathname() || '/';
   const { labels } = useIntlayer('breadcrumbs') as { labels: Record<string, string> };
@@ -21,7 +26,7 @@ export default function GlobalBreadcrumbs() {
     const crumbs = segments.map((_, idx) => {
       const slug = segments.slice(0, idx + 1).join('/');
       const label = labels?.[slug] || capitalize(segments[idx]);
-      const href = idx === segments.length - 1 ? undefined : `/${slug}`;
+      const href = idx === segments.length - 1 ? undefined : resolveBreadcrumbHref(slug);
       return { label, href };
     });
 

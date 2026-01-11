@@ -29,6 +29,15 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 
 type AppLanguage = 'ru' | 'en' | 'kk';
 
@@ -39,7 +48,6 @@ export default function Navigation() {
   const { locale, availableLocales, setLocale } = useLocale();
   const { nav, userMenu, languageModal, languages: languageNames } = useIntlayer('navigation');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [languageModalOpen, setLanguageModalOpen] = useState(false);
   const [languageDraft, setLanguageDraft] = useState<AppLanguage>('ru');
   const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
@@ -147,96 +155,84 @@ export default function Navigation() {
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* User Menu */}
-            <div className="relative ml-3">
-              <button
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
-                className="flex flex-col items-center max-w-xs text-xs font-medium text-secondary hover:text-primary focus:outline-none"
-              >
-                <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                   <User size={16} className="text-gray-500" />
-                </div>
-                <div className="flex items-center mt-1">
-                  <span className="truncate max-w-[80px] hidden sm:block">
-                    {userMenu.profile}
-                  </span>
-                  <ChevronDown size={12} className="ml-0.5" />
-                </div>
-              </button>
+	          <div className="flex items-center gap-4">
+	            {/* User Menu */}
+	            <div className="relative ml-3">
+	              <DropdownMenu>
+	                <DropdownMenuTrigger asChild>
+	                  <button className="flex flex-col items-center max-w-xs text-xs font-medium text-secondary hover:text-primary focus:outline-none">
+	                    <div className="h-7 w-7 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+	                      <User size={16} className="text-gray-500" />
+	                    </div>
+	                    <div className="flex items-center mt-1">
+	                      <span className="truncate max-w-[90px] hidden sm:block">
+	                        {userMenu.profile}
+	                      </span>
+	                      <ChevronDown size={12} className="ml-0.5" />
+	                    </div>
+	                  </button>
+	                </DropdownMenuTrigger>
 
-              {/* Dropdown */}
-              {userMenuOpen && (
-                <div 
-                  className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 py-1 focus:outline-none z-50 animate-in fade-in zoom-in-95 duration-100"
-                  onMouseLeave={() => setUserMenuOpen(false)}
-                >
-                   <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900 truncate">{user.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                   </div>
-                  <Link
-                    href="/settings/profile"
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    <Settings size={16} className="mr-2" />
-                    {userMenu.settings}
-                  </Link>
-                  <Link
-                    href="/settings/workspace"
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    <Users size={16} className="mr-2" />
-                    {userMenu.workspace}
-                  </Link>
-  	                  <Link
-  	                    href="/integrations"
-  	                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-  	                    onClick={() => setUserMenuOpen(false)}
-  	                   >
-  	                    <Plug size={16} className="mr-2" />
-  	                    {userMenu.integrations}
-  	                  </Link>
-  	                  <button
-	                    onClick={() => {
-	                      setUserMenuOpen(false);
+	                <DropdownMenuContent align="end" className="w-[320px] p-2">
+	                  <DropdownMenuLabel className="px-3 py-3">
+	                    <div className="text-base font-semibold text-gray-900 truncate">{user.name}</div>
+	                    <div className="text-sm font-normal text-gray-500 truncate">{user.email}</div>
+	                  </DropdownMenuLabel>
+	                  <DropdownMenuSeparator />
+
+	                  <DropdownMenuItem asChild>
+	                    <Link href="/settings/profile">
+	                      <Settings size={18} className="text-gray-600" />
+	                      <span className="text-base">{userMenu.settings}</span>
+	                    </Link>
+	                  </DropdownMenuItem>
+	                  <DropdownMenuItem asChild>
+	                    <Link href="/settings/workspace">
+	                      <Users size={18} className="text-gray-600" />
+	                      <span className="text-base">{userMenu.workspace}</span>
+	                    </Link>
+	                  </DropdownMenuItem>
+	                  <DropdownMenuItem asChild>
+	                    <Link href="/integrations">
+	                      <Plug size={18} className="text-gray-600" />
+	                      <span className="text-base">{userMenu.integrations}</span>
+	                    </Link>
+	                  </DropdownMenuItem>
+
+	                  <DropdownMenuItem
+	                    onSelect={() => {
 	                      setLanguageDraft(normalizedLocale);
 	                      setLanguagePickerOpen(false);
 	                      setLanguageModalOpen(true);
 	                    }}
-	                    className="w-full flex items-center justify-between px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
 	                  >
-	                    <span className="flex items-center">
-	                      <Languages size={16} className="mr-2" />
-	                      {userMenu.language}
-	                    </span>
-	                    <span className="text-xs text-gray-500">{languageLabel}</span>
-	                  </button>
+	                    <Languages size={18} className="text-gray-600" />
+	                    <span className="text-base">{userMenu.language}</span>
+	                    <DropdownMenuShortcut className="text-sm">{languageLabel}</DropdownMenuShortcut>
+	                  </DropdownMenuItem>
+
 	                  {isAdmin && (
-	                    <Link
-	                      href="/admin"
-	                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      <Shield size={16} className="mr-2" />
-                      {userMenu.admin}
-                    </Link>
-                  )}
-                  <button
-                    onClick={() => {
-                      setUserMenuOpen(false);
-                      logout();
-                      toast.success(userMenu.logoutSuccess.value);
-                    }}
-                    className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    <LogOut size={16} className="mr-2" />
-                    {userMenu.logout}
-	                  </button>
-	                </div>
-	              )}
+	                    <DropdownMenuItem asChild>
+	                      <Link href="/admin">
+	                        <Shield size={18} className="text-gray-600" />
+	                        <span className="text-base">{userMenu.admin}</span>
+	                      </Link>
+	                    </DropdownMenuItem>
+	                  )}
+
+	                  <DropdownMenuSeparator />
+	                  <DropdownMenuItem
+	                    onSelect={() => {
+	                      logout();
+	                      toast.success(userMenu.logoutSuccess.value);
+	                    }}
+	                    className="text-red-600 focus:text-red-700 focus:bg-red-50"
+	                  >
+	                    <LogOut size={18} />
+	                    <span className="text-base">{userMenu.logout}</span>
+	                  </DropdownMenuItem>
+	                </DropdownMenuContent>
+	              </DropdownMenu>
 	            </div>
 
             {/* Mobile menu button */}
