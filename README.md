@@ -1,222 +1,140 @@
-# FinFlow - Система загрузки и обработки банковских выписок
+# FinFlow
 
-Система автоматической загрузки и обработки банковских выписок с интеграцией в Google Sheets и автоматической отправкой отчётов в Telegram.
+FinFlow is a web app for importing and processing bank statements, organizing financial data, and sharing it inside a workspace.
 
-## Структура проекта
+## Highlights
+
+- Bank statement import and parsing
+- Custom tables and data entry
+- Google Sheets integration
+- Workspace invites with roles and granular permissions
+- Telegram reporting
+- Built-in API docs (Swagger)
+
+## Tech Stack
+
+**Backend**
+- Node.js, NestJS
+- PostgreSQL, TypeORM
+- Redis (background/queues where applicable)
+- Swagger (`/api/docs`)
+
+**Frontend**
+- Next.js (App Router), React, TypeScript
+- Tailwind CSS + shadcn-style UI primitives (plus some MUI screens)
+- Axios
+- i18n via Intlayer
+
+## Repository Structure
 
 ```
 parse-ledger/
-├── backend/          # Nest.js backend приложение
-├── frontend/         # Next.js frontend приложение
-├── docs/             # Документация проекта
-├── scripts/          # Вспомогательные скрипты
-└── README.md         # Этот файл
+├── backend/                 # NestJS API
+├── frontend/                # Next.js app
+├── docs/                    # Project docs
+├── observability/           # Prometheus/Grafana configs
+├── scripts/                 # Helper scripts
+├── docker-compose.yml
+├── docker-compose.dev.yml
+└── docker-compose.observability.yml
 ```
 
-## Технологический стек
+## Quick Start
 
-### Backend
-
-- Node.js + NestJS
-- PostgreSQL
-- TypeORM
-- BullMQ + Redis (для фоновых задач)
-- Winston/Pino (логирование)
-
-### Frontend
-
-- Next.js + React
-- TypeScript
-- Material-UI
-- Axios
-
-## 🚀 Быстрый старт
-
-### Вариант 1: Docker (рекомендуется)
+### Option A — Docker (recommended)
 
 ```bash
-# 1. Создайте .env файл в корне проекта
 cp .env.example .env
 
-# 2. Отредактируйте .env и укажите JWT секреты:
-#    JWT_SECRET=<сгенерируйте: openssl rand -base64 32>
-#    JWT_REFRESH_SECRET=<сгенерируйте: openssl rand -base64 32>
-
-# 3. Запустите все сервисы
 docker-compose up -d --build
-
-# Или используйте скрипт
-./scripts/docker-start.sh
 ```
 
-**Доступ:**
+**URLs**
+- Frontend: `http://localhost:3000`
+- Backend API: `http://localhost:3001/api/v1`
+- Swagger: `http://localhost:3001/api/docs`
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:3001/api/v1
+### Option B — Local development
 
-**Просмотр логов:**
+1) Start infra:
+```bash
+docker-compose up -d postgres redis
+```
+
+2) Configure env:
+```bash
+cd backend && cp .env.example .env
+cd ../frontend && cp .env.local.example .env.local
+```
+
+3) Install and run:
+```bash
+npm install
+npm run backend:dev
+```
+
+In a second terminal:
+```bash
+npm run frontend:dev
+```
+
+## Environment Variables (minimum)
+
+**Backend** (`backend/.env`)
+- `DATABASE_URL`
+- `JWT_SECRET` (32+ chars recommended)
+- `JWT_REFRESH_SECRET` (32+ chars recommended)
+
+**Frontend** (`frontend/.env.local`)
+- `NEXT_PUBLIC_API_URL` (example: `http://localhost:3001/api/v1`)
+
+Generate secrets:
+```bash
+openssl rand -base64 32
+```
+
+## Create an Admin User
 
 ```bash
-docker-compose logs -f
+npm run create-admin -- admin@example.com admin123 "Admin User"
 ```
 
-**Остановка:**
+If running via Docker:
+```bash
+docker exec -it finflow-backend npm run create-admin -- admin@example.com admin123 "Admin User"
+```
+
+## Observability (Prometheus + Grafana)
 
 ```bash
-docker-compose down
+docker-compose -f docker-compose.observability.yml up -d
 ```
 
-### Вариант 2: Локальная разработка
+Provisioning lives in `observability/` (datasources, dashboards, Prometheus config).
 
-1. **Запустите базу данных:**
-
-   ```bash
-   docker-compose up -d postgres redis
-   ```
-
-2. **Настройте переменные окружения:**
-
-   ```bash
-   # Backend
-   cd backend
-   cp .env.example .env
-   # Отредактируйте .env
-
-   # Frontend
-   cd ../frontend
-   cp .env.local.example .env.local
-   ```
-
-3. **Установите зависимости и запустите:**
-
-   ```bash
-   # Backend
-   cd backend
-   npm install
-   npm run start:dev
-
-   # Frontend (в другом терминале)
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-## 📚 Документация
-
-- [📋 Требования](./docs/requirements.md)
-- [📅 План реализации](./docs/plan.md)
-- [🏗️ Архитектурные правила](./docs/arch-rules.md)
-- [🚀 Инструкция по запуску](./SETUP.md)
-- [🐳 Docker инструкции](./DOCKER.md)
-- [🧾 API (Swagger)](./docs/api.md) — интерактивная документация доступна на `/api/docs`
-
-## 🔧 Полезные команды
-
-### Docker
+## Useful Commands
 
 ```bash
-# Запуск
-docker-compose up -d --build
+npm run backend:build
+npm run backend:dev
 
-# Логи
-docker-compose logs -f [service]
+npm run frontend:build
+npm run frontend:dev
 
-# Остановка
-docker-compose down
-
-# Пересборка
-docker-compose build --no-cache
+npm run migration:run
 ```
 
-### База данных
+## Documentation
 
-```bash
-# Подключение к PostgreSQL
-docker exec -it finflow-postgres psql -U finflow -d finflow
+- `docs/requirements.md`
+- `docs/plan.md`
+- `docs/arch-rules.md`
+- `docs/api.md`
+- `DOCKER.md`
+- `RAILWAY.md`
 
-# Бэкап
-docker exec finflow-postgres pg_dump -U finflow finflow > backup.sql
-```
+## License
 
-## 📝 Переменные окружения
-
-### Обязательные для запуска
-
-**Backend (.env):**
-
-- `JWT_SECRET` - секрет для JWT токенов (минимум 32 символа)
-- `JWT_REFRESH_SECRET` - секрет для refresh токенов (минимум 32 символа)
-- `DATABASE_URL` - URL базы данных
-
-**Frontend (.env.local):**
-
-- `NEXT_PUBLIC_API_URL` - URL backend API
-
-### Генерация JWT секретов
-
-```bash
-openssl rand -base64 32  # Для JWT_SECRET
-openssl rand -base64 32  # Для JWT_REFRESH_SECRET
-```
-
-## 🎯 Первые шаги
-
-1. Запустите проект (Docker или локально)
-2. Создайте администратора (см. ниже)
-3. Откройте http://localhost:3000 и войдите
-
-## 👤 Создание администратора
-
-### Вариант 1: Через скрипт (рекомендуется)
-
-```bash
-# Локально
-cd backend
-npm run create-admin [email] [password] [name]
-
-# Пример:
-npm run create-admin admin@example.com admin123 "Admin User"
-
-# В Docker контейнере
-docker exec -it finflow-backend npm run create-admin admin@example.com admin123 "Admin User"
-```
-
-### Вариант 2: Через SQL
-
-```bash
-# Подключитесь к базе данных
-docker exec -it finflow-postgres psql -U finflow -d finflow
-
-# Выполните SQL (замените email, password_hash и name)
-INSERT INTO users (id, email, password_hash, name, role, is_active, created_at, updated_at)
-VALUES (
-  gen_random_uuid(),
-  'admin@example.com',
-  '$2b$10$YourHashedPasswordHere',  -- Используйте bcrypt для хеширования пароля
-  'Administrator',
-  'admin',
-  true,
-  NOW(),
-  NOW()
-);
-```
-
-### Вариант 3: Через API (если уже есть пользователь)
-
-1. Зарегистрируйтесь через `/api/v1/auth/register`
-2. Подключитесь к базе данных и обновите роль:
-   ```sql
-   UPDATE users SET role = 'admin' WHERE email = 'your-email@example.com';
-   ```
-
-**По умолчанию (если не указаны параметры):**
-
-- Email: `admin@example.com`
-- Password: `admin123`
-- Name: `Administrator`
-
-⚠️ **ВАЖНО:** Смените пароль после первого входа! 3. Зарегистрируйте аккаунт через `/register` 4. Войдите в систему через `/login` 5. Загрузите первую выписку через `/upload`
-
-## Лицензия
+TBD
 
 Private project
