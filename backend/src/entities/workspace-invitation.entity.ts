@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { Workspace } from './workspace.entity';
 import { User } from './user.entity';
-import { WorkspaceRole } from './workspace-member.entity';
+import { WorkspaceRole, type WorkspaceMemberPermissions } from './workspace-member.entity';
 
 export enum WorkspaceInvitationStatus {
   PENDING = 'pending',
@@ -40,6 +40,9 @@ export class WorkspaceInvitation {
     default: WorkspaceRole.MEMBER,
   })
   role: WorkspaceRole;
+
+  @Column({ name: 'permissions', type: 'jsonb', nullable: true })
+  permissions: WorkspaceMemberPermissions | null;
 
   @Column({ type: 'varchar', unique: true })
   token: string;

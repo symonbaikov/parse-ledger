@@ -17,6 +17,14 @@ export enum WorkspaceRole {
   MEMBER = 'member',
 }
 
+export type WorkspaceMemberPermissions = {
+  canEditStatements?: boolean;
+  canEditCustomTables?: boolean;
+  canEditCategories?: boolean;
+  canEditDataEntry?: boolean;
+  canShareFiles?: boolean;
+};
+
 @Entity('workspace_members')
 @Unique(['workspaceId', 'userId'])
 export class WorkspaceMember {
@@ -48,6 +56,9 @@ export class WorkspaceMember {
     default: WorkspaceRole.MEMBER,
   })
   role: WorkspaceRole;
+
+  @Column({ name: 'permissions', type: 'jsonb', nullable: true })
+  permissions: WorkspaceMemberPermissions | null;
 
   @Column({ name: 'invited_by_id', nullable: true })
   invitedById: string | null;

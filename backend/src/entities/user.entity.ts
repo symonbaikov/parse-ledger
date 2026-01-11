@@ -37,6 +37,15 @@ export class User {
   @Column()
   name: string;
 
+  @Column({ name: 'locale', type: 'varchar', length: 8, default: 'ru' })
+  locale: string;
+
+  @Column({ name: 'time_zone', type: 'varchar', length: 64, nullable: true })
+  timeZone: string | null;
+
+  @Column({ name: 'token_version', type: 'int', default: 0 })
+  tokenVersion: number;
+
   @Column({ nullable: true })
   company: string | null;
 
