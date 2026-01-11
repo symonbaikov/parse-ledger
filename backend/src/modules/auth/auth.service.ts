@@ -12,6 +12,8 @@ import {
   User,
   UserRole,
   Workspace,
+  WorkspaceInvitation,
+  WorkspaceInvitationStatus,
   WorkspaceMember,
   WorkspaceRole,
 } from '../../entities';
@@ -29,14 +31,44 @@ export class AuthService {
     private userRepository: Repository<User>,
     @InjectRepository(Workspace)
     private workspaceRepository: Repository<Workspace>,
+    @InjectRepository(WorkspaceInvitation)
+    private workspaceInvitationRepository: Repository<WorkspaceInvitation>,
     @InjectRepository(WorkspaceMember)
     private workspaceMemberRepository: Repository<WorkspaceMember>,
     private jwtService: JwtService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
+    const normalizedEmail = registerDto.email.trim().toLowerCase();
+    const invitationToken = registerDto.invitationToken?.trim() || null;
+
+    if (invitationToken) {
+      const invitation = await this.workspaceInvitationRepository.findOne({
+        where: { token: invitationToken },
+      });
+
+      if (!invitation) {
+        throw new BadRequestException('Invitation not found or already used');
+      }
+
+      if (invitation.status !== WorkspaceInvitationStatus.PENDING) {
+        throw new BadRequestException('Invitation is not pending');
+      }
+
+      if (invitation.expiresAt && invitation.expiresAt.getTime() < Date.now()) {
+        invitation.status = WorkspaceInvitationStatus.EXPIRED;
+        await this.workspaceInvitationRepository.save(invitation);
+        throw new BadRequestException('Invitation has expired');
+      }
+
+      const invitationEmail = invitation.email.trim().toLowerCase();
+      if (invitationEmail !== normalizedEmail) {
+        throw new BadRequestException('Email does not match invitation');
+      }
+    }
+
     const existingUser = await this.userRepository.findOne({
-      where: { email: registerDto.email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -46,7 +78,7 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(registerDto.password, 10);
 
     const user = this.userRepository.create({
-      email: registerDto.email,
+      email: normalizedEmail,
       passwordHash,
       name: registerDto.name,
       company: registerDto.company || null,
@@ -56,6 +88,10 @@ export class AuthService {
     });
 
     const savedUser = await this.userRepository.save(user);
+
+    if (invitationToken) {
+      return this.generateTokens(savedUser);
+    }
 
     const workspaceName = registerDto.company?.trim()
       ? `${registerDto.company.trim()} workspace`
@@ -82,8 +118,9 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+    const normalizedEmail = loginDto.email.trim().toLowerCase();
     const user = await this.userRepository.findOne({
-      where: { email: loginDto.email },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
@@ -128,10 +165,16 @@ export class AuthService {
         throw new UnauthorizedException('User not found or inactive');
       }
 
+      const tokenVersion = payload.tokenVersion ?? 0;
+      if ((user.tokenVersion ?? 0) !== tokenVersion) {
+        throw new UnauthorizedException('Token has been revoked');
+      }
+
       const accessTokenPayload: JwtPayload = {
         sub: user.id,
         email: user.email,
         role: user.role,
+        tokenVersion: user.tokenVersion ?? 0,
       };
 
       const access_token = this.jwtService.sign(accessTokenPayload, {
@@ -152,16 +195,23 @@ export class AuthService {
     return { message: 'Logged out successfully' };
   }
 
+  async logoutAll(userId: string): Promise<{ message: string }> {
+    await this.userRepository.increment({ id: userId }, 'tokenVersion', 1);
+    return { message: 'Logged out from all devices successfully' };
+  }
+
   private generateTokens(user: User): AuthResponseDto {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
     };
 
     const refreshPayload: JwtRefreshPayload = {
       sub: user.id,
       type: 'refresh',
+      tokenVersion: user.tokenVersion ?? 0,
     };
 
     const access_token = this.jwtService.sign(payload, {
@@ -181,6 +231,8 @@ export class AuthService {
         name: user.name,
         role: user.role,
         workspaceId: user.workspaceId || null,
+        locale: user.locale,
+        timeZone: user.timeZone ?? null,
       },
       access_token,
       refresh_token,

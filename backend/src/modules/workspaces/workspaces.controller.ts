@@ -4,9 +4,11 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { WorkspacesService } from './workspaces.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -32,9 +34,24 @@ export class WorkspacesController {
   }
 
   @Public()
-  @Post('invitations/accept')
+  @Throttle({ default: { limit: 30, ttl: 60000 } }) // 30 per minute
+  @Get('invitations/:token')
+  async getInvitation(@Param('token') token: string) {
+    return this.workspacesService.getInvitationInfo(token);
+  }
+
+  @Post('invitations/:token/accept')
+  @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 per minute
   @HttpCode(HttpStatus.OK)
-  async acceptInvitation(@Body() dto: AcceptInvitationDto) {
-    return this.workspacesService.acceptInvitation(dto);
+  async acceptInvitation(@CurrentUser() user: User, @Param('token') token: string) {
+    return this.workspacesService.acceptInvitation(user, token);
+  }
+
+  @Post('invitations/accept')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async acceptInvitationLegacy(@CurrentUser() user: User, @Body() dto: AcceptInvitationDto) {
+    return this.workspacesService.acceptInvitation(user, dto.token);
   }
 }

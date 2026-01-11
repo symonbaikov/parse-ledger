@@ -10,6 +10,7 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  tokenVersion?: number;
   iat?: number;
   exp?: number;
   jti?: string;
@@ -41,16 +42,35 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   async validate(payload: JwtPayload): Promise<User> {
     const user = await this.userRepository.findOne({
       where: { id: payload.sub, isActive: true },
+      select: [
+        'id',
+        'email',
+        'name',
+        'role',
+        'workspaceId',
+        'permissions',
+        'telegramId',
+        'telegramChatId',
+        'locale',
+        'timeZone',
+        'lastLogin',
+        'tokenVersion',
+        'isActive',
+      ],
     });
 
     if (!user) {
       throw new UnauthorizedException('User not found or inactive');
     }
 
+    const tokenVersion = payload.tokenVersion ?? 0;
+    if ((user.tokenVersion ?? 0) !== tokenVersion) {
+      throw new UnauthorizedException('Token has been revoked');
+    }
+
     return user;
   }
 }
-
 
 
 

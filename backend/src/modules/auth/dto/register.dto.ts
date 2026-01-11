@@ -14,8 +14,11 @@ export class RegisterDto {
   @IsString()
   @IsOptional()
   company?: string;
-}
 
+  @IsString()
+  @IsOptional()
+  invitationToken?: string;
+}
 
 
 

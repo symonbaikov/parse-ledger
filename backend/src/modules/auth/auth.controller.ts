@@ -55,9 +55,15 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('logout-all')
+  @HttpCode(HttpStatus.OK)
+  async logoutAll(@CurrentUser() user: User): Promise<{ message: string }> {
+    return this.authService.logoutAll(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   async getProfile(@CurrentUser() user: User): Promise<User> {
     return user;
   }
 }
-

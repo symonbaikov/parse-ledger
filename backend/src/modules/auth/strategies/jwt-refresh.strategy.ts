@@ -9,6 +9,7 @@ import { User } from '../../../entities/user.entity';
 export interface JwtRefreshPayload {
   sub: string;
   type: 'refresh';
+  tokenVersion?: number;
   iat?: number;
   exp?: number;
   jti?: string;
@@ -47,16 +48,21 @@ export class JwtRefreshStrategy extends PassportStrategy(
 
     const user = await this.userRepository.findOne({
       where: { id: payload.sub, isActive: true },
+      select: ['id', 'email', 'name', 'role', 'workspaceId', 'tokenVersion', 'isActive'],
     });
 
     if (!user) {
       throw new UnauthorizedException('User not found or inactive');
     }
 
+    const tokenVersion = payload.tokenVersion ?? 0;
+    if ((user.tokenVersion ?? 0) !== tokenVersion) {
+      throw new UnauthorizedException('Token has been revoked');
+    }
+
     return user;
   }
 }
-
 
 
 

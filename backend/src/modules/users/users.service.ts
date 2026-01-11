@@ -13,6 +13,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { Permission } from '../../common/enums/permissions.enum';
 import { ChangeEmailDto } from './dto/change-email.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateMyPreferencesDto } from './dto/update-my-preferences.dto';
 
 @Injectable()
 export class UsersService {
@@ -20,6 +21,38 @@ export class UsersService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {}
+
+  private async findOneWithPassword(id: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      select: [
+        'id',
+        'email',
+        'passwordHash',
+        'name',
+        'company',
+        'role',
+        'workspaceId',
+        'googleId',
+        'telegramId',
+        'telegramChatId',
+        'createdAt',
+        'updatedAt',
+        'lastLogin',
+        'isActive',
+        'permissions',
+        'locale',
+        'timeZone',
+        'tokenVersion',
+      ],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
 
   async findAll(page: number = 1, limit: number = 20): Promise<{
     data: User[];
@@ -31,6 +64,24 @@ export class UsersService {
       skip: (page - 1) * limit,
       take: limit,
       order: { createdAt: 'DESC' },
+      select: [
+        'id',
+        'email',
+        'name',
+        'company',
+        'role',
+        'workspaceId',
+        'googleId',
+        'telegramId',
+        'telegramChatId',
+        'createdAt',
+        'updatedAt',
+        'lastLogin',
+        'isActive',
+        'permissions',
+        'locale',
+        'timeZone',
+      ],
     });
 
     return {
@@ -42,7 +93,27 @@ export class UsersService {
   }
 
   async findOne(id: string): Promise<User> {
-    const user = await this.userRepository.findOne({ where: { id } });
+    const user = await this.userRepository.findOne({
+      where: { id },
+      select: [
+        'id',
+        'email',
+        'name',
+        'company',
+        'role',
+        'workspaceId',
+        'googleId',
+        'telegramId',
+        'telegramChatId',
+        'createdAt',
+        'updatedAt',
+        'lastLogin',
+        'isActive',
+        'permissions',
+        'locale',
+        'timeZone',
+      ],
+    });
 
     if (!user) {
       throw new NotFoundException('User not found');
@@ -119,7 +190,7 @@ export class UsersService {
   }
 
   async changeEmail(userId: string, dto: ChangeEmailDto): Promise<User> {
-    const user = await this.findOne(userId);
+    const user = await this.findOneWithPassword(userId);
 
     const isPasswordValid = await bcrypt.compare(
       dto.currentPassword,
@@ -145,7 +216,7 @@ export class UsersService {
   }
 
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
-    const user = await this.findOne(userId);
+    const user = await this.findOneWithPassword(userId);
 
     const isPasswordValid = await bcrypt.compare(
       dto.currentPassword,
@@ -159,5 +230,21 @@ export class UsersService {
     user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
     await this.userRepository.save(user);
   }
-}
 
+  async updateMyPreferences(userId: string, dto: UpdateMyPreferencesDto): Promise<User> {
+    const user = await this.findOneWithPassword(userId);
+
+    if (dto.name !== undefined) {
+      user.name = dto.name.trim();
+    }
+    if (dto.locale !== undefined) {
+      user.locale = dto.locale;
+    }
+    if (dto.timeZone !== undefined) {
+      const tz = dto.timeZone;
+      user.timeZone = tz === null ? null : String(tz).trim() || null;
+    }
+
+    return this.userRepository.save(user);
+  }
+}

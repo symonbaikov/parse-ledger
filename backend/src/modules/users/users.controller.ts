@@ -26,6 +26,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User, UserRole } from '../../entities/user.entity';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ChangeEmailDto } from './dto/change-email.dto';
+import { UpdateMyPreferencesDto } from './dto/update-my-preferences.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -177,5 +178,11 @@ export class UsersController {
     await this.usersService.changePassword(currentUser.id, dto);
     return { message: 'Password updated successfully' };
   }
-}
 
+  @Patch('me/preferences')
+  async updateMyPreferences(@CurrentUser() currentUser: User, @Body() dto: UpdateMyPreferencesDto) {
+    const updatedUser = await this.usersService.updateMyPreferences(currentUser.id, dto);
+    const { passwordHash, ...safeUser } = updatedUser as any;
+    return { user: safeUser, message: 'Profile updated successfully' };
+  }
+}
