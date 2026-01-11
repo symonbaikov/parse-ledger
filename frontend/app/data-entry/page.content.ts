@@ -104,12 +104,42 @@ const content = {
         en: 'Shows the latest entries from the database',
         kk: 'Базадағы соңғы жазбалар көрсетіледі',
       }),
+      searchEntriesPlaceholder: t({
+        ru: 'Поиск по записям…',
+        en: 'Search entries…',
+        kk: 'Жазбалар бойынша іздеу…',
+      }),
+      clearSearchTitle: t({
+        ru: 'Очистить поиск',
+        en: 'Clear search',
+        kk: 'Іздеуді тазалау',
+      }),
+      filterDateTitle: t({
+        ru: 'Фильтр по дате',
+        en: 'Filter by date',
+        kk: 'Күн бойынша сүзгі',
+      }),
+      clearDateTitle: t({
+        ru: 'Очистить дату',
+        en: 'Clear date',
+        kk: 'Күнді тазалау',
+      }),
       loadingData: t({ ru: 'Загрузка данных...', en: 'Loading data...', kk: 'Деректер жүктелуде...' }),
       noEntriesForTab: t({
         ru: 'Пока нет записей для этой вкладки',
         en: 'No entries for this tab yet',
         kk: 'Бұл қойынды үшін әзірге жазбалар жоқ',
       }),
+      noEntriesFound: t({
+        ru: 'Ничего не найдено',
+        en: 'No results found',
+        kk: 'Ештеңе табылмады',
+      }),
+      paginationPrev: t({ ru: 'Назад', en: 'Prev', kk: 'Артқа' }),
+      paginationNext: t({ ru: 'Вперёд', en: 'Next', kk: 'Алға' }),
+      paginationPageShort: t({ ru: 'Стр.', en: 'Page', kk: 'Бет' }),
+      paginationShowingPrefix: t({ ru: 'Показано', en: 'Showing', kk: 'Көрсетілгені' }),
+      paginationShowingOf: t({ ru: 'из', en: 'of', kk: 'ішінен' }),
       noComment: t({ ru: 'Без комментария', en: 'No comment', kk: 'Түсініктеме жоқ' }),
       deleteTabTitle: t({ ru: 'Удалить вкладку', en: 'Delete tab', kk: 'Қойындыны жою' }),
       deleteEntryTitle: t({ ru: 'Удалить запись', en: 'Delete entry', kk: 'Жазбаны жою' }),
@@ -169,4 +199,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

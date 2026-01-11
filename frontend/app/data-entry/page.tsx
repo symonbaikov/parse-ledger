@@ -10,15 +10,19 @@ import { Icon } from '@iconify/react';
 import {
   Calendar as CalendarIcon,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   DollarSign,
   Droplets,
   Loader2,
   Plus,
+  Search,
   Table,
   TrendingDown,
   TrendingUp,
   Trash2,
+  X,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/app/hooks/useAuth';
@@ -93,6 +97,17 @@ const CUSTOM_FIELD_ICONS = [
   'mdi:star',
 ];
 
+const PAGE_SIZE = 20;
+
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedValue(value), delayMs);
+    return () => window.clearTimeout(timeout);
+  }, [value, delayMs]);
+  return debouncedValue;
+}
+
 const resolveLocale = (locale: string) => {
   if (locale === 'ru') return 'ru-RU';
   if (locale === 'kk') return 'kk-KZ';
@@ -119,6 +134,13 @@ export default function DataEntryPage() {
     credit: { ...initialForm },
   });
   const [entries, setEntries] = useState<Record<string, Entry[]>>({});
+  const [listQueryByTab, setListQueryByTab] = useState<Record<string, string>>({});
+  const [listDateByTab, setListDateByTab] = useState<Record<string, string>>({});
+  const [listPageByTab, setListPageByTab] = useState<Record<string, number>>({});
+  const [listMetaByTab, setListMetaByTab] = useState<
+    Record<string, { total: number; page: number; limit: number }>
+  >({});
+  const listRequestSeq = useRef(0);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
   const [dataEntryTables, setDataEntryTables] = useState<DataEntryTableLink[]>([]);
   const [loadingCustomFields, setLoadingCustomFields] = useState(false);
@@ -143,6 +165,7 @@ export default function DataEntryPage() {
   const [error, setError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [listCalendarOpen, setListCalendarOpen] = useState(false);
   const [customIconOpen, setCustomIconOpen] = useState(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [exportingTable, setExportingTable] = useState(false);
@@ -240,10 +263,6 @@ export default function DataEntryPage() {
           amount: Number.isNaN(amountNumSafe) ? 0 : amountNumSafe,
           currency: savedRaw?.currency || 'KZT',
         };
-        setEntries((prev) => ({
-          ...prev,
-          [tab]: [saved, ...(prev[tab] || [])],
-        }));
         if (isFieldTab(tab)) {
           const fieldId = getFieldId(tab);
           setCustomFields((prev) =>
@@ -264,6 +283,17 @@ export default function DataEntryPage() {
         }));
         setStatus({ type: 'success', message: t.status.dataSaved.value });
         toast.success(t.status.entrySaved.value);
+
+        // Reload list (page 1) so pagination/search remain correct.
+        const query = (listQueryByTab[tab] ?? '').trim();
+        const date = (listDateByTab[tab] ?? '').trim();
+        setPageForTab(tab, 1);
+        if (isBaseTab(tab)) {
+          loadEntries(tab, { page: 1, query, date });
+        } else if (isFieldTab(tab)) {
+          const fieldId = getFieldId(tab);
+          loadCustomTabEntries(fieldId, tab, { page: 1, query, date });
+        }
       })
       .catch((err) => {
         const message = err?.response?.data?.message || t.errors.saveFailed.value;
@@ -276,11 +306,49 @@ export default function DataEntryPage() {
   const currentForm = forms[activeTab] || initialForm;
   const currentMeta = tabMeta[activeTab as BaseTabKey] || tabMeta.custom;
   const currentEntries = entries[activeTab] || [];
+  const activeQuery = listQueryByTab[activeTab] ?? '';
+  const activeDate = listDateByTab[activeTab] ?? '';
+  const activePage = listPageByTab[activeTab] ?? 1;
+  const debouncedActiveQuery = useDebouncedValue(activeQuery, 250);
+  const activeListMeta = listMetaByTab[activeTab];
+  const effectiveListMeta = useMemo(
+    () => activeListMeta || { total: currentEntries.length, page: activePage, limit: PAGE_SIZE },
+    [activeListMeta, activePage, currentEntries.length],
+  );
+  const effectiveTotalPages = Math.max(
+    1,
+    Math.ceil((effectiveListMeta.total || 0) / (effectiveListMeta.limit || PAGE_SIZE)),
+  );
+  const effectiveStartIndex =
+    effectiveListMeta.total <= 0 ? 0 : (effectiveListMeta.page - 1) * effectiveListMeta.limit + 1;
+  const effectiveEndIndex =
+    effectiveListMeta.total <= 0
+      ? 0
+      : Math.min(effectiveListMeta.page * effectiveListMeta.limit, effectiveListMeta.total);
+  const canGoPrev = effectiveListMeta.page > 1;
+  const canGoNext = effectiveListMeta.page < effectiveTotalPages;
+  const showPagination =
+    Boolean(activeListMeta) &&
+    (effectiveListMeta.total > effectiveListMeta.limit || effectiveListMeta.page > 1);
 
   const isBaseTab = (tab: TabKey): tab is BaseTabKey =>
     tab === 'cash' || tab === 'raw' || tab === 'debit' || tab === 'credit';
   const isFieldTab = (tab: TabKey): tab is CustomFieldTabKey => tab.startsWith('field:');
   const getFieldId = (tab: CustomFieldTabKey) => tab.slice('field:'.length);
+
+  const setQueryForTab = (tab: TabKey, query: string) => {
+    setListQueryByTab((prev) => ({ ...prev, [tab]: query }));
+    setListPageByTab((prev) => ({ ...prev, [tab]: 1 }));
+  };
+
+  const setDateForTab = (tab: TabKey, date: string) => {
+    setListDateByTab((prev) => ({ ...prev, [tab]: date }));
+    setListPageByTab((prev) => ({ ...prev, [tab]: 1 }));
+  };
+
+  const setPageForTab = (tab: TabKey, page: number) => {
+    setListPageByTab((prev) => ({ ...prev, [tab]: Math.max(1, page) }));
+  };
 
   const getTabLabel = (tab: TabKey): string => {
     if (isBaseTab(tab)) return tabMeta[tab].label;
@@ -334,14 +402,30 @@ export default function DataEntryPage() {
     }
   };
 
-  const loadEntries = (tab: BaseTabKey) => {
+  const loadEntries = (
+    tab: BaseTabKey,
+    opts?: { page?: number; query?: string; date?: string },
+  ) => {
     setLoadingList(true);
     setError(null);
+    const requestId = ++listRequestSeq.current;
+    const page = Math.max(opts?.page ?? 1, 1);
+    const query = (opts?.query ?? '').trim();
+    const date = (opts?.date ?? '').trim();
     apiClient
-      .get(`/data-entry?type=${tab}&limit=20`)
+      .get('/data-entry', {
+        params: {
+          type: tab,
+          limit: PAGE_SIZE,
+          page,
+          q: query || undefined,
+          date: date || undefined,
+        },
+      })
       .then((resp) => {
-        const rawItems: Entry[] =
-          resp.data?.items || resp.data?.data?.items || resp.data?.data || [];
+        if (requestId !== listRequestSeq.current) return;
+        const payload = resp.data?.data || resp.data;
+        const rawItems: Entry[] = payload?.items || payload?.data?.items || payload?.data || [];
         const items = rawItems.map((item) => {
           const amountNum = Number((item as any)?.amount);
           return {
@@ -350,27 +434,58 @@ export default function DataEntryPage() {
             currency: (item as any)?.currency || 'KZT',
           };
         });
+        const totalRaw = payload?.total ?? payload?.data?.total;
+        const limitRaw = payload?.limit ?? payload?.data?.limit ?? PAGE_SIZE;
+        const pageRaw = payload?.page ?? payload?.data?.page ?? page;
         setEntries((prev) => ({
           ...prev,
           [tab]: items,
         }));
+        setListMetaByTab((prev) => ({
+          ...prev,
+          [tab]: {
+            total: typeof totalRaw === 'number' ? totalRaw : items.length,
+            limit: typeof limitRaw === 'number' ? limitRaw : PAGE_SIZE,
+            page: typeof pageRaw === 'number' ? pageRaw : page,
+          },
+        }));
       })
       .catch((err) => {
+        if (requestId !== listRequestSeq.current) return;
         const message = err?.response?.data?.message || t.errors.loadEntriesFailed.value;
         setError(message);
         toast.error(message);
       })
-      .finally(() => setLoadingList(false));
+      .finally(() => {
+        if (requestId === listRequestSeq.current) setLoadingList(false);
+      });
   };
 
-  const loadCustomTabEntries = (customTabId: string, tabKey: CustomFieldTabKey) => {
+  const loadCustomTabEntries = (
+    customTabId: string,
+    tabKey: CustomFieldTabKey,
+    opts?: { page?: number; query?: string; date?: string },
+  ) => {
     setLoadingList(true);
     setError(null);
+    const requestId = ++listRequestSeq.current;
+    const page = Math.max(opts?.page ?? 1, 1);
+    const query = (opts?.query ?? '').trim();
+    const date = (opts?.date ?? '').trim();
     apiClient
-      .get(`/data-entry?customTabId=${customTabId}&limit=20`)
+      .get('/data-entry', {
+        params: {
+          customTabId,
+          limit: PAGE_SIZE,
+          page,
+          q: query || undefined,
+          date: date || undefined,
+        },
+      })
       .then((resp) => {
-        const rawItems: Entry[] =
-          resp.data?.items || resp.data?.data?.items || resp.data?.data || [];
+        if (requestId !== listRequestSeq.current) return;
+        const payload = resp.data?.data || resp.data;
+        const rawItems: Entry[] = payload?.items || payload?.data?.items || payload?.data || [];
         const items = rawItems.map((item) => {
           const amountNum = Number((item as any)?.amount);
           return {
@@ -379,17 +494,31 @@ export default function DataEntryPage() {
             currency: (item as any)?.currency || 'KZT',
           };
         });
+        const totalRaw = payload?.total ?? payload?.data?.total;
+        const limitRaw = payload?.limit ?? payload?.data?.limit ?? PAGE_SIZE;
+        const pageRaw = payload?.page ?? payload?.data?.page ?? page;
         setEntries((prev) => ({
           ...prev,
           [tabKey]: items,
         }));
+        setListMetaByTab((prev) => ({
+          ...prev,
+          [tabKey]: {
+            total: typeof totalRaw === 'number' ? totalRaw : items.length,
+            limit: typeof limitRaw === 'number' ? limitRaw : PAGE_SIZE,
+            page: typeof pageRaw === 'number' ? pageRaw : page,
+          },
+        }));
       })
       .catch((err) => {
+        if (requestId !== listRequestSeq.current) return;
         const message = err?.response?.data?.message || t.errors.loadEntriesFailed.value;
         setError(message);
         toast.error(message);
       })
-      .finally(() => setLoadingList(false));
+      .finally(() => {
+        if (requestId === listRequestSeq.current) setLoadingList(false);
+      });
   };
 
   const loadCustomFields = () => {
@@ -663,18 +792,14 @@ export default function DataEntryPage() {
   useEffect(() => {
     if (!user) return;
     if (isBaseTab(activeTab)) {
-      if ((entries[activeTab] || []).length === 0) {
-        loadEntries(activeTab);
-      }
+      loadEntries(activeTab, { page: activePage, query: debouncedActiveQuery, date: activeDate });
       return;
     }
     if (isFieldTab(activeTab)) {
       const id = getFieldId(activeTab);
-      if ((entries[activeTab] || []).length === 0) {
-        loadCustomTabEntries(id, activeTab);
-      }
+      loadCustomTabEntries(id, activeTab, { page: activePage, query: debouncedActiveQuery, date: activeDate });
     }
-  }, [activeTab, user]);
+  }, [activeTab, user, activePage, debouncedActiveQuery, activeDate]);
 
   useEffect(() => {
     if (!user) return;
@@ -704,6 +829,15 @@ export default function DataEntryPage() {
           );
         }
         setStatus({ type: 'success', message: t.status.entryDeleted.value });
+
+        const query = (listQueryByTab[effectiveTab] ?? '').trim();
+        const date = (listDateByTab[effectiveTab] ?? '').trim();
+        const page = listPageByTab[effectiveTab] ?? 1;
+        if (isBaseTab(effectiveTab)) {
+          loadEntries(effectiveTab, { page, query, date });
+        } else if (isFieldTab(effectiveTab)) {
+          loadCustomTabEntries(getFieldId(effectiveTab), effectiveTab, { page, query, date });
+        }
       })
       .catch((err) => {
         const message = err?.response?.data?.message || t.errors.deleteEntryFailed.value;
@@ -1135,76 +1269,213 @@ export default function DataEntryPage() {
 	        </div>
 	      </div>
 
-      {(isBaseTab(activeTab) || isFieldTab(activeTab)) && (
-	      <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
-	        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 bg-gray-50/50 rounded-t-xl">
-	          <div className="flex items-center gap-2">
-	            <Droplets className="h-5 w-5 text-primary" />
-			            <h3 className="font-semibold text-gray-900">
-			              {t.labels.recentEntriesTitlePrefix}
-			              {getTabLabel(activeTab)}
-			            </h3>
-	          </div>
-	          <span className="text-xs text-gray-500 font-medium">{t.labels.recentEntriesHint}</span>
-	        </div>
-	
-	        {loadingList ? (
-	          <div className="px-4 py-8 text-center text-sm text-gray-500">{t.labels.loadingData}</div>
-	          ) : currentEntries.length === 0 ? (
-	          <div className="px-4 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
-	             <div className="bg-gray-100 p-3 rounded-full mb-3">
-	                <ClipboardList className="h-6 w-6 text-gray-400" />
-	             </div>
-	             {t.labels.noEntriesForTab}
-	          </div>
-	        ) : (
-          <div className="divide-y divide-gray-100">
-            {currentEntries.map((entry) => (
-              <div key={entry.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50/80 transition-colors group">
-                <div>
-	                  <div className="flex items-center gap-2">
-	                     <p className="text-sm font-bold text-gray-900">{format(new Date(entry.date), 'dd.MM.yyyy')}</p>
-	                     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">{getTabLabel(activeTab)}</span>
-	                  </div>
-	                  <p className="text-xs text-gray-600 mt-0.5">
-	                    {entry.note || t.labels.noComment.value}
-	                    {entry.customFieldName && entry.customFieldValue ? (
-                      <span className="inline-flex items-center gap-1">
-                        <span className="mx-1">•</span>
-                        {entry.customFieldIcon ? (
-                          <Icon icon={entry.customFieldIcon} className="h-3.5 w-3.5 text-gray-500" />
-                        ) : null}
-                        <span>
-                          {entry.customFieldName}: {entry.customFieldValue}
-                        </span>
-                      </span>
-                    ) : null}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-	                  <div className="text-right">
-	                    <p className="text-sm font-bold text-gray-900 font-mono">
-	                      {Number(entry.amount || 0).toLocaleString(resolveLocale(locale), { minimumFractionDigits: 2 })}
-	                    </p>
-                    <div className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold text-right">
-                      {entry.currency || 'KZT'}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDelete(entry.id)}
-	                    disabled={removingId === entry.id}
-	                    className="p-2 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-	                    title={t.labels.deleteEntryTitle.value}
-	                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      )}
+	      {(isBaseTab(activeTab) || isFieldTab(activeTab)) && (
+		      <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
+		        <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 bg-gray-50/50 rounded-t-xl sm:flex-row sm:items-center sm:justify-between">
+		          <div className="flex items-center gap-2">
+		            <Droplets className="h-5 w-5 text-primary" />
+		            <h3 className="font-semibold text-gray-900">
+		              {t.labels.recentEntriesTitlePrefix}
+		              {getTabLabel(activeTab)}
+		            </h3>
+		          </div>
+		          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+		            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+		              <div className="relative w-full sm:w-72">
+		              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+		              <input
+		                type="search"
+		                value={activeQuery}
+		                onChange={(e) => setQueryForTab(activeTab, e.target.value)}
+		                placeholder={t.labels.searchEntriesPlaceholder.value}
+		                className="w-full rounded-full border border-gray-200 bg-white pl-9 pr-9 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+		              />
+		              {activeQuery ? (
+		                <button
+		                  type="button"
+		                  onClick={() => setQueryForTab(activeTab, '')}
+		                  title={t.labels.clearSearchTitle.value}
+		                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+		                >
+		                  <X className="h-4 w-4" />
+		                </button>
+		              ) : null}
+		              </div>
+
+  		              <div className="relative w-full sm:w-48">
+		                <div
+		                  className={`w-full rounded-full border bg-white pl-9 pr-9 py-1.5 text-sm flex items-center justify-between cursor-pointer transition-colors ${
+		                    listCalendarOpen
+		                      ? 'border-primary ring-1 ring-primary'
+		                      : 'border-gray-200 hover:border-gray-300'
+		                  }`}
+		                  onClick={() => {
+		                    setCalendarOpen(false);
+		                    setCustomIconOpen(false);
+		                    setExportMenuOpen(false);
+		                    setListCalendarOpen((v) => !v);
+		                  }}
+		                  title={t.labels.filterDateTitle.value}
+		                >
+		                  <span className={activeDate ? 'text-gray-900' : 'text-gray-400'}>
+		                    {activeDate
+		                      ? format(new Date(activeDate), 'd MMMM yyyy', { locale: dateFnsLocale })
+		                      : t.labels.selectDate}
+		                  </span>
+		                  <CalendarIcon className="h-4 w-4 text-gray-500" />
+		                </div>
+
+		                {listCalendarOpen && (
+		                  <>
+		                    <div className="fixed inset-0 z-10" onClick={() => setListCalendarOpen(false)} />
+		                    <div className="absolute top-full left-0 mt-2 z-20 bg-white rounded-xl shadow-xl border border-gray-200 p-3 animate-in fade-in zoom-in-95 duration-200">
+		                      <style>{`
+		                        .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #0a66c2; --rdp-background-color: #e3f2fd; margin: 0; }
+		                        .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f3f2ef; font-weight: bold; }
+		                        .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover { background-color: var(--rdp-accent-color); color: white; font-weight: bold; }
+		                        .rdp-head_cell { color: #666; font-weight: 600; font-size: 0.875rem; }
+		                        .rdp-caption_label { font-weight: 700; color: #191919; font-size: 1rem; }
+		                        .rdp-nav_button { color: #666; }
+		                        .rdp-nav_button:hover { background-color: #f3f2ef; color: #0a66c2; }
+		                      `}</style>
+		                      <DayPicker
+		                        mode="single"
+		                        selected={activeDate ? new Date(activeDate) : undefined}
+		                        onSelect={(day) => {
+		                          if (day) {
+		                            setDateForTab(activeTab, format(day, 'yyyy-MM-dd'));
+		                            setListCalendarOpen(false);
+		                          }
+		                        }}
+		                        locale={dateFnsLocale}
+		                        className="rounded-lg"
+		                      />
+		                    </div>
+		                  </>
+		                )}
+		                {activeDate ? (
+		                  <button
+		                    type="button"
+		                    onClick={() => {
+		                      setDateForTab(activeTab, '');
+		                      setListCalendarOpen(false);
+		                    }}
+		                    title={t.labels.clearDateTitle.value}
+		                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+		                  >
+		                    <X className="h-4 w-4" />
+		                  </button>
+		                ) : null}
+		              </div>
+		            </div>
+		            <span className="text-xs text-gray-500 font-medium">{t.labels.recentEntriesHint}</span>
+		          </div>
+		        </div>
+		
+		        {loadingList ? (
+		          <div className="px-4 py-8 text-center text-sm text-gray-500">{t.labels.loadingData}</div>
+		          ) : currentEntries.length === 0 ? (
+		          <div className="px-4 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
+		             <div className="bg-gray-100 p-3 rounded-full mb-3">
+		                <ClipboardList className="h-6 w-6 text-gray-400" />
+		             </div>
+			             {activeQuery.trim() || activeDate ? t.labels.noEntriesFound : t.labels.noEntriesForTab}
+		          </div>
+		        ) : (
+		          <>
+		            <div className="divide-y divide-gray-100">
+		              {currentEntries.map((entry) => (
+		                <div
+		                  key={entry.id}
+		                  className="px-4 py-3 flex items-center justify-between hover:bg-gray-50/80 transition-colors group"
+		                >
+		                  <div>
+		                    <div className="flex items-center gap-2">
+		                      <p className="text-sm font-bold text-gray-900">
+		                        {format(new Date(entry.date), 'dd.MM.yyyy')}
+		                      </p>
+		                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
+		                        {getTabLabel(activeTab)}
+		                      </span>
+		                    </div>
+		                    <p className="text-xs text-gray-600 mt-0.5">
+		                      {entry.note || t.labels.noComment.value}
+		                      {entry.customFieldName && entry.customFieldValue ? (
+		                        <span className="inline-flex items-center gap-1">
+		                          <span className="mx-1">•</span>
+		                          {entry.customFieldIcon ? (
+		                            <Icon
+		                              icon={entry.customFieldIcon}
+		                              className="h-3.5 w-3.5 text-gray-500"
+		                            />
+		                          ) : null}
+		                          <span>
+		                            {entry.customFieldName}: {entry.customFieldValue}
+		                          </span>
+		                        </span>
+		                      ) : null}
+		                    </p>
+		                  </div>
+		                  <div className="flex items-center gap-4">
+		                    <div className="text-right">
+		                      <p className="text-sm font-bold text-gray-900 font-mono">
+		                        {Number(entry.amount || 0).toLocaleString(resolveLocale(locale), {
+		                          minimumFractionDigits: 2,
+		                        })}
+		                      </p>
+		                      <div className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold text-right">
+		                        {entry.currency || 'KZT'}
+		                      </div>
+		                    </div>
+		                    <button
+		                      onClick={() => handleDelete(entry.id)}
+		                      disabled={removingId === entry.id}
+		                      className="p-2 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+		                      title={t.labels.deleteEntryTitle.value}
+		                    >
+		                      <Trash2 className="h-4 w-4" />
+		                    </button>
+		                  </div>
+		                </div>
+		              ))}
+		            </div>
+
+		            {showPagination && (
+		              <div className="flex flex-col gap-2 border-t border-gray-100 px-4 py-3 bg-gray-50/30 sm:flex-row sm:items-center sm:justify-between">
+		                <div className="text-xs text-gray-500 font-medium">
+		                  {t.labels.paginationShowingPrefix.value}{' '}
+		                  {effectiveStartIndex}–{effectiveEndIndex} {t.labels.paginationShowingOf.value}{' '}
+		                  {effectiveListMeta.total}
+		                </div>
+		                <div className="flex items-center justify-end gap-2">
+		                  <button
+		                    type="button"
+		                    onClick={() => setPageForTab(activeTab, effectiveListMeta.page - 1)}
+		                    disabled={!canGoPrev}
+		                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
+		                  >
+		                    <ChevronLeft className="h-4 w-4" />
+		                    {t.labels.paginationPrev.value}
+		                  </button>
+		                  <span className="text-xs text-gray-600 font-semibold">
+		                    {t.labels.paginationPageShort.value} {effectiveListMeta.page} / {effectiveTotalPages}
+		                  </span>
+		                  <button
+		                    type="button"
+		                    onClick={() => setPageForTab(activeTab, effectiveListMeta.page + 1)}
+		                    disabled={!canGoNext}
+		                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
+		                  >
+		                    {t.labels.paginationNext.value}
+		                    <ChevronRight className="h-4 w-4" />
+		                  </button>
+		                </div>
+		              </div>
+		            )}
+		          </>
+	        )}
+	      </div>
+	      )}
 
       {deleteDialog.open && (
         <>
