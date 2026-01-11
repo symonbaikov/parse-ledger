@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   TextField,
   Button,
@@ -18,8 +18,33 @@ import { motion } from 'framer-motion';
 import apiClient from '@/app/lib/api';
 import { useIntlayer } from 'next-intlayer';
 
-export default function LoginPage() {
-  const router = useRouter();
+function safeInternalPath(nextPath: string | null) {
+  if (!nextPath) return null;
+  if (!nextPath.startsWith('/')) return null;
+  if (nextPath.startsWith('//')) return null;
+  return nextPath;
+}
+
+function extractInviteTokenFromNext(nextPath: string | null) {
+  if (!nextPath) return null;
+  try {
+    const url = new URL(nextPath, 'http://localhost');
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (segments[0] !== 'invite') return null;
+    return segments[1] || null;
+  } catch {
+    const pathOnly = nextPath.split('?')[0]?.split('#')[0] || '';
+    const segments = pathOnly.split('/').filter(Boolean);
+    if (segments[0] !== 'invite') return null;
+    return segments[1] || null;
+  }
+}
+
+function LoginPageContent() {
+  const searchParams = useSearchParams();
+  const nextPath = safeInternalPath(searchParams.get('next'));
+  const inviteTokenFromNext = extractInviteTokenFromNext(nextPath);
+  const inviteToken = searchParams.get('invite') || inviteTokenFromNext;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const t = useIntlayer('loginPage');
@@ -45,10 +70,12 @@ export default function LoginPage() {
       localStorage.setItem('refresh_token', refresh_token);
       localStorage.setItem('user', JSON.stringify(user));
 
-      window.location.href = '/';
+      window.location.href = nextPath || '/';
     } catch (err: any) {
       setError(
-        err.response?.data?.error?.message || t.loginFailed.value,
+        err.response?.data?.message ||
+          err.response?.data?.error?.message ||
+          t.loginFailed.value,
       );
     } finally {
       setLoading(false);
@@ -171,7 +198,17 @@ export default function LoginPage() {
 	              {loading ? <CircularProgress size={24} color="inherit" /> : t.submit}
 	            </Button>
 	            <Box textAlign="center" sx={{ mt: 3 }}>
-	              <Link href="/register" variant="body2" sx={{ textDecoration: 'none', fontWeight: 500 }}>
+	              <Link
+                  href={
+                    nextPath
+                      ? `/register?next=${encodeURIComponent(nextPath)}${
+                          inviteToken ? `&invite=${encodeURIComponent(inviteToken)}` : ''
+                        }`
+                      : '/register'
+                  }
+                  variant="body2"
+                  sx={{ textDecoration: 'none', fontWeight: 500 }}
+                >
 	                {t.noAccount}
 	              </Link>
 	            </Box>
@@ -247,5 +284,13 @@ export default function LoginPage() {
 	        </Box>
       </Grid>
     </Grid>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

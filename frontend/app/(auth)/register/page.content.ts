@@ -58,8 +58,12 @@ const content = {
       en: 'Failed to sign up. Please try again.',
       kk: 'Тіркелу мүмкін болмады. Қайтадан көріңіз.',
     }),
+    inviteLoadFailed: t({
+      ru: 'Не удалось загрузить данные приглашения. Попробуйте ещё раз.',
+      en: 'Failed to load invitation details. Please try again.',
+      kk: 'Шақыру деректерін жүктеу мүмкін болмады. Қайтадан көріңіз.',
+    }),
   },
 } satisfies Dictionary;
 
 export default content;
-

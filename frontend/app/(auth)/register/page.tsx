@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   TextField,
   Button,
@@ -17,25 +17,59 @@ import { motion } from 'framer-motion';
 import apiClient from '@/app/lib/api';
 import { useIntlayer } from 'next-intlayer';
 
-export default function RegisterPage() {
-  const router = useRouter();
+function safeInternalPath(nextPath: string | null) {
+  if (!nextPath) return null;
+  if (!nextPath.startsWith('/')) return null;
+  if (nextPath.startsWith('//')) return null;
+  return nextPath;
+}
+
+function RegisterPageContent() {
+  const searchParams = useSearchParams();
+  const nextPath = safeInternalPath(searchParams.get('next'));
+  const inviteToken = searchParams.get('invite');
+  const presetEmail = searchParams.get('email');
   const theme = useTheme();
   const t = useIntlayer('registerPage');
   const [formData, setFormData] = useState({
-    email: '',
+    email: presetEmail || '',
     password: '',
     name: '',
     company: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailLocked, setEmailLocked] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.name === 'email' && emailLocked) return;
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
     });
   };
+
+  useEffect(() => {
+    if (!inviteToken) return;
+
+    setInviteLoading(true);
+    apiClient
+      .get(`/workspaces/invitations/${inviteToken}`)
+      .then((response) => {
+        const email = response.data?.email;
+        if (typeof email === 'string' && email.trim()) {
+          setFormData((prev) => ({ ...prev, email }));
+          setEmailLocked(true);
+        }
+      })
+      .catch((err: any) => {
+        setError(err?.response?.data?.message || t.inviteLoadFailed.value);
+      })
+      .finally(() => {
+        setInviteLoading(false);
+      });
+  }, [inviteToken, t.inviteLoadFailed.value]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +77,10 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await apiClient.post('/auth/register', formData);
+      const response = await apiClient.post('/auth/register', {
+        ...formData,
+        invitationToken: inviteToken || undefined,
+      });
 
       const { access_token, refresh_token, user } = response.data;
 
@@ -51,10 +88,12 @@ export default function RegisterPage() {
       localStorage.setItem('refresh_token', refresh_token);
       localStorage.setItem('user', JSON.stringify(user));
 
-      window.location.href = '/';
+      window.location.href = nextPath || '/';
     } catch (err: any) {
       setError(
-        err.response?.data?.error?.message || t.registerFailed.value,
+        err.response?.data?.message ||
+          err.response?.data?.error?.message ||
+          t.registerFailed.value,
       );
     } finally {
       setLoading(false);
@@ -159,6 +198,7 @@ export default function RegisterPage() {
               autoComplete="email"
               value={formData.email}
               onChange={handleChange}
+              disabled={emailLocked || inviteLoading}
               InputProps={{
                 sx: { borderRadius: 2, bgcolor: 'background.default' }
               }}
@@ -198,12 +238,16 @@ export default function RegisterPage() {
               variant="contained"
               size="large"
               sx={{ py: 1.5, borderRadius: 2, fontSize: '1rem', textTransform: 'none', boxShadow: 'none' }}
-              disabled={loading}
+              disabled={loading || inviteLoading}
 	            >
 	              {loading ? <CircularProgress size={24} color="inherit" /> : t.submit}
 	            </Button>
 	            <Box textAlign="center" sx={{ mt: 3 }}>
-	              <Link href="/login" variant="body2" sx={{ textDecoration: 'none', fontWeight: 500 }}>
+	              <Link
+                  href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login'}
+                  variant="body2"
+                  sx={{ textDecoration: 'none', fontWeight: 500 }}
+                >
 	                {t.haveAccount}
 	              </Link>
 	            </Box>
@@ -279,5 +323,13 @@ export default function RegisterPage() {
 	        </Box>
       </Grid>
     </Grid>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterPageContent />
+    </Suspense>
   );
 }

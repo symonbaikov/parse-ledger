@@ -13,6 +13,9 @@ interface User {
   permissions?: string[] | null;
   telegramId?: string | null;
   telegramChatId?: string | null;
+  locale?: string;
+  timeZone?: string | null;
+  lastLogin?: string | null;
 }
 
 export function useAuth() {
