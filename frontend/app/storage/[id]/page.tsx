@@ -31,6 +31,15 @@ import TransactionsView from '../../components/TransactionsView';
 import ShareDialog from '../../components/ShareDialog';
 import PermissionsPanel from '../../components/PermissionsPanel';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { resolveBankLogo } from '@bank-logos';
+
+type FileAvailabilityStatus = 'both' | 'disk' | 'db' | 'missing';
+
+type FileAvailability = {
+  onDisk: boolean;
+  inDb: boolean;
+  status: FileAvailabilityStatus;
+};
 
 interface StatementCategory {
   id: string;
@@ -59,6 +68,7 @@ interface FileDetails {
   permissions: any[];
   isOwner: boolean;
   userPermission?: string;
+  fileAvailability?: FileAvailability;
 }
 
 interface CategoryOption {
@@ -66,6 +76,12 @@ interface CategoryOption {
   name: string;
   color?: string;
 }
+
+const getBankDisplayName = (bankName: string) => {
+  const resolved = resolveBankLogo(bankName);
+  if (!resolved) return bankName;
+  return resolved.key !== 'other' ? resolved.displayName : bankName;
+};
 
 /**
  * File details page with transactions, sharing, and permissions
@@ -100,9 +116,30 @@ export default function FileDetailsPage() {
   };
 
   useEffect(() => {
-    loadFileDetails();
-    loadCategories();
-    loadPreview();
+    let cancelled = false;
+
+    const run = async () => {
+      const loadedDetails = await loadFileDetails();
+      if (cancelled) return;
+
+      loadCategories();
+
+      if (loadedDetails?.fileAvailability?.status === 'missing') {
+        setPreviewError(t.preview.unavailable.value);
+        revokePreviewUrl();
+        setPreviewUrl(null);
+        setPreviewLoading(false);
+        return;
+      }
+
+      await loadPreview(loadedDetails?.fileAvailability?.status);
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
   }, [fileId]);
 
   useEffect(() => {
@@ -111,13 +148,16 @@ export default function FileDetailsPage() {
     };
   }, []);
 
-  const loadFileDetails = async () => {
+  const loadFileDetails = async (): Promise<FileDetails | null> => {
     try {
       setLoading(true);
       const response = await api.get(`/storage/files/${fileId}`);
       setDetails(response.data);
+      return response.data;
     } catch (error) {
       console.error('Failed to load file details:', error);
+      setDetails(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -135,7 +175,16 @@ export default function FileDetailsPage() {
     }
   };
 
-  const loadPreview = async () => {
+  const loadPreview = async (availabilityStatusOverride?: FileAvailabilityStatus) => {
+    const availabilityStatus = availabilityStatusOverride ?? details?.fileAvailability?.status;
+    if (availabilityStatus === 'missing') {
+      setPreviewError(t.preview.unavailable.value);
+      revokePreviewUrl();
+      setPreviewUrl(null);
+      setPreviewLoading(false);
+      return;
+    }
+
     try {
       setPreviewLoading(true);
       setPreviewError(null);
@@ -151,10 +200,14 @@ export default function FileDetailsPage() {
       setPreviewUrl(url);
     } catch (error) {
       console.error('Failed to load file preview:', error);
+      const statusCode = (error as any)?.response?.status;
+      const backendMessage =
+        (error as any)?.response?.data?.error?.message || (error as any)?.response?.data?.message;
+
       const message =
-        (error as any)?.response?.data?.error?.message ||
-        (error as any)?.response?.data?.message ||
-        t.toasts.previewFailed.value;
+        statusCode === 404
+          ? t.preview.unavailable.value
+          : backendMessage || t.toasts.previewFailed.value;
       setPreviewError(message);
       setPreviewUrl(null);
     } finally {
@@ -231,6 +284,55 @@ export default function FileDetailsPage() {
     }
   };
 
+  const getAvailabilityLabel = (status: FileAvailabilityStatus) => {
+    switch (status) {
+      case 'both':
+        return t.availability.labels.both;
+      case 'disk':
+        return t.availability.labels.disk;
+      case 'db':
+        return t.availability.labels.db;
+      case 'missing':
+        return t.availability.labels.missing;
+      default:
+        return status;
+    }
+  };
+
+  const getAvailabilityTooltip = (status: FileAvailabilityStatus) => {
+    switch (status) {
+      case 'both':
+        return t.availability.tooltips.both.value;
+      case 'disk':
+        return t.availability.tooltips.disk.value;
+      case 'db':
+        return t.availability.tooltips.db.value;
+      case 'missing':
+        return t.availability.tooltips.missing.value;
+      default:
+        return status;
+    }
+  };
+
+  const renderAvailabilityChip = (availability?: FileAvailability) => {
+    if (!availability) return null;
+
+    const status = availability.status;
+    const color: 'success' | 'info' | 'error' =
+      status === 'missing' ? 'error' : status === 'both' ? 'success' : 'info';
+
+    return (
+      <Tooltip title={getAvailabilityTooltip(status)}>
+        <Chip
+          label={getAvailabilityLabel(status)}
+          size="small"
+          color={color}
+          variant={status === 'both' ? 'filled' : 'outlined'}
+        />
+      </Tooltip>
+    );
+  };
+
   if (loading) {
     return (
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -247,7 +349,7 @@ export default function FileDetailsPage() {
     );
   }
 
-  const { statement, transactions, sharedLinks, permissions, isOwner, userPermission } = details;
+  const { statement, transactions, sharedLinks, permissions, isOwner, userPermission, fileAvailability } = details;
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -262,7 +364,7 @@ export default function FileDetailsPage() {
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
             <Chip
-              label={statement.bankName}
+              label={getBankDisplayName(statement.bankName)}
               size="small"
               color="primary"
               variant="outlined"
@@ -272,6 +374,7 @@ export default function FileDetailsPage() {
               size="small"
               color="success"
             />
+            {renderAvailabilityChip(fileAvailability)}
             <Chip
               label={isOwner ? t.permission.owner.value : getPermissionLabel(userPermission)}
               size="small"
@@ -389,7 +492,7 @@ export default function FileDetailsPage() {
               <Button
                 size="small"
                 variant="outlined"
-                onClick={loadPreview}
+                onClick={() => loadPreview()}
                 disabled={previewLoading}
               >
                 {t.preview.refresh}
@@ -424,7 +527,7 @@ export default function FileDetailsPage() {
             <Alert severity="error" sx={{ flex: 1 }}>
               {previewError}
               <Box sx={{ mt: 1 }}>
-                <Button size="small" onClick={loadPreview}>
+                <Button size="small" onClick={() => loadPreview()}>
                   {t.preview.retry}
                 </Button>
               </Box>

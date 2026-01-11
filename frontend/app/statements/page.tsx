@@ -22,6 +22,8 @@ import { useAuth } from '@/app/hooks/useAuth';
 import ConfirmModal from '@/app/components/ConfirmModal';
 import { DocumentTypeIcon } from '@/app/components/DocumentTypeIcon';
 import { useIntlayer } from 'next-intlayer';
+import { BankLogoAvatar } from '@/app/components/BankLogoAvatar';
+import { resolveBankLogo } from '@bank-logos';
 
 interface Statement {
   id: string;
@@ -56,6 +58,12 @@ const extractErrorMessage = async (response: Response) => {
   } catch {
     return null;
   }
+};
+
+const getBankDisplayName = (bankName: string) => {
+  const resolved = resolveBankLogo(bankName);
+  if (!resolved) return bankName;
+  return resolved.key !== 'other' ? resolved.displayName : bankName;
 };
 
 export default function StatementsPage() {
@@ -499,10 +507,10 @@ export default function StatementsPage() {
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap hidden md:table-cell">
                       <div className="flex items-center">
-                        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center mr-3 text-gray-500 font-bold text-xs">
-                          {statement.bankName?.[0]?.toUpperCase() || 'B'}
-                        </div>
-                        <span className="text-sm font-medium text-gray-700 capitalize">{statement.bankName}</span>
+                        <BankLogoAvatar bankName={statement.bankName} size={32} className="mr-3" />
+                        <span className="text-sm font-medium text-gray-700 capitalize">
+                          {getBankDisplayName(statement.bankName)}
+                        </span>
                       </div>
                     </td>
                     <td className="px-6 py-5 whitespace-nowrap hidden lg:table-cell">

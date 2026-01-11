@@ -39,6 +39,16 @@ import api from '../lib/api';
 import { DocumentTypeIcon } from '../components/DocumentTypeIcon';
 import toast from 'react-hot-toast';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { BankLogoAvatar } from '../components/BankLogoAvatar';
+import { resolveBankLogo } from '@bank-logos';
+
+type FileAvailabilityStatus = 'both' | 'disk' | 'db' | 'missing';
+
+type FileAvailability = {
+  onDisk: boolean;
+  inDb: boolean;
+  status: FileAvailabilityStatus;
+};
 
 interface StorageFile {
   id: string;
@@ -64,6 +74,7 @@ interface StorageFile {
     periodStart?: string;
     periodEnd?: string;
   };
+  fileAvailability?: FileAvailability;
 }
 
 interface CategoryOption {
@@ -72,6 +83,12 @@ interface CategoryOption {
   color?: string;
   icon?: string;
 }
+
+const getBankDisplayName = (bankName: string) => {
+  const resolved = resolveBankLogo(bankName);
+  if (!resolved) return bankName;
+  return resolved.key !== 'other' ? resolved.displayName : bankName;
+};
 
 /**
  * Storage page - displays all files with sharing and permissions
@@ -257,6 +274,64 @@ export default function StoragePage() {
 
   const bankOptions = Array.from(new Set(files.map((f) => f.bankName).filter(Boolean)));
   const statusOptions = Array.from(new Set(files.map((f) => f.status).filter(Boolean)));
+
+  const getAvailabilityLabel = (status: FileAvailabilityStatus) => {
+    switch (status) {
+      case 'both':
+        return t.availability.labels.both;
+      case 'disk':
+        return t.availability.labels.disk;
+      case 'db':
+        return t.availability.labels.db;
+      case 'missing':
+        return t.availability.labels.missing;
+      default:
+        return status;
+    }
+  };
+
+  const getAvailabilityTooltip = (status: FileAvailabilityStatus) => {
+    switch (status) {
+      case 'both':
+        return t.availability.tooltips.both.value;
+      case 'disk':
+        return t.availability.tooltips.disk.value;
+      case 'db':
+        return t.availability.tooltips.db.value;
+      case 'missing':
+        return t.availability.tooltips.missing.value;
+      default:
+        return status;
+    }
+  };
+
+  const renderAvailabilityChip = (availability?: FileAvailability) => {
+    if (!availability) return null;
+
+    const status = availability.status;
+    const color: 'success' | 'info' | 'error' =
+      status === 'missing' ? 'error' : status === 'both' ? 'success' : 'info';
+
+    return (
+      <Tooltip title={getAvailabilityTooltip(status)}>
+        <Chip
+          label={getAvailabilityLabel(status)}
+          size="small"
+          color={color}
+          variant={status === 'both' ? 'filled' : 'outlined'}
+          sx={{
+            height: 18,
+            '& .MuiChip-label': {
+              px: 0.75,
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              lineHeight: 1,
+            },
+          }}
+        />
+      </Tooltip>
+    );
+  };
 
   const filteredFiles = files.filter((file) => {
     const normalizedBank = (file.bankName || '').toLowerCase();
@@ -447,19 +522,29 @@ export default function StoragePage() {
                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827', mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                              {file.fileName}
                            </Typography>
-                           {file.sharedLinksCount > 0 && (
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Share2 size={12} className="text-blue-500" />
-                                <Typography variant="caption" sx={{ color: '#3B82F6', fontWeight: 500 }}>
-                                    {file.sharedLinksCount} {t.sharedLinksShort}
-                                </Typography>
-                            </Box>
-                          )}
+                           {(file.sharedLinksCount > 0 || file.fileAvailability) && (
+                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                               {file.sharedLinksCount > 0 && (
+                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                   <Share2 size={12} className="text-blue-500" />
+                                   <Typography variant="caption" sx={{ color: '#3B82F6', fontWeight: 500 }}>
+                                     {file.sharedLinksCount} {t.sharedLinksShort}
+                                   </Typography>
+                                 </Box>
+                               )}
+                               {renderAvailabilityChip(file.fileAvailability)}
+                             </Box>
+                           )}
                         </Box>
                       </Box>
                     </TableCell>
                     <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                        <Typography variant="body2" sx={{ color: '#374151' }}>{file.bankName}</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <BankLogoAvatar bankName={file.bankName} size={28} />
+                          <Typography variant="body2" sx={{ color: '#374151' }}>
+                            {getBankDisplayName(file.bankName)}
+                          </Typography>
+                        </Box>
                     </TableCell>
                     <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
                        <Typography variant="body2" sx={{ color: '#6B7280', fontFamily: 'monospace', fontSize: '0.8rem' }}>

@@ -60,6 +60,36 @@ const content = {
       error: t({ ru: 'Ошибка', en: 'Error', kk: 'Қате' }),
       uploaded: t({ ru: 'Загружено', en: 'Uploaded', kk: 'Жүктелді' }),
       parsed: t({ ru: 'Распарсено', en: 'Parsed', kk: 'Өңделді' }),
+      },
+    availability: {
+      labels: {
+        both: t({ ru: 'OK', en: 'OK', kk: 'OK' }),
+        disk: t({ ru: 'Диск', en: 'Disk', kk: 'Disk' }),
+        db: t({ ru: 'БД', en: 'DB', kk: 'DB' }),
+        missing: t({ ru: 'Нет файла', en: 'Missing', kk: 'Қолжетімсіз' }),
+      },
+      tooltips: {
+        both: t({
+          ru: 'Файл доступен на диске и в базе данных',
+          en: 'File is available on disk and in DB',
+          kk: 'Файл дискте және дерекқорда қолжетімді',
+        }),
+        disk: t({
+          ru: 'Файл доступен на диске',
+          en: 'File is available on disk',
+          kk: 'Файл дискте қолжетімді',
+        }),
+        db: t({
+          ru: 'Файл доступен в базе данных',
+          en: 'File is available in DB',
+          kk: 'Файл дерекқорда қолжетімді',
+        }),
+        missing: t({
+          ru: 'Файл недоступен (нет на диске и в базе данных)',
+          en: 'File is unavailable (missing on disk and in DB)',
+          kk: 'Файл қолжетімсіз (дискте де, дерекқорда да жоқ)',
+        }),
+      },
     },
     actions: {
       view: t({ ru: 'Просмотр', en: 'View', kk: 'Қарау' }),

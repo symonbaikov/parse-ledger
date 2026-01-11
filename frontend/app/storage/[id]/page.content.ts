@@ -8,6 +8,36 @@ const content = {
     toasts: {
       previewFailed: t({ ru: 'Не удалось загрузить превью файла', en: 'Failed to load file preview', kk: 'Файл превьюін жүктеу мүмкін болмады' }),
     },
+    availability: {
+      labels: {
+        both: t({ ru: 'OK', en: 'OK', kk: 'OK' }),
+        disk: t({ ru: 'Диск', en: 'Disk', kk: 'Disk' }),
+        db: t({ ru: 'БД', en: 'DB', kk: 'DB' }),
+        missing: t({ ru: 'Нет файла', en: 'Missing', kk: 'Қолжетімсіз' }),
+      },
+      tooltips: {
+        both: t({
+          ru: 'Файл доступен на диске и в базе данных',
+          en: 'File is available on disk and in DB',
+          kk: 'Файл дискте және дерекқорда қолжетімді',
+        }),
+        disk: t({
+          ru: 'Файл доступен на диске',
+          en: 'File is available on disk',
+          kk: 'Файл дискте қолжетімді',
+        }),
+        db: t({
+          ru: 'Файл доступен в базе данных',
+          en: 'File is available in DB',
+          kk: 'Файл дерекқорда қолжетімді',
+        }),
+        missing: t({
+          ru: 'Файл недоступен (нет на диске и в базе данных)',
+          en: 'File is unavailable (missing on disk and in DB)',
+          kk: 'Файл қолжетімсіз (дискте де, дерекқорда да жоқ)',
+        }),
+      },
+    },
     permission: {
       owner: t({ ru: 'Владелец', en: 'Owner', kk: 'Иесі' }),
       editor: t({ ru: 'Редактор', en: 'Editor', kk: 'Өңдеуші' }),
@@ -40,6 +70,11 @@ const content = {
       openNewTab: t({ ru: 'Открыть в новой вкладке', en: 'Open in new tab', kk: 'Жаңа қойындыда ашу' }),
       iframeTitle: t({ ru: 'Предпросмотр файла', en: 'File preview', kk: 'Файл превьюі' }),
       retry: t({ ru: 'Попробовать снова', en: 'Try again', kk: 'Қайтадан көру' }),
+      unavailable: t({
+        ru: 'Файл недоступен. Похоже, он был удалён с сервера. Попросите владельца загрузить файл заново.',
+        en: 'File is unavailable. It may have been removed from the server. Ask the owner to upload it again.',
+        kk: 'Файл қолжетімсіз. Ол серверден өшірілген болуы мүмкін. Иесінен файлды қайта жүктеуді сұраңыз.',
+      }),
       empty: t({
         ru: 'Превью появится после загрузки файла. Если формат не поддерживает онлайн-просмотр, скачайте файл.',
         en: 'Preview will appear after file upload. If the format is not supported online, download the file.',
@@ -55,4 +90,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-
