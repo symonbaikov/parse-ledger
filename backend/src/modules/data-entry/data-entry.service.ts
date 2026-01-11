@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, QueryFailedError, Repository } from 'typeorm';
 import { DataEntry, DataEntryType } from '../../entities/data-entry.entity';
+import { User, WorkspaceMember, WorkspaceRole } from '../../entities';
 import { CreateDataEntryDto } from './dto/create-data-entry.dto';
 import { DataEntryCustomField } from '../../entities/data-entry-custom-field.entity';
 import { CreateDataEntryCustomFieldDto } from './dto/create-data-entry-custom-field.dto';
@@ -12,6 +13,14 @@ interface ListParams {
   type?: DataEntryType;
   customTabId?: string;
   limit?: number;
+  page?: number;
+  query?: string; // note search
+  date?: string; // yyyy-mm-dd
+}
+
+interface ListResult {
+  items: DataEntry[];
+  total: number;
 }
 
 @Injectable()
@@ -21,9 +30,34 @@ export class DataEntryService {
     private readonly dataEntryRepository: Repository<DataEntry>,
     @InjectRepository(DataEntryCustomField)
     private readonly dataEntryCustomFieldRepository: Repository<DataEntryCustomField>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(WorkspaceMember)
+    private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
   ) {}
 
+  private async ensureCanEditDataEntry(userId: string): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'workspaceId'],
+    });
+    const workspaceId = user?.workspaceId ?? null;
+    if (!workspaceId) return;
+
+    const membership = await this.workspaceMemberRepository.findOne({
+      where: { workspaceId, userId },
+      select: ['role', 'permissions'],
+    });
+
+    if (!membership) return;
+    if ([WorkspaceRole.ADMIN, WorkspaceRole.OWNER].includes(membership.role)) return;
+    if (membership.permissions?.canEditDataEntry === false) {
+      throw new ForbiddenException('Недостаточно прав для редактирования ввода данных');
+    }
+  }
+
   async create(userId: string, dto: CreateDataEntryDto): Promise<DataEntry> {
+    await this.ensureCanEditDataEntry(userId);
     const customFieldName = dto.customFieldName?.trim() || null;
     const customFieldValue = dto.customFieldValue?.trim() || null;
     const customFieldIconRaw = dto.customFieldIcon?.trim() || null;
@@ -58,30 +92,47 @@ export class DataEntryService {
     return this.dataEntryRepository.save(entry);
   }
 
-  async list(params: ListParams): Promise<DataEntry[]> {
+  async list(params: ListParams): Promise<ListResult> {
+    const take = Math.min(Math.max(params.limit ?? 50, 1), 200);
+    const page = Math.max(params.page ?? 1, 1);
+    const skip = (page - 1) * take;
+    const noteQuery = (params.query ?? '').trim().slice(0, 200);
+    const date = (params.date ?? '').trim().slice(0, 32);
+
+    const qb = this.dataEntryRepository
+      .createQueryBuilder('e')
+      .where('"e"."user_id" = :userId', { userId: params.userId });
+
     if (params.customTabId) {
-      return this.dataEntryRepository.find({
-        where: {
-          userId: params.userId,
-          customTabId: params.customTabId,
-        },
-        order: { date: 'DESC', createdAt: 'DESC' },
-        take: params.limit ?? 50,
-      });
+      qb.andWhere('"e"."custom_tab_id" = :customTabId', { customTabId: params.customTabId });
+    } else {
+      qb.andWhere('"e"."custom_tab_id" IS NULL');
+      if (params.type) {
+        qb.andWhere('"e"."type" = :type', { type: params.type });
+      }
     }
 
-    return this.dataEntryRepository.find({
-      where: {
-        userId: params.userId,
-        ...(params.type ? { type: params.type } : {}),
-        customTabId: IsNull(),
-      },
-      order: { date: 'DESC', createdAt: 'DESC' },
-      take: params.limit ?? 50,
-    });
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      qb.andWhere('"e"."date" = :date', { date });
+    }
+
+    if (noteQuery) {
+      const like = `%${noteQuery.replaceAll('%', '\\%').replaceAll('_', '\\_')}%`;
+      qb.andWhere('"e"."note" ILIKE :like', { like });
+    }
+
+    const [items, total] = await qb
+      .orderBy('"e"."date"', 'DESC')
+      .addOrderBy('"e"."created_at"', 'DESC')
+      .skip(skip)
+      .take(take)
+      .getManyAndCount();
+
+    return { items, total };
   }
 
   async remove(userId: string, id: string): Promise<void> {
+    await this.ensureCanEditDataEntry(userId);
     const entry = await this.dataEntryRepository.findOne({ where: { id, userId } });
     if (!entry) {
       throw new NotFoundException('Запись не найдена');
@@ -116,6 +167,7 @@ export class DataEntryService {
   }
 
   async createCustomField(userId: string, dto: CreateDataEntryCustomFieldDto): Promise<DataEntryCustomField> {
+    await this.ensureCanEditDataEntry(userId);
     const name = dto.name.trim();
     if (!name.length) {
       throw new BadRequestException('Укажите название колонки');
@@ -145,6 +197,7 @@ export class DataEntryService {
     id: string,
     dto: UpdateDataEntryCustomFieldDto,
   ): Promise<DataEntryCustomField> {
+    await this.ensureCanEditDataEntry(userId);
     const item = await this.dataEntryCustomFieldRepository.findOne({ where: { id, userId } });
     if (!item) throw new NotFoundException('Колонка не найдена');
     if (dto.name !== undefined) {
@@ -169,6 +222,7 @@ export class DataEntryService {
   }
 
   async removeCustomField(userId: string, id: string): Promise<void> {
+    await this.ensureCanEditDataEntry(userId);
     const item = await this.dataEntryCustomFieldRepository.findOne({ where: { id, userId } });
     if (!item) throw new NotFoundException('Колонка не найдена');
     await this.dataEntryRepository.delete({ userId, customTabId: id });

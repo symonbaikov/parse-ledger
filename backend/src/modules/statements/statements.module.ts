@@ -7,6 +7,7 @@ import { Transaction } from '../../entities/transaction.entity';
 import { AuditLog } from '../../entities/audit-log.entity';
 import { User, WorkspaceMember } from '../../entities';
 import { ParsingModule } from '../parsing/parsing.module';
+import { FileStorageService } from '../../common/services/file-storage.service';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { ParsingModule } from '../parsing/parsing.module';
     ParsingModule,
   ],
   controllers: [StatementsController],
-  providers: [StatementsService],
+  providers: [StatementsService, FileStorageService],
   exports: [StatementsService],
 })
 export class StatementsModule {}

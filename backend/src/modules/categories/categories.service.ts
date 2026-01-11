@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Category, CategoryType } from '../../entities/category.entity';
+import { User, WorkspaceMember, WorkspaceRole } from '../../entities';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
@@ -10,9 +11,34 @@ export class CategoriesService {
   constructor(
     @InjectRepository(Category)
     private categoryRepository: Repository<Category>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(WorkspaceMember)
+    private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
   ) {}
 
+  private async ensureCanEditCategories(userId: string): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'workspaceId'],
+    });
+    const workspaceId = user?.workspaceId ?? null;
+    if (!workspaceId) return;
+
+    const membership = await this.workspaceMemberRepository.findOne({
+      where: { workspaceId, userId },
+      select: ['role', 'permissions'],
+    });
+
+    if (!membership) return;
+    if ([WorkspaceRole.ADMIN, WorkspaceRole.OWNER].includes(membership.role)) return;
+    if (membership.permissions?.canEditCategories === false) {
+      throw new ForbiddenException('Недостаточно прав для редактирования категорий');
+    }
+  }
+
   async create(userId: string, createDto: CreateCategoryDto): Promise<Category> {
+    await this.ensureCanEditCategories(userId);
     // Check for duplicate name
     const existing = await this.categoryRepository.findOne({
       where: { userId, name: createDto.name, type: createDto.type },
@@ -58,6 +84,7 @@ export class CategoriesService {
   }
 
   async update(id: string, userId: string, updateDto: UpdateCategoryDto): Promise<Category> {
+    await this.ensureCanEditCategories(userId);
     const category = await this.findOne(id, userId);
 
     // Check for duplicate name if name is being changed
@@ -76,6 +103,7 @@ export class CategoriesService {
   }
 
   async remove(id: string, userId: string): Promise<void> {
+    await this.ensureCanEditCategories(userId);
     const category = await this.findOne(id, userId);
 
     if (category.isSystem) {
@@ -123,6 +151,5 @@ export class CategoriesService {
     }
   }
 }
-
 
 

@@ -2,6 +2,13 @@ import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { ParsedStatement, ParsedTransaction } from '../interfaces/parsed-statement.interface';
 import { normalizeDate, normalizeNumber } from '../../../common/utils/number-normalizer.util';
 import { extractTextFromPdf } from '../../../common/utils/pdf-parser.util';
+import { retry, TimeoutError, withTimeout } from '../../../common/utils/async.util';
+import {
+  isAiCircuitOpen,
+  recordAiFailure,
+  recordAiSuccess,
+  withAiConcurrency,
+} from './ai-runtime.util';
 
 export class AiParseValidator {
   private geminiModel: GenerativeModel | null = null;
@@ -25,35 +32,57 @@ export class AiParseValidator {
       return { corrected: parsed, notes: [] };
     }
 
+    if (isAiCircuitOpen()) {
+      return { corrected: parsed, notes: ['AI temporarily disabled (circuit breaker)'] };
+    }
+
     const pdfTextRaw = await extractTextFromPdf(filePath);
     const pdfText = pdfTextRaw.length > 18000 ? pdfTextRaw.substring(0, 18000) : pdfTextRaw;
     const parsedPreview = JSON.stringify(parsed.transactions.slice(0, 20));
 
     try {
-      const completion = await this.geminiModel.generateContent({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text:
-                  'You are an auditor for Bereke Bank statements. ' +
-                  'Compare PDF text with parsed transactions and correct mistakes or missing rows. ' +
-                  'Return ONLY JSON with shape {"transactions":[...],"notes":[...],"metadata":{...}}. ' +
-                  'Dates must be ISO (YYYY-MM-DD). Numbers should be decimal (dot). Use KZT currency.\n\n' +
-                  `PDF text snippet:\n${pdfText}\n\nParsed transactions preview:\n${parsedPreview}`,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0,
-          responseMimeType: 'application/json',
+      const timeoutMs = Number.parseInt(process.env.AI_TIMEOUT_MS || '20000', 10);
+
+      const completion = await retry(
+        () =>
+          withTimeout(
+            withAiConcurrency(() =>
+              this.geminiModel!.generateContent({
+                contents: [
+                  {
+                    role: 'user',
+                    parts: [
+                      {
+                        text:
+                          'You are an auditor for Bereke Bank statements. ' +
+                          'Compare PDF text with parsed transactions and correct mistakes or missing rows. ' +
+                          'Return ONLY JSON with shape {"transactions":[...],"notes":[...],"metadata":{...}}. ' +
+                          'Dates must be ISO (YYYY-MM-DD). Numbers should be decimal (dot). Use KZT currency.\n\n' +
+                          `PDF text snippet:\n${pdfText}\n\nParsed transactions preview:\n${parsedPreview}`,
+                      },
+                    ],
+                  },
+                ],
+                generationConfig: {
+                  temperature: 0,
+                  responseMimeType: 'application/json',
+                },
+              }),
+            ),
+            Number.isFinite(timeoutMs) ? timeoutMs : 20000,
+            'AI request timed out',
+          ),
+        {
+          retries: 2,
+          baseDelayMs: 500,
+          maxDelayMs: 5000,
+          isRetryable: (error) => error instanceof TimeoutError,
         },
-      });
+      );
 
       const content = completion.response?.text();
       if (!content) {
+        recordAiFailure();
         return { corrected: parsed, notes: ['AI returned empty content'] };
       }
 
@@ -92,8 +121,10 @@ export class AiParseValidator {
         transactions: mapped.length ? mapped : parsed.transactions,
       };
 
+      recordAiSuccess();
       return { corrected, notes };
     } catch (error) {
+      recordAiFailure();
       console.error('[AIValidator] Failed to reconcile via AI:', error);
       return { corrected: parsed, notes: ['AI reconciliation failed'] };
     }

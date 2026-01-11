@@ -44,15 +44,22 @@ export class DataEntryController {
     @Query('type') type?: DataEntryType,
     @Query('customTabId') customTabId?: string,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit?: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page?: number,
+    @Query('q') query?: string,
+    @Query('date') date?: string,
   ) {
     const safeLimit = Math.min(Math.max(limit || 50, 1), 200);
-    const items = await this.dataEntryService.list({
+    const safePage = Math.max(page || 1, 1);
+    const { items, total } = await this.dataEntryService.list({
       userId: user.id,
       type,
       customTabId,
       limit: safeLimit,
+      page: safePage,
+      query,
+      date,
     });
-    return { items };
+    return { items, total, page: safePage, limit: safeLimit };
   }
 
   @Delete(':id')

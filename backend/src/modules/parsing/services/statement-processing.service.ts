@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { Semaphore } from '../../../common/utils/semaphore.util';
 import { Statement, StatementStatus } from '../../../entities/statement.entity';
 import { Transaction, TransactionType } from '../../../entities/transaction.entity';
 import { ParserFactoryService } from './parser-factory.service';
@@ -14,10 +15,20 @@ import { GoogleSheetsService } from '../../google-sheets/google-sheets.service';
 import { AiParseValidator } from '../helpers/ai-parse-validator.helper';
 import { ParsedStatement } from '../interfaces/parsed-statement.interface';
 
+function parsePositiveInt(value: string | undefined, fallback: number) {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 @Injectable()
 export class StatementProcessingService {
   private readonly logger = new Logger(StatementProcessingService.name);
   private aiValidator = new AiParseValidator();
+  private static readonly inFlight = new Map<string, Promise<Statement>>();
+  private static readonly parsingSemaphore = new Semaphore(
+    parsePositiveInt(process.env.STATEMENT_PARSING_CONCURRENCY, 2),
+  );
 
   constructor(
     @InjectRepository(Statement)
@@ -85,6 +96,24 @@ export class StatementProcessingService {
   }
 
   async processStatement(statementId: string): Promise<Statement> {
+    const existing = StatementProcessingService.inFlight.get(statementId);
+    if (existing) {
+      return existing;
+    }
+
+    const runPromise = StatementProcessingService.parsingSemaphore.use(() =>
+      this.processStatementInternal(statementId),
+    );
+    StatementProcessingService.inFlight.set(statementId, runPromise);
+
+    try {
+      return await runPromise;
+    } finally {
+      StatementProcessingService.inFlight.delete(statementId);
+    }
+  }
+
+  private async processStatementInternal(statementId: string): Promise<Statement> {
     const startTime = Date.now();
     const parsingDetails: Statement['parsingDetails'] = {
       logEntries: [],
@@ -107,6 +136,10 @@ export class StatementProcessingService {
 
     if (!statement) {
       throw new Error(`Statement ${statementId} not found`);
+    }
+
+    if (statement.status === StatementStatus.PROCESSING) {
+      return statement;
     }
 
     addLog('info', `Starting processing of statement ${statementId}`);

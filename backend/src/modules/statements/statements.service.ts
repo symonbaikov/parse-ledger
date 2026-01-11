@@ -8,8 +8,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as fs from 'fs';
-import * as path from 'path';
-import { Readable } from 'stream';
 import { Statement, StatementStatus, FileType, BankName } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
@@ -20,25 +18,7 @@ import { AuditLog, AuditAction } from '../../entities/audit-log.entity';
 import { StatementProcessingService } from '../parsing/services/statement-processing.service';
 import { UpdateStatementDto } from './dto/update-statement.dto';
 import { normalizeFilename } from '../../common/utils/filename.util';
-
-const uploadBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
-
-const isRegularFile = (filePath: string): boolean => {
-  try {
-    return fs.statSync(filePath).isFile();
-  } catch {
-    return false;
-  }
-};
-
-const extractUploadsSuffix = (rawPath: string): string | null => {
-  const normalized = rawPath.replace(/\\/g, '/');
-  const marker = '/uploads/';
-  const idx = normalized.lastIndexOf(marker);
-  if (idx === -1) return null;
-  const suffix = normalized.slice(idx + marker.length);
-  return suffix ? suffix : null;
-};
+import { FileStorageService } from '../../common/services/file-storage.service';
 
 @Injectable()
 export class StatementsService {
@@ -53,6 +33,7 @@ export class StatementsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(WorkspaceMember)
     private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
+    private readonly fileStorageService: FileStorageService,
     private statementProcessingService: StatementProcessingService,
   ) {}
 
@@ -64,7 +45,25 @@ export class StatementsService {
     return user?.workspaceId ?? null;
   }
 
+  private async ensureCanEditStatements(userId: string): Promise<void> {
+    const workspaceId = await this.getWorkspaceId(userId);
+    if (!workspaceId) return;
+
+    const membership = await this.workspaceMemberRepository.findOne({
+      where: { workspaceId, userId },
+      select: ['role', 'permissions'],
+    });
+
+    if (!membership) return;
+    if ([WorkspaceRole.ADMIN, WorkspaceRole.OWNER].includes(membership.role)) return;
+
+    if (membership.permissions?.canEditStatements === false) {
+      throw new ForbiddenException('Недостаточно прав для редактирования выписок');
+    }
+  }
+
   private async ensureCanModify(statement: Statement, userId: string): Promise<void> {
+    await this.ensureCanEditStatements(userId);
     if (statement.userId === userId) {
       return;
     }
@@ -88,6 +87,7 @@ export class StatementsService {
     walletId?: string,
     branchId?: string,
   ): Promise<Statement> {
+    await this.ensureCanEditStatements(user.id);
     // Calculate file hash
     const fileHash = await calculateFileHash(file.path);
     let fileData: Buffer | null = null;
@@ -278,9 +278,21 @@ export class StatementsService {
     const statement = await this.findOne(id, userId);
     await this.ensureCanModify(statement, userId);
 
+    if (statement.status === StatementStatus.PROCESSING) {
+      return statement;
+    }
+
+    // Clear previous parsing results to avoid duplicates on reprocess
+    await this.transactionRepository.delete({ statementId: statement.id });
+
     statement.status = StatementStatus.UPLOADED;
     statement.errorMessage = null;
     statement.processedAt = null;
+    statement.totalTransactions = 0;
+    statement.totalDebit = 0;
+    statement.totalCredit = 0;
+    statement.categoryId = null;
+    statement.parsingDetails = null;
     await this.statementRepository.save(statement);
 
     // Start processing asynchronously
@@ -291,106 +303,14 @@ export class StatementsService {
     return statement;
   }
 
-  private resolveFilePath(rawPath: string): string | null {
-    const cwd = process.cwd();
-    const dirFromModule = path.resolve(__dirname, '../../..'); // points to backend/dist
-    const uploadsFromModule = path.resolve(__dirname, '../../../uploads');
-    const uploadsFromModuleUp = path.resolve(__dirname, '../../../../uploads');
-    const basename = path.basename(rawPath);
-    const uploadsSuffix = extractUploadsSuffix(rawPath);
-
-    const candidates = [
-      rawPath,
-      path.resolve(rawPath),
-      path.isAbsolute(rawPath) ? rawPath : path.join(cwd, rawPath),
-      path.join(cwd, 'dist', rawPath),
-      path.join(cwd, '..', rawPath),
-      path.join(uploadBaseDir, basename),
-      path.join(uploadBaseDir, rawPath),
-      uploadsSuffix ? path.join(uploadBaseDir, uploadsSuffix) : null,
-      path.join(cwd, 'uploads', basename),
-      path.join(cwd, 'uploads', rawPath),
-      uploadsSuffix ? path.join(cwd, 'uploads', uploadsSuffix) : null,
-      path.join(dirFromModule, 'uploads', basename),
-      path.join(uploadsFromModule, basename),
-      path.join(uploadsFromModuleUp, basename),
-      path.join(path.dirname(rawPath), basename),
-    ].filter(Boolean) as string[];
-
-    for (const candidate of candidates) {
-      if (isRegularFile(candidate)) {
-        return candidate;
-      }
-    }
-    return null;
-  }
-
-  async getFilePath(id: string, userId: string): Promise<string> {
-    const statement = await this.findOne(id, userId);
-
-    const resolved = this.resolveFilePath(statement.filePath);
-    if (!resolved) {
-      throw new NotFoundException('File not found');
-    }
-
-    return resolved;
-  }
-
-  async getFileInfo(
-    id: string,
-    userId: string,
-  ): Promise<{ fileName: string; mimeType: string; filePath?: string; fileData?: Buffer }> {
-    const statement = await this.findOne(id, userId);
-
-    const resolved = this.resolveFilePath(statement.filePath);
-    if (resolved) {
-      return {
-        filePath: resolved,
-        fileName: statement.fileName,
-        mimeType: this.getMimeType(statement.fileType),
-      };
-    }
-
-    const statementFile = await this.statementRepository.findOne({
-      where: { id: statement.id },
-      select: ['id', 'fileData'],
-    });
-    const fileData = statementFile?.fileData ?? null;
-    if (!fileData) {
-      throw new NotFoundException('File not found on disk');
-    }
-
-    // Determine MIME type based on file type
-    return {
-      fileName: statement.fileName,
-      fileData,
-      mimeType: this.getMimeType(statement.fileType),
-    };
-  }
-
-  private getMimeType(fileType: FileType): string {
-    switch (fileType) {
-      case FileType.PDF:
-        return 'application/pdf';
-      case FileType.XLSX:
-        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      case FileType.CSV:
-        return 'text/csv';
-      case FileType.IMAGE:
-        return 'image/jpeg';
-      default:
-        return 'application/octet-stream';
-    }
-  }
-
   async getFileStream(
     id: string,
     userId: string,
   ): Promise<{ stream: NodeJS.ReadableStream; fileName: string; mimeType: string }> {
-    const info = await this.getFileInfo(id, userId);
-    const stream = info.filePath
-      ? fs.createReadStream(info.filePath)
-      : Readable.from(info.fileData as Buffer);
-    return { stream, fileName: info.fileName, mimeType: info.mimeType };
+    const statement = await this.findOne(id, userId);
+    const { stream, fileName, mimeType } = await this.fileStorageService.getStatementFileStream(
+      statement,
+    );
+    return { stream, fileName, mimeType };
   }
 }

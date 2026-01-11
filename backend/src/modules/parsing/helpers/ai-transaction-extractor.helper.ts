@@ -1,6 +1,13 @@
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { ParsedTransaction } from '../interfaces/parsed-statement.interface';
 import { normalizeDate, normalizeNumber } from '../../../common/utils/number-normalizer.util';
+import { retry, TimeoutError, withTimeout } from '../../../common/utils/async.util';
+import {
+  isAiCircuitOpen,
+  recordAiFailure,
+  recordAiSuccess,
+  withAiConcurrency,
+} from './ai-runtime.util';
 
 export class AiTransactionExtractor {
   private geminiModel: GenerativeModel | null = null;
@@ -21,34 +28,56 @@ export class AiTransactionExtractor {
       return [];
     }
 
+    if (isAiCircuitOpen()) {
+      return [];
+    }
+
     const statementText = text.length > 20000 ? text.substring(0, 20000) : text;
 
     try {
-      const completion = await this.geminiModel.generateContent({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text:
-                  'Extract ALL transactions from this bank statement text (could be Kaspi Bank, Bereke Bank, or other Kazakhstan banks). ' +
-                  'Each transaction typically has: document number, date, debit amount, credit amount, counterparty name, account numbers, payment purpose. ' +
-                  'Return ONLY JSON with the shape {"transactions":[{date,document_number,counterparty_name,counterparty_bin,counterparty_account,counterparty_bank,debit,credit,purpose,currency}]}. ' +
-                  'Use ISO dates (YYYY-MM-DD). Numbers must be decimal (dot). Default currency KZT. ' +
-                  'Preserve full payment purpose. Extract ALL transactions you can find.\n\n' +
-                  statementText,
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          temperature: 0,
-          responseMimeType: 'application/json',
+      const timeoutMs = Number.parseInt(process.env.AI_TIMEOUT_MS || '20000', 10);
+
+      const completion = await retry(
+        () =>
+          withTimeout(
+            withAiConcurrency(() =>
+              this.geminiModel!.generateContent({
+                contents: [
+                  {
+                    role: 'user',
+                    parts: [
+                      {
+                        text:
+                          'Extract ALL transactions from this bank statement text (could be Kaspi Bank, Bereke Bank, or other Kazakhstan banks). ' +
+                          'Each transaction typically has: document number, date, debit amount, credit amount, counterparty name, account numbers, payment purpose. ' +
+                          'Return ONLY JSON with the shape {"transactions":[{date,document_number,counterparty_name,counterparty_bin,counterparty_account,counterparty_bank,debit,credit,purpose,currency}]}. ' +
+                          'Use ISO dates (YYYY-MM-DD). Numbers must be decimal (dot). Default currency KZT. ' +
+                          'Preserve full payment purpose. Extract ALL transactions you can find.\n\n' +
+                          statementText,
+                      },
+                    ],
+                  },
+                ],
+                generationConfig: {
+                  temperature: 0,
+                  responseMimeType: 'application/json',
+                },
+              }),
+            ),
+            Number.isFinite(timeoutMs) ? timeoutMs : 20000,
+            'AI request timed out',
+          ),
+        {
+          retries: 2,
+          baseDelayMs: 500,
+          maxDelayMs: 5000,
+          isRetryable: (error) => error instanceof TimeoutError,
         },
-      });
+      );
 
       const content = completion.response?.text();
       if (!content) {
+        recordAiFailure();
         return [];
       }
 
@@ -57,13 +86,16 @@ export class AiTransactionExtractor {
         parsed?.transactions || parsed?.data?.transactions || [];
 
       if (!Array.isArray(rawTransactions)) {
+        recordAiFailure();
         return [];
       }
 
+      recordAiSuccess();
       return rawTransactions
         .map((tx: any) => this.mapTransaction(tx))
         .filter((tx): tx is ParsedTransaction => tx !== null);
     } catch (error) {
+      recordAiFailure();
       console.error('[AIExtractor] Failed to extract via AI:', error);
       return [];
     }

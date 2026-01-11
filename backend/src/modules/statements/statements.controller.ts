@@ -28,6 +28,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { validateFile } from '../../common/utils/file-validator.util';
 import { multerConfig } from '../../config/multer.config';
+import { buildContentDisposition } from '../../common/utils/http-file.util';
 
 @Controller('statements')
 @UseGuards(JwtAuthGuard)
@@ -99,7 +100,7 @@ export class StatementsController {
     res.setHeader('Content-Type', mimeType);
     res.setHeader(
       'Content-Disposition',
-      `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      buildContentDisposition('attachment', fileName),
     );
     stream.on('error', (err: any) => {
       const status =
@@ -130,7 +131,7 @@ export class StatementsController {
       user.id,
     );
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.setHeader('Content-Disposition', buildContentDisposition('inline', fileName));
     stream.on('error', (err: any) => {
       const status =
         err?.code === 'ENOENT' || err?.code === 'EISDIR'

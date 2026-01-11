@@ -5,6 +5,8 @@ import { Transaction } from '../../entities/transaction.entity';
 import { Statement } from '../../entities/statement.entity';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { BulkUpdateItemDto } from './dto/bulk-update-transaction.dto';
+import { User } from '../../entities/user.entity';
+import { WorkspaceMember, WorkspaceRole } from '../../entities/workspace-member.entity';
 
 @Injectable()
 export class TransactionsService {
@@ -13,7 +15,32 @@ export class TransactionsService {
     private transactionRepository: Repository<Transaction>,
     @InjectRepository(Statement)
     private statementRepository: Repository<Statement>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(WorkspaceMember)
+    private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
   ) {}
+
+  private async ensureCanEditStatements(userId: string): Promise<void> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'workspaceId'],
+    });
+    const workspaceId = user?.workspaceId ?? null;
+    if (!workspaceId) return;
+
+    const membership = await this.workspaceMemberRepository.findOne({
+      where: { workspaceId, userId },
+      select: ['role', 'permissions'],
+    });
+
+    if (!membership) return;
+    if ([WorkspaceRole.ADMIN, WorkspaceRole.OWNER].includes(membership.role)) return;
+
+    if (membership.permissions?.canEditStatements === false) {
+      throw new ForbiddenException('Недостаточно прав для редактирования выписок');
+    }
+  }
 
   async findAll(
     userId: string,
@@ -97,6 +124,7 @@ export class TransactionsService {
     userId: string,
     updateDto: UpdateTransactionDto,
   ): Promise<Transaction> {
+    await this.ensureCanEditStatements(userId);
     const transaction = await this.findOne(id, userId);
 
     // Recalculate amount if debit/credit changed
@@ -128,6 +156,7 @@ export class TransactionsService {
     userId: string,
     items: BulkUpdateItemDto[],
   ): Promise<Transaction[]> {
+    await this.ensureCanEditStatements(userId);
     const updatedTransactions: Transaction[] = [];
 
     for (const item of items) {
@@ -143,11 +172,11 @@ export class TransactionsService {
   }
 
   async remove(id: string, userId: string): Promise<void> {
+    await this.ensureCanEditStatements(userId);
     const transaction = await this.findOne(id, userId);
     await this.transactionRepository.remove(transaction);
   }
 }
-
 
 
 
