@@ -18,6 +18,10 @@ const content = {
       en: 'Update your contact email and password. Changes take effect immediately after saving.',
       kk: 'Байланыс email-ін және құпиясөзді жаңартыңыз. Өзгерістер сақтағаннан кейін бірден күшіне енеді.',
     }),
+    navigation: {
+      title: t({ ru: 'Разделы', en: 'Sections', kk: 'Бөлімдер' }),
+      sectionLabel: t({ ru: 'Раздел', en: 'Section', kk: 'Бөлім' }),
+    },
     validation: {
       passwordRequiredForEmail: t({
         ru: 'Введите текущий пароль для подтверждения.',
@@ -43,6 +47,50 @@ const content = {
       successFallback: t({ ru: 'Email успешно обновлён.', en: 'Email updated successfully.', kk: 'Email сәтті жаңартылды.' }),
       errorFallback: t({ ru: 'Не удалось обновить email.', en: 'Failed to update email.', kk: 'Email жаңарту мүмкін болмады.' }),
     },
+    profileCard: {
+      title: t({ ru: 'Профиль', en: 'Profile', kk: 'Профиль' }),
+      nameLabel: t({ ru: 'Имя', en: 'Name', kk: 'Аты' }),
+      languageLabel: t({ ru: 'Язык интерфейса', en: 'Language', kk: 'Тіл' }),
+      timeZoneLabel: t({ ru: 'Часовой пояс', en: 'Time zone', kk: 'Уақыт белдеуі' }),
+      timeZoneHelp: t({
+        ru: 'Оставьте «Авто», чтобы использовать часовой пояс устройства.',
+        en: 'Keep “Auto” to use your device time zone.',
+        kk: 'Құрылғының уақыт белдеуін қолдану үшін «Авто» қалдырыңыз.',
+      }),
+      submit: t({ ru: 'Сохранить', en: 'Save', kk: 'Сақтау' }),
+      successFallback: t({
+        ru: 'Профиль обновлён.',
+        en: 'Profile updated.',
+        kk: 'Профиль жаңартылды.',
+      }),
+      errorFallback: t({
+        ru: 'Не удалось обновить профиль.',
+        en: 'Failed to update profile.',
+        kk: 'Профильді жаңарту мүмкін болмады.',
+      }),
+      languages: {
+        ru: t({ ru: 'Русский', en: 'Russian', kk: 'Орысша' }),
+        en: t({ ru: 'Английский', en: 'English', kk: 'Ағылшынша' }),
+        kk: t({ ru: 'Казахский', en: 'Kazakh', kk: 'Қазақша' }),
+        auto: t({ ru: 'Авто', en: 'Auto', kk: 'Авто' }),
+      },
+      timeZones: {
+        auto: t({ ru: 'Авто', en: 'Auto', kk: 'Авто' }),
+        utc: t({ ru: 'UTC', en: 'UTC', kk: 'UTC' }),
+        europeMoscow: t({ ru: 'Europe/Moscow', en: 'Europe/Moscow', kk: 'Europe/Moscow' }),
+        asiaAlmaty: t({ ru: 'Asia/Almaty', en: 'Asia/Almaty', kk: 'Asia/Almaty' }),
+      },
+    },
+    sessionsCard: {
+      title: t({ ru: 'Сеансы', en: 'Sessions', kk: 'Сеанстар' }),
+      lastLoginLabel: t({ ru: 'Последний вход', en: 'Last login', kk: 'Соңғы кіру' }),
+      logoutAllHelp: t({
+        ru: 'Завершает все активные сессии на других устройствах и в других браузерах.',
+        en: 'Ends all active sessions on other devices and browsers.',
+        kk: 'Басқа құрылғылар мен браузерлердегі барлық белсенді сеанстарды аяқтайды.',
+      }),
+      logoutAllButton: t({ ru: 'Выйти со всех устройств', en: 'Log out of all devices', kk: 'Барлық құрылғылардан шығу' }),
+    },
     passwordCard: {
       title: t({ ru: 'Пароль', en: 'Password', kk: 'Құпиясөз' }),
       currentPasswordLabel: t({ ru: 'Текущий пароль', en: 'Current password', kk: 'Ағымдағы құпиясөз' }),
@@ -61,4 +109,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

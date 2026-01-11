@@ -44,6 +44,16 @@ const content = {
       admin: t({ ru: 'Администратор', en: 'Admin', kk: 'Әкімші' }),
       member: t({ ru: 'Участник', en: 'Member', kk: 'Мүше' }),
       roleLabel: t({ ru: 'Роль', en: 'Role', kk: 'Рөл' }),
+      memberDescription: t({
+        ru: 'Может работать с данными, но не управляет участниками и доступом.',
+        en: 'Can work with data, but can’t manage members or access.',
+        kk: 'Деректермен жұмыс істей алады, бірақ қатысушылар мен қолжетімділікті басқара алмайды.',
+      }),
+      adminDescription: t({
+        ru: 'Может управлять участниками и доступом, отправлять приглашения.',
+        en: 'Can manage members and access, and send invitations.',
+        kk: 'Қатысушылар мен қолжетімділікті басқарып, шақыру жібере алады.',
+      }),
     },
     members: {
       title: t({ ru: 'Участники', en: 'Members', kk: 'Қатысушылар' }),
@@ -55,6 +65,19 @@ const content = {
         en: 'Only the owner or an admin can send invitations.',
         kk: 'Шақыруларды тек иесі немесе әкімші жібере алады.',
       }),
+      permissionsTitle: t({ ru: 'Права доступа', en: 'Access permissions', kk: 'Қолжетімділік құқықтары' }),
+      permissionsHint: t({
+        ru: 'Отметьте, что может редактировать участник. Если не отмечено — только просмотр.',
+        en: 'Select what the member can edit. If unchecked, they can only view.',
+        kk: 'Қатысушы нені өңдей алатынын белгілеңіз. Белгіленбесе — тек көру.',
+      }),
+      permissions: {
+        canEditStatements: t({ ru: 'Выписки', en: 'Statements', kk: 'Үзінділер' }),
+        canEditCustomTables: t({ ru: 'Таблицы', en: 'Tables', kk: 'Кестелер' }),
+        canEditCategories: t({ ru: 'Категории', en: 'Categories', kk: 'Санаттар' }),
+        canEditDataEntry: t({ ru: 'Ввод данных', en: 'Data entry', kk: 'Деректерді енгізу' }),
+        canShareFiles: t({ ru: 'Ссылки и доступ к файлам', en: 'File sharing & access', kk: 'Файлдарға сілтеме және қолжетімділік' }),
+      },
       send: t({ ru: 'Отправить приглашение', en: 'Send invitation', kk: 'Шақыру жіберу' }),
       inviteLinkLabel: t({ ru: 'Ссылка на приглашение', en: 'Invitation link', kk: 'Шақыру сілтемесі' }),
     },
@@ -68,4 +91,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

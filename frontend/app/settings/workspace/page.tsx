@@ -1,34 +1,58 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Alert,
   Box,
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   Container,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
   IconButton,
   Stack,
   TextField,
   Typography,
-  MenuItem,
 } from '@mui/material';
 import { Copy, MailPlus, Shield, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
-import { useIntlayer } from 'next-intlayer';
+import { useIntlayer, useLocale } from 'next-intlayer';
+import type { AxiosError } from 'axios';
 
 type WorkspaceOverview = {
   workspace: { id: string; name: string; ownerId?: string | null; createdAt?: string };
-  members: Array<{ id: string; email?: string; name?: string; role: string; joinedAt?: string }>;
+  members: Array<{
+    id: string;
+    email?: string;
+    name?: string;
+    role: string;
+    permissions?: {
+      canEditStatements?: boolean;
+      canEditCustomTables?: boolean;
+      canEditCategories?: boolean;
+      canEditDataEntry?: boolean;
+      canShareFiles?: boolean;
+    } | null;
+    joinedAt?: string;
+  }>;
   invitations: Array<{
     id: string;
     email: string;
     role: string;
+    permissions?: {
+      canEditStatements?: boolean;
+      canEditCustomTables?: boolean;
+      canEditCategories?: boolean;
+      canEditDataEntry?: boolean;
+      canShareFiles?: boolean;
+    } | null;
     status: string;
     token: string;
     expiresAt?: string;
@@ -37,8 +61,17 @@ type WorkspaceOverview = {
   }>;
 };
 
+type InvitePermissions = {
+  canEditStatements: boolean;
+  canEditCustomTables: boolean;
+  canEditCategories: boolean;
+  canEditDataEntry: boolean;
+  canShareFiles: boolean;
+};
+
 export default function WorkspaceSettingsPage() {
   const { user, loading } = useAuth();
+  const { locale } = useLocale();
   const t = useIntlayer('settingsWorkspacePage');
   const [overview, setOverview] = useState<WorkspaceOverview | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -46,29 +79,39 @@ export default function WorkspaceSettingsPage() {
   const [inviteRole, setInviteRole] = useState<string>('member');
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [invitePermissions, setInvitePermissions] = useState<InvitePermissions>({
+    canEditStatements: true,
+    canEditCustomTables: true,
+    canEditCategories: true,
+    canEditDataEntry: true,
+    canShareFiles: false,
+  });
 
   const isOwnerOrAdmin = useMemo(() => {
     const member = overview?.members.find((m) => m.id === user?.id);
     return member?.role === 'owner' || member?.role === 'admin';
   }, [overview?.members, user?.id]);
 
-  useEffect(() => {
-    if (user) {
-      loadOverview();
-    }
-  }, [user]);
+  const getApiErrorMessage = useCallback((error: unknown, fallback: string) => {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    return axiosError?.response?.data?.message ?? fallback;
+  }, []);
 
-  const loadOverview = async () => {
+  const loadOverview = useCallback(async () => {
     setFetchError(null);
     try {
       const response = await apiClient.get<WorkspaceOverview>('/workspaces/me');
       setOverview(response.data);
-    } catch (err: any) {
-      setFetchError(
-        err?.response?.data?.message || t.errors.loadOverview.value,
-      );
+    } catch (error: unknown) {
+      setFetchError(getApiErrorMessage(error, t.errors.loadOverview.value));
     }
-  };
+  }, [getApiErrorMessage, t.errors.loadOverview.value]);
+
+  useEffect(() => {
+    if (user) {
+      void loadOverview();
+    }
+  }, [loadOverview, user]);
 
   const handleInvite = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -78,15 +121,14 @@ export default function WorkspaceSettingsPage() {
       const response = await apiClient.post('/workspaces/invitations', {
         email: inviteEmail,
         role: inviteRole,
+        permissions: inviteRole === 'member' ? invitePermissions : undefined,
       });
       setInviteEmail('');
       setInviteLink(response.data?.invitationLink);
       toast.success(t.toasts.inviteSent.value);
       await loadOverview();
-    } catch (err: any) {
-      const message =
-        err?.response?.data?.message || t.errors.inviteFailed.value;
-      toast.error(message);
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, t.errors.inviteFailed.value));
     } finally {
       setInviteLoading(false);
     }
@@ -101,6 +143,114 @@ export default function WorkspaceSettingsPage() {
       toast.error(t.errors.copyFailed.value);
     }
   };
+
+  const roleLabels: Record<string, string> = {
+    owner: t.roles.owner.value,
+    admin: t.roles.admin.value,
+    member: t.roles.member.value,
+  };
+
+  const resolveLocale = useCallback((value: string) => {
+    if (value === 'ru') return 'ru-RU';
+    if (value === 'kk') return 'kk-KZ';
+    return 'en-US';
+  }, []);
+
+  const formatDate = useCallback(
+    (iso?: string) => {
+      if (!iso) return '';
+      return new Date(iso).toLocaleDateString(resolveLocale(locale), { timeZone: 'UTC' });
+    },
+    [locale, resolveLocale],
+  );
+
+  const roleDescriptions = useMemo(() => {
+    const toNode = (value: unknown, fallbackText: string): ReactNode => {
+      if (value === null || value === undefined) return fallbackText;
+      return value as ReactNode;
+    };
+
+    const fallback =
+      locale === 'kk'
+        ? {
+            member: 'Деректермен жұмыс істей алады, бірақ қатысушылар мен қолжетімділікті басқара алмайды.',
+            admin: 'Қатысушылар мен қолжетімділікті басқарып, шақыру жібере алады.',
+          }
+        : locale === 'en'
+          ? {
+              member: 'Can work with data, but can’t manage members or access.',
+              admin: 'Can manage members and access, and send invitations.',
+            }
+          : {
+              member: 'Может работать с данными, но не управляет участниками и доступом.',
+              admin: 'Может управлять участниками и доступом, отправлять приглашения.',
+            };
+
+    const rolesAny = t.roles as unknown as Record<string, unknown>;
+    return {
+      member: toNode(rolesAny.memberDescription, fallback.member),
+      admin: toNode(rolesAny.adminDescription, fallback.admin),
+    };
+  }, [locale, t.roles]);
+
+  const invitePermissionCopy = useMemo(() => {
+    const toNode = (value: unknown, fallbackText: string): ReactNode => {
+      if (value === null || value === undefined) return fallbackText;
+      return value as ReactNode;
+    };
+
+    const fallback =
+      locale === 'kk'
+        ? {
+            title: 'Қолжетімділік құқықтары',
+            hint: 'Қатысушы нені өңдей алатынын белгілеңіз. Белгіленбесе — тек көру.',
+            labels: {
+              canEditStatements: 'Үзінділер',
+              canEditCustomTables: 'Кестелер',
+              canEditCategories: 'Санаттар',
+              canEditDataEntry: 'Деректерді енгізу',
+              canShareFiles: 'Файлдарға сілтеме және қолжетімділік',
+            },
+          }
+        : locale === 'en'
+          ? {
+              title: 'Access permissions',
+              hint: 'Select what the member can edit. If unchecked, they can only view.',
+              labels: {
+                canEditStatements: 'Statements',
+                canEditCustomTables: 'Tables',
+                canEditCategories: 'Categories',
+                canEditDataEntry: 'Data entry',
+                canShareFiles: 'File sharing & access',
+              },
+            }
+          : {
+              title: 'Права доступа',
+              hint: 'Отметьте, что может редактировать участник. Если не отмечено — только просмотр.',
+              labels: {
+                canEditStatements: 'Выписки',
+                canEditCustomTables: 'Таблицы',
+                canEditCategories: 'Категории',
+                canEditDataEntry: 'Ввод данных',
+                canShareFiles: 'Ссылки и доступ к файлам',
+              },
+            };
+
+    const inviteAny = t.invite as unknown as Record<string, unknown>;
+    const permissionsAny = (inviteAny.permissions as unknown as Record<string, unknown>) || {};
+
+    return {
+      title: toNode(inviteAny.permissionsTitle, fallback.title),
+      hint: toNode(inviteAny.permissionsHint, fallback.hint),
+      labels: {
+        canEditStatements: toNode(permissionsAny.canEditStatements, fallback.labels.canEditStatements),
+        canEditCustomTables: toNode(permissionsAny.canEditCustomTables, fallback.labels.canEditCustomTables),
+        canEditCategories: toNode(permissionsAny.canEditCategories, fallback.labels.canEditCategories),
+        canEditDataEntry: toNode(permissionsAny.canEditDataEntry, fallback.labels.canEditDataEntry),
+        canShareFiles: toNode(permissionsAny.canShareFiles, fallback.labels.canShareFiles),
+      } satisfies Record<keyof InvitePermissions, ReactNode>,
+    };
+  }, [locale, t.invite]);
 
   if (loading) {
     return (
@@ -117,12 +267,6 @@ export default function WorkspaceSettingsPage() {
       </Container>
     );
   }
-
-  const roleLabels: Record<string, string> = {
-    owner: t.roles.owner.value,
-    admin: t.roles.admin.value,
-    member: t.roles.member.value,
-  };
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -212,17 +356,86 @@ export default function WorkspaceSettingsPage() {
                     required
                     disabled={!isOwnerOrAdmin}
                   />
-                  <TextField
-                    select
-                    label={t.roles.roleLabel.value}
-                    value={inviteRole}
-                    onChange={(e) => setInviteRole(e.target.value)}
-                    fullWidth
-                    disabled={!isOwnerOrAdmin}
-                  >
-                    <MenuItem value="member">{t.roles.member}</MenuItem>
-                    <MenuItem value="admin">{t.roles.admin}</MenuItem>
-                  </TextField>
+                  <FormControl component="fieldset" disabled={!isOwnerOrAdmin}>
+                    <FormLabel component="legend">{t.roles.roleLabel}</FormLabel>
+                    <Stack spacing={1} sx={{ mt: 0.5 }}>
+                      <FormControlLabel
+                        sx={{ alignItems: 'flex-start', m: 0 }}
+                        control={
+                          <Checkbox
+                            checked={inviteRole === 'member'}
+                            onChange={(_, checked) => {
+                              if (checked) setInviteRole('member');
+                            }}
+                          />
+                        }
+                        label={
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>
+                              {t.roles.member}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {roleDescriptions.member}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                      <FormControlLabel
+                        sx={{ alignItems: 'flex-start', m: 0 }}
+                        control={
+                          <Checkbox
+                            checked={inviteRole === 'admin'}
+                            onChange={(_, checked) => {
+                              if (checked) setInviteRole('admin');
+                            }}
+                          />
+                        }
+                        label={
+                          <Box>
+                            <Typography variant="body2" fontWeight={600}>
+                              {t.roles.admin}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {roleDescriptions.admin}
+                            </Typography>
+                          </Box>
+                        }
+                      />
+                    </Stack>
+                  </FormControl>
+                  {inviteRole === 'member' && (
+                    <FormControl component="fieldset" disabled={!isOwnerOrAdmin}>
+                      <FormLabel component="legend">{invitePermissionCopy.title}</FormLabel>
+                      <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25 }}>
+                        {invitePermissionCopy.hint}
+                      </Typography>
+                      <Stack spacing={0.5} sx={{ mt: 1 }}>
+                        {(
+                          [
+                            'canEditStatements',
+                            'canEditCustomTables',
+                            'canEditCategories',
+                            'canEditDataEntry',
+                            'canShareFiles',
+                          ] as Array<keyof InvitePermissions>
+                        ).map((key) => (
+                          <FormControlLabel
+                            key={key}
+                            sx={{ m: 0 }}
+                            control={
+                              <Checkbox
+                                checked={invitePermissions[key]}
+                                onChange={(_, checked) => {
+                                  setInvitePermissions((prev) => ({ ...prev, [key]: checked }));
+                                }}
+                              />
+                            }
+                            label={<Typography variant="body2">{invitePermissionCopy.labels[key]}</Typography>}
+                          />
+                        ))}
+                      </Stack>
+                    </FormControl>
+                  )}
                   <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <Button
                       type="submit"
@@ -291,7 +504,7 @@ export default function WorkspaceSettingsPage() {
                           </Typography>
                           {invite.expiresAt && (
                             <Typography variant="caption" color="text.secondary">
-                              {t.pending.validUntil}: {new Date(invite.expiresAt).toLocaleDateString()}
+                              {t.pending.validUntil}: {formatDate(invite.expiresAt)}
                             </Typography>
                           )}
                         </Box>
