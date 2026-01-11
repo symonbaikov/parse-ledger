@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@bank-logos": [
+        "./app/bank-logos/index.ts"
       ]
     }
   },
