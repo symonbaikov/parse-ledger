@@ -8,6 +8,7 @@ import { User } from '../../entities/user.entity';
 import { TelegramReport, ReportStatus, ReportType } from '../../entities/telegram-report.entity';
 import { ReportsService } from '../reports/reports.service';
 import { StatementsService } from '../statements/statements.service';
+import { retry, TimeoutError } from '../../common/utils/async.util';
 import { ConnectTelegramDto } from './dto/connect-telegram.dto';
 import { SendTelegramReportDto } from './dto/send-report.dto';
 import { DailyReport } from '../reports/interfaces/daily-report.interface';
@@ -15,6 +16,17 @@ import { MonthlyReport } from '../reports/interfaces/monthly-report.interface';
 
 interface TelegramSendResult {
   messageId: string;
+}
+
+class TelegramApiError extends Error {
+  constructor(
+    message: string,
+    readonly statusCode?: number,
+    readonly errorCode?: number,
+  ) {
+    super(message);
+    this.name = 'TelegramApiError';
+  }
 }
 
 @Injectable()
@@ -200,25 +212,62 @@ export class TelegramService {
       throw new BadRequestException('Telegram bot is not configured');
     }
 
-    const response = await fetch(`${this.apiBase}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        disable_web_page_preview: true,
-      }),
-    });
+    const timeoutMsRaw = Number.parseInt(process.env.TELEGRAM_TIMEOUT_MS || '10000', 10);
+    const timeoutMs = Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? timeoutMsRaw : 10000;
 
-    const payload = await response.json();
+    const sendOnce = async () => {
+      const controller = new AbortController();
+      const timeoutHandle = setTimeout(() => controller.abort(), timeoutMs);
 
-    if (!payload.ok) {
-      const description = payload?.description || 'Unknown error';
-      this.logger.error(`Failed to send Telegram message: ${description}`);
-      throw new BadRequestException(`Telegram API error: ${description}`);
+      try {
+        const response = await fetch(`${this.apiBase}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text,
+            disable_web_page_preview: true,
+          }),
+          signal: controller.signal,
+        });
+
+        if (response.status >= 500) {
+          throw new TelegramApiError('Telegram API temporary error', response.status);
+        }
+
+        const payload = await response.json();
+
+        if (!payload.ok) {
+          const description = payload?.description || 'Unknown error';
+          const errorCode = payload?.error_code ? Number(payload.error_code) : undefined;
+          this.logger.error(`Failed to send Telegram message: ${description}`);
+          throw new TelegramApiError(description, response.status, errorCode);
+        }
+
+        return { messageId: String(payload.result?.message_id || '') };
+      } catch (error: any) {
+        if (error?.name === 'AbortError') {
+          throw new TimeoutError('Telegram request timed out');
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
+    };
+
+    try {
+      return await retry(sendOnce, {
+        retries: 2,
+        baseDelayMs: 500,
+        maxDelayMs: 5000,
+        isRetryable: (error) =>
+          error instanceof TimeoutError ||
+          (error instanceof TelegramApiError && (error.statusCode || 0) >= 500),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new BadRequestException(`Telegram API error: ${message}`);
     }
-
-    return { messageId: String(payload.result?.message_id || '') };
   }
 
   async handleUpdate(update: any): Promise<void> {

@@ -26,21 +26,7 @@ import { GrantPermissionDto } from './dto/grant-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
-import * as fs from 'fs/promises';
-import * as fsSync from 'fs';
-import * as path from 'path';
-import { Readable } from 'stream';
-
-const uploadBaseDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
-
-const extractUploadsSuffix = (rawPath: string): string | null => {
-  const normalized = rawPath.replace(/\\/g, '/');
-  const marker = '/uploads/';
-  const idx = normalized.lastIndexOf(marker);
-  if (idx === -1) return null;
-  const suffix = normalized.slice(idx + marker.length);
-  return suffix ? suffix : null;
-};
+import { FileStorageService } from '../../common/services/file-storage.service';
 
 /**
  * Storage service for managing file storage, sharing, and permissions
@@ -62,6 +48,7 @@ export class StorageService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(WorkspaceMember)
     private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
+    private readonly fileStorageService: FileStorageService,
   ) {}
 
   private async getUserContext(userId: string) {
@@ -132,6 +119,10 @@ export class StorageService {
           })
         : null;
 
+      const statementsWithFileData = await this.fileStorageService.getStatementsWithFileData(
+        allStatements.map((s) => s.id),
+      );
+
       const enrichedStatements = await Promise.all(
         allStatements.map(async (statement) => {
           const isOwner = statement.userId === userId;
@@ -163,12 +154,18 @@ export class StorageService {
             permission?.canReshare ||
             false;
 
+          const fileAvailability = this.fileStorageService.buildAvailability(
+            this.fileStorageService.isOnDisk(statement.filePath),
+            statementsWithFileData.has(statement.id),
+          );
+
           return {
             ...statement,
             isOwner,
             permissionType,
             canReshare,
             sharedLinksCount: sharedLinks,
+            fileAvailability,
           };
         }),
       );
@@ -178,46 +175,6 @@ export class StorageService {
       console.error('Error in getStorageFiles:', error);
       throw error;
     }
-  }
-
-  private async resolveFilePath(rawPath: string): Promise<string> {
-    const basename = path.basename(rawPath);
-    const uploadsSuffix = extractUploadsSuffix(rawPath);
-    const candidates = [
-      rawPath,
-      path.resolve(rawPath),
-      path.isAbsolute(rawPath) ? rawPath : path.join(process.cwd(), rawPath),
-      path.join(uploadBaseDir, basename),
-      path.join(uploadBaseDir, rawPath),
-      uploadsSuffix ? path.join(uploadBaseDir, uploadsSuffix) : null,
-      path.join(process.cwd(), 'uploads', basename),
-      path.join(process.cwd(), 'uploads', rawPath),
-      uploadsSuffix ? path.join(process.cwd(), 'uploads', uploadsSuffix) : null,
-      path.join(__dirname, '../../..', 'uploads', basename),
-      path.join(__dirname, '../../..', rawPath),
-    ].filter(Boolean) as string[];
-
-    for (const candidate of candidates) {
-      try {
-        const stat = await fs.stat(candidate);
-        if (!stat.isFile()) continue;
-        return candidate;
-      } catch {
-        // continue
-      }
-    }
-
-    throw new NotFoundException('File not found on disk');
-  }
-
-  private async getFileData(statementId: string): Promise<Buffer | null> {
-    const withData = await this.statementRepository
-      .createQueryBuilder('statement')
-      .addSelect('statement.fileData')
-      .where('statement.id = :id', { id: statementId })
-      .getOne();
-
-    return ((withData as any)?.fileData as Buffer | null | undefined) ?? null;
   }
 
   /**
@@ -261,6 +218,8 @@ export class StorageService {
     const isWorkspacePeer =
       workspaceId && statement.user && statement.user.workspaceId === workspaceId;
 
+    const fileAvailability = await this.fileStorageService.getFileAvailability(statement);
+
     return {
       statement,
       transactions,
@@ -276,6 +235,7 @@ export class StorageService {
         : isWorkspacePeer
         ? FilePermissionType.VIEWER
         : userPermission?.permissionType,
+      fileAvailability,
     };
   }
 
@@ -364,25 +324,8 @@ export class StorageService {
       throw new NotFoundException('File not found');
     }
 
-    try {
-      const filePath = await this.resolveFilePath(statement.filePath);
-      return {
-        stream: fsSync.createReadStream(filePath),
-        fileName: statement.fileName,
-        mimeType: this.getMimeType(statement.fileType),
-      };
-    } catch {
-      const fileData = await this.getFileData(statement.id);
-      if (!fileData) {
-        throw new NotFoundException('File not found on disk');
-      }
-
-      return {
-        stream: Readable.from(fileData),
-        fileName: statement.fileName,
-        mimeType: this.getMimeType(statement.fileType),
-      };
-    }
+    const { stream, fileName, mimeType } = await this.fileStorageService.getStatementFileStream(statement);
+    return { stream, fileName, mimeType };
   }
 
   private async getFileStream(
@@ -392,25 +335,8 @@ export class StorageService {
   ): Promise<{ stream: NodeJS.ReadableStream; fileName: string; mimeType: string }> {
     await this.checkFileAccess(userId, statement.id, action);
 
-    try {
-      const filePath = await this.resolveFilePath(statement.filePath);
-      return {
-        stream: fsSync.createReadStream(filePath),
-        fileName: statement.fileName,
-        mimeType: this.getMimeType(statement.fileType),
-      };
-    } catch {
-      const fileData = await this.getFileData(statement.id);
-      if (!fileData) {
-        throw new NotFoundException('File not found on disk');
-      }
-
-      return {
-        stream: Readable.from(fileData),
-        fileName: statement.fileName,
-        mimeType: this.getMimeType(statement.fileType),
-      };
-    }
+    const { stream, fileName, mimeType } = await this.fileStorageService.getStatementFileStream(statement);
+    return { stream, fileName, mimeType };
   }
 
   /**
@@ -694,8 +620,23 @@ export class StorageService {
 
     const { workspaceId } = await this.getUserContext(userId);
 
+    const membership = workspaceId
+      ? await this.workspaceMemberRepository.findOne({
+          where: { workspaceId, userId },
+          select: ['role', 'permissions'],
+        })
+      : null;
+
     // Owner has all permissions
     if (statement.userId === userId) {
+      if (membership && membership.role === WorkspaceRole.MEMBER) {
+        if (requiredAction === 'edit' && membership.permissions?.canEditStatements === false) {
+          throw new ForbiddenException('Недостаточно прав для редактирования выписок');
+        }
+        if (requiredAction === 'share' && membership.permissions?.canShareFiles === false) {
+          throw new ForbiddenException('Недостаточно прав для создания ссылок и выдачи доступа');
+        }
+      }
       return;
     }
 
@@ -703,11 +644,6 @@ export class StorageService {
     const isSameWorkspace =
       workspaceId && statement.user?.workspaceId && statement.user.workspaceId === workspaceId;
     if (isSameWorkspace) {
-      const membership = await this.workspaceMemberRepository.findOne({
-        where: { workspaceId, userId },
-        select: ['role'],
-      });
-
       if (requiredAction === 'view' || requiredAction === 'download') {
         return;
       }
@@ -800,22 +736,5 @@ export class StorageService {
    */
   private generateShareToken(): string {
     return crypto.randomBytes(32).toString('hex');
-  }
-
-  /**
-   * Get MIME type from file type
-   */
-  private getMimeType(fileType: string): string {
-    const mimeTypes: Record<string, string> = {
-      pdf: 'application/pdf',
-      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      xls: 'application/vnd.ms-excel',
-      csv: 'text/csv',
-      jpg: 'image/jpeg',
-      jpeg: 'image/jpeg',
-      png: 'image/png',
-    };
-
-    return mimeTypes[fileType.toLowerCase()] || 'application/octet-stream';
   }
 }

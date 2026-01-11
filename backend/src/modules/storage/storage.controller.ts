@@ -23,6 +23,7 @@ import { GrantPermissionDto } from './dto/grant-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { AccessSharedLinkDto } from './dto/access-shared-link.dto';
 import { UpdateFileCategoryDto } from './dto/update-file-category.dto';
+import { buildContentDisposition } from '../../common/utils/http-file.util';
 
 /**
  * Storage controller for file management, sharing, and permissions
@@ -83,7 +84,7 @@ export class StorageController {
     );
 
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.setHeader('Content-Disposition', buildContentDisposition('inline', fileName));
 
     stream.on('error', (err: any) => {
       const status =
@@ -120,7 +121,7 @@ export class StorageController {
     );
 
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.setHeader('Content-Disposition', buildContentDisposition('attachment', fileName));
 
     stream.on('error', (err: any) => {
       const status =
@@ -237,7 +238,7 @@ export class StorageController {
     );
 
     res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.setHeader('Content-Disposition', buildContentDisposition('attachment', fileName));
 
     stream.on('error', (err: any) => {
       const status =

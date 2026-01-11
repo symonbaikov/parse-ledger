@@ -11,6 +11,7 @@ import {
   User,
   WorkspaceMember,
 } from '../../entities';
+import { FileStorageService } from '../../common/services/file-storage.service';
 
 /**
  * Storage module for file management, sharing, and permissions
@@ -28,9 +29,8 @@ import {
     ]),
   ],
   controllers: [StorageController],
-  providers: [StorageService],
+  providers: [StorageService, FileStorageService],
   exports: [StorageService],
 })
 export class StorageModule {}
-
 

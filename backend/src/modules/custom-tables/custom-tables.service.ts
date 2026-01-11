@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, QueryFailedError, Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -27,6 +27,7 @@ import { CreateCustomTableFromStatementsDto } from './dto/create-custom-table-fr
 import { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
 import { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
 import { User } from '../../entities/user.entity';
+import { WorkspaceMember, WorkspaceRole } from '../../entities/workspace-member.entity';
 
 type DataEntryFieldKey = 'date' | 'type' | 'amount' | 'currency' | 'note';
 
@@ -59,6 +60,8 @@ export class CustomTablesService {
     private readonly auditLogRepository: Repository<AuditLog>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(WorkspaceMember)
+    private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
   ) {}
 
   private throwHelpfulSchemaError(error: unknown): never {
@@ -79,6 +82,22 @@ export class CustomTablesService {
       select: ['id', 'workspaceId'],
     });
     return user?.workspaceId ?? null;
+  }
+
+  private async ensureCanEditCustomTables(userId: string): Promise<void> {
+    const workspaceId = await this.getWorkspaceId(userId);
+    if (!workspaceId) return;
+
+    const membership = await this.workspaceMemberRepository.findOne({
+      where: { workspaceId, userId },
+      select: ['role', 'permissions'],
+    });
+
+    if (!membership) return;
+    if ([WorkspaceRole.ADMIN, WorkspaceRole.OWNER].includes(membership.role)) return;
+    if (membership.permissions?.canEditCustomTables === false) {
+      throw new ForbiddenException('Недостаточно прав для редактирования таблиц');
+    }
   }
 
   private async resolveCategoryId(userId: string, categoryId: string): Promise<string> {
@@ -238,6 +257,7 @@ export class CustomTablesService {
   }
 
   async createTable(userId: string, dto: CreateCustomTableDto): Promise<CustomTable> {
+    await this.ensureCanEditCustomTables(userId);
     const categoryId =
       dto.categoryId === null || dto.categoryId === undefined
         ? null
@@ -316,6 +336,7 @@ export class CustomTablesService {
   }
 
   async updateTable(userId: string, tableId: string, dto: UpdateCustomTableDto): Promise<CustomTable> {
+    await this.ensureCanEditCustomTables(userId);
     const table = await this.requireTable(userId, tableId);
     if (dto.name !== undefined) table.name = dto.name;
     if (dto.description !== undefined) table.description = dto.description ?? null;
@@ -337,6 +358,7 @@ export class CustomTablesService {
     userId: string,
     dto: CreateCustomTableFromDataEntryDto,
   ): Promise<{ tableId: string; columnsCreated: number; rowsCreated: number }> {
+    await this.ensureCanEditCustomTables(userId);
     const selectedType =
       dto.scope === DataEntryToCustomTableScope.TYPE ? dto.type : undefined;
 
@@ -580,6 +602,7 @@ export class CustomTablesService {
     userId: string,
     dto: CreateCustomTableFromDataEntryCustomTabDto,
   ): Promise<{ tableId: string; columnsCreated: number; rowsCreated: number }> {
+    await this.ensureCanEditCustomTables(userId);
     let customTab: DataEntryCustomField | null = null;
     try {
       customTab = await this.dataEntryCustomFieldRepository.findOne({
@@ -746,6 +769,7 @@ export class CustomTablesService {
     userId: string,
     tableId: string,
   ): Promise<{ tableId: string; rowsCreated: number; syncedAt: Date }> {
+    await this.ensureCanEditCustomTables(userId);
     let table: CustomTable | null = null;
     try {
       table = await this.customTableRepository.findOne({
@@ -875,6 +899,7 @@ export class CustomTablesService {
     userId: string,
     dto: CreateCustomTableFromStatementsDto,
   ): Promise<{ tableId: string; columnsCreated: number; rowsCreated: number }> {
+    await this.ensureCanEditCustomTables(userId);
     const statementIds = Array.from(new Set((dto.statementIds || []).map((v) => String(v).trim()).filter(Boolean)));
     if (!statementIds.length) {
       throw new BadRequestException('Выберите выписку');
@@ -1059,6 +1084,7 @@ export class CustomTablesService {
   }
 
   async removeTable(userId: string, tableId: string): Promise<void> {
+    await this.ensureCanEditCustomTables(userId);
     const table = await this.requireTable(userId, tableId);
     try {
       await this.customTableRepository.delete({ id: table.id, userId });
@@ -1073,6 +1099,7 @@ export class CustomTablesService {
     tableId: string,
     dto: CreateCustomTableColumnDto,
   ): Promise<CustomTableColumn> {
+    await this.ensureCanEditCustomTables(userId);
     await this.requireTable(userId, tableId);
 
     const position = dto.position ?? (await this.getNextColumnPosition(tableId));
@@ -1107,6 +1134,7 @@ export class CustomTablesService {
     columnId: string,
     dto: UpdateCustomTableColumnDto,
   ): Promise<CustomTableColumn> {
+    await this.ensureCanEditCustomTables(userId);
     await this.requireTable(userId, tableId);
     let column: CustomTableColumn | null = null;
     try {
@@ -1136,6 +1164,7 @@ export class CustomTablesService {
   }
 
   async reorderColumns(userId: string, tableId: string, dto: ReorderCustomTableColumnsDto): Promise<void> {
+    await this.ensureCanEditCustomTables(userId);
     await this.requireTable(userId, tableId);
     let columns: CustomTableColumn[] = [];
     try {
@@ -1160,6 +1189,7 @@ export class CustomTablesService {
   }
 
   async removeColumn(userId: string, tableId: string, columnId: string): Promise<void> {
+    await this.ensureCanEditCustomTables(userId);
     await this.requireTable(userId, tableId);
     let column: CustomTableColumn | null = null;
     try {
@@ -1452,6 +1482,7 @@ export class CustomTablesService {
   }
 
   async createRow(userId: string, tableId: string, dto: CreateCustomTableRowDto): Promise<CustomTableRow> {
+    await this.ensureCanEditCustomTables(userId);
     await this.requireTable(userId, tableId);
     const allowedKeys = await this.getAllowedColumnKeys(tableId);
     const data = this.sanitizeRowData(dto.data, allowedKeys);
@@ -1479,6 +1510,7 @@ export class CustomTablesService {
     rowId: string,
     dto: UpdateCustomTableRowDto,
   ): Promise<CustomTableRow> {
+    await this.ensureCanEditCustomTables(userId);
     await this.requireTable(userId, tableId);
     let row: CustomTableRow | null = null;
     try {
@@ -1508,6 +1540,7 @@ export class CustomTablesService {
   }
 
   async removeRow(userId: string, tableId: string, rowId: string): Promise<void> {
+    await this.ensureCanEditCustomTables(userId);
     await this.requireTable(userId, tableId);
     let row: CustomTableRow | null = null;
     try {
@@ -1531,6 +1564,7 @@ export class CustomTablesService {
     tableId: string,
     dto: BatchCreateCustomTableRowsDto,
   ): Promise<{ created: number }> {
+    await this.ensureCanEditCustomTables(userId);
     await this.requireTable(userId, tableId);
     const allowedKeys = await this.getAllowedColumnKeys(tableId);
 
@@ -1558,6 +1592,7 @@ export class CustomTablesService {
     tableId: string,
     dto: UpdateCustomTableViewSettingsColumnDto,
   ): Promise<CustomTable> {
+    await this.ensureCanEditCustomTables(userId);
     const table = await this.requireTable(userId, tableId);
 
     const columnKey = dto.columnKey?.trim();

@@ -20,6 +20,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { Permission } from '../../common/enums/permissions.enum';
+import { buildContentDisposition } from '../../common/utils/http-file.util';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import * as fs from 'fs';
@@ -116,7 +117,7 @@ export class ReportsController {
 
     // Send file
     res.setHeader('Content-Type', dto.format === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(fileName)}"; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+    res.setHeader('Content-Disposition', buildContentDisposition('attachment', fileName));
 
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
