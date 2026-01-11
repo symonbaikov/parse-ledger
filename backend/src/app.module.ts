@@ -48,6 +48,8 @@ import { TelegramModule } from './modules/telegram/telegram.module';
 import { DataEntryModule } from './modules/data-entry/data-entry.module';
 import { CustomTablesModule } from './modules/custom-tables/custom-tables.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
+import { ObservabilityModule } from './modules/observability/observability.module';
+import { HttpMetricsInterceptor } from './modules/observability/http-metrics.interceptor';
 
 @Module({
   imports: [
@@ -105,6 +107,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
     DataEntryModule,
     CustomTablesModule,
     WorkspacesModule,
+    ObservabilityModule,
   ],
   controllers: [AppController],
   providers: [
@@ -116,6 +119,10 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: HttpMetricsInterceptor,
     },
     {
       provide: APP_GUARD,

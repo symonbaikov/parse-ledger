@@ -4,11 +4,15 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { RequestContext } from '../observability/request-context';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -26,8 +30,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // Debug log to surface unexpected errors in logs
     if (!(exception instanceof HttpException)) {
-      // eslint-disable-next-line no-console
-      console.error('Unhandled exception', exception);
+      this.logger.error(
+        { type: 'unhandled_exception', url: request.url, method: request.method },
+        (exception as any)?.stack,
+      );
     }
 
     const errorResponse = {
@@ -39,6 +45,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
             ? (message as any)
             : undefined,
       },
+      requestId: RequestContext.getRequestId(),
+      traceId: RequestContext.getTraceId(),
       timestamp: new Date().toISOString(),
       path: request.url,
     };
@@ -59,7 +67,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
     return codes[status] || 'UNKNOWN_ERROR';
   }
 }
-
 
 
 

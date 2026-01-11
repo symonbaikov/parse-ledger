@@ -1,18 +1,31 @@
-import { Controller, Get, Res } from '@nestjs/common';
+import { Controller, Get, Res, ServiceUnavailableException } from '@nestjs/common';
 import { AppService } from './app.service';
 import { Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
+import { Public } from './modules/auth/decorators/public.decorator';
 
 @Controller()
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
+  @Public()
   @Get('health')
   getHealth(): object {
     return this.appService.getHealth();
   }
 
+  @Public()
+  @Get('health/ready')
+  async getReadiness(): Promise<any> {
+    const readiness = await this.appService.getReadiness();
+    if (readiness.status !== 'ok') {
+      throw new ServiceUnavailableException(readiness);
+    }
+    return readiness;
+  }
+
+  @Public()
   @Get()
   serveRoot(@Res() res: Response): void {
     // Try to serve Next.js app
@@ -36,7 +49,6 @@ export class AppController {
     }
   }
 }
-
 
 
 

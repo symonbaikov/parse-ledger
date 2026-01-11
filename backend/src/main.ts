@@ -1,9 +1,11 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import * as fs from 'fs';
 import * as path from 'path';
+import { AppLogger } from './common/observability/app-logger.service';
+import { requestContextMiddleware } from './common/observability/request-context.middleware';
 
 async function bootstrap() {
   const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
@@ -16,7 +18,9 @@ async function bootstrap() {
     fs.mkdirSync(reportsDir, { recursive: true });
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: new AppLogger(),
+  });
 
   // Serve static files from public folder (frontend assets)
   const publicPath = path.join(__dirname, 'public');
@@ -24,6 +28,9 @@ async function bootstrap() {
     (app as any).useStaticAssets(publicPath);
   }
   (app as any).useStaticAssets(uploadsDir, { prefix: '/uploads' });
+
+  // Request context & correlation IDs
+  (app as any).use(requestContextMiddleware);
 
   // Global prefix for API versioning
   app.setGlobalPrefix('api/v1');
@@ -41,6 +48,7 @@ async function bootstrap() {
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
+    exposedHeaders: ['x-request-id', 'x-trace-id'],
   });
 
   // Swagger / OpenAPI
@@ -67,9 +75,10 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3001;
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`API: http://localhost:${port}/api/v1`);
-  console.log(`Swagger docs: http://localhost:${port}/api/docs`);
+  const logger = new Logger('Bootstrap');
+  logger.log({ type: 'startup', url: `http://localhost:${port}` });
+  logger.log({ type: 'startup', api: `http://localhost:${port}/api/v1` });
+  logger.log({ type: 'startup', swagger: `http://localhost:${port}/api/docs` });
 }
 
 bootstrap();
