@@ -4,6 +4,10 @@ set -e
 API_PORT="${API_PORT:-4000}"
 FRONTEND_PORT="${PORT:-3000}"
 
+echo "Running DB migrations..."
+node backend/scripts/run-migrations-with-lock.js
+echo "DB migrations done"
+
 echo "Starting backend on port ${API_PORT}"
 PORT="${API_PORT}" node backend/dist/main.js &
 BACKEND_PID=$!
