@@ -7,7 +7,21 @@ import * as path from 'path';
 import { AppLogger } from './common/observability/app-logger.service';
 import { requestContextMiddleware } from './common/observability/request-context.middleware';
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value || value.trim() === '') {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
 async function bootstrap() {
+  if (process.env.NODE_ENV === 'production') {
+    requireEnv('DATABASE_URL');
+    requireEnv('JWT_SECRET');
+    requireEnv('JWT_REFRESH_SECRET');
+  }
+
   const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
@@ -43,7 +57,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  
+
   // CORS configuration
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
