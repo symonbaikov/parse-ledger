@@ -99,4 +99,4 @@ npm start
 1. Commit and push these changes to GitHub
 2. Railway will automatically rebuild
 3. Once built, the entire application will be accessible from the single domain
-4. Run database migrations via `railway exec npm --prefix backend run migration:run`
+4. Verify database migrations applied (logs); manual run: `railway exec npm --prefix backend run migration:run`

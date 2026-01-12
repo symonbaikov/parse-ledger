@@ -105,9 +105,13 @@ Application accessible at single domain
 2. Push to GitHub
 3. Railway auto-deploys
 4. Verify frontend loads
-5. Run migrations
+5. Verify migrations applied (logs)
 
 ### Database Setup
+Миграции применяются автоматически на старте контейнера.
+
+Ручной запуск (если нужно для отладки):
+
 ```bash
 railway exec npm --prefix backend run migration:run
 ```

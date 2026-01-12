@@ -72,10 +72,15 @@ curl https://your-railway-domain/api/v1/health
 # Visit: https://your-railway-domain/api/docs
 ```
 
-### Step 4: Run Migrations (First Time Only)
-```bash
-railway exec npm --prefix backend run migration:run
-```
+### Step 4: Database migrations
+
+Миграции применяются автоматически на старте контейнера.
+
+- Проверь Railway Logs: должны быть `Running DB migrations...` и `DB migrations done`.
+- Ручной запуск (если нужно для отладки):
+  ```bash
+  railway exec npm --prefix backend run migration:run
+  ```
 
 ## 🏗️ Architecture After Deployment
 
@@ -215,7 +220,7 @@ Read these files for more details:
 ## 🎯 Next Steps After Successful Deployment
 
 1. ✅ Verify everything is working
-2. Run database migrations
+2. Verify database migrations applied (logs)
 3. Create admin user (if needed)
 4. Configure Google Sheets integration
 5. Configure Telegram bot

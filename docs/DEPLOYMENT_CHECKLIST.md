@@ -42,10 +42,13 @@ Before pushing to Railway:
    - Visit `https://your-railway-domain/api/v1/health` (should show API response)
    - Visit `https://your-railway-domain/api/docs` (should show Swagger)
 
-4. **Run Migrations** (if first time)
-   ```bash
-   railway exec npm --prefix backend run migration:run
-   ```
+4. **Database migrations**
+   - Миграции применяются автоматически на старте контейнера.
+   - Проверь Railway Logs: должны быть `Running DB migrations...` и `DB migrations done`.
+   - Ручной запуск (если нужно для отладки):
+     ```bash
+     railway exec npm --prefix backend run migration:run
+     ```
 
 ## 🐛 Troubleshooting
 

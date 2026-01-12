@@ -123,12 +123,16 @@ After deployment, verify everything works:
 - **API Docs**: `https://<your-railway-domain>/api/docs`
 - **Health Check**: `https://<your-railway-domain>/api/v1/health`
 
-### 8. Run Database Migrations
+### 8. Database Migrations (Automatic)
 
-After first deployment, run migrations:
+Миграции применяются автоматически на старте контейнера (часть CD): при каждом деплое запускаются только новые миграции.
+
+Проверка:
+- открой Railway Logs и убедись, что есть строки `Running DB migrations...` и `DB migrations done`.
+
+Ручной запуск (если нужно для отладки):
 
 ```bash
-# Via Railway CLI
 railway exec npm --prefix backend run migration:run
 ```
 
@@ -179,7 +183,7 @@ The frontend is built and served from the same container as the backend:
 
 - Verify `DATABASE_URL` environment variable is set
 - Check PostgreSQL service is running
-- Run migrations: `railway exec npm --prefix backend run migration:run`
+- Миграции запускаются автоматически; для ручного запуска см. раздел про миграции выше
 
 ### Port binding issues
 
