@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: finflow-backend
+    metrics_path: /api/v1/metrics
+    static_configs:
+      # Railway: выставь BACKEND_METRICS_TARGET в Prometheus service env
+      # Пример: "parse-ledger:4000" (внутренний порт API) или "<private-domain>:<port>"
+      - targets: ["${BACKEND_METRICS_TARGET}"]
