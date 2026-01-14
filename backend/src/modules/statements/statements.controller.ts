@@ -26,9 +26,9 @@ import { buildContentDisposition } from '../../common/utils/http-file.util';
 import { multerConfig } from '../../config/multer.config';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { UpdateStatementDto } from './dto/update-statement.dto';
-import type { UploadStatementDto } from './dto/upload-statement.dto';
-import type { StatementsService } from './statements.service';
+import { UpdateStatementDto } from './dto/update-statement.dto';
+import { UploadStatementDto } from './dto/upload-statement.dto';
+import { StatementsService } from './statements.service';
 
 @Controller('statements')
 @UseGuards(JwtAuthGuard)
@@ -66,6 +66,7 @@ export class StatementsController {
           uploadDto.googleSheetId || undefined,
           uploadDto.walletId || undefined,
           uploadDto.branchId || undefined,
+          uploadDto.allowDuplicates ?? false,
         ),
       ),
     );
@@ -83,11 +84,13 @@ export class StatementsController {
     @CurrentUser() user: User,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
   ) {
     return this.statementsService.findAll(
       user.id,
       page ? Number.parseInt(page) : 1,
       limit ? Number.parseInt(limit) : 20,
+      search,
     );
   }
 

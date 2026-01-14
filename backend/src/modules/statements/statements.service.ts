@@ -91,6 +91,7 @@ export class StatementsService {
     googleSheetId?: string,
     walletId?: string,
     branchId?: string,
+    allowDuplicates = false,
   ): Promise<Statement> {
     await this.ensureCanEditStatements(user.id);
     const normalizedName = normalizeFilename(file.originalname);
@@ -100,8 +101,8 @@ export class StatementsService {
       where: { userId: user.id, fileHash },
     });
 
-    if (duplicate) {
-      throw new ConflictException('Statement already uploaded');
+    if (duplicate && !allowDuplicates) {
+      throw new ConflictException('Такая выписка уже загружена (дубликат файла)');
     }
     // Calculate file hash
     let fileData: Buffer | null = null;
@@ -156,36 +157,39 @@ export class StatementsService {
       },
     );
 
-    // Best-effort cleanup of temp file
-    try {
-      await fs.promises.unlink(file.path);
-    } catch (cleanupError) {
-      console.warn(`Failed to cleanup temp file ${file.path}:`, cleanupError);
-    }
-
     return savedStatement;
   }
 
-  async findAll(userId: string, page = 1, limit = 20): Promise<Statement[]> {
+  async findAll(
+    userId: string,
+    page = 1,
+    limit = 20,
+    search?: string,
+  ): Promise<{ data: Statement[]; total: number; page: number; limit: number }> {
     const workspaceId = await this.getWorkspaceId(userId);
-    const where: any = {
-      status: StatementStatus.PARSED,
-      bankName: BankName.KASPI,
-    };
+    const qb = this.statementRepository
+      .createQueryBuilder('statement')
+      .leftJoinAndSelect('statement.user', 'user')
+      .orderBy('statement.createdAt', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
 
     if (workspaceId) {
-      where.user = { workspaceId } as any;
+      qb.where('user.workspaceId = :workspaceId OR statement.userId = :userId', {
+        workspaceId,
+        userId,
+      });
     } else {
-      where.userId = userId;
+      qb.where('statement.userId = :userId', { userId });
     }
 
-    return this.statementRepository.find({
-      where,
-      relations: ['transactions', 'user'],
-      skip: (page - 1) * limit,
-      take: limit,
-      order: { createdAt: 'DESC' },
-    });
+    if (search) {
+      qb.andWhere('statement.fileName ILIKE :search', { search: `%${search}%` });
+    }
+
+    const [data, total] = await qb.getManyAndCount();
+
+    return { data, total, page, limit };
   }
 
   async findOne(id: string, userId: string): Promise<Statement> {

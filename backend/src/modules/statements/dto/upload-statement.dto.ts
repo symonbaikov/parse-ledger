@@ -1,4 +1,5 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsOptional, IsUUID } from 'class-validator';
 
 export class UploadStatementDto {
   @IsUUID()
@@ -12,4 +13,9 @@ export class UploadStatementDto {
   @IsUUID()
   @IsOptional()
   branchId?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  allowDuplicates?: boolean;
 }
