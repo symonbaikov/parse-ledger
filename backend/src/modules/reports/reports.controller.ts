@@ -1,29 +1,29 @@
+import * as fs from 'fs';
 import {
+  Body,
   Controller,
   DefaultValuePipe,
   Get,
-  Post,
-  ParseIntPipe,
-  Query,
-  Body,
-  Param,
-  UseGuards,
-  Res,
   HttpStatus,
+  Param,
+  ParseIntPipe,
+  Post,
+  Query,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
-import { Response } from 'express';
-import { ReportsService } from './reports.service';
-import { CustomReportDto, ReportFormat } from './dto/custom-report.dto';
-import { ExportReportDto, ExportFormat } from './dto/export-report.dto';
-import { CustomTablesSummaryDto } from './dto/custom-tables-summary.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import type { Response } from 'express';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { Permission } from '../../common/enums/permissions.enum';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { buildContentDisposition } from '../../common/utils/http-file.util';
+import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../../entities/user.entity';
-import * as fs from 'fs';
+import { type CustomReportDto, ReportFormat } from './dto/custom-report.dto';
+import type { CustomTablesSummaryDto } from './dto/custom-tables-summary.dto';
+import { ExportFormat, type ExportReportDto } from './dto/export-report.dto';
+import type { ReportsService } from './reports.service';
 
 @Controller('reports')
 @UseGuards(JwtAuthGuard)
@@ -50,14 +50,13 @@ export class ReportsController {
   @Get('daily')
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.REPORT_VIEW)
-  async getDailyReport(
-    @CurrentUser() user: User,
-    @Query('date') date?: string,
-  ) {
+  async getDailyReport(@CurrentUser() user: User, @Query('date') date?: string) {
     const reportDate =
       date === 'latest'
         ? await this.reportsService.getLatestTransactionDate(user.id)
-        : date || (await this.reportsService.getLatestTransactionDate(user.id)) || new Date().toISOString().split('T')[0];
+        : date ||
+          (await this.reportsService.getLatestTransactionDate(user.id)) ||
+          new Date().toISOString().split('T')[0];
     return this.reportsService.generateDailyReport(user.id, reportDate);
   }
 
@@ -71,8 +70,10 @@ export class ReportsController {
   ) {
     const latest = await this.reportsService.getLatestTransactionPeriod(user.id);
     const currentDate = new Date();
-    const reportYear = year ? parseInt(year, 10) : latest.year || currentDate.getFullYear();
-    const reportMonth = month ? parseInt(month, 10) : latest.month || currentDate.getMonth() + 1;
+    const reportYear = year ? Number.parseInt(year, 10) : latest.year || currentDate.getFullYear();
+    const reportMonth = month
+      ? Number.parseInt(month, 10)
+      : latest.month || currentDate.getMonth() + 1;
     return this.reportsService.generateMonthlyReport(user.id, reportYear, reportMonth);
   }
 
@@ -109,14 +110,15 @@ export class ReportsController {
     }
 
     // Export report
-    const { filePath, fileName } = await this.reportsService.exportReport(
-      user.id,
-      dto,
-      reportData,
-    );
+    const { filePath, fileName } = await this.reportsService.exportReport(user.id, dto, reportData);
 
     // Send file
-    res.setHeader('Content-Type', dto.format === 'excel' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv');
+    res.setHeader(
+      'Content-Type',
+      dto.format === 'excel'
+        ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : 'text/csv',
+    );
     res.setHeader('Content-Disposition', buildContentDisposition('attachment', fileName));
 
     const fileStream = fs.createReadStream(filePath);

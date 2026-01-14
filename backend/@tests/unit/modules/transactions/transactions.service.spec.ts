@@ -1,21 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import {
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
-import { TransactionsService } from '@/modules/transactions/transactions.service';
-import {
-  Transaction,
-  TransactionType,
-} from '@/entities/transaction.entity';
 import { Statement } from '@/entities/statement.entity';
+import { Transaction, TransactionType } from '@/entities/transaction.entity';
 import { User, UserRole } from '@/entities/user.entity';
-import {
-  WorkspaceMember,
-  WorkspaceRole,
-} from '@/entities/workspace-member.entity';
+import { WorkspaceMember, WorkspaceRole } from '@/entities/workspace-member.entity';
+import { TransactionsService } from '@/modules/transactions/transactions.service';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
 
 describe('TransactionsService', () => {
   let testingModule: TestingModule;
@@ -83,9 +74,7 @@ describe('TransactionsService', () => {
     transactionRepository = testingModule.get<Repository<Transaction>>(
       getRepositoryToken(Transaction),
     );
-    statementRepository = testingModule.get<Repository<Statement>>(
-      getRepositoryToken(Statement),
-    );
+    statementRepository = testingModule.get<Repository<Statement>>(getRepositoryToken(Statement));
     userRepository = testingModule.get<Repository<User>>(getRepositoryToken(User));
     workspaceMemberRepository = testingModule.get<Repository<WorkspaceMember>>(
       getRepositoryToken(WorkspaceMember),
@@ -116,14 +105,10 @@ describe('TransactionsService', () => {
         orderBy: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         take: jest.fn().mockReturnThis(),
-        getManyAndCount: jest
-          .fn()
-          .mockResolvedValue([[mockTransaction], 1]),
+        getManyAndCount: jest.fn().mockResolvedValue([[mockTransaction], 1]),
       };
 
-      jest
-        .spyOn(transactionRepository, 'createQueryBuilder')
-        .mockReturnValue(mockQueryBuilder);
+      jest.spyOn(transactionRepository, 'createQueryBuilder').mockReturnValue(mockQueryBuilder);
     });
 
     it('should return paginated transactions', async () => {
@@ -146,10 +131,9 @@ describe('TransactionsService', () => {
         statementId: 'stmt-1',
       });
 
-      expect(qb.andWhere).toHaveBeenCalledWith(
-        'transaction.statementId = :statementId',
-        { statementId: 'stmt-1' },
-      );
+      expect(qb.andWhere).toHaveBeenCalledWith('transaction.statementId = :statementId', {
+        statementId: 'stmt-1',
+      });
     });
 
     it('should filter by date range', async () => {
@@ -187,10 +171,7 @@ describe('TransactionsService', () => {
       await service.findAll('1', {});
 
       const qb = mockQueryBuilder; // transactionRepository.createQueryBuilder('transaction');
-      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith(
-        'transaction.category',
-        'category',
-      );
+      expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('transaction.category', 'category');
     });
 
     it('should scope to user statements', async () => {
@@ -205,9 +186,7 @@ describe('TransactionsService', () => {
 
   describe('findOne', () => {
     beforeEach(() => {
-      jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue(mockUser as User);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
     });
 
     it('should return transaction by id', async () => {
@@ -223,9 +202,7 @@ describe('TransactionsService', () => {
     it('should throw NotFoundException if not found', async () => {
       jest.spyOn(transactionRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findOne('999', '1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('999', '1')).rejects.toThrow(NotFoundException);
     });
 
     it('should load related entities', async () => {
@@ -248,9 +225,7 @@ describe('TransactionsService', () => {
         statement: { userId: '2' },
       } as any);
 
-      await expect(service.findOne('1', '1')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.findOne('1', '1')).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -262,9 +237,7 @@ describe('TransactionsService', () => {
     };
 
     beforeEach(() => {
-      jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue(mockUser as User);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue({
         role: WorkspaceRole.ADMIN,
       } as WorkspaceMember);
@@ -274,12 +247,10 @@ describe('TransactionsService', () => {
     });
 
     it('should update transaction', async () => {
-      jest
-        .spyOn(transactionRepository, 'save')
-        .mockResolvedValue({
-          ...mockTransaction,
-          ...updateDto,
-        } as Transaction);
+      jest.spyOn(transactionRepository, 'save').mockResolvedValue({
+        ...mockTransaction,
+        ...updateDto,
+      } as Transaction);
 
       const result = await service.update('1', '1', updateDto);
 
@@ -292,21 +263,15 @@ describe('TransactionsService', () => {
         role: WorkspaceRole.MEMBER,
         permissions: { canEditStatements: false },
       } as WorkspaceMember;
-      jest
-        .spyOn(workspaceMemberRepository, 'findOne')
-        .mockResolvedValue(restrictedMember);
+      jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(restrictedMember);
 
-      await expect(service.update('1', '1', updateDto)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.update('1', '1', updateDto)).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw NotFoundException if transaction not found', async () => {
       jest.spyOn(transactionRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.update('999', '1', updateDto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.update('999', '1', updateDto)).rejects.toThrow(NotFoundException);
     });
 
     it('should validate category belongs to user workspace', async () => {
@@ -322,9 +287,7 @@ describe('TransactionsService', () => {
     ];
 
     beforeEach(() => {
-      jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue(mockUser as User);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue({
         role: WorkspaceRole.ADMIN,
       } as WorkspaceMember);
@@ -334,9 +297,7 @@ describe('TransactionsService', () => {
       jest
         .spyOn(transactionRepository, 'findOne')
         .mockResolvedValue(mockTransaction as Transaction);
-      jest
-        .spyOn(transactionRepository, 'save')
-        .mockResolvedValue(mockTransaction as Transaction);
+      jest.spyOn(transactionRepository, 'save').mockResolvedValue(mockTransaction as Transaction);
 
       const result = await service.bulkUpdate('1', bulkUpdateDto);
 
@@ -349,9 +310,7 @@ describe('TransactionsService', () => {
         .spyOn(transactionRepository, 'findOne')
         .mockResolvedValueOnce(mockTransaction as Transaction)
         .mockResolvedValueOnce(null);
-      jest
-        .spyOn(transactionRepository, 'save')
-        .mockResolvedValue(mockTransaction as Transaction);
+      jest.spyOn(transactionRepository, 'save').mockResolvedValue(mockTransaction as Transaction);
 
       const result = await service.bulkUpdate('1', bulkUpdateDto);
 
@@ -363,21 +322,15 @@ describe('TransactionsService', () => {
         role: WorkspaceRole.MEMBER,
         permissions: { canEditStatements: false },
       } as WorkspaceMember;
-      jest
-        .spyOn(workspaceMemberRepository, 'findOne')
-        .mockResolvedValue(restrictedMember);
+      jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(restrictedMember);
 
-      await expect(service.bulkUpdate('1', bulkUpdateDto)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.bulkUpdate('1', bulkUpdateDto)).rejects.toThrow(ForbiddenException);
     });
   });
 
   describe('remove', () => {
     beforeEach(() => {
-      jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue(mockUser as User);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue({
         role: WorkspaceRole.ADMIN,
       } as WorkspaceMember);
@@ -401,21 +354,15 @@ describe('TransactionsService', () => {
         role: WorkspaceRole.MEMBER,
         permissions: { canEditStatements: false },
       } as WorkspaceMember;
-      jest
-        .spyOn(workspaceMemberRepository, 'findOne')
-        .mockResolvedValue(restrictedMember);
+      jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(restrictedMember);
 
-      await expect(service.remove('1', '1')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.remove('1', '1')).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw NotFoundException if transaction not found', async () => {
       jest.spyOn(transactionRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.remove('999', '1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('999', '1')).rejects.toThrow(NotFoundException);
     });
   });
 });

@@ -1,10 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   DefaultValuePipe,
   Delete,
   Get,
-  BadRequestException,
   Param,
   ParseIntPipe,
   Patch,
@@ -13,26 +13,26 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../../entities/user.entity';
-import { CustomTablesService } from './custom-tables.service';
-import { CreateCustomTableDto } from './dto/create-custom-table.dto';
-import { UpdateCustomTableDto } from './dto/update-custom-table.dto';
-import { CreateCustomTableColumnDto } from './dto/create-custom-table-column.dto';
-import { UpdateCustomTableColumnDto } from './dto/update-custom-table-column.dto';
-import { ReorderCustomTableColumnsDto } from './dto/reorder-custom-table-columns.dto';
-import { CreateCustomTableRowDto } from './dto/create-custom-table-row.dto';
-import { UpdateCustomTableRowDto } from './dto/update-custom-table-row.dto';
-import { BatchCreateCustomTableRowsDto } from './dto/batch-create-custom-table-rows.dto';
-import { CustomTablesImportService } from './custom-tables-import.service';
-import { GoogleSheetsImportPreviewDto } from './dto/google-sheets-import-preview.dto';
-import { GoogleSheetsImportCommitDto } from './dto/google-sheets-import-commit.dto';
-import { CustomTableImportJobsService } from './custom-table-import-jobs.service';
-import { CreateCustomTableFromDataEntryDto } from './dto/create-custom-table-from-data-entry.dto';
-import { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
-import { CreateCustomTableFromStatementsDto } from './dto/create-custom-table-from-statements.dto';
-import { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
-import { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
+import type { CustomTableImportJobsService } from './custom-table-import-jobs.service';
+import type { CustomTablesImportService } from './custom-tables-import.service';
+import type { CustomTablesService } from './custom-tables.service';
+import type { BatchCreateCustomTableRowsDto } from './dto/batch-create-custom-table-rows.dto';
+import type { CreateCustomTableColumnDto } from './dto/create-custom-table-column.dto';
+import type { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
+import type { CreateCustomTableFromDataEntryDto } from './dto/create-custom-table-from-data-entry.dto';
+import type { CreateCustomTableFromStatementsDto } from './dto/create-custom-table-from-statements.dto';
+import type { CreateCustomTableRowDto } from './dto/create-custom-table-row.dto';
+import type { CreateCustomTableDto } from './dto/create-custom-table.dto';
+import type { GoogleSheetsImportCommitDto } from './dto/google-sheets-import-commit.dto';
+import type { GoogleSheetsImportPreviewDto } from './dto/google-sheets-import-preview.dto';
+import type { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
+import type { ReorderCustomTableColumnsDto } from './dto/reorder-custom-table-columns.dto';
+import type { UpdateCustomTableColumnDto } from './dto/update-custom-table-column.dto';
+import type { UpdateCustomTableRowDto } from './dto/update-custom-table-row.dto';
+import type { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
+import type { UpdateCustomTableDto } from './dto/update-custom-table.dto';
 
 @Controller('custom-tables')
 @UseGuards(JwtAuthGuard)
@@ -84,7 +84,10 @@ export class CustomTablesController {
   }
 
   @Post('from-data-entry')
-  async createFromDataEntry(@CurrentUser() user: User, @Body() dto: CreateCustomTableFromDataEntryDto) {
+  async createFromDataEntry(
+    @CurrentUser() user: User,
+    @Body() dto: CreateCustomTableFromDataEntryDto,
+  ) {
     return this.customTablesService.createFromDataEntry(user.id, dto);
   }
 
@@ -102,7 +105,10 @@ export class CustomTablesController {
   }
 
   @Post('from-statements')
-  async createFromStatements(@CurrentUser() user: User, @Body() dto: CreateCustomTableFromStatementsDto) {
+  async createFromStatements(
+    @CurrentUser() user: User,
+    @Body() dto: CreateCustomTableFromStatementsDto,
+  ) {
     return this.customTablesService.createFromStatements(user.id, dto);
   }
 
@@ -113,7 +119,11 @@ export class CustomTablesController {
   }
 
   @Patch(':id')
-  async updateTable(@CurrentUser() user: User, @Param('id') id: string, @Body() dto: UpdateCustomTableDto) {
+  async updateTable(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: UpdateCustomTableDto,
+  ) {
     const table = await this.customTablesService.updateTable(user.id, id, dto);
     return table;
   }

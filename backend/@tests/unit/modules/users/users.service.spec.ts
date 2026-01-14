@@ -1,15 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import {
-  NotFoundException,
-  ConflictException,
-  UnauthorizedException,
-  ForbiddenException,
-} from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
-import { UsersService } from '@/modules/users/users.service';
 import { User, UserRole } from '@/entities/user.entity';
+import { UsersService } from '@/modules/users/users.service';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
+import type { Repository } from 'typeorm';
 
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),
@@ -123,9 +123,9 @@ describe('UsersService', () => {
       const adminUser = { ...mockUser, role: UserRole.ADMIN };
       jest.spyOn(repository, 'findOne').mockResolvedValue(null);
 
-      await expect(
-        service.update('999', { name: 'Test' }, adminUser as User),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('999', { name: 'Test' }, adminUser as User)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should not update email if already taken', async () => {
@@ -133,7 +133,8 @@ describe('UsersService', () => {
         email: 'existing@example.com',
       };
 
-      jest.spyOn(repository, 'findOne')
+      jest
+        .spyOn(repository, 'findOne')
         .mockResolvedValueOnce(mockUser as User) // First call for the user being updated
         .mockResolvedValueOnce({ id: '2' } as User); // Second call to check if email exists
 
@@ -189,21 +190,16 @@ describe('UsersService', () => {
         newPassword: 'new_password',
       };
 
-      jest
-        .spyOn<any, any>(service as any, 'findOneWithPassword')
-        .mockResolvedValue({
-          ...mockUser,
-          passwordHash: await bcrypt.hash('old_password', 10),
-        } as User);
+      jest.spyOn<any, any>(service as any, 'findOneWithPassword').mockResolvedValue({
+        ...mockUser,
+        passwordHash: await bcrypt.hash('old_password', 10),
+      } as User);
       const compareSpy = jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
       jest.spyOn(repository, 'save').mockResolvedValue(mockUser as User);
 
       await service.changePassword('1', changePasswordDto);
 
-      expect(compareSpy).toHaveBeenCalledWith(
-        'old_password',
-        expect.any(String),
-      );
+      expect(compareSpy).toHaveBeenCalledWith('old_password', expect.any(String));
     });
 
     it('should throw UnauthorizedException if old password wrong', async () => {
@@ -212,17 +208,15 @@ describe('UsersService', () => {
         newPassword: 'new_password',
       };
 
-      jest
-        .spyOn<any, any>(service as any, 'findOneWithPassword')
-        .mockResolvedValue({
-          ...mockUser,
-          passwordHash: await bcrypt.hash('correct_password', 10),
-        } as User);
+      jest.spyOn<any, any>(service as any, 'findOneWithPassword').mockResolvedValue({
+        ...mockUser,
+        passwordHash: await bcrypt.hash('correct_password', 10),
+      } as User);
       jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
 
-      await expect(
-        service.changePassword('1', changePasswordDto),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.changePassword('1', changePasswordDto)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should hash new password', async () => {
@@ -231,17 +225,13 @@ describe('UsersService', () => {
         newPassword: 'new_password',
       };
 
-      jest
-        .spyOn<any, any>(service as any, 'findOneWithPassword')
-        .mockResolvedValue({
-          ...mockUser,
-          passwordHash: await bcrypt.hash('old_password', 10),
-        } as User);
+      jest.spyOn<any, any>(service as any, 'findOneWithPassword').mockResolvedValue({
+        ...mockUser,
+        passwordHash: await bcrypt.hash('old_password', 10),
+      } as User);
       jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
       const hashSpy = jest.spyOn(bcrypt, 'hash');
-      const saveSpy = jest
-        .spyOn(repository, 'save')
-        .mockResolvedValue(mockUser as User);
+      const saveSpy = jest.spyOn(repository, 'save').mockResolvedValue(mockUser as User);
 
       await service.changePassword('1', changePasswordDto);
 
@@ -267,9 +257,7 @@ describe('UsersService', () => {
         .spyOn<any, any>(service as any, 'findOneWithPassword')
         .mockResolvedValue(userWithTokenVersion as User);
       jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
-      const saveSpy = jest
-        .spyOn(repository, 'save')
-        .mockResolvedValue(mockUser as User);
+      const saveSpy = jest.spyOn(repository, 'save').mockResolvedValue(mockUser as User);
 
       await service.changePassword('1', changePasswordDto);
 
@@ -304,9 +292,7 @@ describe('UsersService', () => {
     });
 
     it('should filter by workspace access', async () => {
-      const findSpy = jest
-        .spyOn(repository, 'find')
-        .mockResolvedValue([mockUser] as User[]);
+      const findSpy = jest.spyOn(repository, 'find').mockResolvedValue([mockUser] as User[]);
 
       await service.findAll(1, 20);
 

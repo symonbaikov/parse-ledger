@@ -1,22 +1,15 @@
-import { BaseParser } from './base.parser';
-import { ParsedStatement, ParsedTransaction } from '../interfaces/parsed-statement.interface';
-import { BankName, FileType } from '../../../entities/statement.entity';
-import { extractTablesFromPdf, extractTextFromPdf } from '../../../common/utils/pdf-parser.util';
-import { AiTransactionExtractor } from '../helpers/ai-transaction-extractor.helper';
-import {
-  mapPdfTableRowsToTransactions,
-  mergeTransactions,
-} from '../helpers/pdf-table.helper';
 import { normalizeDate, normalizeNumber } from '../../../common/utils/number-normalizer.util';
+import { extractTablesFromPdf, extractTextFromPdf } from '../../../common/utils/pdf-parser.util';
+import { BankName, FileType } from '../../../entities/statement.entity';
+import { AiTransactionExtractor } from '../helpers/ai-transaction-extractor.helper';
+import { mapPdfTableRowsToTransactions, mergeTransactions } from '../helpers/pdf-table.helper';
+import type { ParsedStatement, ParsedTransaction } from '../interfaces/parsed-statement.interface';
+import { BaseParser } from './base.parser';
 
 export class KaspiParser extends BaseParser {
   private aiExtractor = new AiTransactionExtractor();
 
-  async canParse(
-    bankName: BankName,
-    fileType: FileType,
-    filePath: string,
-  ): Promise<boolean> {
+  async canParse(bankName: BankName, fileType: FileType, filePath: string): Promise<boolean> {
     if (bankName !== BankName.KASPI && bankName !== BankName.OTHER) {
       return false;
     }
@@ -27,11 +20,7 @@ export class KaspiParser extends BaseParser {
 
     try {
       const text = (await extractTextFromPdf(filePath)).toLowerCase();
-      return (
-        text.includes('kaspi') ||
-        text.includes('каспи') ||
-        text.includes('caspkzka')
-      );
+      return text.includes('kaspi') || text.includes('каспи') || text.includes('caspkzka');
     } catch (error) {
       console.error('[KaspiParser] Error in canParse:', error);
       return false;
@@ -40,7 +29,7 @@ export class KaspiParser extends BaseParser {
 
   async parse(filePath: string): Promise<ParsedStatement> {
     console.log('[KaspiParser] Starting to parse file:', filePath);
-    
+
     const text = await extractTextFromPdf(filePath);
     const { rows: tableRows } = await extractTablesFromPdf(filePath);
     console.log(`[KaspiParser] PDF text length: ${text.length}`);
@@ -63,9 +52,7 @@ export class KaspiParser extends BaseParser {
       ? mergeTransactions(kaspiTableTransactions, tableTransactions)
       : tableTransactions;
     if (tableTransactions.length) {
-      console.log(
-        `[KaspiParser] pdf2table extracted ${tableTransactions.length} transactions`,
-      );
+      console.log(`[KaspiParser] pdf2table extracted ${tableTransactions.length} transactions`);
     }
 
     // Parse transactions from the structured text
@@ -77,7 +64,9 @@ export class KaspiParser extends BaseParser {
 
     // Log first few transactions
     transactions.slice(0, 3).forEach((t, i) => {
-      console.log(`[KaspiParser] Transaction ${i + 1}: ${t.documentNumber} - ${t.counterpartyName?.substring(0, 30)} - ${t.debit || t.credit} - ${t.paymentPurpose?.substring(0, 40)}`);
+      console.log(
+        `[KaspiParser] Transaction ${i + 1}: ${t.documentNumber} - ${t.counterpartyName?.substring(0, 30)} - ${t.debit || t.credit} - ${t.paymentPurpose?.substring(0, 40)}`,
+      );
     });
 
     return {
@@ -137,13 +126,9 @@ export class KaspiParser extends BaseParser {
     let blockLines: string[] = [];
 
     const flushCurrent = () => {
-      if (currentTransaction && currentTransaction.transactionDate) {
+      if (currentTransaction?.transactionDate) {
         transactions.push(
-          this.enrichKaspiTransaction(
-            currentTransaction,
-            purposeLines,
-            blockLines,
-          ),
+          this.enrichKaspiTransaction(currentTransaction, purposeLines, blockLines),
         );
       }
       currentTransaction = null;
@@ -178,8 +163,11 @@ export class KaspiParser extends BaseParser {
       // Date (DD.MM.YYYY)
       const dateMatch = line.match(/^(\d{2}\.\d{2}\.\d{4})(?:\s+\d{2}:\d{2}:\d{2})?$/);
       if (dateMatch && !currentTransaction.transactionDate) {
-        currentTransaction.transactionDate = this.normalizeDate(dateMatch[1])!;
-        continue;
+        const normalizedDate = this.normalizeDate(dateMatch[1]);
+        if (normalizedDate) {
+          currentTransaction.transactionDate = normalizedDate;
+          continue;
+        }
       }
 
       // Amount
@@ -266,8 +254,8 @@ export class KaspiParser extends BaseParser {
       return [];
     }
 
-    const cleanedRows = tableRows.map((row) => (row || []).map((c) => (c || '').trim()));
-    const headerIndex = cleanedRows.findIndex((row) =>
+    const cleanedRows = tableRows.map(row => (row || []).map(c => (c || '').trim()));
+    const headerIndex = cleanedRows.findIndex(row =>
       row.join(' ').toLowerCase().includes('номер документа'),
     );
 
@@ -275,9 +263,8 @@ export class KaspiParser extends BaseParser {
       return [];
     }
 
-    const header = cleanedRows[headerIndex].map((c) => c.toLowerCase());
-    const findIdx = (needle: string) =>
-      header.findIndex((c) => c.includes(needle));
+    const header = cleanedRows[headerIndex].map(c => c.toLowerCase());
+    const findIdx = (needle: string) => header.findIndex(c => c.includes(needle));
 
     const idxDocument = findIdx('номер');
     const idxDate = findIdx('дата');
@@ -351,7 +338,7 @@ export class KaspiParser extends BaseParser {
     purposeLines: string[],
     blockLines: string[],
   ): ParsedTransaction {
-    const normalizedLines = blockLines.map((l) => l.trim()).filter(Boolean);
+    const normalizedLines = blockLines.map(l => l.trim()).filter(Boolean);
     const combinedBlock = normalizedLines.join(' ');
 
     let paymentPurpose = currentTransaction.paymentPurpose;
@@ -360,17 +347,18 @@ export class KaspiParser extends BaseParser {
     }
 
     if (!paymentPurpose || paymentPurpose === 'Не указано') {
-      const purposeIdx = normalizedLines.findIndex((l) =>
-        l.toLowerCase().includes('назначение'),
-      );
+      const purposeIdx = normalizedLines.findIndex(l => l.toLowerCase().includes('назначение'));
       if (purposeIdx >= 0 && purposeIdx < normalizedLines.length - 1) {
-        paymentPurpose = normalizedLines.slice(purposeIdx + 1).join(' ').trim();
+        paymentPurpose = normalizedLines
+          .slice(purposeIdx + 1)
+          .join(' ')
+          .trim();
       }
     }
 
     if (!paymentPurpose || paymentPurpose === 'Не указано') {
       const freeText = normalizedLines
-        .filter((l) => !this.looksLikeKaspiMetaLine(l))
+        .filter(l => !this.looksLikeKaspiMetaLine(l))
         .join(' ')
         .trim();
       if (freeText) {
@@ -390,11 +378,9 @@ export class KaspiParser extends BaseParser {
 
     if (!counterpartyName || counterpartyName === 'Не указано') {
       const cpLine =
+        normalizedLines.find(l => l.includes('БИН/ИИН') || l.match(/^(АО|ТОО|ИП)\s/i)) ||
         normalizedLines.find(
-          (l) => l.includes('БИН/ИИН') || l.match(/^(АО|ТОО|ИП)\s/i),
-        ) ||
-        normalizedLines.find(
-          (l) =>
+          l =>
             l.length > 5 &&
             !this.looksLikeKaspiMetaLine(l) &&
             !/назначение/i.test(l) &&
@@ -425,7 +411,7 @@ export class KaspiParser extends BaseParser {
     }
 
     return {
-      transactionDate: currentTransaction.transactionDate!,
+      transactionDate: currentTransaction.transactionDate ?? new Date(),
       documentNumber: currentTransaction.documentNumber,
       counterpartyName: counterpartyName?.trim() || 'Неизвестный контрагент',
       counterpartyBin,

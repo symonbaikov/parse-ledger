@@ -1,9 +1,7 @@
-import { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
+import type { ConfigService } from '@nestjs/config';
+import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
-export const getDatabaseConfig = (
-  configService: ConfigService,
-): TypeOrmModuleOptions => {
+export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOptions => {
   const nodeEnv = configService.get<string>('NODE_ENV') || 'development';
   const isProd = nodeEnv === 'production';
   const runMigrationsEnv = (configService.get<string>('RUN_MIGRATIONS') || '').toLowerCase();

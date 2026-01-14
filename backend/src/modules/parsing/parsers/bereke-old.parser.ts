@@ -1,21 +1,15 @@
-import { BaseParser } from './base.parser';
 import {
-  ParsedStatement,
-  ParsedTransaction,
-} from '../interfaces/parsed-statement.interface';
-import { BankName, FileType } from '../../../entities/statement.entity';
-import {
+  type PdfTextItem,
+  type PdfTextRow,
+  extractTablesFromPdf,
   extractTextAndLayoutFromPdf,
   extractTextFromPdf,
-  PdfTextItem,
-  PdfTextRow,
-  extractTablesFromPdf,
 } from '../../../common/utils/pdf-parser.util';
+import { BankName, FileType } from '../../../entities/statement.entity';
 import { AiTransactionExtractor } from '../helpers/ai-transaction-extractor.helper';
-import {
-  mapPdfTableRowsToTransactions,
-  mergeTransactions,
-} from '../helpers/pdf-table.helper';
+import { mapPdfTableRowsToTransactions, mergeTransactions } from '../helpers/pdf-table.helper';
+import type { ParsedStatement, ParsedTransaction } from '../interfaces/parsed-statement.interface';
+import { BaseParser } from './base.parser';
 
 type ColumnKey =
   | 'date'
@@ -39,11 +33,7 @@ interface ColumnBoundary {
 export class BerekeOldParser extends BaseParser {
   private aiExtractor = new AiTransactionExtractor();
 
-  async canParse(
-    bankName: BankName,
-    fileType: FileType,
-    filePath: string,
-  ): Promise<boolean> {
+  async canParse(bankName: BankName, fileType: FileType, filePath: string): Promise<boolean> {
     if (bankName !== BankName.BEREKE_OLD || fileType !== FileType.PDF) {
       return false;
     }
@@ -105,13 +95,13 @@ export class BerekeOldParser extends BaseParser {
       defaultCurrency: 'KZT',
       stopWords: ['итого', 'оборот', 'остаток'],
     });
-    console.log(
-      `[BerekeOldParser] pdf2table extracted ${tableTransactions.length} transactions`,
-    );
+    console.log(`[BerekeOldParser] pdf2table extracted ${tableTransactions.length} transactions`);
 
     console.log(`[BerekeOldParser] Extracting transactions with layout reconstruction...`);
-    const { transactions: structuredTransactions, groupsDetected } =
-      this.extractTransactions(text, rows);
+    const { transactions: structuredTransactions, groupsDetected } = this.extractTransactions(
+      text,
+      rows,
+    );
     let transactions = mergeTransactions(tableTransactions, structuredTransactions);
     const detectedGroups = Math.max(groupsDetected, transactions.length);
 
@@ -161,7 +151,7 @@ export class BerekeOldParser extends BaseParser {
   ): { transactions: ParsedTransaction[]; groupsDetected: number } {
     const structuredRows: PdfTextRow[] =
       rows.length > 0
-        ? rows.map((r) => ({
+        ? rows.map(r => ({
             ...r,
             text: (r.text || '').replace(/\s+/g, ' ').trim(),
           }))
@@ -173,14 +163,12 @@ export class BerekeOldParser extends BaseParser {
               text: line.trim(),
               items: [],
             }))
-            .filter((r) => r.text.length > 0);
+            .filter(r => r.text.length > 0);
 
-    const cleanRows = structuredRows.filter((r) => r.text.length > 0);
-    console.log(
-      `[BerekeOldParser] Processing ${cleanRows.length} non-empty lines of text`,
-    );
+    const cleanRows = structuredRows.filter(r => r.text.length > 0);
+    console.log(`[BerekeOldParser] Processing ${cleanRows.length} non-empty lines of text`);
 
-    const headerIndex = cleanRows.findIndex((r) => this.isHeaderRow(r.text));
+    const headerIndex = cleanRows.findIndex(r => this.isHeaderRow(r.text));
     const columnBoundaries =
       headerIndex >= 0 && cleanRows[headerIndex]?.items?.length
         ? this.buildColumnBoundaries(cleanRows[headerIndex])
@@ -188,12 +176,7 @@ export class BerekeOldParser extends BaseParser {
 
     if (columnBoundaries?.length) {
       const mapping = columnBoundaries
-        .map(
-          (c) =>
-            `${c.key} [${Math.round(c.start)} - ${Math.round(c.end)}]@${Math.round(
-              c.mid,
-            )}`,
-        )
+        .map(c => `${c.key} [${Math.round(c.start)} - ${Math.round(c.end)}]@${Math.round(c.mid)}`)
         .join('; ');
       console.log(`[BerekeOldParser] Column boundaries detected: ${mapping}`);
     } else {
@@ -212,15 +195,15 @@ export class BerekeOldParser extends BaseParser {
         transactions.push(transaction);
         if (transactions.length <= 5 || transactions.length % 10 === 0) {
           console.log(
-            `[BerekeOldParser] Parsed transaction ${transactions.length}: ${transaction.transactionDate
-              .toISOString()
-              .split('T')[0]} - ${transaction.counterpartyName.substring(0, 30)}...`,
+            `[BerekeOldParser] Parsed transaction ${transactions.length}: ${
+              transaction.transactionDate.toISOString().split('T')[0]
+            } - ${transaction.counterpartyName.substring(0, 30)}...`,
           );
         }
       } else {
         console.log(
           `[BerekeOldParser] Failed to parse group ${idx + 1}: ${group
-            .map((g) => g.text)
+            .map(g => g.text)
             .join(' | ')
             .substring(0, 200)}...`,
         );
@@ -234,7 +217,7 @@ export class BerekeOldParser extends BaseParser {
   private isHeaderRow(text: string): boolean {
     const lower = text.toLowerCase();
     const keywords = ['дата', 'контрагент', 'дебет', 'кредит', 'назначение', 'номер'];
-    const score = keywords.filter((k) => lower.includes(k)).length;
+    const score = keywords.filter(k => lower.includes(k)).length;
     return score >= 3;
   }
 
@@ -244,7 +227,7 @@ export class BerekeOldParser extends BaseParser {
     }
 
     const grouped = new Map<ColumnKey, number[]>();
-    row.items.forEach((item) => {
+    row.items.forEach(item => {
       const key = this.detectColumnKey(item.text);
       if (!key) {
         return;
@@ -266,7 +249,7 @@ export class BerekeOldParser extends BaseParser {
     ];
 
     const columns = expectedOrder
-      .flatMap((key) => {
+      .flatMap(key => {
         const mids = grouped.get(key);
         if (!mids || !mids.length) {
           return [];
@@ -283,11 +266,9 @@ export class BerekeOldParser extends BaseParser {
     const boundaries: ColumnBoundary[] = [];
     columns.forEach((col, index) => {
       const prevMid = index === 0 ? 0 : columns[index - 1].mid;
-      const nextMid =
-        index === columns.length - 1 ? col.mid + 2000 : columns[index + 1].mid;
+      const nextMid = index === columns.length - 1 ? col.mid + 2000 : columns[index + 1].mid;
       const start = index === 0 ? 0 : (prevMid + col.mid) / 2;
-      const end =
-        index === columns.length - 1 ? Number.POSITIVE_INFINITY : (col.mid + nextMid) / 2;
+      const end = index === columns.length - 1 ? Number.POSITIVE_INFINITY : (col.mid + nextMid) / 2;
 
       boundaries.push({
         key: col.key,
@@ -350,8 +331,7 @@ export class BerekeOldParser extends BaseParser {
   private isEndOfTable(text: string): boolean {
     const lower = text.toLowerCase();
     return (
-      lower.includes('итого') ||
-      (lower.includes('остаток') && !/\d{2}\.\d{2}\.\d{4}/.test(text))
+      lower.includes('итого') || (lower.includes('остаток') && !/\d{2}\.\d{2}\.\d{4}/.test(text))
     );
   }
 
@@ -360,11 +340,11 @@ export class BerekeOldParser extends BaseParser {
     columnBoundaries?: ColumnBoundary[],
   ): ParsedTransaction | null {
     const combinedText = group
-      .map((g) => g.text)
+      .map(g => g.text)
       .join(' ')
       .replace(/\s+/g, ' ')
       .trim();
-    const items = group.flatMap((g) => g.items || []);
+    const items = group.flatMap(g => g.items || []);
 
     const cells = columnBoundaries?.length
       ? this.extractCellsByColumn(items, columnBoundaries)
@@ -377,8 +357,7 @@ export class BerekeOldParser extends BaseParser {
     }
 
     const documentNumber =
-      (cells?.document || this.extractDocumentNumber(combinedText))?.trim() ||
-      undefined;
+      (cells?.document || this.extractDocumentNumber(combinedText))?.trim() || undefined;
 
     const counterpartyBlock =
       cells?.counterparty ||
@@ -386,9 +365,7 @@ export class BerekeOldParser extends BaseParser {
       cells?.account ||
       this.extractCounterpartyBlock(combinedText);
     let bankBlock = cells?.bank || this.extractBic(combinedText) || '';
-    const counterpartyDetails = this.extractCounterpartyDetails(
-      counterpartyBlock || combinedText,
-    );
+    const counterpartyDetails = this.extractCounterpartyDetails(counterpartyBlock || combinedText);
 
     let debit = this.normalizeNumberValue(cells?.debit);
     let credit = this.normalizeNumberValue(cells?.credit);
@@ -404,11 +381,7 @@ export class BerekeOldParser extends BaseParser {
 
     let purpose = cells?.purpose?.trim() || '';
     if (!purpose) {
-      purpose = this.extractPurposeFromText(
-        combinedText,
-        counterpartyBlock,
-        bankBlock,
-      );
+      purpose = this.extractPurposeFromText(combinedText, counterpartyBlock, bankBlock);
     }
 
     if (!purpose) {
@@ -416,7 +389,7 @@ export class BerekeOldParser extends BaseParser {
     }
 
     // Strengthen counterparty name if still unknown
-    let counterpartyName = this.resolveCounterpartyName(
+    const counterpartyName = this.resolveCounterpartyName(
       counterpartyDetails.name ||
         counterpartyBlock ||
         this.extractCounterpartyNameFromText(combinedText) ||
@@ -460,10 +433,8 @@ export class BerekeOldParser extends BaseParser {
       purpose: '',
     };
 
-    items.forEach((item) => {
-      const column = columnBoundaries.find(
-        (col) => item.x >= col.start && item.x < col.end,
-      );
+    items.forEach(item => {
+      const column = columnBoundaries.find(col => item.x >= col.start && item.x < col.end);
       if (column) {
         cells[column.key] = `${cells[column.key]} ${item.text}`.trim();
       }
@@ -490,18 +461,18 @@ export class BerekeOldParser extends BaseParser {
 
   private extractCounterpartyNameFromText(text: string): string | null {
     // Look for organization markers before BIN/INN
-    const match = text.match(
-      /(АО|ТОО|ИП)\s+[^0-9KZ]{2,120}?(?=\s+БИН|\s+ИНН|\s+KZ|\s+\d{6,}|$)/i,
-    );
-    if (match && match[0]) {
+    const match = text.match(/(АО|ТОО|ИП)\s+[^0-9KZ]{2,120}?(?=\s+БИН|\s+ИНН|\s+KZ|\s+\d{6,}|$)/i);
+    if (match?.[0]) {
       return match[0].trim();
     }
     return null;
   }
 
-  private extractCounterpartyDetails(
-    text: string,
-  ): { name: string; bin?: string; account?: string } {
+  private extractCounterpartyDetails(text: string): {
+    name: string;
+    bin?: string;
+    account?: string;
+  } {
     const binMatch = text.match(/\b\d{12}\b/);
     const accountMatch = text.match(/KZ\d{10,}/i);
 
@@ -525,7 +496,7 @@ export class BerekeOldParser extends BaseParser {
   private extractAmountsFromText(text: string): number[] {
     const matches = text.match(/\d{1,3}(?:\s\d{3})*(?:[.,]\d{2})/g) || [];
     const numbers = matches
-      .map((m) => this.normalizeNumberValue(m))
+      .map(m => this.normalizeNumberValue(m))
       .filter((n): n is number => n !== null);
     return numbers;
   }
@@ -562,11 +533,7 @@ export class BerekeOldParser extends BaseParser {
     return match ? match[0] : null;
   }
 
-  private resolveCounterpartyName(
-    rawName: string,
-    purpose: string,
-    combinedText: string,
-  ): string {
+  private resolveCounterpartyName(rawName: string, purpose: string, combinedText: string): string {
     if (!this.isUnknownCounterparty(rawName)) {
       return rawName.trim();
     }
@@ -590,9 +557,7 @@ export class BerekeOldParser extends BaseParser {
       return withOrg[0].trim();
     }
 
-    const cleaned = text
-      .replace(/оплата|перевод|зачисление|от\s+/gi, '')
-      .trim();
+    const cleaned = text.replace(/оплата|перевод|зачисление|от\s+/gi, '').trim();
     if (cleaned && cleaned.length > 3 && cleaned.length < 120) {
       return cleaned;
     }
@@ -604,10 +569,7 @@ export class BerekeOldParser extends BaseParser {
     if (!name) return true;
     const lower = name.toLowerCase();
     return (
-      lower.length < 3 ||
-      lower.includes('неизвест') ||
-      lower === 'n/a' ||
-      lower === 'не указано'
+      lower.length < 3 || lower.includes('неизвест') || lower === 'n/a' || lower === 'не указано'
     );
   }
 }

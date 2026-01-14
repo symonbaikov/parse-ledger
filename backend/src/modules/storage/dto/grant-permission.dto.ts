@@ -1,4 +1,4 @@
-import { IsUUID, IsEnum, IsOptional, IsBoolean, IsDateString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { FilePermissionType } from '../../../entities';
 
 /**
@@ -19,7 +19,3 @@ export class GrantPermissionDto {
   @IsDateString()
   expiresAt?: string;
 }
-
-
-
-

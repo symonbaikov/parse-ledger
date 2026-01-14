@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsUUID } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CategoryType } from '../../../entities/category.entity';
 
 export class CreateCategoryDto {
@@ -20,11 +20,3 @@ export class CreateCategoryDto {
   @IsOptional()
   icon?: string;
 }
-
-
-
-
-
-
-
-

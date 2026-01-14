@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
+import { type MigrationInterface, type QueryRunner, TableColumn } from 'typeorm';
 
 export class AddCustomFieldIconToDataEntry1734600000001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -23,4 +23,3 @@ export class AddCustomFieldIconToDataEntry1734600000001 implements MigrationInte
     }
   }
 }
-

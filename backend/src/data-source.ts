@@ -1,13 +1,12 @@
-import { DataSource } from 'typeorm';
-import { config } from 'dotenv';
 import * as path from 'path';
+import { config } from 'dotenv';
+import { DataSource } from 'typeorm';
 
 // Load environment variables
 config();
 
 const databaseUrl =
-  process.env.DATABASE_URL ||
-  'postgresql://finflow:finflow@localhost:5432/finflow';
+  process.env.DATABASE_URL || 'postgresql://finflow:finflow@localhost:5432/finflow';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -17,4 +16,3 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',
 });
-

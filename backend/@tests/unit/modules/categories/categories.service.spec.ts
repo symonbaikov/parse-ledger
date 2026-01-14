@@ -1,18 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import {
-  NotFoundException,
-  ConflictException,
-  ForbiddenException,
-} from '@nestjs/common';
-import { CategoriesService } from '@/modules/categories/categories.service';
 import { Category, CategoryType } from '@/entities/category.entity';
 import { User, UserRole } from '@/entities/user.entity';
-import {
-  WorkspaceMember,
-  WorkspaceRole,
-} from '@/entities/workspace-member.entity';
+import { WorkspaceMember, WorkspaceRole } from '@/entities/workspace-member.entity';
+import { CategoriesService } from '@/modules/categories/categories.service';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
 
 describe('CategoriesService', () => {
   let testingModule: TestingModule;
@@ -66,9 +59,7 @@ describe('CategoriesService', () => {
     }).compile();
 
     service = testingModule.get<CategoriesService>(CategoriesService);
-    categoryRepository = testingModule.get<Repository<Category>>(
-      getRepositoryToken(Category),
-    );
+    categoryRepository = testingModule.get<Repository<Category>>(getRepositoryToken(Category));
     userRepository = testingModule.get<Repository<User>>(getRepositoryToken(User));
     workspaceMemberRepository = testingModule.get<Repository<WorkspaceMember>>(
       getRepositoryToken(WorkspaceMember),
@@ -102,9 +93,7 @@ describe('CategoriesService', () => {
         userId: '1',
         isSystem: false,
       });
-      jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue(mockUser as User);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue({
         role: WorkspaceRole.ADMIN,
       } as WorkspaceMember);
@@ -112,12 +101,8 @@ describe('CategoriesService', () => {
 
     it('should create a new category', async () => {
       jest.spyOn(categoryRepository, 'findOne').mockResolvedValue(null);
-      jest
-        .spyOn(categoryRepository, 'create')
-        .mockReturnValue(mockCategory as Category);
-      jest
-        .spyOn(categoryRepository, 'save')
-        .mockResolvedValue(mockCategory as Category);
+      jest.spyOn(categoryRepository, 'create').mockReturnValue(mockCategory as Category);
+      jest.spyOn(categoryRepository, 'save').mockResolvedValue(mockCategory as Category);
 
       const result = await service.create('1', createDto);
 
@@ -126,13 +111,9 @@ describe('CategoriesService', () => {
     });
 
     it('should check for duplicate names', async () => {
-      jest
-        .spyOn(categoryRepository, 'findOne')
-        .mockResolvedValue(mockCategory as Category);
+      jest.spyOn(categoryRepository, 'findOne').mockResolvedValue(mockCategory as Category);
 
-      await expect(service.create('1', createDto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(service.create('1', createDto)).rejects.toThrow(ConflictException);
     });
 
     it('should set isSystem to false for user categories', async () => {
@@ -140,9 +121,7 @@ describe('CategoriesService', () => {
       const createSpy = jest
         .spyOn(categoryRepository, 'create')
         .mockReturnValue(mockCategory as Category);
-      jest
-        .spyOn(categoryRepository, 'save')
-        .mockResolvedValue(mockCategory as Category);
+      jest.spyOn(categoryRepository, 'save').mockResolvedValue(mockCategory as Category);
 
       await service.create('1', createDto);
 
@@ -158,13 +137,9 @@ describe('CategoriesService', () => {
         role: WorkspaceRole.MEMBER,
         permissions: { canEditCategories: false },
       } as WorkspaceMember;
-      jest
-        .spyOn(workspaceMemberRepository, 'findOne')
-        .mockResolvedValue(restrictedMember);
+      jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(restrictedMember);
 
-      await expect(service.create('1', createDto)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.create('1', createDto)).rejects.toThrow(ForbiddenException);
     });
 
     it('should store keywords for classification', async () => {
@@ -172,9 +147,7 @@ describe('CategoriesService', () => {
       const createSpy = jest
         .spyOn(categoryRepository, 'create')
         .mockReturnValue(mockCategory as Category);
-      jest
-        .spyOn(categoryRepository, 'save')
-        .mockResolvedValue(mockCategory as Category);
+      jest.spyOn(categoryRepository, 'save').mockResolvedValue(mockCategory as Category);
 
       await service.create('1', createDto);
 
@@ -195,9 +168,7 @@ describe('CategoriesService', () => {
       const createSpy = jest
         .spyOn(categoryRepository, 'create')
         .mockReturnValue(mockCategory as Category);
-      jest
-        .spyOn(categoryRepository, 'save')
-        .mockResolvedValue(mockCategory as Category);
+      jest.spyOn(categoryRepository, 'save').mockResolvedValue(mockCategory as Category);
 
       await service.create('1', incomeDto);
 
@@ -212,9 +183,7 @@ describe('CategoriesService', () => {
   describe('findAll', () => {
     it('should return all categories for user', async () => {
       const categories = [mockCategory, { ...mockCategory, id: 'cat-2' }];
-      jest
-        .spyOn(categoryRepository, 'find')
-        .mockResolvedValue(categories as Category[]);
+      jest.spyOn(categoryRepository, 'find').mockResolvedValue(categories as Category[]);
 
       const result = await service.findAll('1');
 
@@ -270,21 +239,17 @@ describe('CategoriesService', () => {
         ...mockCategory,
         isSystem: true,
       };
-      jest
-        .spyOn(categoryRepository, 'find')
-        .mockResolvedValue([systemCategory] as Category[]);
+      jest.spyOn(categoryRepository, 'find').mockResolvedValue([systemCategory] as Category[]);
 
       const result = await service.findAll('1');
 
-      expect(result.some((c) => c.isSystem)).toBe(true);
+      expect(result.some(c => c.isSystem)).toBe(true);
     });
   });
 
   describe('findOne', () => {
     it('should return category by id', async () => {
-      jest
-        .spyOn(categoryRepository, 'findOne')
-        .mockResolvedValue(mockCategory as Category);
+      jest.spyOn(categoryRepository, 'findOne').mockResolvedValue(mockCategory as Category);
 
       const result = await service.findOne('cat-1', '1');
 
@@ -294,9 +259,7 @@ describe('CategoriesService', () => {
     it('should throw NotFoundException if not found', async () => {
       jest.spyOn(categoryRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findOne('invalid', '1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('invalid', '1')).rejects.toThrow(NotFoundException);
     });
 
     it('should verify user ownership', async () => {
@@ -316,9 +279,7 @@ describe('CategoriesService', () => {
     it('should not return other user categories', async () => {
       jest.spyOn(categoryRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findOne('cat-1', '999')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('cat-1', '999')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -336,15 +297,11 @@ describe('CategoriesService', () => {
         userId: '1',
         isSystem: false,
       });
-      jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue(mockUser as User);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue({
         role: WorkspaceRole.ADMIN,
       } as WorkspaceMember);
-      jest
-        .spyOn(categoryRepository, 'findOne')
-        .mockResolvedValue(mockCategory as Category);
+      jest.spyOn(categoryRepository, 'findOne').mockResolvedValue(mockCategory as Category);
     });
 
     it('should update category', async () => {
@@ -352,12 +309,10 @@ describe('CategoriesService', () => {
         .spyOn(categoryRepository, 'findOne')
         .mockResolvedValueOnce(mockCategory as Category)
         .mockResolvedValueOnce(null as any);
-      jest
-        .spyOn(categoryRepository, 'save')
-        .mockResolvedValue({
-          ...mockCategory,
-          ...updateDto,
-        } as Category);
+      jest.spyOn(categoryRepository, 'save').mockResolvedValue({
+        ...mockCategory,
+        ...updateDto,
+      } as Category);
 
       const result = await service.update('cat-1', '1', updateDto);
 
@@ -370,13 +325,9 @@ describe('CategoriesService', () => {
         role: WorkspaceRole.MEMBER,
         permissions: { canEditCategories: false },
       } as WorkspaceMember;
-      jest
-        .spyOn(workspaceMemberRepository, 'findOne')
-        .mockResolvedValue(restrictedMember);
+      jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(restrictedMember);
 
-      await expect(service.update('cat-1', '1', updateDto)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.update('cat-1', '1', updateDto)).rejects.toThrow(ForbiddenException);
     });
 
     it('should not allow updating system categories', async () => {
@@ -385,9 +336,7 @@ describe('CategoriesService', () => {
         isSystem: true,
       } as Category);
 
-      await expect(service.update('cat-1', '1', updateDto)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.update('cat-1', '1', updateDto)).rejects.toThrow(ForbiddenException);
     });
 
     it('should check for duplicate names on update', async () => {
@@ -432,22 +381,16 @@ describe('CategoriesService', () => {
 
   describe('remove', () => {
     beforeEach(() => {
-      jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue(mockUser as User);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue({
         role: WorkspaceRole.ADMIN,
       } as WorkspaceMember);
       (categoryRepository.findOne as jest.Mock).mockReset();
-      jest
-        .spyOn(categoryRepository, 'findOne')
-        .mockResolvedValue(mockCategory as Category);
+      jest.spyOn(categoryRepository, 'findOne').mockResolvedValue(mockCategory as Category);
     });
 
     it('should delete category', async () => {
-      jest
-        .spyOn(categoryRepository, 'findOne')
-        .mockResolvedValue(mockCategory as Category);
+      jest.spyOn(categoryRepository, 'findOne').mockResolvedValue(mockCategory as Category);
       const removeSpy = jest
         .spyOn(categoryRepository, 'remove')
         .mockResolvedValue(mockCategory as Category);
@@ -462,13 +405,9 @@ describe('CategoriesService', () => {
         role: WorkspaceRole.MEMBER,
         permissions: { canEditCategories: false },
       } as WorkspaceMember;
-      jest
-        .spyOn(workspaceMemberRepository, 'findOne')
-        .mockResolvedValue(restrictedMember);
+      jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(restrictedMember);
 
-      await expect(service.remove('cat-1', '1')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.remove('cat-1', '1')).rejects.toThrow(ForbiddenException);
     });
 
     it('should not allow deleting system categories', async () => {
@@ -477,17 +416,13 @@ describe('CategoriesService', () => {
         isSystem: true,
       } as Category);
 
-      await expect(service.remove('cat-1', '1')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.remove('cat-1', '1')).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw NotFoundException if category not found', async () => {
       (categoryRepository.findOne as jest.Mock).mockResolvedValue(null);
 
-      await expect(service.remove('invalid', '1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('invalid', '1')).rejects.toThrow(NotFoundException);
     });
 
     it('should handle categories with transactions', async () => {
@@ -497,4 +432,3 @@ describe('CategoriesService', () => {
     });
   });
 });
-

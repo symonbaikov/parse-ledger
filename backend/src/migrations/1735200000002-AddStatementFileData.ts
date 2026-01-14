@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddStatementFileData1735200000002 implements MigrationInterface {
   name = 'AddStatementFileData1735200000002';
@@ -17,4 +17,3 @@ export class AddStatementFileData1735200000002 implements MigrationInterface {
     `);
   }
 }
-

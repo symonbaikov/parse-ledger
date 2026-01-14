@@ -1,12 +1,12 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Transaction } from '../../entities/transaction.entity';
+import type { Repository } from 'typeorm';
 import { Statement } from '../../entities/statement.entity';
-import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { BulkUpdateItemDto } from './dto/bulk-update-transaction.dto';
+import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
 import { WorkspaceMember, WorkspaceRole } from '../../entities/workspace-member.entity';
+import type { BulkUpdateItemDto } from './dto/bulk-update-transaction.dto';
+import type { UpdateTransactionDto } from './dto/update-transaction.dto';
 
 @Injectable()
 export class TransactionsService {
@@ -119,11 +119,7 @@ export class TransactionsService {
     return transaction;
   }
 
-  async update(
-    id: string,
-    userId: string,
-    updateDto: UpdateTransactionDto,
-  ): Promise<Transaction> {
+  async update(id: string, userId: string, updateDto: UpdateTransactionDto): Promise<Transaction> {
     await this.ensureCanEditStatements(userId);
     const transaction = await this.findOne(id, userId);
 
@@ -131,13 +127,13 @@ export class TransactionsService {
     if (updateDto.debit !== undefined || updateDto.credit !== undefined) {
       const debit = updateDto.debit !== undefined ? updateDto.debit : transaction.debit;
       const credit = updateDto.credit !== undefined ? updateDto.credit : transaction.credit;
-      updateDto['amount'] = debit || credit || 0;
+      updateDto.amount = debit || credit || 0;
 
       // Update transaction type
       if (debit && debit > 0) {
-        updateDto['transactionType'] = 'expense' as any;
+        updateDto.transactionType = 'expense' as any;
       } else if (credit && credit > 0) {
-        updateDto['transactionType'] = 'income' as any;
+        updateDto.transactionType = 'income' as any;
       }
     } else if (
       updateDto.amountForeign !== undefined &&
@@ -145,17 +141,14 @@ export class TransactionsService {
       updateDto.amount === undefined
     ) {
       const nativeAmount = Number(updateDto.amountForeign) * Number(updateDto.exchangeRate);
-      updateDto['amount'] = nativeAmount;
+      updateDto.amount = nativeAmount;
     }
 
     Object.assign(transaction, updateDto);
     return this.transactionRepository.save(transaction);
   }
 
-  async bulkUpdate(
-    userId: string,
-    items: BulkUpdateItemDto[],
-  ): Promise<Transaction[]> {
+  async bulkUpdate(userId: string, items: BulkUpdateItemDto[]): Promise<Transaction[]> {
     await this.ensureCanEditStatements(userId);
     const updatedTransactions: Transaction[] = [];
 
@@ -178,9 +171,3 @@ export class TransactionsService {
     await this.transactionRepository.delete(transaction.id);
   }
 }
-
-
-
-
-
-

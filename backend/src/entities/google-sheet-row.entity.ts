@@ -8,8 +8,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from './user.entity';
 import { GoogleSheet } from './google-sheet.entity';
+import { User } from './user.entity';
 
 @Entity('sheet_rows')
 @Index('IDX_sheet_rows_unique', ['spreadsheetId', 'sheetName', 'rowNumber'], { unique: true })

@@ -1,9 +1,14 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import {
+  type CanActivate,
+  type ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
+import type { Reflector } from '@nestjs/core';
+import { type User, UserRole } from '../../entities/user.entity';
 import { PERMISSIONS_KEY } from '../decorators/require-permission.decorator';
-import { Permission } from '../enums/permissions.enum';
+import type { Permission } from '../enums/permissions.enum';
 import { ROLE_PERMISSIONS } from '../enums/permissions.enum';
-import { User, UserRole } from '../../entities/user.entity';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -35,7 +40,7 @@ export class PermissionsGuard implements CanActivate {
     const userPermissions = this.getUserPermissions(user);
 
     // Check if user has all required permissions
-    const hasAllPermissions = requiredPermissions.every((permission) =>
+    const hasAllPermissions = requiredPermissions.every(permission =>
       userPermissions.includes(permission),
     );
 
@@ -58,10 +63,3 @@ export class PermissionsGuard implements CanActivate {
     return ROLE_PERMISSIONS[user.role] || [];
   }
 }
-
-
-
-
-
-
-

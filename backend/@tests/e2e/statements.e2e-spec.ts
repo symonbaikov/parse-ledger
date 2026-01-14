@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { DataSource } from 'typeorm';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
+import * as request from 'supertest';
+import { DataSource } from 'typeorm';
+import { AppModule } from '../src/app.module';
 
 describe('StatementsController (e2e)', () => {
   let app: INestApplication;
@@ -38,9 +38,7 @@ describe('StatementsController (e2e)', () => {
     dataSource = moduleFixture.get<DataSource>(DataSource);
 
     // Register and login test user
-    const registerRes = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send(testUser);
+    const registerRes = await request(app.getHttpServer()).post('/auth/register').send(testUser);
 
     accessToken = registerRes.body.accessToken;
     userId = registerRes.body.user.id;
@@ -49,7 +47,10 @@ describe('StatementsController (e2e)', () => {
   afterAll(async () => {
     // Cleanup test data
     if (dataSource) {
-      await dataSource.query(`DELETE FROM transactions WHERE statement_id IN (SELECT id FROM statements WHERE user_id = $1)`, [userId]);
+      await dataSource.query(
+        `DELETE FROM transactions WHERE statement_id IN (SELECT id FROM statements WHERE user_id = $1)`,
+        [userId],
+      );
       await dataSource.query(`DELETE FROM statements WHERE user_id = $1`, [userId]);
       await dataSource.query(`DELETE FROM users WHERE email = $1`, [testUser.email]);
     }
@@ -59,7 +60,7 @@ describe('StatementsController (e2e)', () => {
   describe('/statements (POST)', () => {
     it('should upload PDF statement', async () => {
       const testPdfPath = path.join(__dirname, '../fixtures/test-statement.pdf');
-      
+
       // Create a simple test PDF if it doesn't exist
       if (!fs.existsSync(testPdfPath)) {
         fs.mkdirSync(path.dirname(testPdfPath), { recursive: true });
@@ -71,7 +72,7 @@ describe('StatementsController (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .attach('file', testPdfPath)
         .expect(201)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('id');
           expect(res.body).toHaveProperty('filename');
           expect(res.body.fileType).toBe('pdf');
@@ -130,7 +131,7 @@ describe('StatementsController (e2e)', () => {
         .field('googleSheetId', 'sheet-123')
         .attach('file', testPdfPath)
         .expect(201)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.googleSheetId).toBe('sheet-123');
         });
     });
@@ -142,7 +143,7 @@ describe('StatementsController (e2e)', () => {
         .get('/statements')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(Array.isArray(res.body)).toBe(true);
           expect(res.body.length).toBeGreaterThan(0);
         });
@@ -153,7 +154,7 @@ describe('StatementsController (e2e)', () => {
         .get('/statements?status=uploaded')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(Array.isArray(res.body)).toBe(true);
           res.body.forEach((statement: any) => {
             expect(statement.status).toBe('uploaded');
@@ -169,9 +170,7 @@ describe('StatementsController (e2e)', () => {
     });
 
     it('should reject request without authentication', () => {
-      return request(app.getHttpServer())
-        .get('/statements')
-        .expect(401);
+      return request(app.getHttpServer()).get('/statements').expect(401);
     });
 
     it('should paginate results', () => {
@@ -188,7 +187,7 @@ describe('StatementsController (e2e)', () => {
         .get(`/statements/${statementId}`)
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.id).toBe(statementId);
           expect(res.body).toHaveProperty('transactions');
         });
@@ -209,9 +208,7 @@ describe('StatementsController (e2e)', () => {
         name: 'Other User',
       };
 
-      const otherRes = await request(app.getHttpServer())
-        .post('/auth/register')
-        .send(otherUser);
+      const otherRes = await request(app.getHttpServer()).post('/auth/register').send(otherUser);
 
       const otherToken = otherRes.body.accessToken;
 
@@ -231,7 +228,7 @@ describe('StatementsController (e2e)', () => {
           bankName: 'sberbank',
         })
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.bankName).toBe('sberbank');
         });
     });
@@ -297,10 +294,9 @@ describe('StatementsController (e2e)', () => {
 
     it('should reject reprocessing already processing statement', async () => {
       // Set statement to processing status
-      await dataSource.query(
-        `UPDATE statements SET status = 'processing' WHERE id = $1`,
-        [statementId],
-      );
+      await dataSource.query(`UPDATE statements SET status = 'processing' WHERE id = $1`, [
+        statementId,
+      ]);
 
       const res = await request(app.getHttpServer())
         .post(`/statements/${statementId}/reprocess`)
@@ -309,10 +305,9 @@ describe('StatementsController (e2e)', () => {
       expect(res.status).toBe(400);
 
       // Reset status
-      await dataSource.query(
-        `UPDATE statements SET status = 'uploaded' WHERE id = $1`,
-        [statementId],
-      );
+      await dataSource.query(`UPDATE statements SET status = 'uploaded' WHERE id = $1`, [
+        statementId,
+      ]);
     });
   });
 
@@ -334,7 +329,7 @@ describe('StatementsController (e2e)', () => {
         .get(`/statements/${statementId}`)
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('transactions');
           expect(Array.isArray(res.body.transactions)).toBe(true);
         });

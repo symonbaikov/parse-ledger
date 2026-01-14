@@ -21,4 +21,3 @@ export const RequestContext = {
     return storage.getStore()?.traceId;
   },
 };
-

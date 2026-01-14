@@ -1,23 +1,26 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
-import { Transaction, TransactionType } from '../../entities/transaction.entity';
-import { Category } from '../../entities/category.entity';
-import { Branch } from '../../entities/branch.entity';
-import { Wallet } from '../../entities/wallet.entity';
-import { AuditLog, AuditAction } from '../../entities/audit-log.entity';
-import { CustomTable } from '../../entities/custom-table.entity';
-import { CustomTableColumn, CustomTableColumnType } from '../../entities/custom-table-column.entity';
-import { CustomTableRow } from '../../entities/custom-table-row.entity';
-import { DailyReport } from './interfaces/daily-report.interface';
-import { MonthlyReport } from './interfaces/monthly-report.interface';
-import { CustomReport, CustomReportGroup } from './interfaces/custom-report.interface';
-import { CustomReportDto, ReportGroupBy } from './dto/custom-report.dto';
-import { ExportReportDto, ExportFormat } from './dto/export-report.dto';
-import { CustomTablesSummaryDto } from './dto/custom-tables-summary.dto';
-import * as XLSX from 'xlsx';
 import * as fs from 'fs';
 import * as path from 'path';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Between, In, LessThanOrEqual, MoreThanOrEqual, type Repository } from 'typeorm';
+import * as XLSX from 'xlsx';
+import { AuditAction, AuditLog } from '../../entities/audit-log.entity';
+import { Branch } from '../../entities/branch.entity';
+import { Category } from '../../entities/category.entity';
+import {
+  CustomTableColumn,
+  CustomTableColumnType,
+} from '../../entities/custom-table-column.entity';
+import { CustomTableRow } from '../../entities/custom-table-row.entity';
+import { CustomTable } from '../../entities/custom-table.entity';
+import { Transaction, TransactionType } from '../../entities/transaction.entity';
+import { Wallet } from '../../entities/wallet.entity';
+import { type CustomReportDto, ReportGroupBy } from './dto/custom-report.dto';
+import type { CustomTablesSummaryDto } from './dto/custom-tables-summary.dto';
+import { ExportFormat, type ExportReportDto } from './dto/export-report.dto';
+import type { CustomReport, CustomReportGroup } from './interfaces/custom-report.interface';
+import type { DailyReport } from './interfaces/daily-report.interface';
+import type { MonthlyReport } from './interfaces/monthly-report.interface';
 
 export interface StatementsSummaryResponse {
   totals: {
@@ -194,7 +197,13 @@ export class ReportsService {
     const title = (col.title || '').toLowerCase();
     let score = 0;
     if (col.type === CustomTableColumnType.NUMBER) score += 6;
-    if (title.includes('сумм') || title.includes('amount') || title.includes('итог') || title.includes('total')) score += 4;
+    if (
+      title.includes('сумм') ||
+      title.includes('amount') ||
+      title.includes('итог') ||
+      title.includes('total')
+    )
+      score += 4;
     if (title.includes('приход') || title.includes('доход')) score += 2;
     if (title.includes('расход')) score += 2;
     if (title.includes('год') || title.includes('year')) score -= 4;
@@ -219,7 +228,8 @@ export class ReportsService {
     if (title.includes('контраг') || title.includes('counterparty')) score += 6;
     if (title.includes('постав') || title.includes('supplier')) score += 4;
     if (title.includes('клиент') || title.includes('customer')) score += 4;
-    if (title.includes('merchant') || title.includes('получател') || title.includes('платель')) score += 4;
+    if (title.includes('merchant') || title.includes('получател') || title.includes('платель'))
+      score += 4;
     if (title.includes('кошел') || title.includes('wallet')) score -= 2;
     if (title.includes('филиал') || title.includes('branch')) score -= 2;
     return score;
@@ -245,12 +255,15 @@ export class ReportsService {
     userId: string,
     dto: CustomTablesSummaryDto,
   ): Promise<CustomTablesSummaryResponse> {
-    const safeDays = Number.isFinite(dto.days) && (dto.days as number) > 0 ? Math.min(dto.days as number, 3650) : 30;
+    const safeDays =
+      Number.isFinite(dto.days) && (dto.days as number) > 0
+        ? Math.min(dto.days as number, 3650)
+        : 30;
     const since = new Date();
     since.setDate(since.getDate() - safeDays);
     since.setHours(0, 0, 0, 0);
 
-    const requestedIds = (dto.tableIds || []).filter((id) => typeof id === 'string' && id.length);
+    const requestedIds = (dto.tableIds || []).filter(id => typeof id === 'string' && id.length);
 
     const tables = await this.customTableRepository.find({
       where: {
@@ -277,8 +290,8 @@ export class ReportsService {
     }
 
     const tableById = new Map<string, CustomTable>();
-    tables.forEach((t) => tableById.set(t.id, t));
-    const tableIds = tables.map((t) => t.id);
+    tables.forEach(t => tableById.set(t.id, t));
+    const tableIds = tables.map(t => t.id);
 
     const columns = await this.customTableColumnRepository.find({
       where: { tableId: In(tableIds) },
@@ -294,16 +307,21 @@ export class ReportsService {
 
     const mappingByTableId = new Map<
       string,
-      { dateKey: string | null; amountKey: string | null; categoryKey: string | null; counterpartyKey: string | null }
+      {
+        dateKey: string | null;
+        amountKey: string | null;
+        categoryKey: string | null;
+        counterpartyKey: string | null;
+      }
     >();
 
     for (const tableId of tableIds) {
       const cols = columnsByTableId.get(tableId) || [];
       mappingByTableId.set(tableId, {
-        dateKey: this.pickBestColumnKey(cols, (c) => this.scoreDateColumn(c)),
-        amountKey: this.pickBestColumnKey(cols, (c) => this.scoreAmountColumn(c)),
-        categoryKey: this.pickBestColumnKey(cols, (c) => this.scoreCategoryColumn(c)),
-        counterpartyKey: this.pickBestColumnKey(cols, (c) => this.scoreCounterpartyColumn(c)),
+        dateKey: this.pickBestColumnKey(cols, c => this.scoreDateColumn(c)),
+        amountKey: this.pickBestColumnKey(cols, c => this.scoreAmountColumn(c)),
+        categoryKey: this.pickBestColumnKey(cols, c => this.scoreCategoryColumn(c)),
+        counterpartyKey: this.pickBestColumnKey(cols, c => this.scoreCounterpartyColumn(c)),
       });
     }
 
@@ -352,9 +370,10 @@ export class ReportsService {
       perTableMap.set(row.tableId, perTable);
 
       const categoryValue = mapping?.categoryKey ? row.data?.[mapping.categoryKey] : null;
-      const counterpartyValue = mapping?.counterpartyKey ? row.data?.[mapping.counterpartyKey] : null;
-      const categoryName =
-        this.normalizeText(categoryValue) || table.category?.name || null;
+      const counterpartyValue = mapping?.counterpartyKey
+        ? row.data?.[mapping.counterpartyKey]
+        : null;
+      const categoryName = this.normalizeText(categoryValue) || table.category?.name || null;
       const counterpartyName = this.normalizeText(counterpartyValue) || null;
 
       if (isIncome) {
@@ -398,7 +417,7 @@ export class ReportsService {
       .slice(0, 10);
 
     const tablesBreakdown = tables
-      .map((t) => {
+      .map(t => {
         const metrics = perTableMap.get(t.id) || { income: 0, expense: 0, rows: 0 };
         return {
           id: t.id,
@@ -457,7 +476,7 @@ export class ReportsService {
     // Calculate income block
     const incomeTotal = incomeTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
     const counterpartyMap = new Map<string, { amount: number; count: number }>();
-    incomeTransactions.forEach((t) => {
+    incomeTransactions.forEach(t => {
       const existing = counterpartyMap.get(t.counterpartyName) || { amount: 0, count: 0 };
       counterpartyMap.set(t.counterpartyName, {
         amount: existing.amount + (t.amount || 0),
@@ -473,7 +492,7 @@ export class ReportsService {
     // Calculate expense block
     const expenseTotal = expenseTransactions.reduce((sum, t) => sum + (t.amount || 0), 0);
     const categoryMap = new Map<string, { name: string; amount: number; count: number }>();
-    expenseTransactions.forEach((t) => {
+    expenseTransactions.forEach(t => {
       const categoryId = t.categoryId || 'uncategorized';
       const categoryName = t.category?.name || 'Без категории';
       const existing = categoryMap.get(categoryId) || { name: categoryName, amount: 0, count: 0 };
@@ -540,7 +559,7 @@ export class ReportsService {
 
     // Calculate daily trends
     const dailyMap = new Map<string, { income: number; expense: number }>();
-    transactions.forEach((t) => {
+    transactions.forEach(t => {
       const dateKey = t.transactionDate.toISOString().split('T')[0];
       const existing = dailyMap.get(dateKey) || { income: 0, expense: 0 };
       if (t.transactionType === TransactionType.INCOME) {
@@ -558,8 +577,8 @@ export class ReportsService {
     // Calculate category distribution
     const categoryMap = new Map<string, { name: string; amount: number; count: number }>();
     transactions
-      .filter((t) => t.transactionType === TransactionType.EXPENSE)
-      .forEach((t) => {
+      .filter(t => t.transactionType === TransactionType.EXPENSE)
+      .forEach(t => {
         const categoryId = t.categoryId || 'uncategorized';
         const categoryName = t.category?.name || 'Без категории';
         const existing = categoryMap.get(categoryId) || { name: categoryName, amount: 0, count: 0 };
@@ -583,7 +602,7 @@ export class ReportsService {
 
     // Calculate counterparty distribution
     const counterpartyMap = new Map<string, { amount: number; count: number }>();
-    transactions.forEach((t) => {
+    transactions.forEach(t => {
       const existing = counterpartyMap.get(t.counterpartyName) || { amount: 0, count: 0 };
       counterpartyMap.set(t.counterpartyName, {
         amount: existing.amount + (t.amount || 0),
@@ -615,18 +634,18 @@ export class ReportsService {
       .getMany();
 
     const currentIncome = transactions
-      .filter((t) => t.transactionType === TransactionType.INCOME)
+      .filter(t => t.transactionType === TransactionType.INCOME)
       .reduce((sum, t) => sum + (t.amount || 0), 0);
     const currentExpense = transactions
-      .filter((t) => t.transactionType === TransactionType.EXPENSE)
+      .filter(t => t.transactionType === TransactionType.EXPENSE)
       .reduce((sum, t) => sum + (t.amount || 0), 0);
     const currentDifference = currentIncome - currentExpense;
 
     const previousIncome = previousTransactions
-      .filter((t) => t.transactionType === TransactionType.INCOME)
+      .filter(t => t.transactionType === TransactionType.INCOME)
       .reduce((sum, t) => sum + (t.amount || 0), 0);
     const previousExpense = previousTransactions
-      .filter((t) => t.transactionType === TransactionType.EXPENSE)
+      .filter(t => t.transactionType === TransactionType.EXPENSE)
       .reduce((sum, t) => sum + (t.amount || 0), 0);
     const previousDifference = previousIncome - previousExpense;
 
@@ -657,7 +676,8 @@ export class ReportsService {
           differenceChange,
           incomeChangePercent: previousIncome > 0 ? (incomeChange / previousIncome) * 100 : 0,
           expenseChangePercent: previousExpense > 0 ? (expenseChange / previousExpense) * 100 : 0,
-          differenceChangePercent: previousDifference !== 0 ? (differenceChange / Math.abs(previousDifference)) * 100 : 0,
+          differenceChangePercent:
+            previousDifference !== 0 ? (differenceChange / Math.abs(previousDifference)) * 100 : 0,
         },
       },
       summary: {
@@ -669,7 +689,11 @@ export class ReportsService {
     };
 
     // Log to audit
-    await this.logReportGeneration(userId, 'monthly', `${year}-${month.toString().padStart(2, '0')}`);
+    await this.logReportGeneration(
+      userId,
+      'monthly',
+      `${year}-${month.toString().padStart(2, '0')}`,
+    );
 
     return report;
   }
@@ -745,7 +769,7 @@ export class ReportsService {
     const groupMap = new Map<string, CustomReportGroup>();
     const groupBy = dto.groupBy || ReportGroupBy.DAY;
 
-    transactions.forEach((t) => {
+    transactions.forEach(t => {
       let key: string;
       let label: string;
 
@@ -770,12 +794,13 @@ export class ReportsService {
           key = t.transactionDate.toISOString().split('T')[0];
           label = t.transactionDate.toLocaleDateString('ru-RU');
           break;
-        case ReportGroupBy.MONTH:
+        case ReportGroupBy.MONTH: {
           const month = t.transactionDate.getMonth() + 1;
           const year = t.transactionDate.getFullYear();
           key = `${year}-${month.toString().padStart(2, '0')}`;
           label = `${month.toString().padStart(2, '0')}.${year}`;
           break;
+        }
         default:
           key = 'all';
           label = 'Все';
@@ -807,10 +832,10 @@ export class ReportsService {
     const groups = Array.from(groupMap.values()).sort((a, b) => b.totalAmount - a.totalAmount);
 
     const totalIncome = transactions
-      .filter((t) => t.transactionType === TransactionType.INCOME)
+      .filter(t => t.transactionType === TransactionType.INCOME)
       .reduce((sum, t) => sum + (t.amount || 0), 0);
     const totalExpense = transactions
-      .filter((t) => t.transactionType === TransactionType.EXPENSE)
+      .filter(t => t.transactionType === TransactionType.EXPENSE)
       .reduce((sum, t) => sum + (t.amount || 0), 0);
 
     const report: CustomReport = {
@@ -870,8 +895,16 @@ export class ReportsService {
       // Daily report
       const dailyData = reportData as DailyReport;
       const ws = XLSX.utils.json_to_sheet([
-        { Тип: 'Приходы', Сумма: dailyData.income.totalAmount, Количество: dailyData.income.transactionCount },
-        { Тип: 'Расходы', Сумма: dailyData.expense.totalAmount, Количество: dailyData.expense.transactionCount },
+        {
+          Тип: 'Приходы',
+          Сумма: dailyData.income.totalAmount,
+          Количество: dailyData.income.transactionCount,
+        },
+        {
+          Тип: 'Расходы',
+          Сумма: dailyData.expense.totalAmount,
+          Количество: dailyData.expense.transactionCount,
+        },
         { Тип: 'Разница', Сумма: dailyData.summary.difference },
       ]);
       XLSX.utils.book_append_sheet(workbook, ws, 'Отчёт');
@@ -884,8 +917,8 @@ export class ReportsService {
       // Custom report
       const customData = reportData as CustomReport;
       const rows: any[] = [];
-      customData.groups.forEach((group) => {
-        group.transactions.forEach((t) => {
+      customData.groups.forEach(group => {
+        group.transactions.forEach(t => {
           rows.push({
             Группа: group.label,
             Дата: t.date,
@@ -921,15 +954,15 @@ export class ReportsService {
       // Monthly report
       const monthlyData = reportData as MonthlyReport;
       csvContent = 'Дата,Приходы,Расходы\n';
-      monthlyData.dailyTrends.forEach((trend) => {
+      monthlyData.dailyTrends.forEach(trend => {
         csvContent += `${trend.date},${trend.income},${trend.expense}\n`;
       });
     } else {
       // Custom report
       const customData = reportData as CustomReport;
       csvContent = 'Группа,Дата,Контрагент,Сумма,Категория,Филиал,Кошелёк\n';
-      customData.groups.forEach((group) => {
-        group.transactions.forEach((t) => {
+      customData.groups.forEach(group => {
+        group.transactions.forEach(t => {
           csvContent += `${group.label},${t.date},${t.counterparty},${t.amount},${t.category || ''},${t.branch || ''},${t.wallet || ''}\n`;
         });
       });
@@ -941,7 +974,11 @@ export class ReportsService {
   /**
    * Log report generation to audit log
    */
-  private async logReportGeneration(userId: string, reportType: string, reportDate: string): Promise<void> {
+  private async logReportGeneration(
+    userId: string,
+    reportType: string,
+    reportDate: string,
+  ): Promise<void> {
     await this.auditLogRepository.save({
       userId,
       action: AuditAction.REPORT_GENERATE,
@@ -953,7 +990,7 @@ export class ReportsService {
     });
   }
 
-  async getStatementsSummary(userId: string, days: number = 30): Promise<StatementsSummaryResponse> {
+  async getStatementsSummary(userId: string, days = 30): Promise<StatementsSummaryResponse> {
     const safeDays = Number.isFinite(days) && days > 0 ? Math.min(days, 3650) : 30;
     const since = new Date();
     since.setDate(since.getDate() - safeDays);
@@ -976,7 +1013,7 @@ export class ReportsService {
 
     const recent = transactions
       .slice(0, 50)
-      .map((t) => {
+      .map(t => {
         const amount = Number(t.amount || 0);
         const abs = Math.abs(amount);
         const signedAmount = t.transactionType === TransactionType.INCOME ? abs : -abs;
@@ -990,7 +1027,7 @@ export class ReportsService {
       })
       .slice(0, 20);
 
-    transactions.forEach((t) => {
+    transactions.forEach(t => {
       const amount = Number(t.amount || 0);
       const abs = Math.abs(amount);
       const dateKey = this.toDateKey(t.transactionDate as any);
@@ -1000,7 +1037,10 @@ export class ReportsService {
         ts.income += abs;
         const counterparty = (t.counterpartyName || 'Без названия').trim() || 'Без названия';
         const existing = counterpartyMap.get(counterparty) || { amount: 0, rows: 0 };
-        counterpartyMap.set(counterparty, { amount: existing.amount + abs, rows: existing.rows + 1 });
+        counterpartyMap.set(counterparty, {
+          amount: existing.amount + abs,
+          rows: existing.rows + 1,
+        });
         totals.income += abs;
       } else {
         ts.expense += abs;

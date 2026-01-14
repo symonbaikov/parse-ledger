@@ -40,4 +40,3 @@ export function normalizeFilename(input: string): string {
 
   return name;
 }
-

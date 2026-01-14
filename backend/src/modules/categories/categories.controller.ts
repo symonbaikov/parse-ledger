@@ -1,24 +1,14 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Param,
-  Body,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
-import { CategoriesService } from './categories.service';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { Permission } from '../../common/enums/permissions.enum';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import type { CategoryType } from '../../entities/category.entity';
+import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../../entities/user.entity';
-import { CategoryType } from '../../entities/category.entity';
+import type { CategoriesService } from './categories.service';
+import type { CreateCategoryDto } from './dto/create-category.dto';
+import type { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Controller('categories')
 @UseGuards(JwtAuthGuard)
@@ -28,20 +18,14 @@ export class CategoriesController {
   @Post()
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.CATEGORY_CREATE)
-  async create(
-    @Body() createDto: CreateCategoryDto,
-    @CurrentUser() user: User,
-  ) {
+  async create(@Body() createDto: CreateCategoryDto, @CurrentUser() user: User) {
     return this.categoriesService.create(user.id, createDto);
   }
 
   @Get()
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.CATEGORY_VIEW)
-  async findAll(
-    @CurrentUser() user: User,
-    @Query('type') type?: CategoryType,
-  ) {
+  async findAll(@CurrentUser() user: User, @Query('type') type?: CategoryType) {
     return this.categoriesService.findAll(user.id, type);
   }
 
@@ -71,5 +55,3 @@ export class CategoriesController {
     return { message: 'Category deleted successfully' };
   }
 }
-
-

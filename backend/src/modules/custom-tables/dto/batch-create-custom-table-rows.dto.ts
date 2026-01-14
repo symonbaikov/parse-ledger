@@ -1,5 +1,13 @@
-import { ArrayMinSize, IsArray, IsInt, IsObject, IsOptional, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsInt,
+  IsObject,
+  IsOptional,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 
 class BatchRowItemDto {
   @IsObject()
@@ -18,4 +26,3 @@ export class BatchCreateCustomTableRowsDto {
   @Type(() => BatchRowItemDto)
   rows: BatchRowItemDto[];
 }
-

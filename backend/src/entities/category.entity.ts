@@ -1,15 +1,15 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { User } from './user.entity';
 import { Transaction } from './transaction.entity';
+import { User } from './user.entity';
 
 export enum CategoryType {
   INCOME = 'income',
@@ -21,7 +21,11 @@ export class Category {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => User, (user) => user.categories, { nullable: true })
+  @ManyToOne(
+    () => User,
+    user => user.categories,
+    { nullable: true },
+  )
   @JoinColumn({ name: 'user_id' })
   user: User | null;
 
@@ -37,7 +41,11 @@ export class Category {
   })
   type: CategoryType;
 
-  @ManyToOne(() => Category, (category) => category.children, { nullable: true })
+  @ManyToOne(
+    () => Category,
+    category => category.children,
+    { nullable: true },
+  )
   @JoinColumn({ name: 'parent_id' })
   parent: Category | null;
 
@@ -60,17 +68,15 @@ export class Category {
   updatedAt: Date;
 
   // Relations
-  @OneToMany(() => Category, (category) => category.parent)
+  @OneToMany(
+    () => Category,
+    category => category.parent,
+  )
   children: Category[];
 
-  @OneToMany(() => Transaction, (transaction) => transaction.category)
+  @OneToMany(
+    () => Transaction,
+    transaction => transaction.category,
+  )
   transactions: Transaction[];
 }
-
-
-
-
-
-
-
-

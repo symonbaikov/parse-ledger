@@ -16,10 +16,3 @@ export class RemovePermissionDto {
   @IsEnum(Permission)
   permission: Permission;
 }
-
-
-
-
-
-
-

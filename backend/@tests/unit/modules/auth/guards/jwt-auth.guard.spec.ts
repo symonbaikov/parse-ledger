@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { type ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 describe('JwtAuthGuard', () => {
   let testingModule: TestingModule;
@@ -55,9 +55,7 @@ describe('JwtAuthGuard', () => {
     it('should call super.canActivate for protected routes', async () => {
       const context = createMockExecutionContext();
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      jest
-        .spyOn(AuthGuard('jwt').prototype, 'canActivate')
-        .mockResolvedValue(true);
+      jest.spyOn(AuthGuard('jwt').prototype, 'canActivate').mockResolvedValue(true);
 
       const result = await guard.canActivate(context);
 
@@ -71,9 +69,7 @@ describe('JwtAuthGuard', () => {
         .spyOn(AuthGuard('jwt').prototype, 'canActivate')
         .mockRejectedValue(new UnauthorizedException());
 
-      await expect(guard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should allow request with valid JWT', async () => {
@@ -83,9 +79,7 @@ describe('JwtAuthGuard', () => {
         },
       });
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
-      jest
-        .spyOn(AuthGuard('jwt').prototype, 'canActivate')
-        .mockResolvedValue(true);
+      jest.spyOn(AuthGuard('jwt').prototype, 'canActivate').mockResolvedValue(true);
 
       const result = await guard.canActivate(context);
 
@@ -101,9 +95,7 @@ describe('JwtAuthGuard', () => {
         .spyOn(AuthGuard('jwt').prototype, 'canActivate')
         .mockRejectedValue(new UnauthorizedException());
 
-      await expect(guard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
   });
 

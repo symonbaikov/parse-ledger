@@ -1,22 +1,25 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { User } from './user.entity';
 import { Transaction } from './transaction.entity';
+import { User } from './user.entity';
 
 @Entity('branches')
 export class Branch {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => User, (user) => user.branches)
+  @ManyToOne(
+    () => User,
+    user => user.branches,
+  )
   @JoinColumn({ name: 'user_id' })
   user: User;
 
@@ -42,14 +45,9 @@ export class Branch {
   updatedAt: Date;
 
   // Relations
-  @OneToMany(() => Transaction, (transaction) => transaction.branch)
+  @OneToMany(
+    () => Transaction,
+    transaction => transaction.branch,
+  )
   transactions: Transaction[];
 }
-
-
-
-
-
-
-
-

@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsUUID, IsBoolean } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { CategoryType } from '../../../entities/category.entity';
 
 export class UpdateCategoryDto {
@@ -26,11 +26,3 @@ export class UpdateCategoryDto {
   @IsOptional()
   isSystem?: boolean;
 }
-
-
-
-
-
-
-
-

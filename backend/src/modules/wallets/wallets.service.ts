@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { Wallet } from '../../entities/wallet.entity';
-import { CreateWalletDto } from './dto/create-wallet.dto';
-import { UpdateWalletDto } from './dto/update-wallet.dto';
+import type { CreateWalletDto } from './dto/create-wallet.dto';
+import type { UpdateWalletDto } from './dto/update-wallet.dto';
 
 @Injectable()
 export class WalletsService {
@@ -54,11 +54,3 @@ export class WalletsService {
     await this.walletRepository.remove(wallet);
   }
 }
-
-
-
-
-
-
-
-

@@ -32,11 +32,3 @@ export interface DailyReport {
   expense: DailyExpenseBlock;
   summary: DailySummaryBlock;
 }
-
-
-
-
-
-
-
-

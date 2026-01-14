@@ -1,5 +1,5 @@
-import { ParsedTransaction } from '../interfaces/parsed-statement.interface';
 import { normalizeDate, normalizeNumber } from '../../../common/utils/number-normalizer.util';
+import type { ParsedTransaction } from '../interfaces/parsed-statement.interface';
 
 type TableColumnKey =
   | 'date'
@@ -27,8 +27,8 @@ export function mapPdfTableRowsToTransactions(
   options?: TableParsingOptions,
 ): ParsedTransaction[] {
   const normalized = (tableRows || [])
-    .map((row) => (row || []).map((cell) => sanitizeCell(cell)))
-    .filter((row) => row.some((cell) => cell));
+    .map(row => (row || []).map(cell => sanitizeCell(cell)))
+    .filter(row => row.some(cell => cell));
 
   if (!normalized.length) {
     return [];
@@ -39,14 +39,14 @@ export function mapPdfTableRowsToTransactions(
   const dataRows = normalized.slice(headerIndex + 1);
 
   const columnMap = enhanceColumnMap(buildColumnMap(header), dataRows);
-  const stopWords = options?.stopWords?.map((w) => w.toLowerCase()) || DEFAULT_STOP_WORDS;
+  const stopWords = options?.stopWords?.map(w => w.toLowerCase()) || DEFAULT_STOP_WORDS;
 
   const transactions: ParsedTransaction[] = [];
   let current: ParsedTransaction | null = null;
 
   for (const row of dataRows) {
     const rowText = row.join(' ').toLowerCase();
-    if (stopWords.some((word) => rowText.includes(word))) {
+    if (stopWords.some(word => rowText.includes(word))) {
       break;
     }
 
@@ -99,9 +99,7 @@ export function mergeTransactions(
 }
 
 function buildSignature(tx: ParsedTransaction): string {
-  const datePart = tx.transactionDate
-    ? tx.transactionDate.toISOString().split('T')[0]
-    : 'no-date';
+  const datePart = tx.transactionDate ? tx.transactionDate.toISOString().split('T')[0] : 'no-date';
   const amount = tx.debit ?? tx.credit ?? 0;
   const doc = tx.documentNumber || '';
   const name = (tx.counterpartyName || '').toLowerCase();
@@ -140,7 +138,7 @@ function isHeaderRow(row: string[]): boolean {
     'purpose',
   ];
 
-  const matches = keywords.filter((kw) => lowerJoined.includes(kw)).length;
+  const matches = keywords.filter(kw => lowerJoined.includes(kw)).length;
   return matches >= 2;
 }
 
@@ -150,7 +148,7 @@ function findHeaderIndex(rows: string[][]): number {
   let bestFilled = 0;
 
   rows.forEach((row, idx) => {
-    const filled = row.filter((c) => c && c.trim().length > 0).length;
+    const filled = row.filter(c => c && c.trim().length > 0).length;
     if (filled > bestFilled) {
       bestFilled = filled;
       bestIndex = idx;
@@ -180,7 +178,7 @@ function enhanceColumnMap(
   // Date column by frequency of date regex
   if (map.date === undefined) {
     const bestDate = columnStats
-      .filter((c) => c.dateMatches > 0)
+      .filter(c => c.dateMatches > 0)
       .sort((a, b) => b.dateMatches - a.dateMatches)[0];
     if (bestDate) {
       map.date = bestDate.index;
@@ -190,7 +188,7 @@ function enhanceColumnMap(
   // BIN / Account / Bank
   if (map.bin === undefined) {
     const binCol = columnStats
-      .filter((c) => c.binMatches > 0)
+      .filter(c => c.binMatches > 0)
       .sort((a, b) => b.binMatches - a.binMatches)[0];
     if (binCol) {
       map.bin = binCol.index;
@@ -199,7 +197,7 @@ function enhanceColumnMap(
 
   if (map.account === undefined) {
     const accCol = columnStats
-      .filter((c) => c.accountMatches > 0)
+      .filter(c => c.accountMatches > 0)
       .sort((a, b) => b.accountMatches - a.accountMatches)[0];
     if (accCol) {
       map.account = accCol.index;
@@ -208,7 +206,7 @@ function enhanceColumnMap(
 
   if (map.bank === undefined) {
     const bankCol = columnStats
-      .filter((c) => c.bankMatches > 0)
+      .filter(c => c.bankMatches > 0)
       .sort((a, b) => b.bankMatches - a.bankMatches)[0];
     if (bankCol) {
       map.bank = bankCol.index;
@@ -218,7 +216,7 @@ function enhanceColumnMap(
   // Currency
   if (map.currency === undefined) {
     const curCol = columnStats
-      .filter((c) => c.currencyMatches > 0)
+      .filter(c => c.currencyMatches > 0)
       .sort((a, b) => b.currencyMatches - a.currencyMatches)[0];
     if (curCol) {
       map.currency = curCol.index;
@@ -226,7 +224,7 @@ function enhanceColumnMap(
   }
 
   const used = new Set<number>();
-  Object.values(map).forEach((idx) => {
+  Object.values(map).forEach(idx => {
     if (typeof idx === 'number') {
       used.add(idx);
     }
@@ -235,7 +233,7 @@ function enhanceColumnMap(
   // Document number
   if (map.document === undefined) {
     const docCol = columnStats
-      .filter((c) => c.documentMatches > 0 && !used.has(c.index))
+      .filter(c => c.documentMatches > 0 && !used.has(c.index))
       .sort((a, b) => b.documentMatches - a.documentMatches || a.index - b.index)[0];
     if (docCol) {
       map.document = docCol.index;
@@ -246,7 +244,7 @@ function enhanceColumnMap(
   // KNP
   if (map.knp === undefined) {
     const knpCol = columnStats
-      .filter((c) => c.knpMatches > 0 && !used.has(c.index))
+      .filter(c => c.knpMatches > 0 && !used.has(c.index))
       .sort((a, b) => b.knpMatches - a.knpMatches || a.index - b.index)[0];
     if (knpCol) {
       map.knp = knpCol.index;
@@ -256,18 +254,18 @@ function enhanceColumnMap(
 
   // Numeric columns for debit/credit
   const numericColumns = columnStats
-    .filter((c) => c.numericMatches > 0)
+    .filter(c => c.numericMatches > 0)
     .sort((a, b) => b.numericMatches - a.numericMatches || a.index - b.index);
 
   if (map.debit === undefined && numericColumns.length) {
-    const candidate = numericColumns.find((c) => !used.has(c.index));
+    const candidate = numericColumns.find(c => !used.has(c.index));
     if (candidate) {
       map.debit = candidate.index;
       used.add(candidate.index);
     }
   }
   if (map.credit === undefined && numericColumns.length > 1) {
-    const candidate = numericColumns.find((c) => !used.has(c.index));
+    const candidate = numericColumns.find(c => !used.has(c.index));
     if (candidate) {
       map.credit = candidate.index;
       used.add(candidate.index);
@@ -276,11 +274,11 @@ function enhanceColumnMap(
 
   // Counterparty / purpose: pick text-heavy columns not already used
   const textColumns = columnStats
-    .filter((c) => c.textScore > 0)
+    .filter(c => c.textScore > 0)
     .sort((a, b) => b.textScore - a.textScore || a.index - b.index);
 
   if (map.counterparty === undefined) {
-    const candidate = textColumns.find((c) => !used.has(c.index));
+    const candidate = textColumns.find(c => !used.has(c.index));
     if (candidate) {
       map.counterparty = candidate.index;
       used.add(candidate.index);
@@ -288,7 +286,7 @@ function enhanceColumnMap(
   }
 
   if (map.purpose === undefined) {
-    const candidate = textColumns.find((c) => !used.has(c.index) && c.textScore > 0);
+    const candidate = textColumns.find(c => !used.has(c.index) && c.textScore > 0);
     if (candidate) {
       map.purpose = candidate.index;
       used.add(candidate.index);
@@ -335,7 +333,7 @@ function buildColumnStats(dataRows: string[][]): Array<{
     let documentMatches = 0;
     let knpMatches = 0;
 
-    dataRows.forEach((row) => {
+    dataRows.forEach(row => {
       const cell = row[i] || '';
       if (DATE_REGEX.test(cell)) {
         dateMatches += 1;
@@ -347,13 +345,13 @@ function buildColumnStats(dataRows: string[][]): Array<{
         textScore += cell.length;
       }
 
-       // BIN/Account/BIC/Currency detection
-       if (/\b\d{11,12}\b/.test(cell.replace(/\s+/g, ''))) {
-         binMatches += 1;
-       }
-       if (/KZ\d{10,}|[A-Z0-9]{20,}/i.test(cell)) {
-         accountMatches += 1;
-       }
+      // BIN/Account/BIC/Currency detection
+      if (/\b\d{11,12}\b/.test(cell.replace(/\s+/g, ''))) {
+        binMatches += 1;
+      }
+      if (/KZ\d{10,}|[A-Z0-9]{20,}/i.test(cell)) {
+        accountMatches += 1;
+      }
       if (/[A-Z]{6}[A-Z0-9]{2,5}/.test(cell)) {
         bankMatches += 1;
       }
@@ -385,7 +383,10 @@ function buildColumnStats(dataRows: string[][]): Array<{
   return stats;
 }
 
-function pickDateValue(row: string[], columnMap: Partial<Record<TableColumnKey, number>>): string | null {
+function pickDateValue(
+  row: string[],
+  columnMap: Partial<Record<TableColumnKey, number>>,
+): string | null {
   if (columnMap.date !== undefined) {
     const value = row[columnMap.date];
     if (value && DATE_REGEX.test(value)) {
@@ -393,7 +394,7 @@ function pickDateValue(row: string[], columnMap: Partial<Record<TableColumnKey, 
     }
   }
 
-  const fallback = row.find((cell) => DATE_REGEX.test(cell));
+  const fallback = row.find(cell => DATE_REGEX.test(cell));
   return fallback || null;
 }
 
@@ -404,15 +405,17 @@ function buildTransactionFromRow(
   options?: TableParsingOptions,
 ): ParsedTransaction {
   let debit =
-    columnMap.debit !== undefined ? normalizeNumber(row[columnMap.debit]) ?? undefined : undefined;
+    columnMap.debit !== undefined
+      ? (normalizeNumber(row[columnMap.debit]) ?? undefined)
+      : undefined;
   let credit =
     columnMap.credit !== undefined
-      ? normalizeNumber(row[columnMap.credit]) ?? undefined
+      ? (normalizeNumber(row[columnMap.credit]) ?? undefined)
       : undefined;
 
   // If only one amount was detected, try to infer debit/credit based on sign
   if (debit === undefined && credit === undefined) {
-    const amounts = row.map((cell) => normalizeNumber(cell)).filter((v) => typeof v === 'number');
+    const amounts = row.map(cell => normalizeNumber(cell)).filter(v => typeof v === 'number');
     if (amounts.length === 1) {
       const value = amounts[0];
       if (value !== 0) {
@@ -430,12 +433,9 @@ function buildTransactionFromRow(
   const currency = detectCurrency(row, columnMap) || options?.defaultCurrency || 'KZT';
 
   const counterpartyName =
-    valueAt(row, columnMap.counterparty) ||
-    collectName(row, columnMap) ||
-    'Неизвестный контрагент';
+    valueAt(row, columnMap.counterparty) || collectName(row, columnMap) || 'Неизвестный контрагент';
 
-  const purpose =
-    valueAt(row, columnMap.purpose) || collectPurpose(row, columnMap) || 'Не указано';
+  const purpose = valueAt(row, columnMap.purpose) || collectPurpose(row, columnMap) || 'Не указано';
 
   return {
     transactionDate,
@@ -456,7 +456,7 @@ function collectContinuation(
   columnMap: Partial<Record<TableColumnKey, number>>,
 ): string {
   const excludedIndexes = new Set<number>();
-  ['date', 'document', 'debit', 'credit', 'purpose'].forEach((key) => {
+  ['date', 'document', 'debit', 'credit', 'purpose'].forEach(key => {
     const columnKey = key as TableColumnKey;
     const idx = columnMap[columnKey];
     if (idx !== undefined) {
@@ -472,13 +472,10 @@ function collectContinuation(
   return parts.join(' ').trim();
 }
 
-function collectPurpose(
-  row: string[],
-  columnMap: Partial<Record<TableColumnKey, number>>,
-): string {
+function collectPurpose(row: string[], columnMap: Partial<Record<TableColumnKey, number>>): string {
   const used = new Set<number>();
   ['date', 'document', 'counterparty', 'bin', 'account', 'bank', 'debit', 'credit', 'knp'].forEach(
-    (key) => {
+    key => {
       const columnKey = key as TableColumnKey;
       const idx = columnMap[columnKey];
       if (idx !== undefined) {
@@ -500,7 +497,7 @@ function collectName(
   columnMap: Partial<Record<TableColumnKey, number>>,
 ): string | null {
   const excludedIndexes = new Set<number>();
-  ['date', 'document', 'debit', 'credit', 'purpose'].forEach((key) => {
+  ['date', 'document', 'debit', 'credit', 'purpose'].forEach(key => {
     const columnKey = key as TableColumnKey;
     const idx = columnMap[columnKey];
     if (idx !== undefined) {

@@ -1,7 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CustomTableImportJob, CustomTableImportJobStatus, CustomTableImportJobType } from '../../entities/custom-table-import-job.entity';
+import type { Repository } from 'typeorm';
+import {
+  CustomTableImportJob,
+  CustomTableImportJobStatus,
+  CustomTableImportJobType,
+} from '../../entities/custom-table-import-job.entity';
 
 @Injectable()
 export class CustomTableImportJobsService {
@@ -12,7 +16,10 @@ export class CustomTableImportJobsService {
     private readonly jobRepository: Repository<CustomTableImportJob>,
   ) {}
 
-  async createGoogleSheetsJob(userId: string, payload: Record<string, any>): Promise<CustomTableImportJob> {
+  async createGoogleSheetsJob(
+    userId: string,
+    payload: Record<string, any>,
+  ): Promise<CustomTableImportJob> {
     const job = this.jobRepository.create({
       userId,
       type: CustomTableImportJobType.GOOGLE_SHEETS,
@@ -47,28 +54,22 @@ export class CustomTableImportJobsService {
   }
 
   async markDone(jobId: string, result: Record<string, any>) {
-    await this.jobRepository.update(
-      { id: jobId },
-      {
-        status: CustomTableImportJobStatus.DONE,
-        progress: 100,
-        stage: 'done',
-        result,
-        error: null,
-        finishedAt: new Date(),
-      } as any,
-    );
+    await this.jobRepository.update({ id: jobId }, {
+      status: CustomTableImportJobStatus.DONE,
+      progress: 100,
+      stage: 'done',
+      result,
+      error: null,
+      finishedAt: new Date(),
+    } as any);
   }
 
   async markFailed(jobId: string, error: string) {
-    await this.jobRepository.update(
-      { id: jobId },
-      {
-        status: CustomTableImportJobStatus.FAILED,
-        stage: 'failed',
-        error: error?.slice(0, 5000) || 'Unknown error',
-        finishedAt: new Date(),
-      } as any,
-    );
+    await this.jobRepository.update({ id: jobId }, {
+      status: CustomTableImportJobStatus.FAILED,
+      stage: 'failed',
+      error: error?.slice(0, 5000) || 'Unknown error',
+      finishedAt: new Date(),
+    } as any);
   }
 }

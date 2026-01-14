@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { LessThanOrEqual, MoreThanOrEqual, type Repository } from 'typeorm';
 import { GoogleSheetRow } from '../../../entities/google-sheet-row.entity';
 
 interface SummaryParams {
@@ -74,7 +74,7 @@ export class GoogleSheetsAnalyticsService {
 
     const recent = rows
       .slice(0, 50)
-      .map((row) => {
+      .map(row => {
         const amount = this.parseAmount(row.colC);
         return {
           id: row.id,
@@ -87,7 +87,7 @@ export class GoogleSheetsAnalyticsService {
       })
       .slice(0, 20);
 
-    rows.forEach((row) => {
+    rows.forEach(row => {
       const amount = this.parseAmount(row.colC);
       const dateKey = (row.lastEditedAt || row.updatedAt).toISOString().split('T')[0];
       const ts = timeseriesMap.get(dateKey) || { income: 0, expense: 0 };
@@ -96,13 +96,19 @@ export class GoogleSheetsAnalyticsService {
         ts.income += amount;
         const counterparty = (row.colB || 'Без названия').trim() || 'Без названия';
         const existing = counterpartyMap.get(counterparty) || { amount: 0, rows: 0 };
-        counterpartyMap.set(counterparty, { amount: existing.amount + amount, rows: existing.rows + 1 });
+        counterpartyMap.set(counterparty, {
+          amount: existing.amount + amount,
+          rows: existing.rows + 1,
+        });
         totals.income += amount;
       } else {
         ts.expense += Math.abs(amount);
         const category = (row.colF || 'Без категории').trim() || 'Без категории';
         const existing = categoryMap.get(category) || { amount: 0, rows: 0 };
-        categoryMap.set(category, { amount: existing.amount + Math.abs(amount), rows: existing.rows + 1 });
+        categoryMap.set(category, {
+          amount: existing.amount + Math.abs(amount),
+          rows: existing.rows + 1,
+        });
         totals.expense += Math.abs(amount);
       }
 
@@ -138,7 +144,7 @@ export class GoogleSheetsAnalyticsService {
     }
 
     const cleaned = value.replace(/\s+/g, '').replace(',', '.');
-    const parsed = parseFloat(cleaned);
+    const parsed = Number.parseFloat(cleaned);
     if (Number.isNaN(parsed)) {
       return 0;
     }

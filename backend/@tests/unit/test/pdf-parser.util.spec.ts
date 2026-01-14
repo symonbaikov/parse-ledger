@@ -1,12 +1,9 @@
+import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { spawnSync } from 'child_process';
+import { extractTablesFromPdf, extractTextAndLayoutFromPdf } from '@/common/utils/pdf-parser.util';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import {
-  extractTablesFromPdf,
-  extractTextAndLayoutFromPdf,
-} from '@/common/utils/pdf-parser.util';
 
 const resolvedPython = resolvePythonPath();
 const suite = resolvedPython ? describe : describe.skip;
@@ -32,7 +29,7 @@ suite('pdfplumber parser util', () => {
 
     expect(text).toContain('Bank Statement');
     expect(rows.length).toBeGreaterThan(0);
-    const headerRow = rows.find((row) => row.text.includes('Date'));
+    const headerRow = rows.find(row => row.text.includes('Date'));
     expect(headerRow).toBeTruthy();
   });
 
@@ -43,7 +40,7 @@ suite('pdfplumber parser util', () => {
     expect(rows[0].join(' ')).toContain('Date');
     expect(rows[1]).toEqual(expect.arrayContaining(['01.01.2024', 'DOC-1']));
 
-    const withDocument = structured.find((row) => row.columns.includes('DOC-1'));
+    const withDocument = structured.find(row => row.columns.includes('DOC-1'));
     expect(withDocument?.cells?.[0].x).toBeGreaterThan(0);
   });
 });
@@ -59,14 +56,7 @@ async function buildSampleStatement(filePath: string) {
   y -= 22;
   page.drawText('Account: KZ123456789012345', { x: 50, y, size: 12, font });
 
-  const headers = [
-    'Date',
-    'Document',
-    'Counterparty',
-    'Debit',
-    'Credit',
-    'Purpose',
-  ];
+  const headers = ['Date', 'Document', 'Counterparty', 'Debit', 'Credit', 'Purpose'];
   const dataRows = [
     ['01.01.2024', 'DOC-1', 'First Supplier', '100 000,00', '', 'Invoice payment'],
     ['03.01.2024', 'DOC-2', 'Second Client', '', '250 000,00', 'Order payment'],

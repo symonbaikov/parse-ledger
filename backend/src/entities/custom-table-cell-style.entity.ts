@@ -1,8 +1,17 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('custom_table_cell_styles')
 @Index('IDX_custom_table_cell_styles_row_id', ['rowId'])
-@Index('IDX_custom_table_cell_styles_row_id_column_key_unique', ['rowId', 'columnKey'], { unique: true })
+@Index('IDX_custom_table_cell_styles_row_id_column_key_unique', ['rowId', 'columnKey'], {
+  unique: true,
+})
 export class CustomTableCellStyle {
   @PrimaryGeneratedColumn('uuid')
   id: string;

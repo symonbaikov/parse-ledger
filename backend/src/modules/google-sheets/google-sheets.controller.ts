@@ -1,21 +1,21 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Put,
-  Delete,
-  Param,
-  Body,
-  UseGuards,
-  Query,
   BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
-import { GoogleSheetsService } from './google-sheets.service';
-import { ConnectSheetDto } from './dto/connect-sheet.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../../entities/user.entity';
-import { OAuthCallbackDto } from './dto/oauth-callback.dto';
+import type { ConnectSheetDto } from './dto/connect-sheet.dto';
+import type { OAuthCallbackDto } from './dto/oauth-callback.dto';
+import type { GoogleSheetsService } from './google-sheets.service';
 
 @Controller('google-sheets')
 @UseGuards(JwtAuthGuard)
@@ -43,10 +43,7 @@ export class GoogleSheetsController {
   }
 
   @Post('oauth/callback')
-  async oauthCallback(
-    @Body() body: OAuthCallbackDto,
-    @CurrentUser() user: User,
-  ) {
+  async oauthCallback(@Body() body: OAuthCallbackDto, @CurrentUser() user: User) {
     const sheet = await this.googleSheetsService.connectWithOAuthCode(
       user,
       body.code,
@@ -58,10 +55,7 @@ export class GoogleSheetsController {
   }
 
   @Post('connect')
-  async connect(
-    @Body() connectDto: ConnectSheetDto,
-    @CurrentUser() user: User,
-  ) {
+  async connect(@Body() connectDto: ConnectSheetDto, @CurrentUser() user: User) {
     throw new BadRequestException(
       'Подключение через этот endpoint больше не поддерживается. Используйте OAuth: GET /google-sheets/oauth/url → POST /google-sheets/oauth/callback',
     );
@@ -70,7 +64,7 @@ export class GoogleSheetsController {
   @Get()
   async findAll(@CurrentUser() user: User) {
     const sheets = await this.googleSheetsService.findAll(user.id);
-    return sheets.map((sheet) => this.toPublicSheet(sheet));
+    return sheets.map(sheet => this.toPublicSheet(sheet));
   }
 
   @Get(':id')
@@ -85,11 +79,7 @@ export class GoogleSheetsController {
     @CurrentUser() user: User,
     @Body() body?: { statementId?: string },
   ) {
-    const result = await this.googleSheetsService.syncTransactions(
-      id,
-      user.id,
-      body?.statementId,
-    );
+    const result = await this.googleSheetsService.syncTransactions(id, user.id, body?.statementId);
     return {
       message: `Successfully synced ${result.synced} transactions`,
       lastSync: result.sheet.lastSync,

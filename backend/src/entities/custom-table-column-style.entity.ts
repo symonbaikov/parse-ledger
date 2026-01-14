@@ -1,8 +1,17 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity('custom_table_column_styles')
 @Index('IDX_custom_table_column_styles_table_id', ['tableId'])
-@Index('IDX_custom_table_column_styles_table_column_key_unique', ['tableId', 'columnKey'], { unique: true })
+@Index('IDX_custom_table_column_styles_table_column_key_unique', ['tableId', 'columnKey'], {
+  unique: true,
+})
 export class CustomTableColumnStyle {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -22,4 +31,3 @@ export class CustomTableColumnStyle {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-

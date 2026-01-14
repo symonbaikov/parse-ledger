@@ -1,6 +1,6 @@
 import {
-  MigrationInterface,
-  QueryRunner,
+  type MigrationInterface,
+  type QueryRunner,
   Table,
   TableColumn,
   TableForeignKey,
@@ -109,7 +109,7 @@ export class AddTelegramEntities1733683200000 implements MigrationInterface {
 
     if (telegramReportsTable) {
       const hasUserIndex = telegramReportsTable.indices.some(
-        (index) => index.name === 'IDX_telegram_reports_user',
+        index => index.name === 'IDX_telegram_reports_user',
       );
       if (!hasUserIndex) {
         await queryRunner.createIndex(
@@ -122,7 +122,7 @@ export class AddTelegramEntities1733683200000 implements MigrationInterface {
       }
 
       const hasTypeDateIndex = telegramReportsTable.indices.some(
-        (index) => index.name === 'IDX_telegram_reports_type_date',
+        index => index.name === 'IDX_telegram_reports_type_date',
       );
       if (!hasTypeDateIndex) {
         await queryRunner.createIndex(
@@ -143,11 +143,11 @@ export class AddTelegramEntities1733683200000 implements MigrationInterface {
     }
 
     const usersTable = await queryRunner.getTable('users');
-    if (usersTable && usersTable.findColumnByName('telegram_chat_id')) {
+    if (usersTable?.findColumnByName('telegram_chat_id')) {
       await queryRunner.dropColumn('users', 'telegram_chat_id');
     }
 
-    if (usersTable && usersTable.findColumnByName('telegram_id')) {
+    if (usersTable?.findColumnByName('telegram_id')) {
       await queryRunner.dropColumn('users', 'telegram_id');
     }
   }

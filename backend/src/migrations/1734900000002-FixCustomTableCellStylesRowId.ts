@@ -1,4 +1,11 @@
-import { MigrationInterface, QueryRunner, Table, TableColumn, TableForeignKey, TableIndex } from 'typeorm';
+import {
+  type MigrationInterface,
+  type QueryRunner,
+  Table,
+  TableColumn,
+  TableForeignKey,
+  TableIndex,
+} from 'typeorm';
 
 export class FixCustomTableCellStylesRowId1734900000002 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -76,10 +83,14 @@ export class FixCustomTableCellStylesRowId1734900000002 implements MigrationInte
       `);
     }
 
-    const nullCountRaw = await queryRunner.query(`SELECT COUNT(*)::int AS cnt FROM custom_table_cell_styles WHERE row_id IS NULL`);
+    const nullCountRaw = await queryRunner.query(
+      `SELECT COUNT(*)::int AS cnt FROM custom_table_cell_styles WHERE row_id IS NULL`,
+    );
     const nullCount = Array.isArray(nullCountRaw) ? Number(nullCountRaw[0]?.cnt ?? 0) : 0;
     if (nullCount === 0) {
-      await queryRunner.query(`ALTER TABLE custom_table_cell_styles ALTER COLUMN row_id SET NOT NULL`);
+      await queryRunner.query(
+        `ALTER TABLE custom_table_cell_styles ALTER COLUMN row_id SET NOT NULL`,
+      );
     }
 
     const idxNamesToDrop = new Set([
@@ -95,7 +106,7 @@ export class FixCustomTableCellStylesRowId1734900000002 implements MigrationInte
     }
 
     const hasRowIdIndex = (await queryRunner.getTable('custom_table_cell_styles'))?.indices?.some(
-      (i) => i.name === 'IDX_custom_table_cell_styles_row_id',
+      i => i.name === 'IDX_custom_table_cell_styles_row_id',
     );
     if (!hasRowIdIndex) {
       await queryRunner.createIndex(
@@ -108,7 +119,7 @@ export class FixCustomTableCellStylesRowId1734900000002 implements MigrationInte
     }
 
     const hasUnique = (await queryRunner.getTable('custom_table_cell_styles'))?.indices?.some(
-      (i) => i.name === 'IDX_custom_table_cell_styles_row_id_column_key_unique',
+      i => i.name === 'IDX_custom_table_cell_styles_row_id_column_key_unique',
     );
     if (!hasUnique) {
       await queryRunner.createIndex(
@@ -124,7 +135,10 @@ export class FixCustomTableCellStylesRowId1734900000002 implements MigrationInte
     const refreshed = await queryRunner.getTable('custom_table_cell_styles');
     if (!refreshed) return;
     const hasFk = refreshed.foreignKeys.some(
-      (fk) => fk.columnNames.length === 1 && fk.columnNames[0] === 'row_id' && fk.referencedTableName === 'custom_table_rows',
+      fk =>
+        fk.columnNames.length === 1 &&
+        fk.columnNames[0] === 'row_id' &&
+        fk.referencedTableName === 'custom_table_rows',
     );
     if (!hasFk) {
       await queryRunner.createForeignKey(
@@ -146,15 +160,21 @@ export class FixCustomTableCellStylesRowId1734900000002 implements MigrationInte
     const table = await queryRunner.getTable('custom_table_cell_styles');
     if (!table) return;
 
-    const idxToDrop = table.indices.filter((i) =>
-      ['IDX_custom_table_cell_styles_row_id', 'IDX_custom_table_cell_styles_row_id_column_key_unique'].includes(i.name),
+    const idxToDrop = table.indices.filter(i =>
+      [
+        'IDX_custom_table_cell_styles_row_id',
+        'IDX_custom_table_cell_styles_row_id_column_key_unique',
+      ].includes(i.name),
     );
     for (const idx of idxToDrop) {
       await queryRunner.dropIndex('custom_table_cell_styles', idx);
     }
 
     const fkToDrop = table.foreignKeys.filter(
-      (fk) => fk.columnNames.length === 1 && fk.columnNames[0] === 'row_id' && fk.referencedTableName === 'custom_table_rows',
+      fk =>
+        fk.columnNames.length === 1 &&
+        fk.columnNames[0] === 'row_id' &&
+        fk.referencedTableName === 'custom_table_rows',
     );
     for (const fk of fkToDrop) {
       await queryRunner.dropForeignKey('custom_table_cell_styles', fk);
@@ -166,4 +186,3 @@ export class FixCustomTableCellStylesRowId1734900000002 implements MigrationInte
     }
   }
 }
-

@@ -8,7 +8,3 @@ export class AccessSharedLinkDto {
   @IsString()
   password?: string;
 }
-
-
-
-

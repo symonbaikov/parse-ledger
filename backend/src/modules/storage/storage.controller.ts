@@ -1,29 +1,29 @@
 import {
+  Body,
   Controller,
+  Delete,
   Get,
+  HttpStatus,
+  Param,
+  Patch,
   Post,
   Put,
-  Delete,
-  Patch,
-  Param,
-  Body,
   Query,
   Res,
   UseGuards,
-  HttpStatus,
 } from '@nestjs/common';
-import { Response } from 'express';
-import { StorageService } from './storage.service';
+import type { Response } from 'express';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { buildContentDisposition } from '../../common/utils/http-file.util';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CreateSharedLinkDto } from './dto/create-shared-link.dto';
-import { UpdateSharedLinkDto } from './dto/update-shared-link.dto';
-import { GrantPermissionDto } from './dto/grant-permission.dto';
-import { UpdatePermissionDto } from './dto/update-permission.dto';
-import { AccessSharedLinkDto } from './dto/access-shared-link.dto';
-import { UpdateFileCategoryDto } from './dto/update-file-category.dto';
-import { buildContentDisposition } from '../../common/utils/http-file.util';
+import type { AccessSharedLinkDto } from './dto/access-shared-link.dto';
+import type { CreateSharedLinkDto } from './dto/create-shared-link.dto';
+import type { GrantPermissionDto } from './dto/grant-permission.dto';
+import type { UpdateFileCategoryDto } from './dto/update-file-category.dto';
+import type { UpdatePermissionDto } from './dto/update-permission.dto';
+import type { UpdateSharedLinkDto } from './dto/update-shared-link.dto';
+import type { StorageService } from './storage.service';
 
 /**
  * Storage controller for file management, sharing, and permissions
@@ -73,11 +73,7 @@ export class StorageController {
    * GET /api/v1/storage/files/:id/view
    */
   @Get('files/:id/view')
-  async viewFile(
-    @Param('id') statementId: string,
-    @CurrentUser() user: any,
-    @Res() res: Response,
-  ) {
+  async viewFile(@Param('id') statementId: string, @CurrentUser() user: any, @Res() res: Response) {
     const { stream, fileName, mimeType } = await this.storageService.getFilePreview(
       statementId,
       user.id,
@@ -95,7 +91,8 @@ export class StorageController {
         res.status(status).json({
           error: {
             code: status === HttpStatus.NOT_FOUND ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR',
-            message: status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to read file',
+            message:
+              status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to read file',
           },
         });
       } else {
@@ -132,7 +129,10 @@ export class StorageController {
         res.status(status).json({
           error: {
             code: status === HttpStatus.NOT_FOUND ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR',
-            message: status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to download file',
+            message:
+              status === HttpStatus.NOT_FOUND
+                ? 'File not found on disk'
+                : 'Failed to download file',
           },
         });
       } else {
@@ -250,7 +250,9 @@ export class StorageController {
           error: {
             code: status === HttpStatus.NOT_FOUND ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR',
             message:
-              status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to download file',
+              status === HttpStatus.NOT_FOUND
+                ? 'File not found on disk'
+                : 'Failed to download file',
           },
         });
       } else {

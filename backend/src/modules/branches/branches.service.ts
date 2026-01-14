@@ -1,9 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { Branch } from '../../entities/branch.entity';
-import { CreateBranchDto } from './dto/create-branch.dto';
-import { UpdateBranchDto } from './dto/update-branch.dto';
+import type { CreateBranchDto } from './dto/create-branch.dto';
+import type { UpdateBranchDto } from './dto/update-branch.dto';
 
 @Injectable()
 export class BranchesService {
@@ -52,11 +52,3 @@ export class BranchesService {
     await this.branchRepository.remove(branch);
   }
 }
-
-
-
-
-
-
-
-

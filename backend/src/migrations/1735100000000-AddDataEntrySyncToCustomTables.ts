@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, TableColumn, TableIndex } from 'typeorm';
+import { type MigrationInterface, type QueryRunner, TableColumn, TableIndex } from 'typeorm';
 
 export class AddDataEntrySyncToCustomTables1735100000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -6,19 +6,29 @@ export class AddDataEntrySyncToCustomTables1735100000000 implements MigrationInt
     if (!hasTable) return;
 
     const table = await queryRunner.getTable('custom_tables');
-    const hasColumn = (name: string) => Boolean(table?.columns.find((col) => col.name === name));
+    const hasColumn = (name: string) => Boolean(table?.columns.find(col => col.name === name));
 
     if (!hasColumn('data_entry_scope')) {
       await queryRunner.addColumn(
         'custom_tables',
-        new TableColumn({ name: 'data_entry_scope', type: 'varchar', length: '16', isNullable: true }),
+        new TableColumn({
+          name: 'data_entry_scope',
+          type: 'varchar',
+          length: '16',
+          isNullable: true,
+        }),
       );
     }
 
     if (!hasColumn('data_entry_type')) {
       await queryRunner.addColumn(
         'custom_tables',
-        new TableColumn({ name: 'data_entry_type', type: 'varchar', length: '16', isNullable: true }),
+        new TableColumn({
+          name: 'data_entry_type',
+          type: 'varchar',
+          length: '16',
+          isNullable: true,
+        }),
       );
     }
 
@@ -37,7 +47,7 @@ export class AddDataEntrySyncToCustomTables1735100000000 implements MigrationInt
     }
 
     const refreshed = await queryRunner.getTable('custom_tables');
-    const hasIndex = (name: string) => Boolean(refreshed?.indices.find((idx) => idx.name === name));
+    const hasIndex = (name: string) => Boolean(refreshed?.indices.find(idx => idx.name === name));
 
     if (!hasIndex('IDX_custom_tables_data_entry_scope_type')) {
       await queryRunner.createIndex(
@@ -90,8 +100,8 @@ export class AddDataEntrySyncToCustomTables1735100000000 implements MigrationInt
     if (!hasTable) return;
 
     const table = await queryRunner.getTable('custom_tables');
-    const hasIndex = (name: string) => Boolean(table?.indices.find((idx) => idx.name === name));
-    const hasColumn = (name: string) => Boolean(table?.columns.find((col) => col.name === name));
+    const hasIndex = (name: string) => Boolean(table?.indices.find(idx => idx.name === name));
+    const hasColumn = (name: string) => Boolean(table?.columns.find(col => col.name === name));
 
     if (hasIndex('IDX_custom_tables_data_entry_scope_type')) {
       await queryRunner.dropIndex('custom_tables', 'IDX_custom_tables_data_entry_scope_type');

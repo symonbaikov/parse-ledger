@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNumber, IsBoolean } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class UpdateWalletDto {
   @IsString()
@@ -25,11 +25,3 @@ export class UpdateWalletDto {
   @IsOptional()
   isActive?: boolean;
 }
-
-
-
-
-
-
-
-

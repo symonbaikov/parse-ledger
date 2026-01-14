@@ -1,8 +1,8 @@
-import { Controller, Get, Res, ServiceUnavailableException } from '@nestjs/common';
-import { AppService } from './app.service';
-import { Response } from 'express';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+import { Controller, Get, Res, ServiceUnavailableException } from '@nestjs/common';
+import type { Response } from 'express';
+import type { AppService } from './app.service';
 import { Public } from './modules/auth/decorators/public.decorator';
 
 @Controller()
@@ -31,7 +31,7 @@ export class AppController {
     // Try to serve Next.js app
     const nextPath = path.join(__dirname, 'public', '.next', 'standalone');
     const indexPath = path.join(nextPath, 'index.html');
-    
+
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
     } else {
@@ -49,10 +49,3 @@ export class AppController {
     }
   }
 }
-
-
-
-
-
-
-

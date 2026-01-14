@@ -1,14 +1,14 @@
-import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { GoogleSheet } from '../../entities/google-sheet.entity';
-import { User } from '../../entities/user.entity';
-import { Transaction } from '../../entities/transaction.entity';
-import { Category } from '../../entities/category.entity';
+import type { Repository } from 'typeorm';
 import { Branch } from '../../entities/branch.entity';
+import { Category } from '../../entities/category.entity';
+import { GoogleSheet } from '../../entities/google-sheet.entity';
+import { Transaction } from '../../entities/transaction.entity';
+import type { User } from '../../entities/user.entity';
 import { Wallet } from '../../entities/wallet.entity';
-import { ConnectSheetDto } from './dto/connect-sheet.dto';
-import { GoogleSheetsApiService } from './services/google-sheets-api.service';
+import type { ConnectSheetDto } from './dto/connect-sheet.dto';
+import type { GoogleSheetsApiService } from './services/google-sheets-api.service';
 
 @Injectable()
 export class GoogleSheetsService {
@@ -39,9 +39,8 @@ export class GoogleSheetsService {
     worksheetName?: string,
     sheetNameOverride?: string,
   ): Promise<GoogleSheet> {
-    const { accessToken, refreshToken } = await this.googleSheetsApiService.exchangeCodeForTokens(
-      code,
-    );
+    const { accessToken, refreshToken } =
+      await this.googleSheetsApiService.exchangeCodeForTokens(code);
 
     const info = await this.googleSheetsApiService.getSpreadsheetInfo(accessToken, sheetId);
     const sheetName = sheetNameOverride?.trim() || info.title || sheetId;
@@ -163,26 +162,26 @@ export class GoogleSheetsService {
       const branchIds = new Set<string>();
       const walletIds = new Set<string>();
 
-      transactions.forEach((t) => {
+      transactions.forEach(t => {
         if (t.categoryId) categoryIds.add(t.categoryId);
         if (t.branchId) branchIds.add(t.branchId);
         if (t.walletId) walletIds.add(t.walletId);
       });
 
       const categories = await this.categoryRepository.find({
-        where: Array.from(categoryIds).map((id) => ({ id })),
+        where: Array.from(categoryIds).map(id => ({ id })),
       });
       const branches = await this.branchRepository.find({
-        where: Array.from(branchIds).map((id) => ({ id })),
+        where: Array.from(branchIds).map(id => ({ id })),
       });
       const wallets = await this.walletRepository.find({
-        where: Array.from(walletIds).map((id) => ({ id })),
+        where: Array.from(walletIds).map(id => ({ id })),
       });
 
       // Create maps for quick lookup
-      const categoryMap = new Map(categories.map((c) => [c.id, c]));
-      const branchMap = new Map(branches.map((b) => [b.id, b]));
-      const walletMap = new Map(wallets.map((w) => [w.id, w]));
+      const categoryMap = new Map(categories.map(c => [c.id, c]));
+      const branchMap = new Map(branches.map(b => [b.id, b]));
+      const walletMap = new Map(wallets.map(w => [w.id, w]));
 
       // Refresh access token if needed
       let accessToken = sheet.accessToken;

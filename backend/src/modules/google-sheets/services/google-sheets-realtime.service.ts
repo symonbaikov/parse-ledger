@@ -1,5 +1,5 @@
-import { Injectable, Logger, MessageEvent } from '@nestjs/common';
-import { Observable, Observer } from 'rxjs';
+import { Injectable, Logger, type MessageEvent } from '@nestjs/common';
+import { Observable, type Observer } from 'rxjs';
 
 export interface GoogleSheetRowEventPayload {
   id: string;
@@ -26,7 +26,7 @@ export class GoogleSheetsRealtimeService {
   private readonly streams = new Map<string, Set<Observer<MessageEvent>>>();
 
   subscribe(userId: string): Observable<MessageEvent> {
-    return new Observable<MessageEvent>((observer) => {
+    return new Observable<MessageEvent>(observer => {
       const observers = this.streams.get(userId) || new Set<Observer<MessageEvent>>();
       observers.add(observer);
       this.streams.set(userId, observers);
@@ -53,7 +53,7 @@ export class GoogleSheetsRealtimeService {
       return;
     }
 
-    observers.forEach((observer) => {
+    observers.forEach(observer => {
       observer.next({
         type: 'google-sheet-row-update',
         data: payload,

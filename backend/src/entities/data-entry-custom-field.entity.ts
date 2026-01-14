@@ -35,4 +35,3 @@ export class DataEntryCustomField {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-

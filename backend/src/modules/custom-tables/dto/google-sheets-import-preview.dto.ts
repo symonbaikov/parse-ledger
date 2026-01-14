@@ -29,4 +29,3 @@ export class GoogleSheetsImportPreviewDto {
   @IsEnum(GoogleSheetsImportLayoutType)
   layoutType?: GoogleSheetsImportLayoutType;
 }
-

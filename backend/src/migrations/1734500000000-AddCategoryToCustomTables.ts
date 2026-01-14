@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, TableColumn, TableIndex } from 'typeorm';
+import { type MigrationInterface, type QueryRunner, TableColumn, TableIndex } from 'typeorm';
 
 export class AddCategoryToCustomTables1734500000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -6,7 +6,7 @@ export class AddCategoryToCustomTables1734500000000 implements MigrationInterfac
     if (!hasCustomTables) return;
 
     const table = await queryRunner.getTable('custom_tables');
-    const hasCategoryId = table?.columns?.some((c) => c.name === 'category_id');
+    const hasCategoryId = table?.columns?.some(c => c.name === 'category_id');
     if (!hasCategoryId) {
       await queryRunner.addColumn(
         'custom_tables',
@@ -25,7 +25,7 @@ export class AddCategoryToCustomTables1734500000000 implements MigrationInterfac
       `);
     }
 
-    const hasIndex = (table?.indices || []).some((i) => i.name === 'IDX_custom_tables_user_category');
+    const hasIndex = (table?.indices || []).some(i => i.name === 'IDX_custom_tables_user_category');
     if (!hasIndex) {
       await queryRunner.createIndex(
         'custom_tables',
@@ -42,12 +42,13 @@ export class AddCategoryToCustomTables1734500000000 implements MigrationInterfac
     if (!hasCustomTables) return;
 
     const table = await queryRunner.getTable('custom_tables');
-    const hasCategoryId = table?.columns?.some((c) => c.name === 'category_id');
+    const hasCategoryId = table?.columns?.some(c => c.name === 'category_id');
     if (!hasCategoryId) return;
 
-    await queryRunner.query(`ALTER TABLE "custom_tables" DROP CONSTRAINT IF EXISTS "FK_custom_tables_category_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "custom_tables" DROP CONSTRAINT IF EXISTS "FK_custom_tables_category_id"`,
+    );
     await queryRunner.dropIndex('custom_tables', 'IDX_custom_tables_user_category');
     await queryRunner.dropColumn('custom_tables', 'category_id');
   }
 }
-

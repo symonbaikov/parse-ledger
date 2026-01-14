@@ -1,22 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import {
   CustomTableImportJob,
   CustomTableImportJobStatus,
   CustomTableImportJobType,
 } from '../../entities/custom-table-import-job.entity';
-import { CustomTablesImportService } from './custom-tables-import.service';
-import { CustomTableImportJobsService } from './custom-table-import-jobs.service';
+import type { CustomTableImportJobsService } from './custom-table-import-jobs.service';
+import type { CustomTablesImportService } from './custom-tables-import.service';
 
 @Injectable()
 export class CustomTableImportJobsProcessor {
   private readonly logger = new Logger(CustomTableImportJobsProcessor.name);
-  private readonly instanceId = process.env.RAILWAY_SERVICE_INSTANCE_ID || process.env.HOSTNAME || uuidv4();
+  private readonly instanceId =
+    process.env.RAILWAY_SERVICE_INSTANCE_ID || process.env.HOSTNAME || uuidv4();
   private running = false;
-  private readonly staleLockMs = Number(process.env.CUSTOM_TABLE_IMPORT_JOB_STALE_LOCK_MS || 10 * 60 * 1000);
+  private readonly staleLockMs = Number(
+    process.env.CUSTOM_TABLE_IMPORT_JOB_STALE_LOCK_MS || 10 * 60 * 1000,
+  );
 
   constructor(
     @InjectRepository(CustomTableImportJob)
@@ -34,7 +37,9 @@ export class CustomTableImportJobsProcessor {
       if (!job) return;
       await this.processJob(job);
     } catch (error) {
-      this.logger.warn(`Job tick failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+      this.logger.warn(
+        `Job tick failed: ${error instanceof Error ? error.message : 'unknown error'}`,
+      );
     } finally {
       this.running = false;
     }
@@ -84,7 +89,9 @@ export class CustomTableImportJobsProcessor {
   }
 
   private async claimNextJob(): Promise<CustomTableImportJob | null> {
-    const staleBefore = new Date(Date.now() - (Number.isFinite(this.staleLockMs) ? this.staleLockMs : 10 * 60 * 1000));
+    const staleBefore = new Date(
+      Date.now() - (Number.isFinite(this.staleLockMs) ? this.staleLockMs : 10 * 60 * 1000),
+    );
     const rows = await this.jobRepository.query(
       `
       WITH next_job AS (
@@ -152,10 +159,10 @@ export class CustomTableImportJobsProcessor {
       this.logger.error(`Job ${job.id} failed: ${message}`);
       await this.jobsService.markFailed(job.id, message);
     } finally {
-      await this.jobRepository.update(
-        { id: job.id, status: CustomTableImportJobStatus.RUNNING },
-        { lockedAt: null, lockedBy: null } as any,
-      );
+      await this.jobRepository.update({ id: job.id, status: CustomTableImportJobStatus.RUNNING }, {
+        lockedAt: null,
+        lockedBy: null,
+      } as any);
     }
   }
 }

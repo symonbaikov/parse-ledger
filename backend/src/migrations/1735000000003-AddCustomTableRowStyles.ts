@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
+import { type MigrationInterface, type QueryRunner, TableColumn } from 'typeorm';
 
 export class AddCustomTableRowStyles1735000000003 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {

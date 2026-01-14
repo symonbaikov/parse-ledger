@@ -1,9 +1,9 @@
-import { BaseParser } from './base.parser';
-import { ParsedStatement } from '../interfaces/parsed-statement.interface';
-import { BankName, FileType } from '../../../entities/statement.entity';
 import { extractTablesFromPdf, extractTextFromPdf } from '../../../common/utils/pdf-parser.util';
+import { BankName, FileType } from '../../../entities/statement.entity';
 import { AiTransactionExtractor } from '../helpers/ai-transaction-extractor.helper';
 import { mapPdfTableRowsToTransactions } from '../helpers/pdf-table.helper';
+import type { ParsedStatement } from '../interfaces/parsed-statement.interface';
+import { BaseParser } from './base.parser';
 
 export class GenericPdfParser extends BaseParser {
   private aiExtractor = new AiTransactionExtractor();
@@ -46,14 +46,14 @@ export class GenericPdfParser extends BaseParser {
     }
 
     const dateRange = this.extractDateRange(text);
-    const transactionDates = transactions.map((t) => t.transactionDate).filter(Boolean);
+    const transactionDates = transactions.map(t => t.transactionDate).filter(Boolean);
     const minDate =
       transactionDates.length > 0
-        ? new Date(Math.min(...transactionDates.map((d) => d.getTime())))
+        ? new Date(Math.min(...transactionDates.map(d => d.getTime())))
         : null;
     const maxDate =
       transactionDates.length > 0
-        ? new Date(Math.max(...transactionDates.map((d) => d.getTime())))
+        ? new Date(Math.max(...transactionDates.map(d => d.getTime())))
         : null;
     const dateFrom = dateRange.from || minDate || new Date();
     const dateTo = dateRange.to || maxDate || dateFrom;

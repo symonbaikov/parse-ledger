@@ -16,4 +16,3 @@ export class CreateCustomTableFromStatementsDto {
   @MaxLength(500)
   description?: string;
 }
-

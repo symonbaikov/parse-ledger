@@ -1,13 +1,14 @@
 import {
+  BadRequestException,
+  ConflictException,
   Injectable,
   UnauthorizedException,
-  ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
+import type { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import type { Repository } from 'typeorm';
+import { ROLE_PERMISSIONS } from '../../common/enums/permissions.enum';
 import {
   User,
   UserRole,
@@ -17,12 +18,11 @@ import {
   WorkspaceMember,
   WorkspaceRole,
 } from '../../entities';
-import { ROLE_PERMISSIONS } from '../../common/enums/permissions.enum';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { AuthResponseDto } from './dto/auth-response.dto';
-import { JwtPayload } from './strategies/jwt.strategy';
-import { JwtRefreshPayload } from './strategies/jwt-refresh.strategy';
+import type { AuthResponseDto } from './dto/auth-response.dto';
+import type { LoginDto } from './dto/login.dto';
+import type { RegisterDto } from './dto/register.dto';
+import type { JwtRefreshPayload } from './strategies/jwt-refresh.strategy';
+import type { JwtPayload } from './strategies/jwt.strategy';
 
 @Injectable()
 export class AuthService {
@@ -131,10 +131,7 @@ export class AuthService {
       throw new UnauthorizedException('User account is inactive');
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      loginDto.password,
-      user.passwordHash,
-    );
+    const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');

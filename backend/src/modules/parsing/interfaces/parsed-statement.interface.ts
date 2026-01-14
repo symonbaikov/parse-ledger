@@ -26,10 +26,3 @@ export interface ParsedStatement {
   metadata: ParsedStatementMetadata;
   transactions: ParsedTransaction[];
 }
-
-
-
-
-
-
-

@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class ConnectSheetDto {
   @IsString()
@@ -11,11 +11,3 @@ export class ConnectSheetDto {
   @IsOptional()
   worksheetName?: string;
 }
-
-
-
-
-
-
-
-

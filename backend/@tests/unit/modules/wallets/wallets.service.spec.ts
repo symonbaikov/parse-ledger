@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
-import { WalletsService } from '@/modules/wallets/wallets.service';
 import { Wallet } from '@/entities/wallet.entity';
+import { WalletsService } from '@/modules/wallets/wallets.service';
+import { NotFoundException } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
 
 describe('WalletsService', () => {
   let testingModule: TestingModule;
@@ -38,9 +38,7 @@ describe('WalletsService', () => {
     }).compile();
 
     service = testingModule.get<WalletsService>(WalletsService);
-    walletRepository = testingModule.get<Repository<Wallet>>(
-      getRepositoryToken(Wallet),
-    );
+    walletRepository = testingModule.get<Repository<Wallet>>(getRepositoryToken(Wallet));
   });
 
   beforeEach(() => {
@@ -64,12 +62,8 @@ describe('WalletsService', () => {
     };
 
     it('should create a new wallet', async () => {
-      jest
-        .spyOn(walletRepository, 'create')
-        .mockReturnValue(mockWallet as Wallet);
-      jest
-        .spyOn(walletRepository, 'save')
-        .mockResolvedValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'create').mockReturnValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'save').mockResolvedValue(mockWallet as Wallet);
 
       const result = await service.create('1', createDto);
 
@@ -85,9 +79,7 @@ describe('WalletsService', () => {
       const createSpy = jest
         .spyOn(walletRepository, 'create')
         .mockReturnValue(mockWallet as Wallet);
-      jest
-        .spyOn(walletRepository, 'save')
-        .mockResolvedValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'save').mockResolvedValue(mockWallet as Wallet);
 
       await service.create('1', dtoWithoutCurrency);
 
@@ -106,9 +98,7 @@ describe('WalletsService', () => {
       const createSpy = jest
         .spyOn(walletRepository, 'create')
         .mockReturnValue(mockWallet as Wallet);
-      jest
-        .spyOn(walletRepository, 'save')
-        .mockResolvedValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'save').mockResolvedValue(mockWallet as Wallet);
 
       await service.create('1', dtoWithoutBalance);
 
@@ -123,9 +113,7 @@ describe('WalletsService', () => {
       const createSpy = jest
         .spyOn(walletRepository, 'create')
         .mockReturnValue(mockWallet as Wallet);
-      jest
-        .spyOn(walletRepository, 'save')
-        .mockResolvedValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'save').mockResolvedValue(mockWallet as Wallet);
 
       await service.create('1', createDto);
 
@@ -140,9 +128,7 @@ describe('WalletsService', () => {
       const createSpy = jest
         .spyOn(walletRepository, 'create')
         .mockReturnValue(mockWallet as Wallet);
-      jest
-        .spyOn(walletRepository, 'save')
-        .mockResolvedValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'save').mockResolvedValue(mockWallet as Wallet);
 
       await service.create('1', createDto);
 
@@ -161,9 +147,7 @@ describe('WalletsService', () => {
         const createSpy = jest
           .spyOn(walletRepository, 'create')
           .mockReturnValue(mockWallet as Wallet);
-        jest
-          .spyOn(walletRepository, 'save')
-          .mockResolvedValue(mockWallet as Wallet);
+        jest.spyOn(walletRepository, 'save').mockResolvedValue(mockWallet as Wallet);
 
         await service.create('1', dto);
 
@@ -179,9 +163,7 @@ describe('WalletsService', () => {
   describe('findAll', () => {
     it('should return all wallets for user', async () => {
       const wallets = [mockWallet, { ...mockWallet, id: 'wallet-2' }];
-      jest
-        .spyOn(walletRepository, 'find')
-        .mockResolvedValue(wallets as Wallet[]);
+      jest.spyOn(walletRepository, 'find').mockResolvedValue(wallets as Wallet[]);
 
       const result = await service.findAll('1');
 
@@ -217,21 +199,17 @@ describe('WalletsService', () => {
 
     it('should include inactive wallets', async () => {
       const inactiveWallet = { ...mockWallet, isActive: false };
-      jest
-        .spyOn(walletRepository, 'find')
-        .mockResolvedValue([inactiveWallet] as Wallet[]);
+      jest.spyOn(walletRepository, 'find').mockResolvedValue([inactiveWallet] as Wallet[]);
 
       const result = await service.findAll('1');
 
-      expect(result.some((w) => !w.isActive)).toBe(true);
+      expect(result.some(w => !w.isActive)).toBe(true);
     });
   });
 
   describe('findOne', () => {
     it('should return wallet by id', async () => {
-      jest
-        .spyOn(walletRepository, 'findOne')
-        .mockResolvedValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'findOne').mockResolvedValue(mockWallet as Wallet);
 
       const result = await service.findOne('wallet-1', '1');
 
@@ -241,9 +219,7 @@ describe('WalletsService', () => {
     it('should throw NotFoundException if not found', async () => {
       jest.spyOn(walletRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findOne('invalid', '1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('invalid', '1')).rejects.toThrow(NotFoundException);
     });
 
     it('should verify user ownership', async () => {
@@ -263,9 +239,7 @@ describe('WalletsService', () => {
     it('should not return other user wallets', async () => {
       jest.spyOn(walletRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findOne('wallet-1', '999')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('wallet-1', '999')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -276,18 +250,14 @@ describe('WalletsService', () => {
     };
 
     beforeEach(() => {
-      jest
-        .spyOn(walletRepository, 'findOne')
-        .mockResolvedValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'findOne').mockResolvedValue(mockWallet as Wallet);
     });
 
     it('should update wallet', async () => {
-      jest
-        .spyOn(walletRepository, 'save')
-        .mockResolvedValue({
-          ...mockWallet,
-          ...updateDto,
-        } as Wallet);
+      jest.spyOn(walletRepository, 'save').mockResolvedValue({
+        ...mockWallet,
+        ...updateDto,
+      } as Wallet);
 
       const result = await service.update('wallet-1', '1', updateDto);
 
@@ -298,15 +268,11 @@ describe('WalletsService', () => {
     it('should throw NotFoundException if wallet not found', async () => {
       jest.spyOn(walletRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(
-        service.update('invalid', '1', updateDto),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('invalid', '1', updateDto)).rejects.toThrow(NotFoundException);
     });
 
     it('should preserve userId on update', async () => {
-      const saveSpy = jest
-        .spyOn(walletRepository, 'save')
-        .mockResolvedValue(mockWallet as Wallet);
+      const saveSpy = jest.spyOn(walletRepository, 'save').mockResolvedValue(mockWallet as Wallet);
 
       await service.update('wallet-1', '1', updateDto);
 
@@ -316,9 +282,7 @@ describe('WalletsService', () => {
 
     it('should allow partial updates', async () => {
       const partialUpdate = { name: 'New Name Only' };
-      jest
-        .spyOn(walletRepository, 'save')
-        .mockResolvedValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'save').mockResolvedValue(mockWallet as Wallet);
 
       await service.update('wallet-1', '1', partialUpdate);
 
@@ -327,12 +291,10 @@ describe('WalletsService', () => {
 
     it('should allow toggling isActive status', async () => {
       const toggleDto = { isActive: false };
-      jest
-        .spyOn(walletRepository, 'save')
-        .mockResolvedValue({
-          ...mockWallet,
-          isActive: false,
-        } as Wallet);
+      jest.spyOn(walletRepository, 'save').mockResolvedValue({
+        ...mockWallet,
+        isActive: false,
+      } as Wallet);
 
       const result = await service.update('wallet-1', '1', toggleDto);
 
@@ -341,12 +303,10 @@ describe('WalletsService', () => {
 
     it('should update currency', async () => {
       const currencyUpdate = { currency: 'USD' };
-      jest
-        .spyOn(walletRepository, 'save')
-        .mockResolvedValue({
-          ...mockWallet,
-          currency: 'USD',
-        } as Wallet);
+      jest.spyOn(walletRepository, 'save').mockResolvedValue({
+        ...mockWallet,
+        currency: 'USD',
+      } as Wallet);
 
       const result = await service.update('wallet-1', '1', currencyUpdate);
 
@@ -356,9 +316,7 @@ describe('WalletsService', () => {
 
   describe('remove', () => {
     beforeEach(() => {
-      jest
-        .spyOn(walletRepository, 'findOne')
-        .mockResolvedValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'findOne').mockResolvedValue(mockWallet as Wallet);
     });
 
     it('should delete wallet', async () => {
@@ -374,24 +332,18 @@ describe('WalletsService', () => {
     it('should throw NotFoundException if wallet not found', async () => {
       jest.spyOn(walletRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.remove('invalid', '1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('invalid', '1')).rejects.toThrow(NotFoundException);
     });
 
     it('should verify user ownership before delete', async () => {
       jest.spyOn(walletRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.remove('wallet-1', '999')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('wallet-1', '999')).rejects.toThrow(NotFoundException);
     });
 
     it('should handle wallets with transactions', async () => {
       // Should prevent deletion or cascade
-      jest
-        .spyOn(walletRepository, 'remove')
-        .mockResolvedValue(mockWallet as Wallet);
+      jest.spyOn(walletRepository, 'remove').mockResolvedValue(mockWallet as Wallet);
 
       await service.remove('wallet-1', '1');
 

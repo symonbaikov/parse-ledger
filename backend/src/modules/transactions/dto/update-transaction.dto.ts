@@ -1,4 +1,12 @@
-import { IsDateString, IsString, IsOptional, IsUUID, IsNumber, IsEnum, IsBoolean } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { TransactionType } from '../../../entities/transaction.entity';
 
 export class UpdateTransactionDto {
@@ -86,9 +94,3 @@ export class UpdateTransactionDto {
   @IsOptional()
   isVerified?: boolean;
 }
-
-
-
-
-
-

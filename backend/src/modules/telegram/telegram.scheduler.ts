@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Not, Repository } from 'typeorm';
-import { User } from '../../entities/user.entity';
-import { TelegramService } from './telegram.service';
+import { IsNull, Not, type Repository } from 'typeorm';
 import { ReportType } from '../../entities/telegram-report.entity';
+import { User } from '../../entities/user.entity';
+import type { TelegramService } from './telegram.service';
 
 @Injectable()
 export class TelegramScheduler {

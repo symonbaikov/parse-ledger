@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { JwtStrategy } from '@/modules/auth/strategies/jwt.strategy';
-import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { UnauthorizedException } from '@nestjs/common';
 import { User, UserRole } from '@/entities/user.entity';
+import { JwtStrategy } from '@/modules/auth/strategies/jwt.strategy';
+import { UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
 
 describe('JwtStrategy', () => {
   let testingModule: TestingModule;
@@ -77,9 +77,7 @@ describe('JwtStrategy', () => {
       const payload = { sub: '999', email: 'test@example.com', role: UserRole.USER };
       jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(strategy.validate(payload)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(strategy.validate(payload)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException if user is inactive', async () => {
@@ -89,9 +87,7 @@ describe('JwtStrategy', () => {
         isActive: false,
       } as User);
 
-      await expect(strategy.validate(payload)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(strategy.validate(payload)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should accept payload with valid sub and email', async () => {
@@ -110,9 +106,7 @@ describe('JwtStrategy', () => {
         ...mockUser,
         workspaceId: 'ws-1',
       };
-      jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue(userWithWorkspace as User);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(userWithWorkspace as User);
 
       const result = await strategy.validate(payload);
 
@@ -131,26 +125,20 @@ describe('JwtStrategy', () => {
     it('should throw for malformed payload', async () => {
       const payload = { invalid: 'payload' };
 
-      await expect(
-        strategy.validate(payload as any),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(strategy.validate(payload as any)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw for missing sub in payload', async () => {
       const payload = { email: 'test@example.com' };
 
-      await expect(
-        strategy.validate(payload as any),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(strategy.validate(payload as any)).rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe('configuration', () => {
     it('should use JWT_ACCESS_SECRET from config', () => {
       const configService = new ConfigService();
-      const getSpy = jest
-        .spyOn(configService, 'get')
-        .mockReturnValue('test-secret');
+      const getSpy = jest.spyOn(configService, 'get').mockReturnValue('test-secret');
 
       // Create new strategy to test constructor
       new JwtStrategy(configService, userRepository);

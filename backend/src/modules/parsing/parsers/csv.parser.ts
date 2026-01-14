@@ -1,15 +1,11 @@
 import * as fs from 'fs';
 import * as csv from 'csv-parser';
+import { type BankName, FileType } from '../../../entities/statement.entity';
+import type { ParsedStatement, ParsedTransaction } from '../interfaces/parsed-statement.interface';
 import { BaseParser } from './base.parser';
-import { ParsedStatement, ParsedTransaction } from '../interfaces/parsed-statement.interface';
-import { BankName, FileType } from '../../../entities/statement.entity';
 
 export class CsvParser extends BaseParser {
-  async canParse(
-    bankName: BankName,
-    fileType: FileType,
-    filePath: string,
-  ): Promise<boolean> {
+  async canParse(bankName: BankName, fileType: FileType, filePath: string): Promise<boolean> {
     return fileType === FileType.CSV;
   }
 
@@ -24,7 +20,7 @@ export class CsvParser extends BaseParser {
         .createReadStream(filePath)
         .pipe(csv({ separator: this.detectSeparator(filePath) }))
         .on('headers', (headerList: string[]) => {
-          headers = headerList.map((h) => h.toLowerCase().trim());
+          headers = headerList.map(h => h.toLowerCase().trim());
           columnMapping = this.mapColumns(headers);
         })
         .on('data', (row: any) => {
@@ -32,8 +28,13 @@ export class CsvParser extends BaseParser {
             isFirstRow = false;
             // Skip if first row looks like header
             const firstRowValues = Object.values(row);
-            if (firstRowValues.some((v) => typeof v === 'string' && 
-              (v.toLowerCase().includes('дата') || v.toLowerCase().includes('date')))) {
+            if (
+              firstRowValues.some(
+                v =>
+                  typeof v === 'string' &&
+                  (v.toLowerCase().includes('дата') || v.toLowerCase().includes('date')),
+              )
+            ) {
               return;
             }
           }
@@ -65,9 +66,13 @@ export class CsvParser extends BaseParser {
 
     if (firstLine.includes(';')) {
       return ';';
-    } else if (firstLine.includes(',')) {
+    }
+
+    if (firstLine.includes(',')) {
       return ',';
-    } else if (firstLine.includes('\t')) {
+    }
+
+    if (firstLine.includes('\t')) {
       return '\t';
     }
 
@@ -80,31 +85,43 @@ export class CsvParser extends BaseParser {
     headers.forEach((header, index) => {
       const lowerHeader = header.toLowerCase();
       if (lowerHeader.includes('дата') || lowerHeader.includes('date')) {
-        mapping['date'] = index;
+        mapping.date = index;
       }
-      if (lowerHeader.includes('номер') || lowerHeader.includes('документ') || lowerHeader.includes('document')) {
-        mapping['document'] = index;
+      if (
+        lowerHeader.includes('номер') ||
+        lowerHeader.includes('документ') ||
+        lowerHeader.includes('document')
+      ) {
+        mapping.document = index;
       }
       if (lowerHeader.includes('контрагент') || lowerHeader.includes('counterparty')) {
-        mapping['counterparty'] = index;
+        mapping.counterparty = index;
       }
       if (lowerHeader.includes('бин') || lowerHeader.includes('bin')) {
-        mapping['bin'] = index;
+        mapping.bin = index;
       }
-      if (lowerHeader.includes('счёт') || lowerHeader.includes('счет') || lowerHeader.includes('account')) {
-        mapping['account'] = index;
+      if (
+        lowerHeader.includes('счёт') ||
+        lowerHeader.includes('счет') ||
+        lowerHeader.includes('account')
+      ) {
+        mapping.account = index;
       }
       if (lowerHeader.includes('банк') || lowerHeader.includes('bank')) {
-        mapping['bank'] = index;
+        mapping.bank = index;
       }
       if (lowerHeader.includes('дебет') || lowerHeader.includes('debit')) {
-        mapping['debit'] = index;
+        mapping.debit = index;
       }
       if (lowerHeader.includes('кредит') || lowerHeader.includes('credit')) {
-        mapping['credit'] = index;
+        mapping.credit = index;
       }
-      if (lowerHeader.includes('назначение') || lowerHeader.includes('цель') || lowerHeader.includes('purpose')) {
-        mapping['purpose'] = index;
+      if (
+        lowerHeader.includes('назначение') ||
+        lowerHeader.includes('цель') ||
+        lowerHeader.includes('purpose')
+      ) {
+        mapping.purpose = index;
       }
     });
 
@@ -113,7 +130,7 @@ export class CsvParser extends BaseParser {
 
   private parseRow(row: any, columnMapping: Record<string, number>): ParsedTransaction | null {
     try {
-      const dateIndex = columnMapping['date'];
+      const dateIndex = columnMapping.date;
       if (dateIndex === undefined) {
         return null;
       }
@@ -124,25 +141,35 @@ export class CsvParser extends BaseParser {
         return null;
       }
 
-      const documentIndex = columnMapping['document'];
-      const counterpartyIndex = columnMapping['counterparty'];
-      const binIndex = columnMapping['bin'];
-      const accountIndex = columnMapping['account'];
-      const bankIndex = columnMapping['bank'];
-      const debitIndex = columnMapping['debit'];
-      const creditIndex = columnMapping['credit'];
-      const purposeIndex = columnMapping['purpose'];
+      const documentIndex = columnMapping.document;
+      const counterpartyIndex = columnMapping.counterparty;
+      const binIndex = columnMapping.bin;
+      const accountIndex = columnMapping.account;
+      const bankIndex = columnMapping.bank;
+      const debitIndex = columnMapping.debit;
+      const creditIndex = columnMapping.credit;
+      const purposeIndex = columnMapping.purpose;
 
       return {
         transactionDate,
-        documentNumber: documentIndex !== undefined ? String(rowValues[documentIndex] || '') : undefined,
-        counterpartyName: counterpartyIndex !== undefined ? String(rowValues[counterpartyIndex] || '') : 'Unknown',
+        documentNumber:
+          documentIndex !== undefined ? String(rowValues[documentIndex] || '') : undefined,
+        counterpartyName:
+          counterpartyIndex !== undefined ? String(rowValues[counterpartyIndex] || '') : 'Unknown',
         counterpartyBin: binIndex !== undefined ? String(rowValues[binIndex] || '') : undefined,
-        counterpartyAccount: accountIndex !== undefined ? String(rowValues[accountIndex] || '') : undefined,
+        counterpartyAccount:
+          accountIndex !== undefined ? String(rowValues[accountIndex] || '') : undefined,
         counterpartyBank: bankIndex !== undefined ? String(rowValues[bankIndex] || '') : undefined,
-        debit: debitIndex !== undefined ? this.normalizeNumberValue(String(rowValues[debitIndex] || '')) || undefined : undefined,
-        credit: creditIndex !== undefined ? this.normalizeNumberValue(String(rowValues[creditIndex] || '')) || undefined : undefined,
-        paymentPurpose: purposeIndex !== undefined ? String(rowValues[purposeIndex] || '') : 'Не указано',
+        debit:
+          debitIndex !== undefined
+            ? this.normalizeNumberValue(String(rowValues[debitIndex] || '')) || undefined
+            : undefined,
+        credit:
+          creditIndex !== undefined
+            ? this.normalizeNumberValue(String(rowValues[creditIndex] || '')) || undefined
+            : undefined,
+        paymentPurpose:
+          purposeIndex !== undefined ? String(rowValues[purposeIndex] || '') : 'Не указано',
         currency: 'KZT',
       };
     } catch (error) {
@@ -151,4 +178,3 @@ export class CsvParser extends BaseParser {
     }
   }
 }
-

@@ -1,14 +1,14 @@
-import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole } from '../src/entities/user.entity';
-import { Statement } from '../src/entities/statement.entity';
-import { GoogleSheet } from '../src/entities/google-sheet.entity';
-import { GoogleSheetRow } from '../src/entities/google-sheet-row.entity';
-import { TelegramReport } from '../src/entities/telegram-report.entity';
-import { Category } from '../src/entities/category.entity';
+import { DataSource } from 'typeorm';
 import { Branch } from '../src/entities/branch.entity';
-import { Wallet } from '../src/entities/wallet.entity';
+import { Category } from '../src/entities/category.entity';
+import { GoogleSheetRow } from '../src/entities/google-sheet-row.entity';
+import { GoogleSheet } from '../src/entities/google-sheet.entity';
+import { Statement } from '../src/entities/statement.entity';
+import { TelegramReport } from '../src/entities/telegram-report.entity';
 import { Transaction } from '../src/entities/transaction.entity';
+import { User, UserRole } from '../src/entities/user.entity';
+import { Wallet } from '../src/entities/wallet.entity';
 
 async function createAdmin() {
   const databaseUrl =
@@ -26,14 +26,14 @@ async function createAdmin() {
     username = url.username;
     password = url.password;
     host = url.hostname;
-    port = parseInt(url.port) || 5432;
+    port = Number.parseInt(url.port) || 5432;
     database = url.pathname.slice(1);
   } catch (error) {
     // Fallback to direct connection parameters
     username = process.env.DB_USERNAME || 'finflow';
     password = process.env.DB_PASSWORD || 'finflow';
     host = process.env.DB_HOST || 'localhost';
-    port = parseInt(process.env.DB_PORT || '5432');
+    port = Number.parseInt(process.env.DB_PORT || '5432');
     database = process.env.DB_NAME || 'finflow';
   }
 
@@ -79,16 +79,16 @@ async function createAdmin() {
         console.log(`✅ Updated admin user ${email} (password updated, account activated)`);
         await dataSource.destroy();
         return;
-      } else {
-        // Update existing user to admin
-        existingUser.role = UserRole.ADMIN;
-        existingUser.passwordHash = await bcrypt.hash(password, 10);
-        existingUser.isActive = true;
-        await dataSource.getRepository(User).save(existingUser);
-        console.log(`✅ Updated user ${email} to admin role`);
-        await dataSource.destroy();
-        return;
       }
+
+      // Update existing user to admin
+      existingUser.role = UserRole.ADMIN;
+      existingUser.passwordHash = await bcrypt.hash(password, 10);
+      existingUser.isActive = true;
+      await dataSource.getRepository(User).save(existingUser);
+      console.log(`✅ Updated user ${email} to admin role`);
+      await dataSource.destroy();
+      return;
     }
 
     // Create new admin user

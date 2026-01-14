@@ -12,7 +12,7 @@ const extractTraceIdFromTraceParent = (traceParent: string | undefined): string 
 
 export function requestContextMiddleware(req: Request, res: Response, next: NextFunction) {
   const incomingRequestId = req.header('x-request-id') || req.header('x-correlation-id');
-  const requestId = (incomingRequestId && incomingRequestId.trim()) || uuidv4();
+  const requestId = incomingRequestId?.trim() || uuidv4();
 
   const traceParent = req.header('traceparent');
   const extractedTraceId = extractTraceIdFromTraceParent(traceParent);
@@ -26,4 +26,3 @@ export function requestContextMiddleware(req: Request, res: Response, next: Next
 
   return RequestContext.run({ requestId, traceId }, () => next());
 }
-

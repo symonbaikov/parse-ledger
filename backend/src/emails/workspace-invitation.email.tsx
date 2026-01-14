@@ -1,4 +1,3 @@
-import * as React from 'react';
 import {
   Body,
   Button,
@@ -11,6 +10,7 @@ import {
   Section,
   Text,
 } from '@react-email/components';
+import * as React from 'react';
 
 export type WorkspaceInvitationEmailProps = {
   workspaceName: string;
@@ -74,7 +74,9 @@ export function workspaceInvitationEmailText({
   invitedBy,
   roleLabel,
 }: WorkspaceInvitationEmailProps) {
-  const invitedByPart = invitedBy ? `${invitedBy} приглашает вас присоединиться к` : 'Вас приглашают присоединиться к';
+  const invitedByPart = invitedBy
+    ? `${invitedBy} приглашает вас присоединиться к`
+    : 'Вас приглашают присоединиться к';
   const rolePart = roleLabel ? `\nРоль: ${roleLabel}` : '';
 
   return `${invitedByPart} «${workspaceName}».${rolePart}\n\nПринять приглашение: ${invitationLink}\n\nСсылка действует 7 дней.`;
@@ -163,4 +165,3 @@ const styles = {
     margin: '0',
   },
 };
-

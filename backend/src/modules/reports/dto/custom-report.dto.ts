@@ -1,5 +1,5 @@
-import { IsEnum, IsOptional, IsDateString, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsDateString, IsEnum, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export enum ReportGroupBy {
   CATEGORY = 'category',
@@ -43,11 +43,3 @@ export class CustomReportDto {
   @IsOptional()
   format?: ReportFormat = ReportFormat.JSON;
 }
-
-
-
-
-
-
-
-

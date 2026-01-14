@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddWorkspaces1735200000000 implements MigrationInterface {
   name = 'AddWorkspaces1735200000000';
@@ -81,10 +81,10 @@ export class AddWorkspaces1735200000000 implements MigrationInterface {
         [workspaceName, user.id],
       );
 
-      await queryRunner.query(
-        `UPDATE "users" SET "workspace_id" = $1 WHERE "id" = $2`,
-        [workspaceId, user.id],
-      );
+      await queryRunner.query(`UPDATE "users" SET "workspace_id" = $1 WHERE "id" = $2`, [
+        workspaceId,
+        user.id,
+      ]);
 
       await queryRunner.query(
         `INSERT INTO "workspace_members" ("workspace_id", "user_id", "role", "invited_by_id")

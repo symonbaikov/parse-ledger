@@ -8,11 +8,11 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from './user.entity';
+import { Category } from './category.entity';
 import { CustomTableColumn } from './custom-table-column.entity';
 import { CustomTableRow } from './custom-table-row.entity';
-import { Category } from './category.entity';
-import { DataEntryType } from './data-entry.entity';
+import type { DataEntryType } from './data-entry.entity';
+import { User } from './user.entity';
 
 export enum CustomTableSource {
   MANUAL = 'manual',
@@ -53,10 +53,16 @@ export class CustomTable {
   @Column({ name: 'category_id', type: 'uuid', nullable: true })
   categoryId: string | null;
 
-  @OneToMany(() => CustomTableColumn, (column) => column.table)
+  @OneToMany(
+    () => CustomTableColumn,
+    column => column.table,
+  )
   columns: CustomTableColumn[];
 
-  @OneToMany(() => CustomTableRow, (row) => row.table)
+  @OneToMany(
+    () => CustomTableRow,
+    row => row.table,
+  )
   rows: CustomTableRow[];
 
   @Column({ name: 'view_settings', type: 'jsonb', default: () => "'{}'::jsonb" })

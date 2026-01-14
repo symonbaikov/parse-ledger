@@ -5,13 +5,13 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import type { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { GoogleSheetRow } from '../../../entities/google-sheet-row.entity';
 import { GoogleSheet } from '../../../entities/google-sheet.entity';
-import { GoogleSheetsBatchUpdateDto, GoogleSheetsUpdateDto } from '../dto/sheets-update.dto';
-import {
+import type { GoogleSheetsBatchUpdateDto, GoogleSheetsUpdateDto } from '../dto/sheets-update.dto';
+import type {
   GoogleSheetRowEventPayload,
   GoogleSheetsRealtimeService,
 } from './google-sheets-realtime.service';
@@ -55,7 +55,9 @@ export class GoogleSheetsUpdatesService {
       this.configService.get<string>('SHEETS_ALLOWED_SHEETS') ||
         this.configService.get<string>('SHEETS_ALLOWED_SHEET'),
     );
-    this.watchColumns = this.parseNumberList(this.configService.get<string>('SHEETS_WATCH_COLUMNS'));
+    this.watchColumns = this.parseNumberList(
+      this.configService.get<string>('SHEETS_WATCH_COLUMNS'),
+    );
   }
 
   async handleBatchUpdate(batch: GoogleSheetsBatchUpdateDto): Promise<GoogleSheetsUpdateResult[]> {
@@ -115,8 +117,7 @@ export class GoogleSheetsUpdatesService {
     });
 
     if (
-      existingRow &&
-      existingRow.lastEditedAt &&
+      existingRow?.lastEditedAt &&
       editedAt &&
       existingRow.lastEditedAt.getTime() > editedAt.getTime()
     ) {
@@ -209,14 +210,14 @@ export class GoogleSheetsUpdatesService {
     }
     return value
       .split(',')
-      .map((item) => item.trim())
+      .map(item => item.trim())
       .filter(Boolean);
   }
 
   private parseNumberList(value?: string | null): number[] {
     return this.parseList(value)
-      .map((item) => Number(item))
-      .filter((num) => !Number.isNaN(num) && num > 0);
+      .map(item => Number(item))
+      .filter(num => !Number.isNaN(num) && num > 0);
   }
 
   private parseEditedAt(value?: string): Date | null {

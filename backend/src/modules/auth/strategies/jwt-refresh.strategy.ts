@@ -1,9 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import type { Repository } from 'typeorm';
 import { User } from '../../../entities/user.entity';
 
 export interface JwtRefreshPayload {
@@ -16,10 +16,7 @@ export interface JwtRefreshPayload {
 }
 
 @Injectable()
-export class JwtRefreshStrategy extends PassportStrategy(
-  Strategy,
-  'jwt-refresh',
-) {
+export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
   private jwtRefreshSecret: string;
 
   constructor(
@@ -31,13 +28,13 @@ export class JwtRefreshStrategy extends PassportStrategy(
     if (!jwtRefreshSecret) {
       throw new Error('JWT_REFRESH_SECRET environment variable is not set');
     }
-    
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: jwtRefreshSecret,
     });
-    
+
     this.jwtRefreshSecret = jwtRefreshSecret;
   }
 
@@ -63,10 +60,3 @@ export class JwtRefreshStrategy extends PassportStrategy(
     return user;
   }
 }
-
-
-
-
-
-
-

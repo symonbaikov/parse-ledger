@@ -3,25 +3,25 @@ import {
   Controller,
   DefaultValuePipe,
   Get,
-  MessageEvent,
+  type MessageEvent,
   ParseIntPipe,
   Post,
   Query,
   Sse,
   UseGuards,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import type { Observable } from 'rxjs';
+import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import { User } from '../../entities/user.entity';
+import type { GoogleSheetsBatchUpdateDto, GoogleSheetsUpdateDto } from './dto/sheets-update.dto';
 import { GoogleSheetsWebhookGuard } from './guards/google-sheets-webhook.guard';
-import { GoogleSheetsBatchUpdateDto, GoogleSheetsUpdateDto } from './dto/sheets-update.dto';
-import { GoogleSheetsUpdatesService } from './services/google-sheets-updates.service';
-import { GoogleSheetsRealtimeService } from './services/google-sheets-realtime.service';
-import {
+import type {
   GoogleSheetsAnalyticsService,
   GoogleSheetsSummaryResponse,
 } from './services/google-sheets-analytics.service';
+import type { GoogleSheetsRealtimeService } from './services/google-sheets-realtime.service';
+import type { GoogleSheetsUpdatesService } from './services/google-sheets-updates.service';
 
 @Controller('integrations/google-sheets')
 export class GoogleSheetsIntegrationController {
@@ -48,7 +48,7 @@ export class GoogleSheetsIntegrationController {
   @Post('batch')
   async receiveBatch(@Body() body: GoogleSheetsBatchUpdateDto) {
     const results = await this.updatesService.handleBatchUpdate(body);
-    return { ok: true, processed: results.filter((item) => item.processed).length, results };
+    return { ok: true, processed: results.filter(item => item.processed).length, results };
   }
 
   @Get('rows')

@@ -1,4 +1,10 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex, TableForeignKey } from 'typeorm';
+import {
+  type MigrationInterface,
+  type QueryRunner,
+  Table,
+  TableForeignKey,
+  TableIndex,
+} from 'typeorm';
 
 export class AddStorageEntities1733328000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -117,8 +123,7 @@ export class AddStorageEntities1733328000000 implements MigrationInterface {
     const sharedLinksTable = await queryRunner.getTable('shared_links');
     if (sharedLinksTable) {
       const hasFk1 = sharedLinksTable.foreignKeys.some(
-        (fk) => fk.columnNames.includes('statement_id') && 
-                fk.referencedTableName === 'statements'
+        fk => fk.columnNames.includes('statement_id') && fk.referencedTableName === 'statements',
       );
       if (!hasFk1) {
         await queryRunner.createForeignKey(
@@ -133,8 +138,7 @@ export class AddStorageEntities1733328000000 implements MigrationInterface {
       }
 
       const hasFk2 = sharedLinksTable.foreignKeys.some(
-        (fk) => fk.columnNames.includes('user_id') && 
-                fk.referencedTableName === 'users'
+        fk => fk.columnNames.includes('user_id') && fk.referencedTableName === 'users',
       );
       if (!hasFk2) {
         await queryRunner.createForeignKey(
@@ -243,8 +247,7 @@ export class AddStorageEntities1733328000000 implements MigrationInterface {
     const filePermissionsTable = await queryRunner.getTable('file_permissions');
     if (filePermissionsTable) {
       const hasFk1 = filePermissionsTable.foreignKeys.some(
-        (fk) => fk.columnNames.includes('statement_id') && 
-                fk.referencedTableName === 'statements'
+        fk => fk.columnNames.includes('statement_id') && fk.referencedTableName === 'statements',
       );
       if (!hasFk1) {
         await queryRunner.createForeignKey(
@@ -259,8 +262,7 @@ export class AddStorageEntities1733328000000 implements MigrationInterface {
       }
 
       const hasFk2 = filePermissionsTable.foreignKeys.some(
-        (fk) => fk.columnNames.includes('user_id') && 
-                fk.referencedTableName === 'users'
+        fk => fk.columnNames.includes('user_id') && fk.referencedTableName === 'users',
       );
       if (!hasFk2) {
         await queryRunner.createForeignKey(
@@ -275,8 +277,7 @@ export class AddStorageEntities1733328000000 implements MigrationInterface {
       }
 
       const hasFk3 = filePermissionsTable.foreignKeys.some(
-        (fk) => fk.columnNames.includes('granted_by_id') && 
-                fk.referencedTableName === 'users'
+        fk => fk.columnNames.includes('granted_by_id') && fk.referencedTableName === 'users',
       );
       if (!hasFk3) {
         await queryRunner.createForeignKey(
@@ -300,7 +301,3 @@ export class AddStorageEntities1733328000000 implements MigrationInterface {
     await queryRunner.dropTable('shared_links');
   }
 }
-
-
-
-

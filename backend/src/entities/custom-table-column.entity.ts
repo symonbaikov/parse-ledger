@@ -66,4 +66,3 @@ export class CustomTableColumn {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-

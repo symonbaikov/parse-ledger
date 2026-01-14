@@ -1,55 +1,55 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_FILTER, APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { getDatabaseConfig } from './config/database.config';
 import {
-  User,
-  Statement,
-  Transaction,
-  Category,
-  Branch,
-  Wallet,
-  GoogleSheet,
-  GoogleSheetRow,
-  TelegramReport,
-  ParsingRule,
   AuditLog,
-  SharedLink,
-  FilePermission,
-  DataEntry,
+  Branch,
+  Category,
   CustomTable,
   CustomTableColumn,
   CustomTableRow,
+  DataEntry,
+  FilePermission,
+  GoogleSheet,
+  GoogleSheetRow,
+  ParsingRule,
+  SharedLink,
+  Statement,
+  TelegramReport,
+  Transaction,
+  User,
+  Wallet,
   Workspace,
   WorkspaceInvitation,
   WorkspaceMember,
 } from './entities';
 import { AuthModule } from './modules/auth/auth.module';
-import { UsersModule } from './modules/users/users.module';
-import { StatementsModule } from './modules/statements/statements.module';
-import { GoogleSheetsModule } from './modules/google-sheets/google-sheets.module';
-import { ParsingModule } from './modules/parsing/parsing.module';
-import { ClassificationModule } from './modules/classification/classification.module';
-import { CategoriesModule } from './modules/categories/categories.module';
 import { BranchesModule } from './modules/branches/branches.module';
-import { WalletsModule } from './modules/wallets/wallets.module';
-import { TransactionsModule } from './modules/transactions/transactions.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { ClassificationModule } from './modules/classification/classification.module';
+import { CustomTablesModule } from './modules/custom-tables/custom-tables.module';
+import { DataEntryModule } from './modules/data-entry/data-entry.module';
+import { GoogleSheetsModule } from './modules/google-sheets/google-sheets.module';
+import { HttpMetricsInterceptor } from './modules/observability/http-metrics.interceptor';
+import { ObservabilityModule } from './modules/observability/observability.module';
+import { ParsingModule } from './modules/parsing/parsing.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { StatementsModule } from './modules/statements/statements.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { TelegramModule } from './modules/telegram/telegram.module';
-import { DataEntryModule } from './modules/data-entry/data-entry.module';
-import { CustomTablesModule } from './modules/custom-tables/custom-tables.module';
+import { TransactionsModule } from './modules/transactions/transactions.module';
+import { UsersModule } from './modules/users/users.module';
+import { WalletsModule } from './modules/wallets/wallets.module';
 import { WorkspacesModule } from './modules/workspaces/workspaces.module';
-import { ObservabilityModule } from './modules/observability/observability.module';
-import { HttpMetricsInterceptor } from './modules/observability/http-metrics.interceptor';
 
 @Module({
   imports: [

@@ -1,4 +1,4 @@
-import { retry, sleep, TimeoutError, withTimeout } from '@/common/utils/async.util';
+import { TimeoutError, retry, sleep, withTimeout } from '@/common/utils/async.util';
 
 describe('async.util', () => {
   it('withTimeout returns result when completed on time', async () => {
@@ -7,7 +7,12 @@ describe('async.util', () => {
   });
 
   it('withTimeout throws TimeoutError when timed out', async () => {
-    await expect(withTimeout(sleep(50).then(() => 'ok'), 5)).rejects.toBeInstanceOf(TimeoutError);
+    await expect(
+      withTimeout(
+        sleep(50).then(() => 'ok'),
+        5,
+      ),
+    ).rejects.toBeInstanceOf(TimeoutError);
   });
 
   it('retry retries until success', async () => {
@@ -44,4 +49,3 @@ describe('async.util', () => {
     expect(attempts).toBe(1);
   });
 });
-

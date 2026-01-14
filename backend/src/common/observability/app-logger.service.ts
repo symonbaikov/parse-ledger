@@ -1,5 +1,5 @@
-import type { LoggerService, LogLevel } from '@nestjs/common';
 import * as os from 'node:os';
+import type { LogLevel, LoggerService } from '@nestjs/common';
 import { RequestContext } from './request-context';
 
 type Level = 'error' | 'warn' | 'log' | 'debug' | 'verbose';
@@ -77,9 +77,7 @@ export class AppLogger implements LoggerService {
     };
 
     const payload =
-      message && typeof message === 'object'
-        ? { ...base, ...message }
-        : { ...base, message };
+      message && typeof message === 'object' ? { ...base, ...message } : { ...base, message };
 
     if (trace) {
       (payload as any).trace = trace;
@@ -95,4 +93,3 @@ export class AppLogger implements LoggerService {
     }
   }
 }
-

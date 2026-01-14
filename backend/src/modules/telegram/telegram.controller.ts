@@ -1,13 +1,13 @@
 import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { TelegramService } from './telegram.service';
-import { ConnectTelegramDto } from './dto/connect-telegram.dto';
-import { SendTelegramReportDto } from './dto/send-report.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { Permission } from '../../common/enums/permissions.enum';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../../entities/user.entity';
+import type { ConnectTelegramDto } from './dto/connect-telegram.dto';
+import type { SendTelegramReportDto } from './dto/send-report.dto';
+import type { TelegramService } from './telegram.service';
 
 @Controller('telegram')
 @UseGuards(JwtAuthGuard)
@@ -34,8 +34,8 @@ export class TelegramController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    const currentPage = page ? parseInt(page, 10) : 1;
-    const pageSize = limit ? parseInt(limit, 10) : 20;
+    const currentPage = page ? Number.parseInt(page, 10) : 1;
+    const pageSize = limit ? Number.parseInt(limit, 10) : 20;
     return this.telegramService.listReports(user, currentPage, pageSize);
   }
 

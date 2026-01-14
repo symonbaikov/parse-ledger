@@ -1,15 +1,15 @@
+import type { Branch } from '@/entities/branch.entity';
+import { type Category, CategoryType } from '@/entities/category.entity';
+import { type Transaction, TransactionType } from '@/entities/transaction.entity';
+import type { Wallet } from '@/entities/wallet.entity';
 import { ClassificationService } from '@/modules/classification/services/classification.service';
-import { Transaction, TransactionType } from '@/entities/transaction.entity';
-import { Category, CategoryType } from '@/entities/category.entity';
-import { Branch } from '@/entities/branch.entity';
-import { Wallet } from '@/entities/wallet.entity';
 
 function createRepoMock<T>() {
   return {
     findOne: jest.fn(),
     find: jest.fn(),
-    create: jest.fn((data) => data as T),
-    save: jest.fn((data) => Promise.resolve(data as T)),
+    create: jest.fn(data => data as T),
+    save: jest.fn(data => Promise.resolve(data as T)),
     createQueryBuilder: jest.fn(),
   } as any;
 }
@@ -71,11 +71,17 @@ describe('ClassificationService', () => {
   it('should evaluate conditions correctly', () => {
     const evaluate = (service as any).evaluateCondition.bind(service);
 
-    expect(evaluate('Kaspi Pay', { operator: 'contains', value: 'kaspi', field: 'payment_purpose' })).toBe(true);
+    expect(
+      evaluate('Kaspi Pay', { operator: 'contains', value: 'kaspi', field: 'payment_purpose' }),
+    ).toBe(true);
     expect(evaluate('123', { operator: 'greater_than', value: '100', field: 'amount' })).toBe(true);
     expect(evaluate('99', { operator: 'greater_than', value: '100', field: 'amount' })).toBe(false);
-    expect(evaluate('Kaspi', { operator: 'regex', value: 'kaspi|halyk', field: 'payment_purpose' })).toBe(true);
-    expect(evaluate(null, { operator: 'contains', value: 'x', field: 'payment_purpose' })).toBe(false);
+    expect(
+      evaluate('Kaspi', { operator: 'regex', value: 'kaspi|halyk', field: 'payment_purpose' }),
+    ).toBe(true);
+    expect(evaluate(null, { operator: 'contains', value: 'x', field: 'payment_purpose' })).toBe(
+      false,
+    );
   });
 
   it('should sanitize rule order by priority when multiple match', async () => {
@@ -90,9 +96,7 @@ describe('ClassificationService', () => {
       {
         name: 'Low priority',
         type: 'category',
-        conditions: [
-          { field: 'payment_purpose', operator: 'contains', value: 'услуги' },
-        ],
+        conditions: [{ field: 'payment_purpose', operator: 'contains', value: 'услуги' }],
         result: { categoryId: 'cat-low' },
         priority: 10,
         isActive: true,
@@ -100,9 +104,7 @@ describe('ClassificationService', () => {
       {
         name: 'High priority',
         type: 'category',
-        conditions: [
-          { field: 'payment_purpose', operator: 'contains', value: 'реклам' },
-        ],
+        conditions: [{ field: 'payment_purpose', operator: 'contains', value: 'реклам' }],
         result: { categoryId: 'cat-high' },
         priority: 90,
         isActive: true,

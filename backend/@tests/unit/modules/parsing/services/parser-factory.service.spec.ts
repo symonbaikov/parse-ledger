@@ -1,12 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ParserFactoryService } from '@/modules/parsing/services/parser-factory.service';
 import { BankName, FileType } from '@/entities/statement.entity';
 import { BerekeNewParser } from '@/modules/parsing/parsers/bereke-new.parser';
 import { BerekeOldParser } from '@/modules/parsing/parsers/bereke-old.parser';
-import { KaspiParser } from '@/modules/parsing/parsers/kaspi.parser';
-import { GenericPdfParser } from '@/modules/parsing/parsers/generic-pdf.parser';
-import { ExcelParser } from '@/modules/parsing/parsers/excel.parser';
 import { CsvParser } from '@/modules/parsing/parsers/csv.parser';
+import { ExcelParser } from '@/modules/parsing/parsers/excel.parser';
+import { GenericPdfParser } from '@/modules/parsing/parsers/generic-pdf.parser';
+import { KaspiParser } from '@/modules/parsing/parsers/kaspi.parser';
+import { ParserFactoryService } from '@/modules/parsing/services/parser-factory.service';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 jest.mock('@/common/utils/pdf-parser.util', () => ({
   extractTextFromPdf: jest.fn().mockResolvedValue('kaspi bank statement'),
@@ -46,11 +46,7 @@ describe('ParserFactoryService', () => {
 
   describe('getParser', () => {
     it('returns null when no parser can parse', async () => {
-      const parser = await service.getParser(
-        BankName.KASPI,
-        FileType.PDF,
-        '/tmp/mock.pdf',
-      );
+      const parser = await service.getParser(BankName.KASPI, FileType.PDF, '/tmp/mock.pdf');
 
       expect(parser).toBeNull();
     });
@@ -58,11 +54,7 @@ describe('ParserFactoryService', () => {
     it('returns first parser that can parse', async () => {
       jest.spyOn(KaspiParser.prototype, 'canParse').mockResolvedValue(true);
 
-      const parser = await service.getParser(
-        BankName.KASPI,
-        FileType.PDF,
-        '/tmp/mock.pdf',
-      );
+      const parser = await service.getParser(BankName.KASPI, FileType.PDF, '/tmp/mock.pdf');
 
       expect(parser).toBeInstanceOf(KaspiParser);
     });
@@ -81,7 +73,7 @@ describe('ParserFactoryService', () => {
   });
 
   it('initializes all required parsers', () => {
-    const parserNames = service['parsers'].map((p) => p.constructor.name);
+    const parserNames = service.parsers.map(p => p.constructor.name);
     expect(parserNames).toEqual([
       'BerekeNewParser',
       'BerekeOldParser',

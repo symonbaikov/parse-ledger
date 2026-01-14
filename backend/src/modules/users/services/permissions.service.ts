@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../../../entities/user.entity';
+import type { Repository } from 'typeorm';
 import { Permission, ROLE_PERMISSIONS } from '../../../common/enums/permissions.enum';
+import { User } from '../../../entities/user.entity';
 import { UserRole } from '../../../entities/user.entity';
 
 @Injectable()
@@ -41,7 +41,7 @@ export class PermissionsService {
    */
   hasAnyPermission(user: User, permissions: Permission[]): boolean {
     const userPermissions = this.getUserPermissions(user);
-    return permissions.some((permission) => userPermissions.includes(permission));
+    return permissions.some(permission => userPermissions.includes(permission));
   }
 
   /**
@@ -49,7 +49,7 @@ export class PermissionsService {
    */
   hasAllPermissions(user: User, permissions: Permission[]): boolean {
     const userPermissions = this.getUserPermissions(user);
-    return permissions.every((permission) => userPermissions.includes(permission));
+    return permissions.every(permission => userPermissions.includes(permission));
   }
 
   /**
@@ -93,7 +93,7 @@ export class PermissionsService {
     }
 
     const currentPermissions = (user.permissions || []) as Permission[];
-    user.permissions = currentPermissions.filter((p) => p !== permission);
+    user.permissions = currentPermissions.filter(p => p !== permission);
     return this.userRepository.save(user);
   }
 
@@ -110,10 +110,3 @@ export class PermissionsService {
     return this.userRepository.save(user);
   }
 }
-
-
-
-
-
-
-

@@ -9,8 +9,20 @@ export interface ClassificationRule {
 }
 
 export interface ClassificationCondition {
-  field: 'counterparty_name' | 'payment_purpose' | 'amount' | 'counterparty_bin' | 'document_number';
-  operator: 'contains' | 'equals' | 'starts_with' | 'ends_with' | 'regex' | 'greater_than' | 'less_than';
+  field:
+    | 'counterparty_name'
+    | 'payment_purpose'
+    | 'amount'
+    | 'counterparty_bin'
+    | 'document_number';
+  operator:
+    | 'contains'
+    | 'equals'
+    | 'starts_with'
+    | 'ends_with'
+    | 'regex'
+    | 'greater_than'
+    | 'less_than';
   value: string | number;
 }
 
@@ -21,11 +33,3 @@ export interface ClassificationResult {
   article?: string;
   activityType?: string;
 }
-
-
-
-
-
-
-
-

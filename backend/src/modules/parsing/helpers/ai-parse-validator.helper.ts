@@ -1,8 +1,8 @@
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
-import { ParsedStatement, ParsedTransaction } from '../interfaces/parsed-statement.interface';
+import { type GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai';
+import { TimeoutError, retry, withTimeout } from '../../../common/utils/async.util';
 import { normalizeDate, normalizeNumber } from '../../../common/utils/number-normalizer.util';
 import { extractTextFromPdf } from '../../../common/utils/pdf-parser.util';
-import { retry, TimeoutError, withTimeout } from '../../../common/utils/async.util';
+import type { ParsedStatement, ParsedTransaction } from '../interfaces/parsed-statement.interface';
 import {
   isAiCircuitOpen,
   recordAiFailure,
@@ -47,18 +47,13 @@ export class AiParseValidator {
         () =>
           withTimeout(
             withAiConcurrency(() =>
-              this.geminiModel!.generateContent({
+              this.geminiModel?.generateContent({
                 contents: [
                   {
                     role: 'user',
                     parts: [
                       {
-                        text:
-                          'You are an auditor for Bereke Bank statements. ' +
-                          'Compare PDF text with parsed transactions and correct mistakes or missing rows. ' +
-                          'Return ONLY JSON with shape {"transactions":[...],"notes":[...],"metadata":{...}}. ' +
-                          'Dates must be ISO (YYYY-MM-DD). Numbers should be decimal (dot). Use KZT currency.\n\n' +
-                          `PDF text snippet:\n${pdfText}\n\nParsed transactions preview:\n${parsedPreview}`,
+                        text: `You are an auditor for Bereke Bank statements. Compare PDF text with parsed transactions and correct mistakes or missing rows. Return ONLY JSON with shape {"transactions":[...],"notes":[...],"metadata":{...}}. Dates must be ISO (YYYY-MM-DD). Numbers should be decimal (dot). Use KZT currency.\n\nPDF text snippet:\n${pdfText}\n\nParsed transactions preview:\n${parsedPreview}`,
                       },
                     ],
                   },
@@ -76,7 +71,7 @@ export class AiParseValidator {
           retries: 2,
           baseDelayMs: 500,
           maxDelayMs: 5000,
-          isRetryable: (error) => error instanceof TimeoutError,
+          isRetryable: error => error instanceof TimeoutError,
         },
       );
 
@@ -87,8 +82,7 @@ export class AiParseValidator {
       }
 
       const data = JSON.parse(content);
-      const rawTransactions =
-        data?.transactions || data?.data?.transactions || parsed.transactions;
+      const rawTransactions = data?.transactions || data?.data?.transactions || parsed.transactions;
 
       const mapped = Array.isArray(rawTransactions)
         ? rawTransactions
@@ -96,9 +90,7 @@ export class AiParseValidator {
             .filter((tx): tx is ParsedTransaction => tx !== null)
         : parsed.transactions;
 
-      const notes = Array.isArray(data?.notes)
-        ? data.notes.map((n: any) => String(n))
-        : [];
+      const notes = Array.isArray(data?.notes) ? data.notes.map((n: any) => String(n)) : [];
 
       const meta = data?.metadata || {};
       const corrected: ParsedStatement = {
@@ -106,16 +98,13 @@ export class AiParseValidator {
           ...parsed.metadata,
           accountNumber: meta.accountNumber || parsed.metadata.accountNumber,
           dateFrom:
-            normalizeDate(meta.dateFrom || meta.date_from || '') ||
-            parsed.metadata.dateFrom,
-          dateTo:
-            normalizeDate(meta.dateTo || meta.date_to || '') || parsed.metadata.dateTo,
+            normalizeDate(meta.dateFrom || meta.date_from || '') || parsed.metadata.dateFrom,
+          dateTo: normalizeDate(meta.dateTo || meta.date_to || '') || parsed.metadata.dateTo,
           balanceStart:
             normalizeNumber(meta.balanceStart || meta.balance_start) ??
             parsed.metadata.balanceStart,
           balanceEnd:
-            normalizeNumber(meta.balanceEnd || meta.balance_end) ??
-            parsed.metadata.balanceEnd,
+            normalizeNumber(meta.balanceEnd || meta.balance_end) ?? parsed.metadata.balanceEnd,
           currency: meta.currency || parsed.metadata.currency || 'KZT',
         },
         transactions: mapped.length ? mapped : parsed.transactions,
@@ -138,11 +127,8 @@ export class AiParseValidator {
       return null;
     }
 
-    const debit =
-      normalizeNumber(raw?.debit ?? raw?.amount_debit ?? raw?.amount) || undefined;
-    const credit =
-      normalizeNumber(raw?.credit ?? raw?.amount_credit ?? raw?.incoming) ||
-      undefined;
+    const debit = normalizeNumber(raw?.debit ?? raw?.amount_debit ?? raw?.amount) || undefined;
+    const credit = normalizeNumber(raw?.credit ?? raw?.amount_credit ?? raw?.incoming) || undefined;
 
     const counterpartyName =
       raw?.counterparty_name ||
@@ -163,13 +149,11 @@ export class AiParseValidator {
       raw?.bank_bic ||
       raw?.bic;
 
-    const counterpartyBin =
-      raw?.counterparty_bin || raw?.bin || raw?.iin || raw?.tax_id;
+    const counterpartyBin = raw?.counterparty_bin || raw?.bin || raw?.iin || raw?.tax_id;
 
     return {
       transactionDate,
-      documentNumber:
-        raw?.document_number || raw?.document || raw?.doc || raw?.doc_number,
+      documentNumber: raw?.document_number || raw?.document || raw?.doc || raw?.doc_number,
       counterpartyName,
       counterpartyBin,
       counterpartyAccount: raw?.counterparty_account || raw?.account,
@@ -177,11 +161,9 @@ export class AiParseValidator {
       debit,
       credit,
       paymentPurpose:
-        (raw?.purpose ||
-          raw?.payment_purpose ||
-          raw?.description ||
-          raw?.comment ||
-          '').toString().trim() || 'Не указано',
+        (raw?.purpose || raw?.payment_purpose || raw?.description || raw?.comment || '')
+          .toString()
+          .trim() || 'Не указано',
       currency: raw?.currency || 'KZT',
     };
   }

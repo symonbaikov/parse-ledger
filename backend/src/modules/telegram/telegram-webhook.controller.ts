@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
-import { TelegramService } from './telegram.service';
 import { Public } from '../auth/decorators/public.decorator';
+import type { TelegramService } from './telegram.service';
 
 @Controller('telegram/webhook')
 export class TelegramWebhookController {

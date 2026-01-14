@@ -1,19 +1,19 @@
-import { Injectable, Logger, Inject, forwardRef, Optional } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { Inject, Injectable, Logger, Optional, forwardRef } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
 import { Semaphore } from '../../../common/utils/semaphore.util';
 import { Statement, StatementStatus } from '../../../entities/statement.entity';
-import { Transaction, TransactionType } from '../../../entities/transaction.entity';
-import { ParserFactoryService } from './parser-factory.service';
-import { ParsedTransaction } from '../interfaces/parsed-statement.interface';
 import { BankName } from '../../../entities/statement.entity';
-import { ClassificationService } from '../../classification/services/classification.service';
+import { Transaction, TransactionType } from '../../../entities/transaction.entity';
+import type { ClassificationService } from '../../classification/services/classification.service';
 import { GoogleSheetsService } from '../../google-sheets/google-sheets.service';
 import { AiParseValidator } from '../helpers/ai-parse-validator.helper';
-import { ParsedStatement } from '../interfaces/parsed-statement.interface';
+import type { ParsedTransaction } from '../interfaces/parsed-statement.interface';
+import type { ParsedStatement } from '../interfaces/parsed-statement.interface';
+import type { ParserFactoryService } from './parser-factory.service';
 
 function parsePositiveInt(value: string | undefined, fallback: number) {
   if (!value) return fallback;
@@ -90,7 +90,10 @@ export class StatementProcessingService {
     }
 
     const ext = this.getFileExtension(statement);
-    const tempFilePath = path.join(os.tmpdir(), `finflow-statement-${statement.id}-${Date.now()}.${ext}`);
+    const tempFilePath = path.join(
+      os.tmpdir(),
+      `finflow-statement-${statement.id}-${Date.now()}.${ext}`,
+    );
     await fs.promises.writeFile(tempFilePath, fileData);
     return { filePath: tempFilePath, tempFilePath };
   }
@@ -143,7 +146,10 @@ export class StatementProcessingService {
     }
 
     addLog('info', `Starting processing of statement ${statementId}`);
-    addLog('info', `File: ${statement.fileName} (${statement.fileType}, ${statement.fileSize} bytes)`);
+    addLog(
+      'info',
+      `File: ${statement.fileName} (${statement.fileType}, ${statement.fileSize} bytes)`,
+    );
 
     let tempFilePath: string | undefined;
     let processingFilePath = statement.filePath;
@@ -166,10 +172,13 @@ export class StatementProcessingService {
         statement.fileType,
       );
       const detectTime = Date.now() - detectStartTime;
-      
+
       parsingDetails.detectedBank = bankName;
       parsingDetails.detectedFormat = formatVersion;
-      addLog('info', `Detected bank: ${bankName}, format: ${formatVersion || 'unknown'} (${detectTime}ms)`);
+      addLog(
+        'info',
+        `Detected bank: ${bankName}, format: ${formatVersion || 'unknown'} (${detectTime}ms)`,
+      );
 
       statement.bankName = bankName;
       await this.statementRepository.save(statement);
@@ -198,7 +207,7 @@ export class StatementProcessingService {
       const parseStartTime = Date.now();
       let parsedStatement = await parser.parse(processingFilePath);
       const parseTime = Date.now() - parseStartTime;
-      
+
       addLog('info', `Parsing completed in ${parseTime}ms`);
       addLog('info', `Found ${parsedStatement.transactions.length} transactions in parsed data`);
 
@@ -211,7 +220,7 @@ export class StatementProcessingService {
         );
         parsedStatement = aiResult.corrected;
         if (aiResult.notes.length) {
-          aiResult.notes.forEach((note) => addLog('info', `[AI] ${note}`));
+          aiResult.notes.forEach(note => addLog('info', `[AI] ${note}`));
         }
         addLog(
           'info',
@@ -243,8 +252,14 @@ export class StatementProcessingService {
       statement.balanceEnd = enrichedMetadata.balanceEnd;
       statement.currency = enrichedMetadata.currency;
 
-      addLog('info', `Metadata extracted - Account: ${statement.accountNumber || 'N/A'}, Currency: ${statement.currency}`);
-      addLog('info', `Date range: ${statement.statementDateFrom?.toISOString() || 'N/A'} to ${statement.statementDateTo?.toISOString() || 'N/A'}`);
+      addLog(
+        'info',
+        `Metadata extracted - Account: ${statement.accountNumber || 'N/A'}, Currency: ${statement.currency}`,
+      );
+      addLog(
+        'info',
+        `Date range: ${statement.statementDateFrom?.toISOString() || 'N/A'} to ${statement.statementDateTo?.toISOString() || 'N/A'}`,
+      );
 
       // Create transactions with classification
       const majorityCategory = await this.classificationService.determineMajorityCategory(
@@ -262,7 +277,7 @@ export class StatementProcessingService {
         addLog,
       );
       const createTime = Date.now() - createStartTime;
-      
+
       addLog('info', `Created ${transactions.length} transactions in ${createTime}ms`);
       parsingDetails.transactionsCreated = transactions.length;
 
@@ -283,12 +298,15 @@ export class StatementProcessingService {
       statement.parsingDetails = parsingDetails;
       await this.statementRepository.save(statement);
 
-      addLog('info', `Successfully processed statement ${statementId}: ${transactions.length} transactions (total time: ${totalTime}ms)`);
+      addLog(
+        'info',
+        `Successfully processed statement ${statementId}: ${transactions.length} transactions (total time: ${totalTime}ms)`,
+      );
 
       // Auto-sync to Google Sheets if connected (async, non-blocking)
       if (statement.googleSheetId && this.googleSheetsService) {
         this.syncToGoogleSheets(statement.googleSheetId, statementId, statement.userId).catch(
-          (error) => {
+          error => {
             this.logger.error(
               `Failed to auto-sync statement ${statementId} to Google Sheets:`,
               error,
@@ -305,12 +323,12 @@ export class StatementProcessingService {
       parsingDetails.errors = parsingDetails.errors || [];
       parsingDetails.errors.push(error.message);
       parsingDetails.processingTime = Date.now() - startTime;
-      
+
       statement.status = StatementStatus.ERROR;
       statement.errorMessage = error.message;
       statement.parsingDetails = parsingDetails;
       await this.statementRepository.save(statement);
-      
+
       this.logger.error(`Error processing statement ${statementId}:`, error);
       throw error;
     } finally {
@@ -328,16 +346,20 @@ export class StatementProcessingService {
     addLog?: (level: string, message: string) => void,
   ): Promise<Transaction[]> {
     const transactions: Transaction[] = [];
-    const log = addLog || ((level: string, msg: string) => this.logger[level === 'error' ? 'error' : 'log'](msg));
+    const log =
+      addLog ||
+      ((level: string, msg: string) => this.logger[level === 'error' ? 'error' : 'log'](msg));
 
-    log('info', `Processing ${parsedTransactions.length} parsed transactions (statement currency: ${statement.currency || 'N/A'})`);
+    log(
+      'info',
+      `Processing ${parsedTransactions.length} parsed transactions (statement currency: ${statement.currency || 'N/A'})`,
+    );
 
     for (let i = 0; i < parsedTransactions.length; i++) {
       const parsed = parsedTransactions[i];
-      
+
       try {
-        const counterpartyName =
-          (parsed.counterpartyName || '').trim() || 'Неизвестный контрагент';
+        const counterpartyName = (parsed.counterpartyName || '').trim() || 'Неизвестный контрагент';
         const paymentPurpose = (parsed.paymentPurpose || '').trim() || 'Не указано';
 
         // Determine transaction type
@@ -426,7 +448,11 @@ export class StatementProcessingService {
               ', ',
             )}`,
           );
-        } else if (classification.categoryId || classification.branchId || classification.walletId) {
+        } else if (
+          classification.categoryId ||
+          classification.branchId ||
+          classification.walletId
+        ) {
           log(
             'info',
             `Transaction ${i + 1} classification -> cat: ${
@@ -447,7 +473,10 @@ export class StatementProcessingService {
       }
     }
 
-    log('info', `Successfully created ${transactions.length}/${parsedTransactions.length} transactions`);
+    log(
+      'info',
+      `Successfully created ${transactions.length}/${parsedTransactions.length} transactions`,
+    );
     return transactions;
   }
 
@@ -494,25 +523,23 @@ export class StatementProcessingService {
     balanceEnd: number | null | undefined;
     currency: string;
   } {
-    const transactionDates = transactions
-      .map((t) => t.transactionDate)
-      .filter((d): d is Date => !!d);
+    const transactionDates = transactions.map(t => t.transactionDate).filter((d): d is Date => !!d);
 
     const minDate =
       transactionDates.length > 0
-        ? new Date(Math.min(...transactionDates.map((d) => d.getTime())))
+        ? new Date(Math.min(...transactionDates.map(d => d.getTime())))
         : null;
     const maxDate =
       transactionDates.length > 0
-        ? new Date(Math.max(...transactionDates.map((d) => d.getTime())))
+        ? new Date(Math.max(...transactionDates.map(d => d.getTime())))
         : null;
 
     const fallbackAccount =
-      transactions.find((t) => t.counterpartyAccount)?.counterpartyAccount ||
-      transactions.find((t) => t.counterpartyBin)?.counterpartyBin ||
+      transactions.find(t => t.counterpartyAccount)?.counterpartyAccount ||
+      transactions.find(t => t.counterpartyBin)?.counterpartyBin ||
       'Unknown';
 
-    const currencyFromTransactions = transactions.find((t) => t.currency)?.currency;
+    const currencyFromTransactions = transactions.find(t => t.currency)?.currency;
 
     const accountNumber = (parsed.metadata.accountNumber || '').trim() || fallbackAccount;
     const dateFrom = parsed.metadata.dateFrom || minDate || new Date();

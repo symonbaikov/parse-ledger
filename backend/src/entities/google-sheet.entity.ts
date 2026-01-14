@@ -1,23 +1,26 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { User } from './user.entity';
-import { Statement } from './statement.entity';
 import { GoogleSheetRow } from './google-sheet-row.entity';
+import { Statement } from './statement.entity';
+import { User } from './user.entity';
 
 @Entity('google_sheets')
 export class GoogleSheet {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => User, (user) => user.googleSheets)
+  @ManyToOne(
+    () => User,
+    user => user.googleSheets,
+  )
   @JoinColumn({ name: 'user_id' })
   user: User;
 
@@ -52,16 +55,15 @@ export class GoogleSheet {
   updatedAt: Date;
 
   // Relations
-  @OneToMany(() => Statement, (statement) => statement.googleSheet)
+  @OneToMany(
+    () => Statement,
+    statement => statement.googleSheet,
+  )
   statements: Statement[];
 
-  @OneToMany(() => GoogleSheetRow, (row) => row.googleSheet)
+  @OneToMany(
+    () => GoogleSheetRow,
+    row => row.googleSheet,
+  )
   rows: GoogleSheetRow[];
 }
-
-
-
-
-
-
-

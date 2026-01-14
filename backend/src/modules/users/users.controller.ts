@@ -1,32 +1,32 @@
 import {
-  Controller,
-  Get,
-  Put,
-  Delete,
-  Param,
   Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
   Query,
   UseGuards,
-  Post,
-  Patch,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { PermissionsService } from './services/permissions.service';
-import { UpdateUserDto } from './dto/update-user.dto';
-import {
-  UpdatePermissionsDto,
-  AddPermissionDto,
-  RemovePermissionDto,
-} from './dto/update-permissions.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { Permission } from '../../common/enums/permissions.enum';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { type User, UserRole } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User, UserRole } from '../../entities/user.entity';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { ChangeEmailDto } from './dto/change-email.dto';
-import { UpdateMyPreferencesDto } from './dto/update-my-preferences.dto';
+import type { ChangeEmailDto } from './dto/change-email.dto';
+import type { ChangePasswordDto } from './dto/change-password.dto';
+import type { UpdateMyPreferencesDto } from './dto/update-my-preferences.dto';
+import type {
+  AddPermissionDto,
+  RemovePermissionDto,
+  UpdatePermissionsDto,
+} from './dto/update-permissions.dto';
+import type { UpdateUserDto } from './dto/update-user.dto';
+import type { PermissionsService } from './services/permissions.service';
+import type { UsersService } from './users.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -39,13 +39,10 @@ export class UsersController {
   @Get()
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.USER_VIEW_ALL)
-  async findAll(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
     return this.usersService.findAll(
-      page ? parseInt(page) : 1,
-      limit ? parseInt(limit) : 20,
+      page ? Number.parseInt(page) : 1,
+      limit ? Number.parseInt(limit) : 20,
     );
   }
 
@@ -55,10 +52,7 @@ export class UsersController {
   }
 
   @Get(':id')
-  async findOne(
-    @Param('id') id: string,
-    @CurrentUser() currentUser: User,
-  ): Promise<User> {
+  async findOne(@Param('id') id: string, @CurrentUser() currentUser: User): Promise<User> {
     // Users can only view their own profile unless they're admin
     if (currentUser.role !== UserRole.ADMIN && currentUser.id !== id) {
       return this.usersService.getProfile(currentUser.id);
@@ -104,10 +98,7 @@ export class UsersController {
   @Put(':id/permissions')
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.USER_MANAGE)
-  async updatePermissions(
-    @Param('id') id: string,
-    @Body() dto: UpdatePermissionsDto,
-  ) {
+  async updatePermissions(@Param('id') id: string, @Body() dto: UpdatePermissionsDto) {
     const user = await this.permissionsService.updateUserPermissions(id, dto.permissions);
     return {
       userId: id,
@@ -153,14 +144,8 @@ export class UsersController {
   }
 
   @Patch('me/email')
-  async changeEmail(
-    @CurrentUser() currentUser: User,
-    @Body() dto: ChangeEmailDto,
-  ) {
-    const updatedUser = await this.usersService.changeEmail(
-      currentUser.id,
-      dto,
-    );
+  async changeEmail(@CurrentUser() currentUser: User, @Body() dto: ChangeEmailDto) {
+    const updatedUser = await this.usersService.changeEmail(currentUser.id, dto);
 
     const { passwordHash, ...safeUser } = updatedUser;
 
@@ -171,10 +156,7 @@ export class UsersController {
   }
 
   @Patch('me/password')
-  async changePassword(
-    @CurrentUser() currentUser: User,
-    @Body() dto: ChangePasswordDto,
-  ) {
+  async changePassword(@CurrentUser() currentUser: User, @Body() dto: ChangePasswordDto) {
     await this.usersService.changePassword(currentUser.id, dto);
     return { message: 'Password updated successfully' };
   }

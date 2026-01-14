@@ -1,19 +1,11 @@
-import {
-  Controller,
-  Post,
-  Param,
-  Body,
-  UseGuards,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
-import { ClassificationService } from './services/classification.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../../entities/user.entity';
-import { Transaction } from '../../entities/transaction.entity';
+import { Body, Controller, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { Transaction } from '../../entities/transaction.entity';
+import type { User } from '../../entities/user.entity';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { ClassificationService } from './services/classification.service';
 
 @Controller('classification')
 @UseGuards(JwtAuthGuard)
@@ -26,10 +18,7 @@ export class ClassificationController {
 
   @Post('transaction/:id')
   @HttpCode(HttpStatus.OK)
-  async classifyTransaction(
-    @Param('id') id: string,
-    @CurrentUser() user: User,
-  ) {
+  async classifyTransaction(@Param('id') id: string, @CurrentUser() user: User) {
     const transaction = await this.transactionRepository.findOne({
       where: { id },
     });
@@ -51,10 +40,7 @@ export class ClassificationController {
 
   @Post('bulk')
   @HttpCode(HttpStatus.OK)
-  async classifyBulk(
-    @Body() body: { transactionIds: string[] },
-    @CurrentUser() user: User,
-  ) {
+  async classifyBulk(@Body() body: { transactionIds: string[] }, @CurrentUser() user: User) {
     const { transactionIds } = body;
 
     for (const transactionId of transactionIds) {
@@ -63,8 +49,10 @@ export class ClassificationController {
       });
 
       if (transaction) {
-        const classification =
-          await this.classificationService.classifyTransaction(transaction, user.id);
+        const classification = await this.classificationService.classifyTransaction(
+          transaction,
+          user.id,
+        );
         Object.assign(transaction, classification);
         await this.transactionRepository.save(transaction);
       }
@@ -73,11 +61,3 @@ export class ClassificationController {
     return { message: `Classified ${transactionIds.length} transactions` };
   }
 }
-
-
-
-
-
-
-
-

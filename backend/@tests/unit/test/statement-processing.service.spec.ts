@@ -1,10 +1,10 @@
-import { StatementProcessingService } from '@/modules/parsing/services/statement-processing.service';
-import { Statement, StatementStatus, FileType, BankName } from '@/entities/statement.entity';
-import { Transaction } from '@/entities/transaction.entity';
-import { ParsedStatement } from '@/modules/parsing/interfaces/parsed-statement.interface';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { BankName, FileType, type Statement, StatementStatus } from '@/entities/statement.entity';
+import type { Transaction } from '@/entities/transaction.entity';
+import type { ParsedStatement } from '@/modules/parsing/interfaces/parsed-statement.interface';
+import { StatementProcessingService } from '@/modules/parsing/services/statement-processing.service';
 
 describe('StatementProcessingService', () => {
   const tempFilePath = path.join(os.tmpdir(), 'sample.pdf');
@@ -59,7 +59,10 @@ describe('StatementProcessingService', () => {
 
   const classificationService = {
     classifyTransaction: jest.fn(async () => ({ categoryId: 'cat-1' })),
-    determineMajorityCategory: jest.fn(async () => ({ categoryId: 'cat-1', type: 'expense' as any })),
+    determineMajorityCategory: jest.fn(async () => ({
+      categoryId: 'cat-1',
+      type: 'expense' as any,
+    })),
   };
 
   const parsedStatement: ParsedStatement = {
@@ -104,7 +107,10 @@ describe('StatementProcessingService', () => {
   };
 
   const parserFactory = {
-    detectBankAndFormat: jest.fn(async () => ({ bankName: BankName.BEREKE_NEW, formatVersion: 'v1' })),
+    detectBankAndFormat: jest.fn(async () => ({
+      bankName: BankName.BEREKE_NEW,
+      formatVersion: 'v1',
+    })),
     getParser: jest.fn(async () => ({
       parse: jest.fn().mockResolvedValue(parsedStatement),
       constructor: { name: 'FakeParser' },

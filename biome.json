@@ -29,12 +29,47 @@
         "trailingCommas": "all",
         "semicolons": "always",
         "arrowParentheses": "asNeeded"
+        },
+        "parser": {
+          "unsafeParameterDecoratorsEnabled": true
       }
     },
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+        "recommended": true,
+        "suspicious": {
+          "noExplicitAny": "off"
+        },
+        "style": {
+          "useImportType": "off",
+          "useNodejsImportProtocol": "off",
+          "noUnusedTemplateLiteral": "off"
+        },
+        "complexity": {
+          "noForEach": "off"
+        }
     }
-  }
+  },
+  "overrides": [
+    {
+      "include": [
+        "**/@tests/**/*.{ts,tsx}",
+        "**/test/**/*.{ts,tsx}"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          },
+          "style": {
+            "useImportType": "off"
+          }
+        }
+      },
+      "organizeImports": {
+        "enabled": false
+      }
+    }
+  ]
 }

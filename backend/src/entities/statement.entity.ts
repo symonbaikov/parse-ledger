@@ -1,19 +1,19 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  AfterLoad,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
-  AfterLoad,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { User } from './user.entity';
+import { normalizeFilename } from '../common/utils/filename.util';
+import { Category } from './category.entity';
 import { GoogleSheet } from './google-sheet.entity';
 import { Transaction } from './transaction.entity';
-import { Category } from './category.entity';
-import { normalizeFilename } from '../common/utils/filename.util';
+import { User } from './user.entity';
 
 export enum StatementStatus {
   UPLOADED = 'uploaded',
@@ -43,14 +43,21 @@ export class Statement {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => User, (user) => user.statements)
+  @ManyToOne(
+    () => User,
+    user => user.statements,
+  )
   @JoinColumn({ name: 'user_id' })
   user: User;
 
   @Column({ name: 'user_id' })
   userId: string;
 
-  @ManyToOne(() => GoogleSheet, (sheet) => sheet.statements, { nullable: true })
+  @ManyToOne(
+    () => GoogleSheet,
+    sheet => sheet.statements,
+    { nullable: true },
+  )
   @JoinColumn({ name: 'google_sheet_id' })
   googleSheet: GoogleSheet | null;
 
@@ -162,7 +169,10 @@ export class Statement {
   } | null;
 
   // Relations
-  @OneToMany(() => Transaction, (transaction) => transaction.statement)
+  @OneToMany(
+    () => Transaction,
+    transaction => transaction.statement,
+  )
   transactions: Transaction[];
 
   @AfterLoad()

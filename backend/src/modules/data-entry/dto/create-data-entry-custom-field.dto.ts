@@ -10,4 +10,3 @@ export class CreateDataEntryCustomFieldDto {
   @MaxLength(120)
   icon?: string;
 }
-

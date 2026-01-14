@@ -1,4 +1,10 @@
-import { MigrationInterface, QueryRunner, TableColumn, TableForeignKey, TableIndex } from 'typeorm';
+import {
+  type MigrationInterface,
+  type QueryRunner,
+  TableColumn,
+  TableForeignKey,
+  TableIndex,
+} from 'typeorm';
 
 export class AddCustomTabToDataEntries1734700000001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -15,7 +21,9 @@ export class AddCustomTabToDataEntries1734700000001 implements MigrationInterfac
     }
 
     const table = await queryRunner.getTable('data_entries');
-    const fkExists = (table?.foreignKeys || []).some((fk) => fk.columnNames.includes('custom_tab_id'));
+    const fkExists = (table?.foreignKeys || []).some(fk =>
+      fk.columnNames.includes('custom_tab_id'),
+    );
     if (!fkExists) {
       await queryRunner.createForeignKey(
         'data_entries',
@@ -28,7 +36,9 @@ export class AddCustomTabToDataEntries1734700000001 implements MigrationInterfac
       );
     }
 
-    const indexExists = (table?.indices || []).some((idx) => idx.name === 'IDX_data_entries_user_custom_tab_date');
+    const indexExists = (table?.indices || []).some(
+      idx => idx.name === 'IDX_data_entries_user_custom_tab_date',
+    );
     if (!indexExists) {
       await queryRunner.createIndex(
         'data_entries',
@@ -42,11 +52,13 @@ export class AddCustomTabToDataEntries1734700000001 implements MigrationInterfac
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     const table = await queryRunner.getTable('data_entries');
-    const fk = (table?.foreignKeys || []).find((f) => f.columnNames.includes('custom_tab_id'));
+    const fk = (table?.foreignKeys || []).find(f => f.columnNames.includes('custom_tab_id'));
     if (fk) {
       await queryRunner.dropForeignKey('data_entries', fk);
     }
-    const idx = (table?.indices || []).find((i) => i.name === 'IDX_data_entries_user_custom_tab_date');
+    const idx = (table?.indices || []).find(
+      i => i.name === 'IDX_data_entries_user_custom_tab_date',
+    );
     if (idx) {
       await queryRunner.dropIndex('data_entries', idx);
     }
@@ -56,4 +68,3 @@ export class AddCustomTabToDataEntries1734700000001 implements MigrationInterfac
     }
   }
 }
-

@@ -1,24 +1,29 @@
+import * as fs from 'fs';
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ConflictException,
-  BadRequestException,
-  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as fs from 'fs';
-import { Statement, StatementStatus, FileType, BankName } from '../../entities/statement.entity';
-import { Transaction } from '../../entities/transaction.entity';
-import { User } from '../../entities/user.entity';
-import { WorkspaceMember, WorkspaceRole } from '../../entities';
+import type { Repository } from 'typeorm';
+import type { FileStorageService } from '../../common/services/file-storage.service';
 import { calculateFileHash } from '../../common/utils/file-hash.util';
 import { getFileTypeFromMime } from '../../common/utils/file-validator.util';
-import { AuditLog, AuditAction } from '../../entities/audit-log.entity';
-import { StatementProcessingService } from '../parsing/services/statement-processing.service';
-import { UpdateStatementDto } from './dto/update-statement.dto';
 import { normalizeFilename } from '../../common/utils/filename.util';
-import { FileStorageService } from '../../common/services/file-storage.service';
+import { WorkspaceMember, WorkspaceRole } from '../../entities';
+import { AuditAction, AuditLog } from '../../entities/audit-log.entity';
+import {
+  BankName,
+  type FileType,
+  Statement,
+  StatementStatus,
+} from '../../entities/statement.entity';
+import { Transaction } from '../../entities/transaction.entity';
+import { User } from '../../entities/user.entity';
+import type { StatementProcessingService } from '../parsing/services/statement-processing.service';
+import type { UpdateStatementDto } from './dto/update-statement.dto';
 
 @Injectable()
 export class StatementsService {
@@ -103,7 +108,9 @@ export class StatementsService {
     try {
       fileData = await fs.promises.readFile(file.path);
     } catch (error) {
-      console.warn(`[Statements] Failed to read uploaded file for DB storage: ${(error as Error)?.message}`);
+      console.warn(
+        `[Statements] Failed to read uploaded file for DB storage: ${(error as Error)?.message}`,
+      );
     }
 
     // Create new statement
@@ -143,11 +150,11 @@ export class StatementsService {
     });
 
     // Start processing asynchronously
-    Promise.resolve(
-      this.statementProcessingService.processStatement(savedStatement.id),
-    ).catch(error => {
-      console.error('Error processing statement:', error);
-    });
+    Promise.resolve(this.statementProcessingService.processStatement(savedStatement.id)).catch(
+      error => {
+        console.error('Error processing statement:', error);
+      },
+    );
 
     // Best-effort cleanup of temp file
     try {
@@ -159,11 +166,7 @@ export class StatementsService {
     return savedStatement;
   }
 
-  async findAll(
-    userId: string,
-    page: number = 1,
-    limit: number = 20,
-  ): Promise<Statement[]> {
+  async findAll(userId: string, page = 1, limit = 20): Promise<Statement[]> {
     const workspaceId = await this.getWorkspaceId(userId);
     const where: any = {
       status: StatementStatus.PARSED,
@@ -190,7 +193,10 @@ export class StatementsService {
     if (typeof (this.statementRepository as any).createQueryBuilder !== 'function') {
       const statement = await this.statementRepository.findOne({
         where: workspaceId
-          ? [{ id, userId }, { id, user: { workspaceId } as any }]
+          ? [
+              { id, userId },
+              { id, user: { workspaceId } as any },
+            ]
           : { id, userId },
         relations: ['transactions', 'googleSheet', 'user'],
       } as any);
@@ -340,9 +346,8 @@ export class StatementsService {
     userId: string,
   ): Promise<{ stream: NodeJS.ReadableStream; fileName: string; mimeType: string }> {
     const statement = await this.findOne(id, userId);
-    const { stream, fileName, mimeType } = await this.fileStorageService.getStatementFileStream(
-      statement,
-    );
+    const { stream, fileName, mimeType } =
+      await this.fileStorageService.getStatementFileStream(statement);
     return { stream, fileName, mimeType };
   }
 }

@@ -1,10 +1,10 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  ManyToOne,
+  Entity,
   JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from './user.entity';
 
@@ -25,7 +25,10 @@ export class TelegramReport {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => User, (user) => user.telegramReports)
+  @ManyToOne(
+    () => User,
+    user => user.telegramReports,
+  )
   @JoinColumn({ name: 'user_id' })
   user: User;
 
@@ -61,11 +64,3 @@ export class TelegramReport {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
-
-
-
-
-
-
-
-

@@ -1,21 +1,21 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  OneToMany,
-  ManyToOne,
+  Entity,
   JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { Statement } from './statement.entity';
-import { GoogleSheet } from './google-sheet.entity';
-import { TelegramReport } from './telegram-report.entity';
-import { Category } from './category.entity';
 import { Branch } from './branch.entity';
+import { Category } from './category.entity';
+import { GoogleSheet } from './google-sheet.entity';
+import { Statement } from './statement.entity';
+import { TelegramReport } from './telegram-report.entity';
 import { Wallet } from './wallet.entity';
-import { Workspace } from './workspace.entity';
 import { WorkspaceMember } from './workspace-member.entity';
+import { Workspace } from './workspace.entity';
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -92,24 +92,45 @@ export class User {
   permissions: string[] | null;
 
   // Relations
-  @OneToMany(() => Statement, (statement) => statement.user)
+  @OneToMany(
+    () => Statement,
+    statement => statement.user,
+  )
   statements: Statement[];
 
-  @OneToMany(() => GoogleSheet, (sheet) => sheet.user)
+  @OneToMany(
+    () => GoogleSheet,
+    sheet => sheet.user,
+  )
   googleSheets: GoogleSheet[];
 
-  @OneToMany(() => TelegramReport, (report) => report.user)
+  @OneToMany(
+    () => TelegramReport,
+    report => report.user,
+  )
   telegramReports: TelegramReport[];
 
-  @OneToMany(() => Category, (category) => category.user)
+  @OneToMany(
+    () => Category,
+    category => category.user,
+  )
   categories: Category[];
 
-  @OneToMany(() => Branch, (branch) => branch.user)
+  @OneToMany(
+    () => Branch,
+    branch => branch.user,
+  )
   branches: Branch[];
 
-  @OneToMany(() => Wallet, (wallet) => wallet.user)
+  @OneToMany(
+    () => Wallet,
+    wallet => wallet.user,
+  )
   wallets: Wallet[];
 
-  @OneToMany(() => WorkspaceMember, (membership) => membership.user)
+  @OneToMany(
+    () => WorkspaceMember,
+    membership => membership.user,
+  )
   workspaceMemberships: WorkspaceMember[];
 }

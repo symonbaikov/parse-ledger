@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Readable } from 'stream';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
 import { FileType, Statement } from '../../entities';
 
 export type FileAvailabilityStatus = 'both' | 'disk' | 'db' | 'missing';
@@ -103,11 +103,14 @@ export class FileStorageService {
   }
 
   buildAvailability(onDisk: boolean, inDb: boolean): FileAvailability {
-    const status: FileAvailabilityStatus = onDisk && inDb ? 'both' : onDisk ? 'disk' : inDb ? 'db' : 'missing';
+    const status: FileAvailabilityStatus =
+      onDisk && inDb ? 'both' : onDisk ? 'disk' : inDb ? 'db' : 'missing';
     return { onDisk, inDb, status };
   }
 
-  async getFileAvailability(statement: Pick<Statement, 'id' | 'filePath'>): Promise<FileAvailability> {
+  async getFileAvailability(
+    statement: Pick<Statement, 'id' | 'filePath'>,
+  ): Promise<FileAvailability> {
     const onDisk = this.isOnDisk(statement.filePath);
     const inDb = await this.hasFileData(statement.id);
     return this.buildAvailability(onDisk, inDb);
@@ -125,7 +128,7 @@ export class FileStorageService {
       .andWhere('statement.fileData IS NOT NULL')
       .getRawMany<{ id: string }>();
 
-    return new Set(rows.map((row) => row.id));
+    return new Set(rows.map(row => row.id));
   }
 
   async hasFileData(statementId: string): Promise<boolean> {
@@ -170,10 +173,9 @@ export class FileStorageService {
     return ((other as any)?.fileData as Buffer | null | undefined) ?? null;
   }
 
-  async getStatementFileStream(statement: Pick<
-    Statement,
-    'id' | 'fileName' | 'filePath' | 'fileType' | 'fileHash' | 'userId'
-  >): Promise<{
+  async getStatementFileStream(
+    statement: Pick<Statement, 'id' | 'fileName' | 'filePath' | 'fileType' | 'fileHash' | 'userId'>,
+  ): Promise<{
     stream: NodeJS.ReadableStream;
     fileName: string;
     mimeType: string;
@@ -219,4 +221,3 @@ export class FileStorageService {
     throw new NotFoundException('File content is unavailable');
   }
 }
-

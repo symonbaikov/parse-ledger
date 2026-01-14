@@ -1,34 +1,34 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Delete,
-  Param,
   Body,
-  Query,
-  UseGuards,
-  UseInterceptors,
-  UploadedFiles,
+  Controller,
+  Delete,
+  Get,
   Headers,
   HttpCode,
   HttpStatus,
-  Res,
+  Param,
   Patch,
+  Post,
+  Query,
+  Res,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
-import { Response } from 'express';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { StatementsService } from './statements.service';
-import { UploadStatementDto } from './dto/upload-statement.dto';
-import { UpdateStatementDto } from './dto/update-statement.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import type { Response } from 'express';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { Permission } from '../../common/enums/permissions.enum';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../../entities/user.entity';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { validateFile } from '../../common/utils/file-validator.util';
-import { multerConfig } from '../../config/multer.config';
 import { buildContentDisposition } from '../../common/utils/http-file.util';
+import { multerConfig } from '../../config/multer.config';
+import type { User } from '../../entities/user.entity';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { UpdateStatementDto } from './dto/update-statement.dto';
+import type { UploadStatementDto } from './dto/upload-statement.dto';
+import type { StatementsService } from './statements.service';
 
 @Controller('statements')
 @UseGuards(JwtAuthGuard)
@@ -86,8 +86,8 @@ export class StatementsController {
   ) {
     return this.statementsService.findAll(
       user.id,
-      page ? parseInt(page) : 1,
-      limit ? parseInt(limit) : 20,
+      page ? Number.parseInt(page) : 1,
+      limit ? Number.parseInt(limit) : 20,
     );
   }
 
@@ -98,10 +98,7 @@ export class StatementsController {
   async getFile(@Param('id') id: string, @CurrentUser() user: User, @Res() res: Response) {
     const { stream, fileName, mimeType } = await this.statementsService.getFileStream(id, user.id);
     res.setHeader('Content-Type', mimeType);
-    res.setHeader(
-      'Content-Disposition',
-      buildContentDisposition('attachment', fileName),
-    );
+    res.setHeader('Content-Disposition', buildContentDisposition('attachment', fileName));
     stream.on('error', (err: any) => {
       const status =
         err?.code === 'ENOENT' || err?.code === 'EISDIR'
@@ -112,7 +109,9 @@ export class StatementsController {
           error: {
             code: status === HttpStatus.NOT_FOUND ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR',
             message:
-              status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to download file',
+              status === HttpStatus.NOT_FOUND
+                ? 'File not found on disk'
+                : 'Failed to download file',
           },
         });
       } else {
@@ -126,10 +125,7 @@ export class StatementsController {
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.STATEMENT_VIEW)
   async viewFile(@Param('id') id: string, @CurrentUser() user: User, @Res() res: Response) {
-    const { stream, fileName, mimeType } = await this.statementsService.getFileStream(
-      id,
-      user.id,
-    );
+    const { stream, fileName, mimeType } = await this.statementsService.getFileStream(id, user.id);
     res.setHeader('Content-Type', mimeType);
     res.setHeader('Content-Disposition', buildContentDisposition('inline', fileName));
     stream.on('error', (err: any) => {
@@ -141,7 +137,8 @@ export class StatementsController {
         res.status(status).json({
           error: {
             code: status === HttpStatus.NOT_FOUND ? 'NOT_FOUND' : 'INTERNAL_SERVER_ERROR',
-            message: status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to read file',
+            message:
+              status === HttpStatus.NOT_FOUND ? 'File not found on disk' : 'Failed to read file',
           },
         });
       } else {

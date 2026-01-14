@@ -1,5 +1,5 @@
-import { IsOptional, IsNumber, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsDateString, IsNumber, IsOptional } from 'class-validator';
 
 export class UpdateStatementDto {
   @IsOptional()

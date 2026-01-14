@@ -1,4 +1,4 @@
-import { Injectable, ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Injectable()
@@ -7,4 +7,3 @@ export class ThrottleLoginGuard extends ThrottlerGuard {
     return req.ip || req.connection?.remoteAddress || 'unknown';
   }
 }
-

@@ -1,7 +1,7 @@
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
-import { ParsedTransaction } from '../interfaces/parsed-statement.interface';
+import { type GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai';
+import { TimeoutError, retry, withTimeout } from '../../../common/utils/async.util';
 import { normalizeDate, normalizeNumber } from '../../../common/utils/number-normalizer.util';
-import { retry, TimeoutError, withTimeout } from '../../../common/utils/async.util';
+import type { ParsedTransaction } from '../interfaces/parsed-statement.interface';
 import {
   isAiCircuitOpen,
   recordAiFailure,
@@ -41,19 +41,13 @@ export class AiTransactionExtractor {
         () =>
           withTimeout(
             withAiConcurrency(() =>
-              this.geminiModel!.generateContent({
+              this.geminiModel?.generateContent({
                 contents: [
                   {
                     role: 'user',
                     parts: [
                       {
-                        text:
-                          'Extract ALL transactions from this bank statement text (could be Kaspi Bank, Bereke Bank, or other Kazakhstan banks). ' +
-                          'Each transaction typically has: document number, date, debit amount, credit amount, counterparty name, account numbers, payment purpose. ' +
-                          'Return ONLY JSON with the shape {"transactions":[{date,document_number,counterparty_name,counterparty_bin,counterparty_account,counterparty_bank,debit,credit,purpose,currency}]}. ' +
-                          'Use ISO dates (YYYY-MM-DD). Numbers must be decimal (dot). Default currency KZT. ' +
-                          'Preserve full payment purpose. Extract ALL transactions you can find.\n\n' +
-                          statementText,
+                        text: `Extract ALL transactions from this bank statement text (could be Kaspi Bank, Bereke Bank, or other Kazakhstan banks). Each transaction typically has: document number, date, debit amount, credit amount, counterparty name, account numbers, payment purpose. Return ONLY JSON with the shape {"transactions":[{date,document_number,counterparty_name,counterparty_bin,counterparty_account,counterparty_bank,debit,credit,purpose,currency}]}. Use ISO dates (YYYY-MM-DD). Numbers must be decimal (dot). Default currency KZT. Preserve full payment purpose. Extract ALL transactions you can find.\n\n${statementText}`,
                       },
                     ],
                   },
@@ -71,7 +65,7 @@ export class AiTransactionExtractor {
           retries: 2,
           baseDelayMs: 500,
           maxDelayMs: 5000,
-          isRetryable: (error) => error instanceof TimeoutError,
+          isRetryable: error => error instanceof TimeoutError,
         },
       );
 
@@ -82,8 +76,7 @@ export class AiTransactionExtractor {
       }
 
       const parsed = JSON.parse(content);
-      const rawTransactions =
-        parsed?.transactions || parsed?.data?.transactions || [];
+      const rawTransactions = parsed?.transactions || parsed?.data?.transactions || [];
 
       if (!Array.isArray(rawTransactions)) {
         recordAiFailure();
@@ -109,11 +102,8 @@ export class AiTransactionExtractor {
       return null;
     }
 
-    const debit =
-      normalizeNumber(raw?.debit ?? raw?.amount_debit ?? raw?.amount) || undefined;
-    const credit =
-      normalizeNumber(raw?.credit ?? raw?.amount_credit ?? raw?.incoming) ||
-      undefined;
+    const debit = normalizeNumber(raw?.debit ?? raw?.amount_debit ?? raw?.amount) || undefined;
+    const credit = normalizeNumber(raw?.credit ?? raw?.amount_credit ?? raw?.incoming) || undefined;
 
     const counterpartyName =
       raw?.counterparty_name ||
@@ -134,13 +124,11 @@ export class AiTransactionExtractor {
       raw?.bank_bic ||
       raw?.bic;
 
-    const counterpartyBin =
-      raw?.counterparty_bin || raw?.bin || raw?.iin || raw?.tax_id;
+    const counterpartyBin = raw?.counterparty_bin || raw?.bin || raw?.iin || raw?.tax_id;
 
     return {
       transactionDate,
-      documentNumber:
-        raw?.document_number || raw?.document || raw?.doc || raw?.doc_number,
+      documentNumber: raw?.document_number || raw?.document || raw?.doc || raw?.doc_number,
       counterpartyName,
       counterpartyBin,
       counterpartyAccount: raw?.counterparty_account || raw?.account,
@@ -148,11 +136,9 @@ export class AiTransactionExtractor {
       debit,
       credit,
       paymentPurpose:
-        (raw?.purpose ||
-          raw?.payment_purpose ||
-          raw?.description ||
-          raw?.comment ||
-          '').toString().trim() || 'Не указано',
+        (raw?.purpose || raw?.payment_purpose || raw?.description || raw?.comment || '')
+          .toString()
+          .trim() || 'Не указано',
       currency: raw?.currency || 'KZT',
     };
   }

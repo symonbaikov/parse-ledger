@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Category, CategoryType } from '../../entities/category.entity';
+import type { Repository } from 'typeorm';
 import { User, WorkspaceMember, WorkspaceRole } from '../../entities';
-import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
+import { Category, CategoryType } from '../../entities/category.entity';
+import type { CreateCategoryDto } from './dto/create-category.dto';
+import type { UpdateCategoryDto } from './dto/update-category.dto';
 
 @Injectable()
 export class CategoriesService {
@@ -155,5 +160,3 @@ export class CategoriesService {
     }
   }
 }
-
-

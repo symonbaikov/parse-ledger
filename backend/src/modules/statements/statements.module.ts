@@ -1,13 +1,13 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { StatementsController } from './statements.controller';
-import { StatementsService } from './statements.service';
+import { FileStorageService } from '../../common/services/file-storage.service';
+import { User, WorkspaceMember } from '../../entities';
+import { AuditLog } from '../../entities/audit-log.entity';
 import { Statement } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
-import { AuditLog } from '../../entities/audit-log.entity';
-import { User, WorkspaceMember } from '../../entities';
 import { ParsingModule } from '../parsing/parsing.module';
-import { FileStorageService } from '../../common/services/file-storage.service';
+import { StatementsController } from './statements.controller';
+import { StatementsService } from './statements.service';
 
 @Module({
   imports: [

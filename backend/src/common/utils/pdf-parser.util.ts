@@ -1,6 +1,6 @@
+import { spawn, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawn, spawnSync } from 'child_process';
 
 export interface PdfTextItem {
   text: string;
@@ -71,8 +71,8 @@ export async function extractTablesFromPdf(
   filePath: string,
 ): Promise<{ rows: string[][]; structured: PdfTableRow[] }> {
   const parsed = await runPdfPlumber(filePath);
-  const rows = (parsed.tables || []).flatMap((table) => table.data || []);
-  const structured = (parsed.tables || []).flatMap((table) => table.structured || []);
+  const rows = (parsed.tables || []).flatMap(table => table.data || []);
+  const structured = (parsed.tables || []).flatMap(table => table.structured || []);
   return { rows, structured };
 }
 
@@ -89,7 +89,7 @@ function resolveScriptPath(): string {
     path.resolve(process.cwd(), 'scripts', 'pdfplumber_parser.py'),
   ];
 
-  const found = candidates.find((candidate) => fs.existsSync(candidate));
+  const found = candidates.find(candidate => fs.existsSync(candidate));
   if (!found) {
     throw new Error(
       'Could not locate pdfplumber_parser.py. Ensure backend/scripts/pdfplumber_parser.py is available at runtime.',
@@ -105,14 +105,9 @@ function getPythonCandidates(): string[] {
   const rootVenv = path.resolve(process.cwd(), '.venv', 'bin', 'python');
   const localVenv = path.resolve(__dirname, '..', '..', '..', '.venv', 'bin', 'python');
 
-  const candidates = [
-    fromEnv,
-    backendVenv,
-    rootVenv,
-    localVenv,
-    'python3',
-    'python',
-  ].filter((entry): entry is string => Boolean(entry));
+  const candidates = [fromEnv, backendVenv, rootVenv, localVenv, 'python3', 'python'].filter(
+    (entry): entry is string => Boolean(entry),
+  );
 
   return Array.from(new Set(candidates));
 }
@@ -164,7 +159,7 @@ async function runPdfPlumber(filePath: string): Promise<PdfPlumberResult> {
       stderr += data.toString();
     });
 
-    proc.on('error', (error) => {
+    proc.on('error', error => {
       reject(
         new Error(
           `[PDF Parser] Failed to start pdfplumber process: ${error.message}. Is python3 installed?`,
@@ -172,7 +167,7 @@ async function runPdfPlumber(filePath: string): Promise<PdfPlumberResult> {
       );
     });
 
-    proc.on('close', (code) => {
+    proc.on('close', code => {
       if (code !== 0) {
         return reject(
           new Error(
@@ -204,7 +199,7 @@ function normalizeResult(raw: Partial<PdfPlumberResult>): PdfPlumberResult {
     text: typeof raw?.text === 'string' ? raw.text : '',
     rows: Array.isArray(raw?.rows) ? raw.rows.map(normalizeRow).filter(Boolean) : [],
     tables: Array.isArray(raw?.tables)
-      ? raw.tables.map(normalizeTable).filter(Boolean) as PdfPlumberTable[]
+      ? (raw.tables.map(normalizeTable).filter(Boolean) as PdfPlumberTable[])
       : [],
   };
 }
@@ -215,7 +210,7 @@ function normalizeRow(row: any): PdfTextRow | null {
   }
 
   const items = Array.isArray(row.items)
-    ? row.items.map(normalizeItem).filter(Boolean) as PdfTextItem[]
+    ? (row.items.map(normalizeItem).filter(Boolean) as PdfTextItem[])
     : [];
 
   return {

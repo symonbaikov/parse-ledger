@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
+import { type MigrationInterface, type QueryRunner, TableColumn } from 'typeorm';
 
 export class AddViewSettingsToCustomTables1734800000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -30,4 +30,3 @@ export class AddViewSettingsToCustomTables1734800000000 implements MigrationInte
     }
   }
 }
-

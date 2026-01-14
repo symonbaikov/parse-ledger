@@ -1,4 +1,14 @@
-import { IsBoolean, IsEnum, IsInt, IsObject, IsOptional, IsString, MaxLength, MinLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+  MinLength,
+} from 'class-validator';
 import { CustomTableColumnType } from '../../../entities/custom-table-column.entity';
 
 export class UpdateCustomTableColumnDto {
@@ -29,4 +39,3 @@ export class UpdateCustomTableColumnDto {
   @IsObject()
   config?: Record<string, any> | null;
 }
-

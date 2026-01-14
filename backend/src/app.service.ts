@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import type { DataSource } from 'typeorm';
 
 @Injectable()
 export class AppService {
@@ -13,7 +13,10 @@ export class AppService {
     };
   }
 
-  async getReadiness(): Promise<{ status: 'ok' | 'error'; checks: Record<string, 'ok' | 'error'> }> {
+  async getReadiness(): Promise<{
+    status: 'ok' | 'error';
+    checks: Record<string, 'ok' | 'error'>;
+  }> {
     const checks: Record<string, 'ok' | 'error'> = {};
 
     try {
@@ -23,14 +26,7 @@ export class AppService {
       checks.db = 'error';
     }
 
-    const status = Object.values(checks).every((v) => v === 'ok') ? 'ok' : 'error';
+    const status = Object.values(checks).every(v => v === 'ok') ? 'ok' : 'error';
     return { status, checks };
   }
 }
-
-
-
-
-
-
-

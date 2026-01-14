@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, TableColumn, TableForeignKey } from 'typeorm';
+import { type MigrationInterface, type QueryRunner, TableColumn, TableForeignKey } from 'typeorm';
 
 export class AddStatementCategory1733000000001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -27,7 +27,7 @@ export class AddStatementCategory1733000000001 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     const table = await queryRunner.getTable('statements');
-    const foreignKey = table?.foreignKeys.find((fk) => fk.columnNames.includes('category_id'));
+    const foreignKey = table?.foreignKeys.find(fk => fk.columnNames.includes('category_id'));
 
     if (foreignKey) {
       await queryRunner.dropForeignKey('statements', foreignKey);

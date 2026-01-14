@@ -1,5 +1,5 @@
-import { IsEnum, IsOptional, IsString, IsBoolean, IsDateString } from 'class-validator';
-import { SharePermissionLevel, ShareLinkStatus } from '../../../entities';
+import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { ShareLinkStatus, SharePermissionLevel } from '../../../entities';
 
 /**
  * DTO for updating a shared link
@@ -29,7 +29,3 @@ export class UpdateSharedLinkDto {
   @IsString()
   description?: string | null;
 }
-
-
-
-

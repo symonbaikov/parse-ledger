@@ -1,17 +1,17 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { StorageController } from './storage.controller';
-import { StorageService } from './storage.service';
+import { FileStorageService } from '../../common/services/file-storage.service';
 import {
-  SharedLink,
+  Category,
   FilePermission,
+  SharedLink,
   Statement,
   Transaction,
-  Category,
   User,
   WorkspaceMember,
 } from '../../entities';
-import { FileStorageService } from '../../common/services/file-storage.service';
+import { StorageController } from './storage.controller';
+import { StorageService } from './storage.service';
 
 /**
  * Storage module for file management, sharing, and permissions
@@ -33,4 +33,3 @@ import { FileStorageService } from '../../common/services/file-storage.service';
   exports: [StorageService],
 })
 export class StorageModule {}
-

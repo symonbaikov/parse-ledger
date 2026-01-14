@@ -1,10 +1,10 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  ManyToOne,
+  Entity,
   JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from './user.entity';
 
@@ -62,10 +62,3 @@ export class AuditLog {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
-
-
-
-
-
-
-

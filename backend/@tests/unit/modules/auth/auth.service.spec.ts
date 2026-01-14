@@ -1,21 +1,18 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { JwtService } from '@nestjs/jwt';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import {
-  ConflictException,
-  UnauthorizedException,
-} from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
-import { AuthService } from '@/modules/auth/auth.service';
 import {
   User,
+  UserRole,
   Workspace,
   WorkspaceInvitation,
   WorkspaceMember,
-  UserRole,
   WorkspaceRole,
 } from '@/entities';
+import { AuthService } from '@/modules/auth/auth.service';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
+import type { Repository } from 'typeorm';
 
 jest.mock('bcrypt', () => ({
   hash: jest.fn(async (value: string) => `hashed_${value}`),
@@ -93,12 +90,10 @@ describe('AuthService', () => {
 
     service = testingModule.get<AuthService>(AuthService);
     userRepository = testingModule.get<Repository<User>>(getRepositoryToken(User));
-    workspaceRepository = testingModule.get<Repository<Workspace>>(
-      getRepositoryToken(Workspace),
+    workspaceRepository = testingModule.get<Repository<Workspace>>(getRepositoryToken(Workspace));
+    workspaceInvitationRepository = testingModule.get<Repository<WorkspaceInvitation>>(
+      getRepositoryToken(WorkspaceInvitation),
     );
-    workspaceInvitationRepository = testingModule.get<
-      Repository<WorkspaceInvitation>
-    >(getRepositoryToken(WorkspaceInvitation));
     workspaceMemberRepository = testingModule.get<Repository<WorkspaceMember>>(
       getRepositoryToken(WorkspaceMember),
     );
@@ -134,18 +129,10 @@ describe('AuthService', () => {
         ...mockUser,
         email: registerDto.email,
       } as User);
-      jest
-        .spyOn(workspaceRepository, 'create')
-        .mockReturnValue(mockWorkspace as Workspace);
-      jest
-        .spyOn(workspaceRepository, 'save')
-        .mockResolvedValue(mockWorkspace as Workspace);
-      jest
-        .spyOn(workspaceMemberRepository, 'create')
-        .mockReturnValue({} as WorkspaceMember);
-      jest
-        .spyOn(workspaceMemberRepository, 'save')
-        .mockResolvedValue({} as WorkspaceMember);
+      jest.spyOn(workspaceRepository, 'create').mockReturnValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'save').mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceMemberRepository, 'create').mockReturnValue({} as WorkspaceMember);
+      jest.spyOn(workspaceMemberRepository, 'save').mockResolvedValue({} as WorkspaceMember);
       jest.spyOn(jwtService, 'sign').mockReturnValue('token');
       jest.spyOn(bcrypt, 'hash').mockImplementation(() => 'hashed_password');
 
@@ -163,13 +150,9 @@ describe('AuthService', () => {
         name: 'Test User',
       };
 
-      jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue(mockUser as User);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
 
-      await expect(service.register(registerDto)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(service.register(registerDto)).rejects.toThrow(ConflictException);
     });
 
     it('should normalize email to lowercase', async () => {
@@ -179,23 +162,13 @@ describe('AuthService', () => {
         name: 'Test User',
       };
 
-      const findOneSpy = jest
-        .spyOn(userRepository, 'findOne')
-        .mockResolvedValue(null);
+      const findOneSpy = jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
       jest.spyOn(userRepository, 'create').mockReturnValue(mockUser as User);
       jest.spyOn(userRepository, 'save').mockResolvedValue(mockUser as User);
-      jest
-        .spyOn(workspaceRepository, 'create')
-        .mockReturnValue(mockWorkspace as Workspace);
-      jest
-        .spyOn(workspaceRepository, 'save')
-        .mockResolvedValue(mockWorkspace as Workspace);
-      jest
-        .spyOn(workspaceMemberRepository, 'create')
-        .mockReturnValue({} as WorkspaceMember);
-      jest
-        .spyOn(workspaceMemberRepository, 'save')
-        .mockResolvedValue({} as WorkspaceMember);
+      jest.spyOn(workspaceRepository, 'create').mockReturnValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'save').mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceMemberRepository, 'create').mockReturnValue({} as WorkspaceMember);
+      jest.spyOn(workspaceMemberRepository, 'save').mockResolvedValue({} as WorkspaceMember);
       jest.spyOn(jwtService, 'sign').mockReturnValue('token');
       jest.spyOn(bcrypt, 'hash').mockImplementation(() => 'hashed_password');
 
@@ -214,22 +187,12 @@ describe('AuthService', () => {
       };
 
       jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
-      const saveSpy = jest
-        .spyOn(userRepository, 'save')
-        .mockResolvedValue(mockUser as User);
+      const saveSpy = jest.spyOn(userRepository, 'save').mockResolvedValue(mockUser as User);
       jest.spyOn(userRepository, 'create').mockReturnValue(mockUser as User);
-      jest
-        .spyOn(workspaceRepository, 'create')
-        .mockReturnValue(mockWorkspace as Workspace);
-      jest
-        .spyOn(workspaceRepository, 'save')
-        .mockResolvedValue(mockWorkspace as Workspace);
-      jest
-        .spyOn(workspaceMemberRepository, 'create')
-        .mockReturnValue({} as WorkspaceMember);
-      jest
-        .spyOn(workspaceMemberRepository, 'save')
-        .mockResolvedValue({} as WorkspaceMember);
+      jest.spyOn(workspaceRepository, 'create').mockReturnValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'save').mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceMemberRepository, 'create').mockReturnValue({} as WorkspaceMember);
+      jest.spyOn(workspaceMemberRepository, 'save').mockResolvedValue({} as WorkspaceMember);
       jest.spyOn(jwtService, 'sign').mockReturnValue('token');
       jest.spyOn(bcrypt, 'hash').mockImplementation(() => 'hashed_password');
 
@@ -273,9 +236,7 @@ describe('AuthService', () => {
 
       jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw UnauthorizedException for invalid password', async () => {
@@ -290,9 +251,7 @@ describe('AuthService', () => {
       } as User);
       (bcrypt.compare as jest.Mock).mockResolvedValue(false as never);
 
-      await expect(service.login(loginDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.login(loginDto)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should handle case-insensitive email lookup', async () => {
@@ -341,9 +300,7 @@ describe('AuthService', () => {
       const userId = '1';
 
       jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
-      const saveSpy = jest
-        .spyOn(userRepository, 'save')
-        .mockResolvedValue(mockUser as User);
+      const saveSpy = jest.spyOn(userRepository, 'save').mockResolvedValue(mockUser as User);
 
       const result = await service.logout(userId);
 

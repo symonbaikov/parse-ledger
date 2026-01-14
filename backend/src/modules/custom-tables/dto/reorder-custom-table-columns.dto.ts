@@ -6,4 +6,3 @@ export class ReorderCustomTableColumnsDto {
   @IsUUID('4', { each: true })
   columnIds: string[];
 }
-

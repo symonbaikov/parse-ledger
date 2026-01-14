@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
+import { type MigrationInterface, type QueryRunner, Table, TableIndex } from 'typeorm';
 
 export class AddCustomTableImportJobs1735000000003 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -44,7 +44,10 @@ export class AddCustomTableImportJobs1735000000003 implements MigrationInterface
     );
     await queryRunner.createIndex(
       'custom_table_import_jobs',
-      new TableIndex({ name: 'IDX_custom_table_import_jobs_created_at', columnNames: ['created_at'] }),
+      new TableIndex({
+        name: 'IDX_custom_table_import_jobs_created_at',
+        columnNames: ['created_at'],
+      }),
     );
   }
 
@@ -55,4 +58,3 @@ export class AddCustomTableImportJobs1735000000003 implements MigrationInterface
     }
   }
 }
-

@@ -1,15 +1,15 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
+  Entity,
   JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
-import { Statement } from './statement.entity';
-import { Category } from './category.entity';
 import { Branch } from './branch.entity';
+import { Category } from './category.entity';
+import { Statement } from './statement.entity';
 import { Wallet } from './wallet.entity';
 
 export enum TransactionType {
@@ -22,7 +22,10 @@ export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Statement, (statement) => statement.transactions)
+  @ManyToOne(
+    () => Statement,
+    statement => statement.transactions,
+  )
   @JoinColumn({ name: 'statement_id' })
   statement: Statement;
 
@@ -114,4 +117,3 @@ export class Transaction {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 }
-

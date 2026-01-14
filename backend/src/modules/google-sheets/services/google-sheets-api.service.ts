@@ -1,11 +1,11 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { google } from 'googleapis';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
-import { Transaction } from '../../../entities/transaction.entity';
-import { Category } from '../../../entities/category.entity';
-import { Branch } from '../../../entities/branch.entity';
-import { Wallet } from '../../../entities/wallet.entity';
+import { google } from 'googleapis';
+import type { Branch } from '../../../entities/branch.entity';
+import type { Category } from '../../../entities/category.entity';
+import type { Transaction } from '../../../entities/transaction.entity';
+import type { Wallet } from '../../../entities/wallet.entity';
 
 interface SheetRow {
   monthText: string; // Месяц (текстовое представление)
@@ -261,7 +261,7 @@ export class GoogleSheetsApiService {
       const startRow = await this.findFirstEmptyRow(sheets, spreadsheetId, range);
 
       // Map transactions to rows
-      const values = transactions.map((transaction) => {
+      const values = transactions.map(transaction => {
         const category = transaction.categoryId ? categories.get(transaction.categoryId) : null;
         const branch = transaction.branchId ? branches.get(transaction.branchId) : null;
         const wallet = transaction.walletId ? wallets.get(transaction.walletId) : null;
@@ -325,7 +325,7 @@ export class GoogleSheetsApiService {
 
     try {
       // Map transactions to rows
-      const values = transactions.map((transaction) => {
+      const values = transactions.map(transaction => {
         const category = transaction.categoryId ? categories.get(transaction.categoryId) : null;
         const branch = transaction.branchId ? branches.get(transaction.branchId) : null;
         const wallet = transaction.walletId ? wallets.get(transaction.walletId) : null;
@@ -373,7 +373,11 @@ export class GoogleSheetsApiService {
   /**
    * Verify access to Google Sheet
    */
-  async verifyAccess(accessToken: string, refreshToken: string, spreadsheetId: string): Promise<boolean> {
+  async verifyAccess(
+    accessToken: string,
+    refreshToken: string,
+    spreadsheetId: string,
+  ): Promise<boolean> {
     const sheets = this.getSheetsClient(accessToken);
 
     try {
@@ -468,5 +472,3 @@ export class GoogleSheetsApiService {
     }
   }
 }
-
-

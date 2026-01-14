@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
+import { type MigrationInterface, type QueryRunner, Table, TableIndex } from 'typeorm';
 
 export class AddCustomTableStyles1734800000001 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -112,4 +112,3 @@ export class AddCustomTableStyles1734800000001 implements MigrationInterface {
     }
   }
 }
-

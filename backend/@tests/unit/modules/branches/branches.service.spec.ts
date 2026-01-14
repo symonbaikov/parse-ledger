@@ -1,9 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
-import { BranchesService } from '@/modules/branches/branches.service';
 import { Branch } from '@/entities/branch.entity';
+import { BranchesService } from '@/modules/branches/branches.service';
+import { NotFoundException } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
 
 describe('BranchesService', () => {
   let testingModule: TestingModule;
@@ -35,9 +35,7 @@ describe('BranchesService', () => {
     }).compile();
 
     service = testingModule.get<BranchesService>(BranchesService);
-    branchRepository = testingModule.get<Repository<Branch>>(
-      getRepositoryToken(Branch),
-    );
+    branchRepository = testingModule.get<Repository<Branch>>(getRepositoryToken(Branch));
   });
 
   beforeEach(() => {
@@ -60,12 +58,8 @@ describe('BranchesService', () => {
     };
 
     it('should create a new branch', async () => {
-      jest
-        .spyOn(branchRepository, 'create')
-        .mockReturnValue(mockBranch as Branch);
-      jest
-        .spyOn(branchRepository, 'save')
-        .mockResolvedValue(mockBranch as Branch);
+      jest.spyOn(branchRepository, 'create').mockReturnValue(mockBranch as Branch);
+      jest.spyOn(branchRepository, 'save').mockResolvedValue(mockBranch as Branch);
 
       const result = await service.create('1', createDto);
 
@@ -77,9 +71,7 @@ describe('BranchesService', () => {
       const createSpy = jest
         .spyOn(branchRepository, 'create')
         .mockReturnValue(mockBranch as Branch);
-      jest
-        .spyOn(branchRepository, 'save')
-        .mockResolvedValue(mockBranch as Branch);
+      jest.spyOn(branchRepository, 'save').mockResolvedValue(mockBranch as Branch);
 
       await service.create('1', createDto);
 
@@ -94,9 +86,7 @@ describe('BranchesService', () => {
       const createSpy = jest
         .spyOn(branchRepository, 'create')
         .mockReturnValue(mockBranch as Branch);
-      jest
-        .spyOn(branchRepository, 'save')
-        .mockResolvedValue(mockBranch as Branch);
+      jest.spyOn(branchRepository, 'save').mockResolvedValue(mockBranch as Branch);
 
       await service.create('1', createDto);
 
@@ -111,9 +101,7 @@ describe('BranchesService', () => {
       const createSpy = jest
         .spyOn(branchRepository, 'create')
         .mockReturnValue(mockBranch as Branch);
-      jest
-        .spyOn(branchRepository, 'save')
-        .mockResolvedValue(mockBranch as Branch);
+      jest.spyOn(branchRepository, 'save').mockResolvedValue(mockBranch as Branch);
 
       await service.create('1', createDto);
 
@@ -128,9 +116,7 @@ describe('BranchesService', () => {
   describe('findAll', () => {
     it('should return all branches for user', async () => {
       const branches = [mockBranch, { ...mockBranch, id: 'branch-2' }];
-      jest
-        .spyOn(branchRepository, 'find')
-        .mockResolvedValue(branches as Branch[]);
+      jest.spyOn(branchRepository, 'find').mockResolvedValue(branches as Branch[]);
 
       const result = await service.findAll('1');
 
@@ -166,21 +152,17 @@ describe('BranchesService', () => {
 
     it('should include inactive branches', async () => {
       const inactiveBranch = { ...mockBranch, isActive: false };
-      jest
-        .spyOn(branchRepository, 'find')
-        .mockResolvedValue([inactiveBranch] as Branch[]);
+      jest.spyOn(branchRepository, 'find').mockResolvedValue([inactiveBranch] as Branch[]);
 
       const result = await service.findAll('1');
 
-      expect(result.some((b) => !b.isActive)).toBe(true);
+      expect(result.some(b => !b.isActive)).toBe(true);
     });
   });
 
   describe('findOne', () => {
     it('should return branch by id', async () => {
-      jest
-        .spyOn(branchRepository, 'findOne')
-        .mockResolvedValue(mockBranch as Branch);
+      jest.spyOn(branchRepository, 'findOne').mockResolvedValue(mockBranch as Branch);
 
       const result = await service.findOne('branch-1', '1');
 
@@ -190,9 +172,7 @@ describe('BranchesService', () => {
     it('should throw NotFoundException if not found', async () => {
       jest.spyOn(branchRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findOne('invalid', '1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('invalid', '1')).rejects.toThrow(NotFoundException);
     });
 
     it('should verify user ownership', async () => {
@@ -212,9 +192,7 @@ describe('BranchesService', () => {
     it('should not return other user branches', async () => {
       jest.spyOn(branchRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findOne('branch-1', '999')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOne('branch-1', '999')).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -225,18 +203,14 @@ describe('BranchesService', () => {
     };
 
     beforeEach(() => {
-      jest
-        .spyOn(branchRepository, 'findOne')
-        .mockResolvedValue(mockBranch as Branch);
+      jest.spyOn(branchRepository, 'findOne').mockResolvedValue(mockBranch as Branch);
     });
 
     it('should update branch', async () => {
-      jest
-        .spyOn(branchRepository, 'save')
-        .mockResolvedValue({
-          ...mockBranch,
-          ...updateDto,
-        } as Branch);
+      jest.spyOn(branchRepository, 'save').mockResolvedValue({
+        ...mockBranch,
+        ...updateDto,
+      } as Branch);
 
       const result = await service.update('branch-1', '1', updateDto);
 
@@ -247,15 +221,11 @@ describe('BranchesService', () => {
     it('should throw NotFoundException if branch not found', async () => {
       jest.spyOn(branchRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(
-        service.update('invalid', '1', updateDto),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.update('invalid', '1', updateDto)).rejects.toThrow(NotFoundException);
     });
 
     it('should preserve userId on update', async () => {
-      const saveSpy = jest
-        .spyOn(branchRepository, 'save')
-        .mockResolvedValue(mockBranch as Branch);
+      const saveSpy = jest.spyOn(branchRepository, 'save').mockResolvedValue(mockBranch as Branch);
 
       await service.update('branch-1', '1', updateDto);
 
@@ -265,9 +235,7 @@ describe('BranchesService', () => {
 
     it('should allow partial updates', async () => {
       const partialUpdate = { name: 'New Name Only' };
-      jest
-        .spyOn(branchRepository, 'save')
-        .mockResolvedValue(mockBranch as Branch);
+      jest.spyOn(branchRepository, 'save').mockResolvedValue(mockBranch as Branch);
 
       await service.update('branch-1', '1', partialUpdate);
 
@@ -276,12 +244,10 @@ describe('BranchesService', () => {
 
     it('should allow toggling isActive status', async () => {
       const toggleDto = { isActive: false };
-      jest
-        .spyOn(branchRepository, 'save')
-        .mockResolvedValue({
-          ...mockBranch,
-          isActive: false,
-        } as Branch);
+      jest.spyOn(branchRepository, 'save').mockResolvedValue({
+        ...mockBranch,
+        isActive: false,
+      } as Branch);
 
       const result = await service.update('branch-1', '1', toggleDto);
 
@@ -291,9 +257,7 @@ describe('BranchesService', () => {
 
   describe('remove', () => {
     beforeEach(() => {
-      jest
-        .spyOn(branchRepository, 'findOne')
-        .mockResolvedValue(mockBranch as Branch);
+      jest.spyOn(branchRepository, 'findOne').mockResolvedValue(mockBranch as Branch);
     });
 
     it('should delete branch', async () => {
@@ -309,24 +273,18 @@ describe('BranchesService', () => {
     it('should throw NotFoundException if branch not found', async () => {
       jest.spyOn(branchRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.remove('invalid', '1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('invalid', '1')).rejects.toThrow(NotFoundException);
     });
 
     it('should verify user ownership before delete', async () => {
       jest.spyOn(branchRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.remove('branch-1', '999')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.remove('branch-1', '999')).rejects.toThrow(NotFoundException);
     });
 
     it('should handle branches with transactions', async () => {
       // Should prevent deletion or cascade
-      jest
-        .spyOn(branchRepository, 'remove')
-        .mockResolvedValue(mockBranch as Branch);
+      jest.spyOn(branchRepository, 'remove').mockResolvedValue(mockBranch as Branch);
 
       await service.remove('branch-1', '1');
 

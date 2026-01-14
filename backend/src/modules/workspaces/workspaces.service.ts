@@ -6,26 +6,26 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
-import { Resend } from 'resend';
 import { render } from '@react-email/render';
 import * as React from 'react';
-import { retry, TimeoutError, withTimeout } from '../../common/utils/async.util';
+import { Resend } from 'resend';
+import type { Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
+import { TimeoutError, retry, withTimeout } from '../../common/utils/async.util';
+import {
+  WorkspaceInvitationEmail,
+  workspaceInvitationEmailText,
+} from '../../emails/workspace-invitation.email';
 import {
   User,
   Workspace,
   WorkspaceInvitation,
   WorkspaceInvitationStatus,
   WorkspaceMember,
-  WorkspaceRole,
   type WorkspaceMemberPermissions,
+  WorkspaceRole,
 } from '../../entities';
-import {
-  WorkspaceInvitationEmail,
-  workspaceInvitationEmailText,
-} from '../../emails/workspace-invitation.email';
-import { InviteMemberDto } from './dto/invite-member.dto';
+import type { InviteMemberDto } from './dto/invite-member.dto';
 
 const INVITATION_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
@@ -91,7 +91,7 @@ export class WorkspacesService {
         ownerId: workspace.ownerId,
         createdAt: workspace.createdAt,
       },
-      members: members.map((member) => ({
+      members: members.map(member => ({
         id: member.userId,
         email: member.user?.email,
         name: member.user?.name,
@@ -99,7 +99,7 @@ export class WorkspacesService {
         permissions: member.permissions,
         joinedAt: member.createdAt,
       })),
-      invitations: invitations.map((invite) => ({
+      invitations: invitations.map(invite => ({
         id: invite.id,
         email: invite.email,
         role: invite.role,
@@ -136,7 +136,9 @@ export class WorkspacesService {
     const email = dto.email.trim().toLowerCase();
     const role = dto.role || WorkspaceRole.MEMBER;
     const permissions: WorkspaceMemberPermissions | null =
-      role === WorkspaceRole.MEMBER ? ((dto.permissions as WorkspaceMemberPermissions | undefined) ?? null) : null;
+      role === WorkspaceRole.MEMBER
+        ? ((dto.permissions as WorkspaceMemberPermissions | undefined) ?? null)
+        : null;
 
     const existingUser = await this.userRepository.findOne({
       where: { email },
@@ -284,7 +286,9 @@ export class WorkspacesService {
     }
 
     if (
-      ![WorkspaceInvitationStatus.PENDING, WorkspaceInvitationStatus.ACCEPTED].includes(invitation.status)
+      ![WorkspaceInvitationStatus.PENDING, WorkspaceInvitationStatus.ACCEPTED].includes(
+        invitation.status,
+      )
     ) {
       throw new BadRequestException('Приглашение недоступно');
     }
@@ -384,12 +388,15 @@ export class WorkspacesService {
           retries: 1,
           baseDelayMs: 300,
           maxDelayMs: 2000,
-          isRetryable: (err) => err instanceof TimeoutError,
+          isRetryable: err => err instanceof TimeoutError,
         },
       );
 
       if (error) {
-        console.warn('[Workspaces] Не удалось отправить email приглашения через Resend:', error.message);
+        console.warn(
+          '[Workspaces] Не удалось отправить email приглашения через Resend:',
+          error.message,
+        );
       }
     } catch (error) {
       console.warn(

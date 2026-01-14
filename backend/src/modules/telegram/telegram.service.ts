@@ -1,18 +1,18 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
+import { TimeoutError, retry } from '../../common/utils/async.util';
+import { ReportStatus, ReportType, TelegramReport } from '../../entities/telegram-report.entity';
 import { User } from '../../entities/user.entity';
-import { TelegramReport, ReportStatus, ReportType } from '../../entities/telegram-report.entity';
-import { ReportsService } from '../reports/reports.service';
-import { StatementsService } from '../statements/statements.service';
-import { retry, TimeoutError } from '../../common/utils/async.util';
-import { ConnectTelegramDto } from './dto/connect-telegram.dto';
-import { SendTelegramReportDto } from './dto/send-report.dto';
-import { DailyReport } from '../reports/interfaces/daily-report.interface';
-import { MonthlyReport } from '../reports/interfaces/monthly-report.interface';
+import type { DailyReport } from '../reports/interfaces/daily-report.interface';
+import type { MonthlyReport } from '../reports/interfaces/monthly-report.interface';
+import type { ReportsService } from '../reports/reports.service';
+import type { StatementsService } from '../statements/statements.service';
+import type { ConnectTelegramDto } from './dto/connect-telegram.dto';
+import type { SendTelegramReportDto } from './dto/send-report.dto';
 
 interface TelegramSendResult {
   messageId: string;
@@ -47,7 +47,9 @@ export class TelegramService {
   ) {
     this.botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
     this.apiBase = this.botToken ? `https://api.telegram.org/bot${this.botToken}` : undefined;
-    this.fileApiBase = this.botToken ? `https://api.telegram.org/file/bot${this.botToken}` : undefined;
+    this.fileApiBase = this.botToken
+      ? `https://api.telegram.org/file/bot${this.botToken}`
+      : undefined;
 
     if (!this.botToken) {
       this.logger.warn('TELEGRAM_BOT_TOKEN is not configured. Telegram features will be disabled.');
@@ -74,7 +76,10 @@ export class TelegramService {
 
     if (this.botToken) {
       try {
-        await this.sendMessage(dto.chatId, '✅ Telegram подключен. Мы будем отправлять отчёты в этот чат.');
+        await this.sendMessage(
+          dto.chatId,
+          '✅ Telegram подключен. Мы будем отправлять отчёты в этот чат.',
+        );
       } catch (error: any) {
         this.logger.warn(`Failed to send confirmation message: ${error?.message || error}`);
       }
@@ -86,7 +91,9 @@ export class TelegramService {
   async sendReport(user: User, dto: SendTelegramReportDto) {
     const chatId = dto.chatId || user.telegramChatId;
     if (!chatId) {
-      throw new BadRequestException('Telegram chat is not connected. Укажите chatId или подключите Telegram.');
+      throw new BadRequestException(
+        'Telegram chat is not connected. Укажите chatId или подключите Telegram.',
+      );
     }
 
     if (!this.botToken) {
@@ -109,7 +116,7 @@ export class TelegramService {
     }
   }
 
-  async listReports(user: User, page: number = 1, limit: number = 20) {
+  async listReports(user: User, page = 1, limit = 20) {
     const [data, total] = await this.telegramReportRepository.findAndCount({
       where: { userId: user.id },
       order: { createdAt: 'DESC' },
@@ -145,14 +152,7 @@ export class TelegramService {
     const monthlyReport = await this.reportsService.generateMonthlyReport(user.id, year, month);
     const message = this.formatMonthlyReportMessage(year, month, monthlyReport);
 
-    return this.persistAndSend(
-      user.id,
-      chatId,
-      ReportType.MONTHLY,
-      reportDate,
-      message,
-      existing,
-    );
+    return this.persistAndSend(user.id, chatId, ReportType.MONTHLY, reportDate, message, existing);
   }
 
   private async persistAndSend(
@@ -163,7 +163,8 @@ export class TelegramService {
     message: string,
     existing?: TelegramReport | null,
   ) {
-    const record = existing ||
+    const record =
+      existing ||
       this.telegramReportRepository.create({
         userId,
         chatId,
@@ -260,7 +261,7 @@ export class TelegramService {
         retries: 2,
         baseDelayMs: 500,
         maxDelayMs: 5000,
-        isRetryable: (error) =>
+        isRetryable: error =>
           error instanceof TimeoutError ||
           (error instanceof TelegramApiError && (error.statusCode || 0) >= 500),
       });
@@ -316,7 +317,11 @@ export class TelegramService {
     }
   }
 
-  private async handleReportCommand(chatId: string, telegramId: string | null, text: string): Promise<void> {
+  private async handleReportCommand(
+    chatId: string,
+    telegramId: string | null,
+    text: string,
+  ): Promise<void> {
     if (!telegramId) {
       await this.sendMessage(chatId, 'Не удалось определить ваш Telegram ID. Попробуйте позже.');
       return;
@@ -364,9 +369,16 @@ export class TelegramService {
     }
   }
 
-  private async handleDocumentUpload(chatId: string, telegramId: string | null, document: any): Promise<void> {
+  private async handleDocumentUpload(
+    chatId: string,
+    telegramId: string | null,
+    document: any,
+  ): Promise<void> {
     if (!telegramId) {
-      await this.sendMessage(chatId, '⚠️ Не удалось определить ваш Telegram ID. Отправьте /start и повторите.');
+      await this.sendMessage(
+        chatId,
+        '⚠️ Не удалось определить ваш Telegram ID. Отправьте /start и повторите.',
+      );
       return;
     }
 
@@ -379,7 +391,9 @@ export class TelegramService {
       return;
     }
 
-    const fileName = this.sanitizeFileName(document.file_name || `statement-${document.file_id}.pdf`);
+    const fileName = this.sanitizeFileName(
+      document.file_name || `statement-${document.file_id}.pdf`,
+    );
     const mimeType: string = document.mime_type || 'application/pdf';
 
     if (mimeType !== 'application/pdf' && !fileName.toLowerCase().endsWith('.pdf')) {
@@ -391,7 +405,10 @@ export class TelegramService {
 
     try {
       const multerFile = await this.downloadTelegramFile(document.file_id, fileName, mimeType);
-      const statement = await this.statementsService.create(user, multerFile as Express.Multer.File);
+      const statement = await this.statementsService.create(
+        user,
+        multerFile as Express.Multer.File,
+      );
       await this.sendMessage(
         chatId,
         `✅ Файл принят и отправлен в обработку. Статус: ${statement.status}. Проверить результат можно в веб-интерфейсе FinFlow.`,
@@ -399,11 +416,17 @@ export class TelegramService {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to handle Telegram document: ${message}`);
-      await this.sendMessage(chatId, 'Не удалось обработать файл. Попробуйте позже или загрузите через веб-интерфейс.');
+      await this.sendMessage(
+        chatId,
+        'Не удалось обработать файл. Попробуйте позже или загрузите через веб-интерфейс.',
+      );
     }
   }
 
-  private async findUserByTelegram(telegramId: string | null, chatId: string): Promise<User | null> {
+  private async findUserByTelegram(
+    telegramId: string | null,
+    chatId: string,
+  ): Promise<User | null> {
     const query = this.userRepository
       .createQueryBuilder('user')
       .where('user.isActive = :isActive', { isActive: true });
@@ -517,8 +540,12 @@ export class TelegramService {
   private formatDailyReportMessage(date: string, report: DailyReport): string {
     const lines: string[] = [];
     lines.push(`📅 Ежедневный отчёт — ${date}`);
-    lines.push(`➕ Приход: ${this.formatAmount(report.income.totalAmount)} (${report.income.transactionCount})`);
-    lines.push(`➖ Расход: ${this.formatAmount(report.expense.totalAmount)} (${report.expense.transactionCount})`);
+    lines.push(
+      `➕ Приход: ${this.formatAmount(report.income.totalAmount)} (${report.income.transactionCount})`,
+    );
+    lines.push(
+      `➖ Расход: ${this.formatAmount(report.expense.totalAmount)} (${report.expense.transactionCount})`,
+    );
     lines.push(`📊 Итог дня: ${this.formatAmount(report.summary.difference)}`);
 
     if (report.income.topCounterparties.length > 0) {
@@ -531,7 +558,9 @@ export class TelegramService {
     if (report.expense.topCategories.length > 0) {
       lines.push('\nТоп категорий по расходу:');
       report.expense.topCategories.slice(0, 5).forEach((item, idx) => {
-        lines.push(`${idx + 1}. ${item.categoryName} — ${this.formatAmount(item.amount)} (${item.count})`);
+        lines.push(
+          `${idx + 1}. ${item.categoryName} — ${this.formatAmount(item.amount)} (${item.count})`,
+        );
       });
     }
 
@@ -543,19 +572,25 @@ export class TelegramService {
     lines.push(`🗓️ Отчёт за ${String(month).padStart(2, '0')}.${year}`);
     lines.push(`➕ Приход: ${this.formatAmount(report.summary.totalIncome)}`);
     lines.push(`➖ Расход: ${this.formatAmount(report.summary.totalExpense)}`);
-    lines.push(`📊 Разница: ${this.formatAmount(report.summary.difference)} (операций: ${report.summary.transactionCount})`);
+    lines.push(
+      `📊 Разница: ${this.formatAmount(report.summary.difference)} (операций: ${report.summary.transactionCount})`,
+    );
 
     if (report.categoryDistribution.length > 0) {
       lines.push('\nТоп категорий расходов:');
       report.categoryDistribution.slice(0, 5).forEach((item, idx) => {
-        lines.push(`${idx + 1}. ${item.categoryName} — ${this.formatAmount(item.amount)} (${item.percentage.toFixed(1)}%)`);
+        lines.push(
+          `${idx + 1}. ${item.categoryName} — ${this.formatAmount(item.amount)} (${item.percentage.toFixed(1)}%)`,
+        );
       });
     }
 
     if (report.counterpartyDistribution.length > 0) {
       lines.push('\nТоп контрагентов:');
       report.counterpartyDistribution.slice(0, 5).forEach((item, idx) => {
-        lines.push(`${idx + 1}. ${item.counterpartyName} — ${this.formatAmount(item.amount)} (${item.percentage.toFixed(1)}%)`);
+        lines.push(
+          `${idx + 1}. ${item.counterpartyName} — ${this.formatAmount(item.amount)} (${item.percentage.toFixed(1)}%)`,
+        );
       });
     }
 

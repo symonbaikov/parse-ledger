@@ -1,14 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { ClassificationService } from '@/modules/classification/services/classification.service';
-import {
-  Transaction,
-  TransactionType,
-} from '@/entities/transaction.entity';
-import { Category, CategoryType } from '@/entities/category.entity';
 import { Branch } from '@/entities/branch.entity';
+import { Category, CategoryType } from '@/entities/category.entity';
+import { type Transaction, TransactionType } from '@/entities/transaction.entity';
 import { Wallet } from '@/entities/wallet.entity';
+import { ClassificationService } from '@/modules/classification/services/classification.service';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
 
 describe('ClassificationService', () => {
   let testingModule: TestingModule;
@@ -75,15 +72,9 @@ describe('ClassificationService', () => {
     }).compile();
 
     service = testingModule.get<ClassificationService>(ClassificationService);
-    categoryRepository = testingModule.get<Repository<Category>>(
-      getRepositoryToken(Category),
-    );
-    branchRepository = testingModule.get<Repository<Branch>>(
-      getRepositoryToken(Branch),
-    );
-    walletRepository = testingModule.get<Repository<Wallet>>(
-      getRepositoryToken(Wallet),
-    );
+    categoryRepository = testingModule.get<Repository<Category>>(getRepositoryToken(Category));
+    branchRepository = testingModule.get<Repository<Branch>>(getRepositoryToken(Branch));
+    walletRepository = testingModule.get<Repository<Wallet>>(getRepositoryToken(Wallet));
   });
 
   beforeEach(() => {
@@ -118,10 +109,7 @@ describe('ClassificationService', () => {
       const transaction = { ...mockTransaction, debit: 100, credit: 0 };
       jest.spyOn(categoryRepository, 'find').mockResolvedValue([]);
 
-      const result = await service.classifyTransaction(
-        transaction as Transaction,
-        '1',
-      );
+      const result = await service.classifyTransaction(transaction as Transaction, '1');
 
       expect(result.transactionType).toBe(TransactionType.EXPENSE);
     });
@@ -130,23 +118,15 @@ describe('ClassificationService', () => {
       const transaction = { ...mockTransaction, debit: 0, credit: 200 };
       jest.spyOn(categoryRepository, 'find').mockResolvedValue([]);
 
-      const result = await service.classifyTransaction(
-        transaction as Transaction,
-        '1',
-      );
+      const result = await service.classifyTransaction(transaction as Transaction, '1');
 
       expect(result.transactionType).toBe(TransactionType.INCOME);
     });
 
     it('should auto-classify category based on description', async () => {
-      jest.spyOn(categoryRepository, 'find').mockResolvedValue([
-        mockCategory as Category,
-      ]);
+      jest.spyOn(categoryRepository, 'find').mockResolvedValue([mockCategory as Category]);
 
-      const result = await service.classifyTransaction(
-        mockTransaction as Transaction,
-        '1',
-      );
+      const result = await service.classifyTransaction(mockTransaction as Transaction, '1');
 
       expect(result.categoryId).toBeDefined();
       expect(autoCategorySpy).toHaveBeenCalled();
@@ -163,14 +143,9 @@ describe('ClassificationService', () => {
         keywords: ['walmart', 'supermarket', 'grocery'],
       };
 
-      jest
-        .spyOn(categoryRepository, 'find')
-        .mockResolvedValue([groceryCategory as Category]);
+      jest.spyOn(categoryRepository, 'find').mockResolvedValue([groceryCategory as Category]);
 
-      const result = await service.classifyTransaction(
-        groceryTransaction as Transaction,
-        '1',
-      );
+      const result = await service.classifyTransaction(groceryTransaction as Transaction, '1');
 
       expect(result.categoryId).toBeDefined();
     });
@@ -178,10 +153,7 @@ describe('ClassificationService', () => {
     it('should handle transactions without matches', async () => {
       jest.spyOn(categoryRepository, 'find').mockResolvedValue([]);
 
-      const result = await service.classifyTransaction(
-        mockTransaction as Transaction,
-        '1',
-      );
+      const result = await service.classifyTransaction(mockTransaction as Transaction, '1');
 
       expect(result).toBeDefined();
       expect(result.categoryId).toBeDefined();
@@ -204,16 +176,11 @@ describe('ClassificationService', () => {
         minAmount: 1000,
       };
 
-      jest
-        .spyOn(categoryRepository, 'find')
-        .mockResolvedValue([highValueCategory as Category]);
+      jest.spyOn(categoryRepository, 'find').mockResolvedValue([highValueCategory as Category]);
 
       const highValueTx = { ...mockTransaction, debit: 1500 };
 
-      const result = await service.classifyTransaction(
-        highValueTx as Transaction,
-        '1',
-      );
+      const result = await service.classifyTransaction(highValueTx as Transaction, '1');
 
       expect(result.categoryId).toBeDefined();
     });
@@ -224,17 +191,11 @@ describe('ClassificationService', () => {
         description: 'Purchase@Store#123!',
       };
 
-      jest
-        .spyOn(categoryRepository, 'find')
-        .mockResolvedValue([mockCategory as Category]);
+      jest.spyOn(categoryRepository, 'find').mockResolvedValue([mockCategory as Category]);
 
-      const result = await service.classifyTransaction(
-        specialTx as Transaction,
-        '1',
-      );
+      const result = await service.classifyTransaction(specialTx as Transaction, '1');
 
       expect(result).toBeDefined();
     });
   });
 });
-

@@ -21,4 +21,3 @@ export class UpdateMyPreferencesDto {
   @MaxLength(64)
   timeZone?: string | null;
 }
-

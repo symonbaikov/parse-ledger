@@ -1,7 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { JwtRefreshGuard } from '@/modules/auth/guards/jwt-refresh.guard';
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { type ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Test, type TestingModule } from '@nestjs/testing';
 
 describe('JwtRefreshGuard', () => {
   let testingModule: TestingModule;
@@ -30,9 +30,7 @@ describe('JwtRefreshGuard', () => {
   describe('canActivate', () => {
     it('should use jwt-refresh strategy', async () => {
       const context = createMockExecutionContext();
-      jest
-        .spyOn(AuthGuard('jwt-refresh').prototype, 'canActivate')
-        .mockResolvedValue(true);
+      jest.spyOn(AuthGuard('jwt-refresh').prototype, 'canActivate').mockResolvedValue(true);
 
       const result = await guard.canActivate(context);
 
@@ -47,9 +45,7 @@ describe('JwtRefreshGuard', () => {
         .spyOn(AuthGuard('jwt-refresh').prototype, 'canActivate')
         .mockRejectedValue(new UnauthorizedException());
 
-      await expect(guard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
 
     it('should accept valid refresh token', async () => {
@@ -58,9 +54,7 @@ describe('JwtRefreshGuard', () => {
           authorization: 'Bearer valid.refresh.token',
         },
       });
-      jest
-        .spyOn(AuthGuard('jwt-refresh').prototype, 'canActivate')
-        .mockResolvedValue(true);
+      jest.spyOn(AuthGuard('jwt-refresh').prototype, 'canActivate').mockResolvedValue(true);
 
       const result = await guard.canActivate(context);
 
@@ -77,9 +71,7 @@ describe('JwtRefreshGuard', () => {
         .spyOn(AuthGuard('jwt-refresh').prototype, 'canActivate')
         .mockRejectedValue(new UnauthorizedException('Token expired'));
 
-      await expect(guard.canActivate(context)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
     });
   });
 

@@ -6,7 +6,7 @@ export class TimeoutError extends Error {
 }
 
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export async function withTimeout<T>(
@@ -60,7 +60,7 @@ export async function retry<T>(fn: () => Promise<T>, options: RetryOptions): Pro
         throw error;
       }
 
-      const expDelay = baseDelayMs * Math.pow(factor, attempt);
+      const expDelay = baseDelayMs * factor ** attempt;
       const capped = Math.min(expDelay, maxDelayMs);
       const delayMs = jitter ? Math.floor(capped * (0.5 + Math.random())) : Math.floor(capped);
 
@@ -70,4 +70,3 @@ export async function retry<T>(fn: () => Promise<T>, options: RetryOptions): Pro
     }
   }
 }
-

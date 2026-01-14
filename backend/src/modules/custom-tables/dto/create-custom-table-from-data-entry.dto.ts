@@ -10,7 +10,9 @@ export class CreateCustomTableFromDataEntryDto {
   @IsEnum(DataEntryToCustomTableScope)
   scope: DataEntryToCustomTableScope;
 
-  @ValidateIf((o) => (o as CreateCustomTableFromDataEntryDto).scope === DataEntryToCustomTableScope.TYPE)
+  @ValidateIf(
+    o => (o as CreateCustomTableFromDataEntryDto).scope === DataEntryToCustomTableScope.TYPE,
+  )
   @IsEnum(DataEntryType)
   type?: DataEntryType;
 
@@ -25,4 +27,3 @@ export class CreateCustomTableFromDataEntryDto {
   @MaxLength(2000)
   description?: string | null;
 }
-

@@ -1,22 +1,22 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import {
-  NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
-import { WorkspacesService } from '@/modules/workspaces/workspaces.service';
-import {
-  Workspace,
-  WorkspaceMember,
-  WorkspaceRole,
-  WorkspaceInvitation,
-  WorkspaceInvitationStatus,
   User,
   UserRole,
+  Workspace,
+  WorkspaceInvitation,
+  WorkspaceInvitationStatus,
+  WorkspaceMember,
+  WorkspaceRole,
 } from '@/entities';
+import { WorkspacesService } from '@/modules/workspaces/workspaces.service';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
 
 describe('WorkspacesService', () => {
   let testingModule: TestingModule;
@@ -87,9 +87,7 @@ describe('WorkspacesService', () => {
     }).compile();
 
     service = testingModule.get<WorkspacesService>(WorkspacesService);
-    workspaceRepository = testingModule.get<Repository<Workspace>>(
-      getRepositoryToken(Workspace),
-    );
+    workspaceRepository = testingModule.get<Repository<Workspace>>(getRepositoryToken(Workspace));
     workspaceMemberRepository = testingModule.get<Repository<WorkspaceMember>>(
       getRepositoryToken(WorkspaceMember),
     );
@@ -113,9 +111,7 @@ describe('WorkspacesService', () => {
 
   describe('ensureUserWorkspace', () => {
     it('should return existing workspace', async () => {
-      jest
-        .spyOn(workspaceRepository, 'findOne')
-        .mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'findOne').mockResolvedValue(mockWorkspace as Workspace);
 
       const result = await service.ensureUserWorkspace(mockUser as User);
 
@@ -125,18 +121,12 @@ describe('WorkspacesService', () => {
     it('should create workspace if not exists', async () => {
       const userWithoutWorkspace = { ...mockUser, workspaceId: null };
       jest.spyOn(workspaceRepository, 'findOne').mockResolvedValue(null);
-      jest
-        .spyOn(workspaceRepository, 'create')
-        .mockReturnValue(mockWorkspace as Workspace);
-      jest
-        .spyOn(workspaceRepository, 'save')
-        .mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'create').mockReturnValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'save').mockResolvedValue(mockWorkspace as Workspace);
       jest.spyOn(workspaceMemberRepository, 'save').mockResolvedValue({} as any);
       jest.spyOn(userRepository, 'update').mockResolvedValue({} as any);
 
-      const result = await service.ensureUserWorkspace(
-        userWithoutWorkspace as User,
-      );
+      const result = await service.ensureUserWorkspace(userWithoutWorkspace as User);
 
       expect(result).toEqual(mockWorkspace);
       expect(workspaceRepository.create).toHaveBeenCalled();
@@ -145,15 +135,9 @@ describe('WorkspacesService', () => {
     it('should add user as owner in new workspace', async () => {
       const userWithoutWorkspace = { ...mockUser, workspaceId: null };
       jest.spyOn(workspaceRepository, 'findOne').mockResolvedValue(null);
-      jest
-        .spyOn(workspaceRepository, 'create')
-        .mockReturnValue(mockWorkspace as Workspace);
-      jest
-        .spyOn(workspaceRepository, 'save')
-        .mockResolvedValue(mockWorkspace as Workspace);
-      const memberSpy = jest
-        .spyOn(workspaceMemberRepository, 'save')
-        .mockResolvedValue({} as any);
+      jest.spyOn(workspaceRepository, 'create').mockReturnValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'save').mockResolvedValue(mockWorkspace as Workspace);
+      const memberSpy = jest.spyOn(workspaceMemberRepository, 'save').mockResolvedValue({} as any);
       jest.spyOn(userRepository, 'update').mockResolvedValue({} as any);
 
       await service.ensureUserWorkspace(userWithoutWorkspace as User);
@@ -169,16 +153,10 @@ describe('WorkspacesService', () => {
     it('should update user with workspace id', async () => {
       const userWithoutWorkspace = { ...mockUser, workspaceId: null };
       jest.spyOn(workspaceRepository, 'findOne').mockResolvedValue(null);
-      jest
-        .spyOn(workspaceRepository, 'create')
-        .mockReturnValue(mockWorkspace as Workspace);
-      jest
-        .spyOn(workspaceRepository, 'save')
-        .mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'create').mockReturnValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'save').mockResolvedValue(mockWorkspace as Workspace);
       jest.spyOn(workspaceMemberRepository, 'save').mockResolvedValue({} as any);
-      const updateSpy = jest
-        .spyOn(userRepository, 'update')
-        .mockResolvedValue({} as any);
+      const updateSpy = jest.spyOn(userRepository, 'update').mockResolvedValue({} as any);
 
       await service.ensureUserWorkspace(userWithoutWorkspace as User);
 
@@ -190,9 +168,7 @@ describe('WorkspacesService', () => {
 
   describe('getWorkspaceOverview', () => {
     it('should return workspace with members', async () => {
-      jest
-        .spyOn(workspaceRepository, 'findOne')
-        .mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'findOne').mockResolvedValue(mockWorkspace as Workspace);
       jest.spyOn(workspaceMemberRepository, 'find').mockResolvedValue([
         {
           workspaceId: 'ws-1',
@@ -209,12 +185,8 @@ describe('WorkspacesService', () => {
     });
 
     it('should include pending invitations', async () => {
-      jest
-        .spyOn(workspaceRepository, 'findOne')
-        .mockResolvedValue(mockWorkspace as Workspace);
-      jest
-        .spyOn(workspaceMemberRepository, 'find')
-        .mockResolvedValue([] as WorkspaceMember[]);
+      jest.spyOn(workspaceRepository, 'findOne').mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceMemberRepository, 'find').mockResolvedValue([] as WorkspaceMember[]);
       jest.spyOn(invitationRepository, 'find').mockResolvedValue([
         {
           email: 'invited@example.com',
@@ -228,9 +200,7 @@ describe('WorkspacesService', () => {
     });
 
     it('should show user role and permissions', async () => {
-      jest
-        .spyOn(workspaceRepository, 'findOne')
-        .mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'findOne').mockResolvedValue(mockWorkspace as Workspace);
       jest.spyOn(workspaceMemberRepository, 'find').mockResolvedValue([
         {
           userId: '1',
@@ -254,16 +224,12 @@ describe('WorkspacesService', () => {
     };
 
     beforeEach(() => {
-      jest
-        .spyOn(workspaceRepository, 'findOne')
-        .mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'findOne').mockResolvedValue(mockWorkspace as Workspace);
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue({
         role: WorkspaceRole.OWNER,
       } as WorkspaceMember);
       jest.spyOn(invitationRepository, 'find').mockResolvedValue([]);
-      jest
-        .spyOn(service as any, 'sendInvitationEmail')
-        .mockResolvedValue(undefined);
+      jest.spyOn(service as any, 'sendInvitationEmail').mockResolvedValue(undefined);
     });
 
     it('should create invitation', async () => {
@@ -272,9 +238,7 @@ describe('WorkspacesService', () => {
       const createSpy = jest
         .spyOn(invitationRepository, 'create')
         .mockReturnValue({} as WorkspaceInvitation);
-      jest
-        .spyOn(invitationRepository, 'save')
-        .mockResolvedValue({} as WorkspaceInvitation);
+      jest.spyOn(invitationRepository, 'save').mockResolvedValue({} as WorkspaceInvitation);
 
       await service.inviteMember(mockUser as User, inviteDto);
 
@@ -291,9 +255,9 @@ describe('WorkspacesService', () => {
         role: WorkspaceRole.MEMBER,
       } as WorkspaceMember);
 
-      await expect(
-        service.inviteMember(mockUser as User, inviteDto),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.inviteMember(mockUser as User, inviteDto)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should reject duplicate invitation', async () => {
@@ -302,9 +266,7 @@ describe('WorkspacesService', () => {
         status: WorkspaceInvitationStatus.PENDING,
         token: 'old-token',
       } as WorkspaceInvitation;
-      jest
-        .spyOn(invitationRepository, 'findOne')
-        .mockResolvedValue(existingInvitation);
+      jest.spyOn(invitationRepository, 'findOne').mockResolvedValue(existingInvitation);
       const saveSpy = jest
         .spyOn(invitationRepository, 'save')
         .mockResolvedValue(existingInvitation);
@@ -324,20 +286,16 @@ describe('WorkspacesService', () => {
         workspaceId: mockWorkspace.id,
       } as User);
 
-      await expect(
-        service.inviteMember(mockUser as User, inviteDto),
-      ).rejects.toThrow(ConflictException);
+      await expect(service.inviteMember(mockUser as User, inviteDto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should send invitation email', async () => {
       jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
       jest.spyOn(invitationRepository, 'findOne').mockResolvedValue(null);
-      jest
-        .spyOn(invitationRepository, 'create')
-        .mockReturnValue({} as WorkspaceInvitation);
-      jest
-        .spyOn(invitationRepository, 'save')
-        .mockResolvedValue({} as WorkspaceInvitation);
+      jest.spyOn(invitationRepository, 'create').mockReturnValue({} as WorkspaceInvitation);
+      jest.spyOn(invitationRepository, 'save').mockResolvedValue({} as WorkspaceInvitation);
 
       // Mock email sending would be tested here
       await service.inviteMember(mockUser as User, inviteDto);
@@ -356,9 +314,7 @@ describe('WorkspacesService', () => {
       const createSpy = jest
         .spyOn(invitationRepository, 'create')
         .mockReturnValue({} as WorkspaceInvitation);
-      jest
-        .spyOn(invitationRepository, 'save')
-        .mockResolvedValue({} as WorkspaceInvitation);
+      jest.spyOn(invitationRepository, 'save').mockResolvedValue({} as WorkspaceInvitation);
 
       await service.inviteMember(mockUser as User, upperCaseInvite);
 
@@ -384,9 +340,7 @@ describe('WorkspacesService', () => {
       jest
         .spyOn(invitationRepository, 'findOne')
         .mockResolvedValue({ ...mockInvitation } as WorkspaceInvitation);
-      jest
-        .spyOn(workspaceRepository, 'findOne')
-        .mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'findOne').mockResolvedValue(mockWorkspace as Workspace);
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(null);
       jest.spyOn(workspaceMemberRepository, 'save').mockResolvedValue({} as any);
       const saveInvitationSpy = jest
@@ -403,9 +357,9 @@ describe('WorkspacesService', () => {
     it('should throw if invitation not found', async () => {
       jest.spyOn(invitationRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(
-        service.acceptInvitation(mockUser as User, 'invalid-token'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.acceptInvitation(mockUser as User, 'invalid-token')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw if invitation expired', async () => {
@@ -417,12 +371,14 @@ describe('WorkspacesService', () => {
       jest
         .spyOn(invitationRepository, 'findOne')
         .mockResolvedValue({ ...expiredInvitation } as WorkspaceInvitation);
-      jest.spyOn(invitationRepository, 'save').mockResolvedValue(expiredInvitation as WorkspaceInvitation);
+      jest
+        .spyOn(invitationRepository, 'save')
+        .mockResolvedValue(expiredInvitation as WorkspaceInvitation);
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(
-        service.acceptInvitation(mockUser as User, 'valid-token'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.acceptInvitation(mockUser as User, 'valid-token')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw if email mismatch', async () => {
@@ -431,18 +387,16 @@ describe('WorkspacesService', () => {
         .spyOn(invitationRepository, 'findOne')
         .mockResolvedValue(mockInvitation as WorkspaceInvitation);
 
-      await expect(
-        service.acceptInvitation(wrongUser as User, 'valid-token'),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.acceptInvitation(wrongUser as User, 'valid-token')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should mark invitation as accepted', async () => {
       jest
         .spyOn(invitationRepository, 'findOne')
         .mockResolvedValue({ ...mockInvitation } as WorkspaceInvitation);
-      jest
-        .spyOn(workspaceRepository, 'findOne')
-        .mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'findOne').mockResolvedValue(mockWorkspace as Workspace);
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(null);
       jest.spyOn(workspaceMemberRepository, 'save').mockResolvedValue({} as any);
       const saveSpy = jest

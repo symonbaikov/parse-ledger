@@ -1,25 +1,25 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Delete,
-  Param,
   Body,
-  Query,
-  UseGuards,
+  Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
+  Post,
+  Put,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
-import { TransactionsService } from './transactions.service';
-import { UpdateTransactionDto } from './dto/update-transaction.dto';
-import { BulkUpdateTransactionDto } from './dto/bulk-update-transaction.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { Permission } from '../../common/enums/permissions.enum';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../../entities/user.entity';
+import type { BulkUpdateTransactionDto } from './dto/bulk-update-transaction.dto';
+import type { UpdateTransactionDto } from './dto/update-transaction.dto';
+import type { TransactionsService } from './transactions.service';
 
 @Controller('transactions')
 @UseGuards(JwtAuthGuard)
@@ -45,8 +45,8 @@ export class TransactionsController {
       dateTo: dateTo ? new Date(dateTo) : undefined,
       type,
       categoryId,
-      page: page ? parseInt(page) : 1,
-      limit: limit ? parseInt(limit) : 50,
+      page: page ? Number.parseInt(page) : 1,
+      limit: limit ? Number.parseInt(limit) : 50,
     });
   }
 
@@ -72,10 +72,7 @@ export class TransactionsController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.TRANSACTION_BULK_UPDATE)
-  async bulkUpdate(
-    @Body() bulkUpdateDto: BulkUpdateTransactionDto,
-    @CurrentUser() user: User,
-  ) {
+  async bulkUpdate(@Body() bulkUpdateDto: BulkUpdateTransactionDto, @CurrentUser() user: User) {
     return this.transactionsService.bulkUpdate(user.id, bulkUpdateDto.items);
   }
 
@@ -87,4 +84,3 @@ export class TransactionsController {
     await this.transactionsService.remove(id, user.id);
   }
 }
-

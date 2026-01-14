@@ -13,4 +13,3 @@ describe('normalizeFilename', () => {
     expect(normalizeFilename('Выписка 01.01.2026.pdf')).toBe('Выписка 01.01.2026.pdf');
   });
 });
-

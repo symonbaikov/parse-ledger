@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsDateString } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional } from 'class-validator';
 
 export enum ExportFormat {
   EXCEL = 'excel',
@@ -17,11 +17,3 @@ export class ExportReportDto {
   @IsEnum(ExportFormat)
   format: ExportFormat = ExportFormat.EXCEL;
 }
-
-
-
-
-
-
-
-

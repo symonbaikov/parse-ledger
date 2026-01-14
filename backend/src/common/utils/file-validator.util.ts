@@ -44,11 +44,3 @@ export function getFileTypeFromMime(mimetype: string): string {
 
   return typeMap[mimetype] || 'unknown';
 }
-
-
-
-
-
-
-
-

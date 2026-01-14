@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
+import { type MigrationInterface, type QueryRunner, Table, TableIndex } from 'typeorm';
 
 export class AddCustomTables1734400000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -180,4 +180,3 @@ export class AddCustomTables1734400000000 implements MigrationInterface {
     await queryRunner.query('DROP TYPE IF EXISTS "custom_table_source_enum"');
   }
 }
-

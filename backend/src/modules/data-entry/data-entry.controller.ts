@@ -1,31 +1,31 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   BadRequestException,
   Body,
   Controller,
-  Get,
-  Post,
-  Query,
-  UseGuards,
-  Delete,
-  Param,
   DefaultValuePipe,
+  Delete,
+  Get,
+  Param,
   ParseIntPipe,
   Patch,
+  Post,
+  Query,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { User } from '../../entities/user.entity';
-import { DataEntryService } from './data-entry.service';
-import { CreateDataEntryDto } from './dto/create-data-entry.dto';
-import { DataEntryType } from '../../entities/data-entry.entity';
-import { CreateDataEntryCustomFieldDto } from './dto/create-data-entry-custom-field.dto';
-import { UpdateDataEntryCustomFieldDto } from './dto/update-data-entry-custom-field.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import * as path from 'path';
 import { diskStorage } from 'multer';
-import * as fs from 'fs';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import type { DataEntryType } from '../../entities/data-entry.entity';
+import type { User } from '../../entities/user.entity';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { DataEntryService } from './data-entry.service';
+import type { CreateDataEntryCustomFieldDto } from './dto/create-data-entry-custom-field.dto';
+import type { CreateDataEntryDto } from './dto/create-data-entry.dto';
+import type { UpdateDataEntryCustomFieldDto } from './dto/update-data-entry-custom-field.dto';
 
 @Controller('data-entry')
 @UseGuards(JwtAuthGuard)

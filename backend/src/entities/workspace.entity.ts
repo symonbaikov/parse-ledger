@@ -26,7 +26,10 @@ export class Workspace {
   @JoinColumn({ name: 'owner_id' })
   owner: User | null;
 
-  @OneToMany(() => WorkspaceMember, (member) => member.workspace)
+  @OneToMany(
+    () => WorkspaceMember,
+    member => member.workspace,
+  )
   members: WorkspaceMember[];
 
   @CreateDateColumn({ name: 'created_at' })

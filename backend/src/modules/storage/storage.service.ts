@@ -1,33 +1,33 @@
+import * as crypto from 'crypto';
 import {
+  BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-  UnauthorizedException,
   Optional,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import * as bcrypt from 'bcrypt';
+import { MoreThan, type Repository } from 'typeorm';
+import type { FileStorageService } from '../../common/services/file-storage.service';
 import {
-  SharedLink,
+  Category,
   FilePermission,
-  Statement,
-  Transaction,
+  FilePermissionType,
   ShareLinkStatus,
   SharePermissionLevel,
-  FilePermissionType,
-  Category,
+  SharedLink,
+  Statement,
+  Transaction,
   User,
   WorkspaceMember,
   WorkspaceRole,
 } from '../../entities';
-import { CreateSharedLinkDto } from './dto/create-shared-link.dto';
-import { UpdateSharedLinkDto } from './dto/update-shared-link.dto';
-import { GrantPermissionDto } from './dto/grant-permission.dto';
-import { UpdatePermissionDto } from './dto/update-permission.dto';
-import * as crypto from 'crypto';
-import * as bcrypt from 'bcrypt';
-import { FileStorageService } from '../../common/services/file-storage.service';
+import type { CreateSharedLinkDto } from './dto/create-shared-link.dto';
+import type { GrantPermissionDto } from './dto/grant-permission.dto';
+import type { UpdatePermissionDto } from './dto/update-permission.dto';
+import type { UpdateSharedLinkDto } from './dto/update-shared-link.dto';
 
 /**
  * Storage service for managing file storage, sharing, and permissions
@@ -77,9 +77,7 @@ export class StorageService {
         .leftJoinAndSelect('statement.category', 'category')
         .leftJoinAndSelect('statement.user', 'owner')
         .where(
-          workspaceId
-            ? 'owner.workspaceId = :workspaceId'
-            : 'statement.userId = :userId',
+          workspaceId ? 'owner.workspaceId = :workspaceId' : 'statement.userId = :userId',
           workspaceId ? { workspaceId } : { userId },
         )
         .orderBy('statement.createdAt', 'DESC')
@@ -101,12 +99,12 @@ export class StorageService {
       }
 
       const sharedStatements = sharedPermissions
-        .map((perm) => perm.statement)
-        .filter((stmt) => stmt !== null);
+        .map(perm => perm.statement)
+        .filter(stmt => stmt !== null);
 
       // Combine and deduplicate
       const allStatements = [...ownedStatements];
-      const ownedIds = new Set(ownedStatements.map((s) => s.id));
+      const ownedIds = new Set(ownedStatements.map(s => s.id));
 
       for (const sharedStmt of sharedStatements) {
         if (!ownedIds.has(sharedStmt.id)) {
@@ -123,13 +121,11 @@ export class StorageService {
         : null;
 
       const statementsWithFileData = this.fileStorageService.getStatementsWithFileData
-        ? await this.fileStorageService.getStatementsWithFileData(
-            allStatements.map((s) => s.id),
-          )
+        ? await this.fileStorageService.getStatementsWithFileData(allStatements.map(s => s.id))
         : new Set<string>();
 
       const enrichedStatements = await Promise.all(
-        allStatements.map(async (statement) => {
+        allStatements.map(async statement => {
           const isOwner = statement.userId === userId;
           const isWorkspacePeer =
             workspaceId && statement.user && statement.user.workspaceId === workspaceId;
@@ -148,8 +144,8 @@ export class StorageService {
           const permissionType = isOwner
             ? FilePermissionType.OWNER
             : isWorkspacePeer
-            ? FilePermissionType.VIEWER
-            : permission?.permissionType;
+              ? FilePermissionType.VIEWER
+              : permission?.permissionType;
 
           const canReshare =
             isOwner ||
@@ -165,11 +161,11 @@ export class StorageService {
                 statementsWithFileData.has(statement.id),
               )
             : this.fileStorageService.getFileAvailability
-            ? await this.fileStorageService.getFileAvailability({
-                id: statement.id,
-                filePath: statement.filePath,
-              })
-            : { onDisk: false, inDb: false, status: 'unknown' } as any;
+              ? await this.fileStorageService.getFileAvailability({
+                  id: statement.id,
+                  filePath: statement.filePath,
+                })
+              : ({ onDisk: false, inDb: false, status: 'unknown' } as any);
 
           return {
             ...statement,
@@ -235,7 +231,7 @@ export class StorageService {
     return {
       statement,
       transactions,
-      sharedLinks: sharedLinks.map((link) => ({
+      sharedLinks: sharedLinks.map(link => ({
         ...link,
         // Don't expose password hash
         password: link.password ? '******' : null,
@@ -245,8 +241,8 @@ export class StorageService {
       userPermission: isOwner
         ? FilePermissionType.OWNER
         : isWorkspacePeer
-        ? FilePermissionType.VIEWER
-        : userPermission?.permissionType,
+          ? FilePermissionType.VIEWER
+          : userPermission?.permissionType,
       fileAvailability,
     };
   }
@@ -336,7 +332,8 @@ export class StorageService {
       throw new NotFoundException('File not found');
     }
 
-    const { stream, fileName, mimeType } = await this.fileStorageService.getStatementFileStream(statement);
+    const { stream, fileName, mimeType } =
+      await this.fileStorageService.getStatementFileStream(statement);
     return { stream, fileName, mimeType };
   }
 
@@ -347,7 +344,8 @@ export class StorageService {
   ): Promise<{ stream: NodeJS.ReadableStream; fileName: string; mimeType: string }> {
     await this.checkFileAccess(userId, statement.id, action);
 
-    const { stream, fileName, mimeType } = await this.fileStorageService.getStatementFileStream(statement);
+    const { stream, fileName, mimeType } =
+      await this.fileStorageService.getStatementFileStream(statement);
     return { stream, fileName, mimeType };
   }
 
@@ -366,9 +364,7 @@ export class StorageService {
     const token = this.generateShareToken();
 
     // Hash password if provided
-    const hashedPassword = dto.password
-      ? await bcrypt.hash(dto.password, 10)
-      : null;
+    const hashedPassword = dto.password ? await bcrypt.hash(dto.password, 10) : null;
 
     const sharedLink = this.sharedLinkRepository.create({
       statementId,
@@ -397,7 +393,7 @@ export class StorageService {
       order: { createdAt: 'DESC' },
     });
 
-    return links.map((link) => ({
+    return links.map(link => ({
       ...link,
       // Don't expose password hash
       password: link.password ? '******' : null,

@@ -1,12 +1,17 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, QueryFailedError, Repository } from 'typeorm';
-import { DataEntry, DataEntryType } from '../../entities/data-entry.entity';
+import { IsNull, QueryFailedError, type Repository } from 'typeorm';
 import { User, WorkspaceMember, WorkspaceRole } from '../../entities';
-import { CreateDataEntryDto } from './dto/create-data-entry.dto';
 import { DataEntryCustomField } from '../../entities/data-entry-custom-field.entity';
-import { CreateDataEntryCustomFieldDto } from './dto/create-data-entry-custom-field.dto';
-import { UpdateDataEntryCustomFieldDto } from './dto/update-data-entry-custom-field.dto';
+import { DataEntry, type DataEntryType } from '../../entities/data-entry.entity';
+import type { CreateDataEntryCustomFieldDto } from './dto/create-data-entry-custom-field.dto';
+import type { CreateDataEntryDto } from './dto/create-data-entry.dto';
+import type { UpdateDataEntryCustomFieldDto } from './dto/update-data-entry-custom-field.dto';
 
 interface ListParams {
   userId: string;
@@ -140,14 +145,12 @@ export class DataEntryService {
     await this.dataEntryRepository.delete(id);
   }
 
-  async listCustomFields(userId: string): Promise<Array<DataEntryCustomField & { entriesCount: number }>> {
+  async listCustomFields(
+    userId: string,
+  ): Promise<Array<DataEntryCustomField & { entriesCount: number }>> {
     const rows = await this.dataEntryCustomFieldRepository
       .createQueryBuilder('f')
-      .leftJoin(
-        DataEntry,
-        'e',
-        '"e"."custom_tab_id" = "f"."id" AND "e"."user_id" = "f"."user_id"',
-      )
+      .leftJoin(DataEntry, 'e', '"e"."custom_tab_id" = "f"."id" AND "e"."user_id" = "f"."user_id"')
       .where('"f"."user_id" = :userId', { userId })
       .select(['f.id AS id', 'f.name AS name', 'f.icon AS icon'])
       .addSelect('COUNT("e"."id")', 'entriesCount')
@@ -155,7 +158,7 @@ export class DataEntryService {
       .orderBy('"f"."name"', 'ASC')
       .getRawMany<{ id: string; name: string; icon: string | null; entriesCount: string }>();
 
-    return rows.map((row) => ({
+    return rows.map(row => ({
       ...(this.dataEntryCustomFieldRepository.create({
         id: row.id,
         userId,
@@ -166,7 +169,10 @@ export class DataEntryService {
     }));
   }
 
-  async createCustomField(userId: string, dto: CreateDataEntryCustomFieldDto): Promise<DataEntryCustomField> {
+  async createCustomField(
+    userId: string,
+    dto: CreateDataEntryCustomFieldDto,
+  ): Promise<DataEntryCustomField> {
     await this.ensureCanEditDataEntry(userId);
     const name = dto.name.trim();
     if (!name.length) {
@@ -206,7 +212,7 @@ export class DataEntryService {
       item.name = name;
     }
     if (dto.icon !== undefined) {
-      item.icon = dto.icon === null ? null : (dto.icon?.trim() || null);
+      item.icon = dto.icon === null ? null : dto.icon?.trim() || null;
     }
     try {
       return await this.dataEntryCustomFieldRepository.save(item);

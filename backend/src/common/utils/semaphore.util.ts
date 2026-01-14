@@ -15,7 +15,7 @@ export class Semaphore {
       return () => this.release();
     }
 
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       this.waiters.push(resolve);
     });
 
@@ -40,4 +40,3 @@ export class Semaphore {
     }
   }
 }
-

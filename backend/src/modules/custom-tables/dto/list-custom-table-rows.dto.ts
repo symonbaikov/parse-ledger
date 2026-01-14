@@ -17,4 +17,3 @@ export interface CustomTableRowFilterDto {
   op: CustomTableRowFilterOp;
   value?: unknown;
 }
-

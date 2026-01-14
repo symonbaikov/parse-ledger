@@ -1,5 +1,5 @@
-import { IsArray, ValidateNested, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsArray, IsString, ValidateNested } from 'class-validator';
 import { UpdateTransactionDto } from './update-transaction.dto';
 
 export class BulkUpdateItemDto {
@@ -17,4 +17,3 @@ export class BulkUpdateTransactionDto {
   @Type(() => BulkUpdateItemDto)
   items: BulkUpdateItemDto[];
 }
-

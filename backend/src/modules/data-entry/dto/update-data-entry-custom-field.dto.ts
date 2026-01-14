@@ -11,4 +11,3 @@ export class UpdateDataEntryCustomFieldDto {
   @MaxLength(120)
   icon?: string | null;
 }
-

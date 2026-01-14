@@ -1,7 +1,12 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import {
+  type CallHandler,
+  type ExecutionContext,
+  Injectable,
+  type NestInterceptor,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { Observable } from 'rxjs';
-import { MetricsService } from './metrics.service';
+import type { Observable } from 'rxjs';
+import type { MetricsService } from './metrics.service';
 
 const getRouteLabel = (req: Request): string => {
   const baseUrl = (req as any).baseUrl || '';
@@ -35,4 +40,3 @@ export class HttpMetricsInterceptor implements NestInterceptor {
     return next.handle();
   }
 }
-

@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
 import { DataSource } from 'typeorm';
+import { AppModule } from '../src/app.module';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
@@ -38,9 +38,7 @@ describe('AuthController (e2e)', () => {
   afterAll(async () => {
     // Cleanup test data
     if (dataSource) {
-      await dataSource.query(`DELETE FROM users WHERE email = $1`, [
-        testUser.email,
-      ]);
+      await dataSource.query('DELETE FROM users WHERE email = $1', [testUser.email]);
     }
     await app.close();
   });
@@ -51,7 +49,7 @@ describe('AuthController (e2e)', () => {
         .post('/auth/register')
         .send(testUser)
         .expect(201)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('user');
           expect(res.body.user.email).toBe(testUser.email.toLowerCase());
           expect(res.body.user).not.toHaveProperty('passwordHash');
@@ -67,7 +65,7 @@ describe('AuthController (e2e)', () => {
         .post('/auth/register')
         .send(testUser)
         .expect(409)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.message).toContain('already exists');
         });
     });
@@ -124,7 +122,7 @@ describe('AuthController (e2e)', () => {
           password: testUser.password,
         })
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('user');
           expect(res.body).toHaveProperty('accessToken');
           expect(res.body).toHaveProperty('refreshToken');
@@ -179,7 +177,7 @@ describe('AuthController (e2e)', () => {
         .get('/auth/profile')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.email).toBe(testUser.email.toLowerCase());
           expect(res.body).not.toHaveProperty('passwordHash');
           expect(res.body).toHaveProperty('id');
@@ -188,9 +186,7 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should reject request without token', () => {
-      return request(app.getHttpServer())
-        .get('/auth/profile')
-        .expect(401);
+      return request(app.getHttpServer()).get('/auth/profile').expect(401);
     });
 
     it('should reject invalid token', () => {
@@ -214,7 +210,7 @@ describe('AuthController (e2e)', () => {
         .post('/auth/refresh')
         .set('Authorization', `Bearer ${refreshToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('accessToken');
           expect(res.body).toHaveProperty('refreshToken');
           expect(res.body.accessToken).not.toBe(accessToken);
@@ -238,9 +234,7 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should reject request without token', () => {
-      return request(app.getHttpServer())
-        .post('/auth/refresh')
-        .expect(401);
+      return request(app.getHttpServer()).post('/auth/refresh').expect(401);
     });
 
     it('should invalidate old tokens after password change', async () => {
@@ -259,9 +253,7 @@ describe('AuthController (e2e)', () => {
     });
 
     it('should reject logout without token', () => {
-      return request(app.getHttpServer())
-        .post('/auth/logout')
-        .expect(401);
+      return request(app.getHttpServer()).post('/auth/logout').expect(401);
     });
 
     it('should still succeed with already logged out token', () => {
@@ -275,21 +267,19 @@ describe('AuthController (e2e)', () => {
   describe('Rate Limiting', () => {
     it('should rate limit login attempts', async () => {
       const promises = [];
-      
+
       // Attempt multiple logins rapidly
       for (let i = 0; i < 15; i++) {
         promises.push(
-          request(app.getHttpServer())
-            .post('/auth/login')
-            .send({
-              email: 'ratelimit@example.com',
-              password: 'wrongpassword',
-            }),
+          request(app.getHttpServer()).post('/auth/login').send({
+            email: 'ratelimit@example.com',
+            password: 'wrongpassword',
+          }),
         );
       }
 
       const results = await Promise.all(promises);
-      const rateLimited = results.some((res) => res.status === 429);
+      const rateLimited = results.some(res => res.status === 429);
 
       expect(rateLimited).toBe(true);
     });
@@ -297,12 +287,10 @@ describe('AuthController (e2e)', () => {
 
   describe('Security', () => {
     it('should not expose password in responses', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password,
-        });
+      const res = await request(app.getHttpServer()).post('/auth/login').send({
+        email: testUser.email,
+        password: testUser.password,
+      });
 
       expect(res.body.user).not.toHaveProperty('passwordHash');
       expect(res.body.user).not.toHaveProperty('password');

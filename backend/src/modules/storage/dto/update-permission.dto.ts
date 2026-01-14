@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsBoolean, IsDateString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsOptional } from 'class-validator';
 import { FilePermissionType } from '../../../entities';
 
 /**
@@ -21,7 +21,3 @@ export class UpdatePermissionDto {
   @IsBoolean()
   isActive?: boolean;
 }
-
-
-
-

@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddUserPreferencesAndTokenVersion1735300000000 implements MigrationInterface {
   name = 'AddUserPreferencesAndTokenVersion1735300000000';
@@ -26,4 +26,3 @@ export class AddUserPreferencesAndTokenVersion1735300000000 implements Migration
     await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "locale"`);
   }
 }
-

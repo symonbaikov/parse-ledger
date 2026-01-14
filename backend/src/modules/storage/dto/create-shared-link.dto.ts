@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsBoolean, IsDateString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 import { SharePermissionLevel } from '../../../entities';
 
 /**
@@ -24,7 +24,3 @@ export class CreateSharedLinkDto {
   @IsString()
   description?: string;
 }
-
-
-
-

@@ -1,12 +1,12 @@
 import {
-  ExceptionFilter,
+  type ArgumentsHost,
   Catch,
-  ArgumentsHost,
+  type ExceptionFilter,
   HttpException,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { RequestContext } from '../observability/request-context';
 
 @Catch()
@@ -19,14 +19,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : 'Internal server error';
+      exception instanceof HttpException ? exception.getResponse() : 'Internal server error';
 
     // Debug log to surface unexpected errors in logs
     if (!(exception instanceof HttpException)) {
@@ -41,9 +37,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         code: this.getErrorCode(status),
         message: typeof message === 'string' ? message : (message as any).message,
         details:
-          typeof message === 'object' && (message as any).message
-            ? (message as any)
-            : undefined,
+          typeof message === 'object' && (message as any).message ? (message as any) : undefined,
       },
       requestId: RequestContext.getRequestId(),
       traceId: RequestContext.getTraceId(),
@@ -67,9 +61,3 @@ export class HttpExceptionFilter implements ExceptionFilter {
     return codes[status] || 'UNKNOWN_ERROR';
   }
 }
-
-
-
-
-
-

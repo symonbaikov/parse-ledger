@@ -8,8 +8,8 @@ import {
   Unique,
   UpdateDateColumn,
 } from 'typeorm';
-import { Workspace } from './workspace.entity';
 import { User } from './user.entity';
+import { Workspace } from './workspace.entity';
 
 export enum WorkspaceRole {
   OWNER = 'owner',
@@ -34,18 +34,26 @@ export class WorkspaceMember {
   @Column({ name: 'workspace_id' })
   workspaceId: string;
 
-  @ManyToOne(() => Workspace, (workspace) => workspace.members, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => Workspace,
+    workspace => workspace.members,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'workspace_id' })
   workspace: Workspace;
 
   @Column({ name: 'user_id' })
   userId: string;
 
-  @ManyToOne(() => User, (user) => user.workspaceMemberships, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => User,
+    user => user.workspaceMemberships,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'user_id' })
   user: User;
 

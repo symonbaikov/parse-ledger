@@ -1,4 +1,4 @@
-import { IsUUID, IsOptional } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
 
 export class UploadStatementDto {
   @IsUUID()
@@ -13,5 +13,3 @@ export class UploadStatementDto {
   @IsOptional()
   branchId?: string;
 }
-
-

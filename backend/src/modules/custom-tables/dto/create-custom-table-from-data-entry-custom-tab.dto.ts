@@ -15,4 +15,3 @@ export class CreateCustomTableFromDataEntryCustomTabDto {
   @MaxLength(2000)
   description?: string | null;
 }
-

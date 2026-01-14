@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { ParsingRule } from '../../../entities/parsing-rule.entity';
-import { BankName } from '../../../entities/statement.entity';
+import type { BankName } from '../../../entities/statement.entity';
 
 @Injectable()
 export class ParsingRulesService {
@@ -43,11 +43,3 @@ export class ParsingRulesService {
     });
   }
 }
-
-
-
-
-
-
-
-

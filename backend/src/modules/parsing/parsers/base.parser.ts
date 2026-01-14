@@ -1,14 +1,10 @@
-import { IParser } from '../interfaces/parser.interface';
-import { ParsedStatement } from '../interfaces/parsed-statement.interface';
-import { BankName, FileType } from '../../../entities/statement.entity';
-import { normalizeNumber, normalizeDate } from '../../../common/utils/number-normalizer.util';
+import { normalizeDate, normalizeNumber } from '../../../common/utils/number-normalizer.util';
+import type { BankName, FileType } from '../../../entities/statement.entity';
+import type { ParsedStatement } from '../interfaces/parsed-statement.interface';
+import type { IParser } from '../interfaces/parser.interface';
 
 export abstract class BaseParser implements IParser {
-  abstract canParse(
-    bankName: BankName,
-    fileType: FileType,
-    filePath: string,
-  ): Promise<boolean>;
+  abstract canParse(bankName: BankName, fileType: FileType, filePath: string): Promise<boolean>;
 
   abstract parse(filePath: string): Promise<ParsedStatement>;
 
@@ -31,9 +27,9 @@ export abstract class BaseParser implements IParser {
     // Look for date ranges like "01.01.2024 - 31.01.2024"
     const dateRangeRegex = /(\d{2}\.\d{2}\.\d{4})\s*[-–—]\s*(\d{2}\.\d{2}\.\d{4})/gi;
     const match = text.match(dateRangeRegex);
-    
+
     if (match) {
-      const dates = match[0].split(/[-–—]/).map((d) => d.trim());
+      const dates = match[0].split(/[-–—]/).map(d => d.trim());
       return {
         from: this.normalizeDate(dates[0]),
         to: this.normalizeDate(dates[1]),
@@ -53,4 +49,3 @@ export abstract class BaseParser implements IParser {
     return null;
   }
 }
-

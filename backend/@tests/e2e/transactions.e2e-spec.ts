@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
 import { DataSource } from 'typeorm';
+import { AppModule } from '../src/app.module';
 
 describe('Transactions (e2e)', () => {
   let app: INestApplication;
@@ -24,21 +24,17 @@ describe('Transactions (e2e)', () => {
     dataSource = moduleFixture.get<DataSource>(DataSource);
 
     // Register and login
-    const registerRes = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        email: 'transaction-test@example.com',
-        password: 'Test123!@#',
-        firstName: 'Transaction',
-        lastName: 'Test',
-      });
+    const registerRes = await request(app.getHttpServer()).post('/auth/register').send({
+      email: 'transaction-test@example.com',
+      password: 'Test123!@#',
+      firstName: 'Transaction',
+      lastName: 'Test',
+    });
 
-    const loginRes = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({
-        email: 'transaction-test@example.com',
-        password: 'Test123!@#',
-      });
+    const loginRes = await request(app.getHttpServer()).post('/auth/login').send({
+      email: 'transaction-test@example.com',
+      password: 'Test123!@#',
+    });
 
     accessToken = loginRes.body.accessToken;
     workspaceId = loginRes.body.user.workspaceId;
@@ -74,7 +70,7 @@ describe('Transactions (e2e)', () => {
         .get('/transactions')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('items');
           expect(res.body).toHaveProperty('total');
           expect(res.body).toHaveProperty('page');
@@ -91,7 +87,7 @@ describe('Transactions (e2e)', () => {
         .get(`/transactions?startDate=${startDate}&endDate=${endDate}`)
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.items).toBeDefined();
         });
     });
@@ -101,8 +97,8 @@ describe('Transactions (e2e)', () => {
         .get('/transactions?type=DEBIT')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
-          const debits = res.body.items.filter((t) => t.type === 'DEBIT');
+        .expect(res => {
+          const debits = res.body.items.filter(t => t.type === 'DEBIT');
           expect(debits.length).toBeLessThanOrEqual(res.body.items.length);
         });
     });
@@ -129,8 +125,8 @@ describe('Transactions (e2e)', () => {
         .get(`/transactions?statementId=${statementId}`)
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
-          res.body.items.forEach((transaction) => {
+        .expect(res => {
+          res.body.items.forEach(transaction => {
             expect(transaction.statementId).toBe(statementId);
           });
         });
@@ -141,8 +137,8 @@ describe('Transactions (e2e)', () => {
         .get('/transactions?minAmount=100&maxAmount=1000')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
-          res.body.items.forEach((transaction) => {
+        .expect(res => {
+          res.body.items.forEach(transaction => {
             expect(transaction.amount).toBeGreaterThanOrEqual(100);
             expect(transaction.amount).toBeLessThanOrEqual(1000);
           });
@@ -161,11 +157,9 @@ describe('Transactions (e2e)', () => {
         .get('/transactions?sortBy=amount&sortOrder=DESC')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           if (res.body.items.length > 1) {
-            expect(res.body.items[0].amount).toBeGreaterThanOrEqual(
-              res.body.items[1].amount,
-            );
+            expect(res.body.items[0].amount).toBeGreaterThanOrEqual(res.body.items[1].amount);
           }
         });
     });
@@ -175,7 +169,7 @@ describe('Transactions (e2e)', () => {
         .get('/transactions?page=1&limit=10')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.page).toBe(1);
           expect(res.body.limit).toBe(10);
           expect(res.body.items.length).toBeLessThanOrEqual(10);
@@ -195,22 +189,18 @@ describe('Transactions (e2e)', () => {
         lastName: 'User',
       });
 
-      const otherLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: 'other-user@example.com',
-          password: 'Test123!@#',
-        });
+      const otherLogin = await request(app.getHttpServer()).post('/auth/login').send({
+        email: 'other-user@example.com',
+        password: 'Test123!@#',
+      });
 
       return request(app.getHttpServer())
         .get('/transactions')
         .set('Authorization', `Bearer ${otherLogin.body.accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           // Should not see first user's transactions
-          const hasFirstUserTransaction = res.body.items.some(
-            (t) => t.statementId === statementId,
-          );
+          const hasFirstUserTransaction = res.body.items.some(t => t.statementId === statementId);
           expect(hasFirstUserTransaction).toBe(false);
         });
     });
@@ -224,7 +214,7 @@ describe('Transactions (e2e)', () => {
         .get(`/transactions/${transactionId}`)
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.id).toBe(transactionId);
           expect(res.body).toHaveProperty('amount');
           expect(res.body).toHaveProperty('date');
@@ -240,12 +230,10 @@ describe('Transactions (e2e)', () => {
     });
 
     it('should not allow accessing other workspace transactions', async () => {
-      const otherLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: 'other-user@example.com',
-          password: 'Test123!@#',
-        });
+      const otherLogin = await request(app.getHttpServer()).post('/auth/login').send({
+        email: 'other-user@example.com',
+        password: 'Test123!@#',
+      });
 
       if (!transactionId) return;
 
@@ -267,7 +255,7 @@ describe('Transactions (e2e)', () => {
           description: 'Updated description',
         })
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.description).toBe('Updated description');
         });
     });
@@ -290,7 +278,7 @@ describe('Transactions (e2e)', () => {
           categoryId: categoryRes.body.id,
         })
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.categoryId).toBe(categoryRes.body.id);
         });
     });
@@ -310,12 +298,10 @@ describe('Transactions (e2e)', () => {
     it('should not allow updating other workspace transactions', async () => {
       if (!transactionId) return;
 
-      const otherLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: 'other-user@example.com',
-          password: 'Test123!@#',
-        });
+      const otherLogin = await request(app.getHttpServer()).post('/auth/login').send({
+        email: 'other-user@example.com',
+        password: 'Test123!@#',
+      });
 
       return request(app.getHttpServer())
         .patch(`/transactions/${transactionId}`)
@@ -333,7 +319,7 @@ describe('Transactions (e2e)', () => {
         .get('/transactions?limit=5')
         .set('Authorization', `Bearer ${accessToken}`);
 
-      const ids = transactions.body.items.map((t) => t.id);
+      const ids = transactions.body.items.map(t => t.id);
 
       return request(app.getHttpServer())
         .post('/transactions/bulk-update')
@@ -360,7 +346,7 @@ describe('Transactions (e2e)', () => {
         .get('/transactions?limit=3')
         .set('Authorization', `Bearer ${accessToken}`);
 
-      const ids = transactions.body.items.map((t) => t.id);
+      const ids = transactions.body.items.map(t => t.id);
 
       return request(app.getHttpServer())
         .post('/transactions/bulk-update')
@@ -416,12 +402,10 @@ describe('Transactions (e2e)', () => {
     it('should not allow deleting other workspace transactions', async () => {
       if (!transactionId) return;
 
-      const otherLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: 'other-user@example.com',
-          password: 'Test123!@#',
-        });
+      const otherLogin = await request(app.getHttpServer()).post('/auth/login').send({
+        email: 'other-user@example.com',
+        password: 'Test123!@#',
+      });
 
       return request(app.getHttpServer())
         .delete(`/transactions/${transactionId}`)
@@ -436,7 +420,7 @@ describe('Transactions (e2e)', () => {
         .get('/transactions/statistics')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('totalIncome');
           expect(res.body).toHaveProperty('totalExpenses');
           expect(res.body).toHaveProperty('balance');
@@ -449,9 +433,7 @@ describe('Transactions (e2e)', () => {
       const endDate = new Date('2024-12-31').toISOString();
 
       return request(app.getHttpServer())
-        .get(
-          `/transactions/statistics?startDate=${startDate}&endDate=${endDate}`,
-        )
+        .get(`/transactions/statistics?startDate=${startDate}&endDate=${endDate}`)
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
     });
@@ -461,7 +443,7 @@ describe('Transactions (e2e)', () => {
         .get('/transactions/statistics?groupBy=category')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('byCategory');
         });
     });
@@ -471,7 +453,7 @@ describe('Transactions (e2e)', () => {
         .get('/transactions/statistics?groupBy=month')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('byMonth');
         });
     });
@@ -485,7 +467,7 @@ describe('Transactions (e2e)', () => {
         .post(`/transactions/${transactionId}/classify`)
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('categoryId');
         });
     });
@@ -495,7 +477,7 @@ describe('Transactions (e2e)', () => {
         .post('/transactions/classify-all')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('classified');
         });
     });

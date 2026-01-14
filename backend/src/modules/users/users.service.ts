@@ -1,19 +1,19 @@
 import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
-  ForbiddenException,
-  ConflictException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole } from '../../entities/user.entity';
-import { UpdateUserDto } from './dto/update-user.dto';
+import type { Repository } from 'typeorm';
 import { Permission } from '../../common/enums/permissions.enum';
-import { ChangeEmailDto } from './dto/change-email.dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { UpdateMyPreferencesDto } from './dto/update-my-preferences.dto';
+import { User, UserRole } from '../../entities/user.entity';
+import type { ChangeEmailDto } from './dto/change-email.dto';
+import type { ChangePasswordDto } from './dto/change-password.dto';
+import type { UpdateMyPreferencesDto } from './dto/update-my-preferences.dto';
+import type { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -54,7 +54,7 @@ export class UsersService {
     return user;
   }
 
-  async findAll(workspaceId?: string | number, limit: number = 20): Promise<User[]> {
+  async findAll(workspaceId?: string | number, limit = 20): Promise<User[]> {
     const where: any = { deletedAt: null };
     if (workspaceId !== undefined && workspaceId !== null) {
       where.workspaceId = String(workspaceId);
@@ -95,17 +95,13 @@ export class UsersService {
     }
 
     if ('passwordHash' in user) {
-      delete (user as any).passwordHash;
+      (user as any).passwordHash = undefined;
     }
 
     return user;
   }
 
-  async update(
-    id: string,
-    updateUserDto: UpdateUserDto,
-    currentUser: User,
-  ): Promise<User> {
+  async update(id: string, updateUserDto: UpdateUserDto, currentUser: User): Promise<User> {
     // Only admins can update users
     if (currentUser.role !== UserRole.ADMIN && currentUser.id !== id) {
       throw new ForbiddenException('You can only update your own profile');
@@ -126,19 +122,19 @@ export class UsersService {
 
     // Only admins can change roles
     if (updateUserDto.role && currentUser.role !== UserRole.ADMIN) {
-      delete updateUserDto.role;
+      updateUserDto.role = undefined;
     }
 
     // Only admins can change permissions
     if (updateUserDto.permissions && currentUser.role !== UserRole.ADMIN) {
-      delete updateUserDto.permissions;
+      updateUserDto.permissions = undefined;
     }
 
     // Validate permissions if provided
     if (updateUserDto.permissions) {
       const validPermissions = Object.values(Permission);
       const invalidPermissions = updateUserDto.permissions.filter(
-        (p) => !validPermissions.includes(p as Permission),
+        p => !validPermissions.includes(p as Permission),
       );
       if (invalidPermissions.length > 0) {
         throw new BadRequestException(`Invalid permissions: ${invalidPermissions.join(', ')}`);
@@ -171,10 +167,7 @@ export class UsersService {
   async changeEmail(userId: string, dto: ChangeEmailDto): Promise<User> {
     const user = await this.findOneWithPassword(userId);
 
-    const isPasswordValid = await bcrypt.compare(
-      dto.currentPassword,
-      user.passwordHash,
-    );
+    const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
 
     if (!isPasswordValid) {
       throw new ForbiddenException('Current password is incorrect');
@@ -197,10 +190,7 @@ export class UsersService {
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
     const user = await this.findOneWithPassword(userId);
 
-    const isPasswordValid = await bcrypt.compare(
-      dto.currentPassword,
-      user.passwordHash,
-    );
+    const isPasswordValid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
 
     if (!isPasswordValid) {
       throw new ForbiddenException('Current password is incorrect');

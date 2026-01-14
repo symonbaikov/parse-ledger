@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsBoolean } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class UpdateBranchDto {
   @IsString()
@@ -17,11 +17,3 @@ export class UpdateBranchDto {
   @IsOptional()
   isActive?: boolean;
 }
-
-
-
-
-
-
-
-

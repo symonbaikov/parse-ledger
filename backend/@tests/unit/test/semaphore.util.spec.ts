@@ -1,5 +1,5 @@
-import { Semaphore } from '@/common/utils/semaphore.util';
 import { sleep } from '@/common/utils/async.util';
+import { Semaphore } from '@/common/utils/semaphore.util';
 
 describe('Semaphore', () => {
   it('limits concurrency', async () => {
@@ -20,4 +20,3 @@ describe('Semaphore', () => {
     expect(maxActive).toBe(1);
   });
 });
-

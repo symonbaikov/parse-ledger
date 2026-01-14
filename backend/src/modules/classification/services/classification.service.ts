@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Transaction, TransactionType } from '../../../entities/transaction.entity';
-import { Category, CategoryType } from '../../../entities/category.entity';
+import type { Repository } from 'typeorm';
 import { Branch } from '../../../entities/branch.entity';
+import { Category, CategoryType } from '../../../entities/category.entity';
+import { type Transaction, TransactionType } from '../../../entities/transaction.entity';
 import { Wallet } from '../../../entities/wallet.entity';
 import {
-  ClassificationRule,
-  ClassificationCondition,
+  type ClassificationCondition,
   ClassificationResult,
+  type ClassificationRule,
 } from '../interfaces/classification-rule.interface';
 
 @Injectable()
@@ -22,7 +22,10 @@ export class ClassificationService {
     private walletRepository: Repository<Wallet>,
   ) {}
 
-  async classifyTransaction(transaction: Transaction, userId: string): Promise<Partial<Transaction>> {
+  async classifyTransaction(
+    transaction: Transaction,
+    userId: string,
+  ): Promise<Partial<Transaction>> {
     const classification: Partial<Transaction> = {};
 
     // Determine transaction type (income/expense)
@@ -83,7 +86,7 @@ export class ClassificationService {
   }
 
   private matchesRule(transaction: Transaction, conditions: ClassificationCondition[]): boolean {
-    return conditions.every((condition) => {
+    return conditions.every(condition => {
       const fieldValue = this.getFieldValue(transaction, condition.field);
       return this.evaluateCondition(fieldValue, condition);
     });
@@ -149,7 +152,8 @@ export class ClassificationService {
     transactionType: TransactionType,
   ): Promise<string | undefined> {
     // Look for common patterns in counterparty name or purpose
-    const searchText = `${transaction.counterpartyName} ${transaction.paymentPurpose}`.toLowerCase();
+    const searchText =
+      `${transaction.counterpartyName} ${transaction.paymentPurpose}`.toLowerCase();
 
     // Common patterns for Kaspi and other banks
     const patterns: Array<{ pattern: RegExp; categoryName: string }> = [
@@ -251,8 +255,9 @@ export class ClassificationService {
 
     // Match by wallet name presence in purpose/counterparty
     const wallets = await this.walletRepository.find({ where: { userId } });
-    const searchText = `${transaction.counterpartyName} ${transaction.paymentPurpose}`.toLowerCase();
-    const walletMatch = wallets.find((w) => searchText.includes((w.name || '').toLowerCase()));
+    const searchText =
+      `${transaction.counterpartyName} ${transaction.paymentPurpose}`.toLowerCase();
+    const walletMatch = wallets.find(w => searchText.includes((w.name || '').toLowerCase()));
     if (walletMatch) {
       return walletMatch.id;
     }
@@ -275,8 +280,9 @@ export class ClassificationService {
       order: { createdAt: 'ASC' },
     });
 
-    const searchText = `${transaction.counterpartyName} ${transaction.paymentPurpose}`.toLowerCase();
-    const matched = branches.find((b) => searchText.includes((b.name || '').toLowerCase()));
+    const searchText =
+      `${transaction.counterpartyName} ${transaction.paymentPurpose}`.toLowerCase();
+    const matched = branches.find(b => searchText.includes((b.name || '').toLowerCase()));
     return (matched || branches[0])?.id;
   }
 
@@ -428,7 +434,10 @@ export class ClassificationService {
     return rules;
   }
 
-  private async getCategoryIdByName(userId: string, categoryName: string): Promise<string | undefined> {
+  private async getCategoryIdByName(
+    userId: string,
+    categoryName: string,
+  ): Promise<string | undefined> {
     return this.ensureCategory(userId, categoryName);
   }
 
@@ -479,10 +488,9 @@ export class ClassificationService {
   ): Promise<{ categoryId?: string; type: CategoryType }> {
     const totalDebit = transactions.reduce((sum, t) => sum + (t.debit ?? 0), 0);
     const totalCredit = transactions.reduce((sum, t) => sum + (t.credit ?? 0), 0);
-    const type =
-      totalDebit >= totalCredit ? CategoryType.EXPENSE : CategoryType.INCOME;
+    const type = totalDebit >= totalCredit ? CategoryType.EXPENSE : CategoryType.INCOME;
 
-    const relevant = transactions.filter((t) =>
+    const relevant = transactions.filter(t =>
       type === CategoryType.EXPENSE ? (t.debit ?? 0) > 0 : (t.credit ?? 0) > 0,
     );
 
@@ -503,11 +511,10 @@ export class ClassificationService {
     transactions: Array<{ paymentPurpose?: string; counterpartyName?: string }>,
   ): string {
     const text = transactions
-      .map(
-        (t) =>
-          `${t.paymentPurpose || ''} ${t.counterpartyName || ''}`
-            .replace(/[.,;:()/\\\-\d]+/g, ' ')
-            .toLowerCase(),
+      .map(t =>
+        `${t.paymentPurpose || ''} ${t.counterpartyName || ''}`
+          .replace(/[.,;:()/\\\-\d]+/g, ' ')
+          .toLowerCase(),
       )
       .join(' ');
 
@@ -536,12 +543,10 @@ export class ClassificationService {
       'год',
     ]);
 
-    const words = text
-      .split(/\s+/)
-      .filter((w) => w.length >= 4 && !stopWords.has(w));
+    const words = text.split(/\s+/).filter(w => w.length >= 4 && !stopWords.has(w));
 
     const freq = new Map<string, number>();
-    words.forEach((w) => freq.set(w, (freq.get(w) || 0) + 1));
+    words.forEach(w => freq.set(w, (freq.get(w) || 0) + 1));
     const top = Array.from(freq.entries()).sort((a, b) => b[1] - a[1])[0];
     if (!top) return '';
     return top[0].charAt(0).toUpperCase() + top[0].slice(1);

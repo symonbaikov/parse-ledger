@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table, TableIndex } from 'typeorm';
+import { type MigrationInterface, type QueryRunner, Table, TableIndex } from 'typeorm';
 
 export class AddDataEntryCustomFields1734700000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -51,4 +51,3 @@ export class AddDataEntryCustomFields1734700000000 implements MigrationInterface
     }
   }
 }
-

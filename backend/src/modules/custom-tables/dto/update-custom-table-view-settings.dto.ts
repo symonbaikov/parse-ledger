@@ -10,4 +10,3 @@ export class UpdateCustomTableViewSettingsColumnDto {
   @Max(1200)
   width?: number;
 }
-

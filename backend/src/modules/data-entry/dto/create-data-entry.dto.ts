@@ -1,4 +1,14 @@
-import { IsEnum, IsNumber, IsOptional, IsString, IsDateString, IsUUID, MaxLength, MinLength, ValidateIf } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 import { DataEntryType } from '../../../entities/data-entry.entity';
 
 export class CreateDataEntryDto {
@@ -19,7 +29,7 @@ export class CreateDataEntryDto {
   @IsString()
   currency?: string;
 
-  @ValidateIf((o) => {
+  @ValidateIf(o => {
     const raw = (o as any)?.customFieldValue;
     if (raw === undefined || raw === null) return false;
     return String(raw).trim().length > 0;

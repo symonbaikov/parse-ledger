@@ -1,6 +1,6 @@
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
 import * as fs from 'fs';
+import { extname, join } from 'path';
+import { diskStorage } from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 
 // Allow overriding upload dir for production (e.g. mounted volume)
@@ -21,10 +21,3 @@ export const multerConfig = {
     fileSize: 10 * 1024 * 1024, // 10MB
   },
 };
-
-
-
-
-
-
-

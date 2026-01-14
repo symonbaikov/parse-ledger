@@ -1,6 +1,6 @@
-import { StatementsService } from '@/modules/statements/statements.service';
-import { calculateFileHash } from '@/common/utils/file-hash.util';
 import * as fs from 'fs';
+import { calculateFileHash } from '@/common/utils/file-hash.util';
+import { StatementsService } from '@/modules/statements/statements.service';
 
 jest.mock('@/common/utils/file-hash.util', () => ({
   calculateFileHash: jest.fn(),
@@ -8,7 +8,7 @@ jest.mock('@/common/utils/file-hash.util', () => ({
 
 describe('StatementsService', () => {
   const statementRepository = {
-    create: jest.fn((data) => data),
+    create: jest.fn(data => data),
     save: jest.fn(),
     findOne: jest.fn(),
     find: jest.fn(),
@@ -41,9 +41,7 @@ describe('StatementsService', () => {
       fileStorageService as any,
       statementProcessingService as any,
     );
-    jest
-      .spyOn(service as any, 'ensureCanEditStatements')
-      .mockResolvedValue(undefined);
+    jest.spyOn(service as any, 'ensureCanEditStatements').mockResolvedValue(undefined);
   });
 
   it('orders by createdAt when listing statements', async () => {
@@ -79,11 +77,9 @@ describe('StatementsService', () => {
     (calculateFileHash as jest.Mock).mockResolvedValue('same-hash');
     userRepository.findOne.mockResolvedValue({ id: 'user-1', workspaceId: null });
     statementRepository.save
-      .mockImplementationOnce(async (entity) => ({ ...entity, id: 'stmt-1' }))
-      .mockImplementationOnce(async (entity) => ({ ...entity, id: 'stmt-2' }));
-    statementRepository.findOne
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 'stmt-1' });
+      .mockImplementationOnce(async entity => ({ ...entity, id: 'stmt-1' }))
+      .mockImplementationOnce(async entity => ({ ...entity, id: 'stmt-2' }));
+    statementRepository.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'stmt-1' });
 
     const file = {
       path: '/tmp/file-1.pdf',

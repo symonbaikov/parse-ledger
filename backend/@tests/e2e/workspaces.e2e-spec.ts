@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { type INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
 import { DataSource } from 'typeorm';
+import { AppModule } from '../src/app.module';
 
 describe('Workspaces (e2e)', () => {
   let app: INestApplication;
@@ -24,21 +24,17 @@ describe('Workspaces (e2e)', () => {
     dataSource = moduleFixture.get<DataSource>(DataSource);
 
     // Register owner
-    const ownerRegister = await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({
-        email: 'workspace-owner@example.com',
-        password: 'Test123!@#',
-        firstName: 'Owner',
-        lastName: 'Test',
-      });
+    const ownerRegister = await request(app.getHttpServer()).post('/auth/register').send({
+      email: 'workspace-owner@example.com',
+      password: 'Test123!@#',
+      firstName: 'Owner',
+      lastName: 'Test',
+    });
 
-    const ownerLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({
-        email: 'workspace-owner@example.com',
-        password: 'Test123!@#',
-      });
+    const ownerLogin = await request(app.getHttpServer()).post('/auth/login').send({
+      email: 'workspace-owner@example.com',
+      password: 'Test123!@#',
+    });
 
     ownerAccessToken = ownerLogin.body.accessToken;
     workspaceId = ownerLogin.body.user.workspaceId;
@@ -51,12 +47,10 @@ describe('Workspaces (e2e)', () => {
       lastName: 'Test',
     });
 
-    const memberLogin = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({
-        email: 'workspace-member@example.com',
-        password: 'Test123!@#',
-      });
+    const memberLogin = await request(app.getHttpServer()).post('/auth/login').send({
+      email: 'workspace-member@example.com',
+      password: 'Test123!@#',
+    });
 
     memberAccessToken = memberLogin.body.accessToken;
   });
@@ -72,7 +66,7 @@ describe('Workspaces (e2e)', () => {
         .get(`/workspaces/${workspaceId}`)
         .set('Authorization', `Bearer ${ownerAccessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.id).toBe(workspaceId);
           expect(res.body).toHaveProperty('name');
           expect(res.body).toHaveProperty('members');
@@ -84,7 +78,7 @@ describe('Workspaces (e2e)', () => {
         .get(`/workspaces/${workspaceId}`)
         .set('Authorization', `Bearer ${ownerAccessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(Array.isArray(res.body.members)).toBe(true);
           expect(res.body.members.length).toBeGreaterThan(0);
         });
@@ -99,12 +93,10 @@ describe('Workspaces (e2e)', () => {
         lastName: 'Workspace',
       });
 
-      const otherLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: 'other-workspace@example.com',
-          password: 'Test123!@#',
-        });
+      const otherLogin = await request(app.getHttpServer()).post('/auth/login').send({
+        email: 'other-workspace@example.com',
+        password: 'Test123!@#',
+      });
 
       return request(app.getHttpServer())
         .get(`/workspaces/${workspaceId}`)
@@ -113,9 +105,7 @@ describe('Workspaces (e2e)', () => {
     });
 
     it('should require authentication', () => {
-      return request(app.getHttpServer())
-        .get(`/workspaces/${workspaceId}`)
-        .expect(401);
+      return request(app.getHttpServer()).get(`/workspaces/${workspaceId}`).expect(401);
     });
   });
 
@@ -128,7 +118,7 @@ describe('Workspaces (e2e)', () => {
           name: 'Updated Workspace Name',
         })
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.name).toBe('Updated Workspace Name');
         });
     });
@@ -144,7 +134,7 @@ describe('Workspaces (e2e)', () => {
           },
         })
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.settings.currency).toBe('USD');
         });
     });
@@ -194,7 +184,7 @@ describe('Workspaces (e2e)', () => {
           role: 'MEMBER',
         })
         .expect(201)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('id');
           expect(res.body.email).toBe('invited@example.com');
           expect(res.body.role).toBe('MEMBER');
@@ -211,7 +201,7 @@ describe('Workspaces (e2e)', () => {
           role: 'MEMBER',
         })
         .expect(201)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body).toHaveProperty('emailSent');
         });
     });
@@ -270,7 +260,7 @@ describe('Workspaces (e2e)', () => {
           role: 'ADMIN',
         })
         .expect(201)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.role).toBe('ADMIN');
         });
     });
@@ -293,7 +283,7 @@ describe('Workspaces (e2e)', () => {
         .get(`/workspaces/${workspaceId}/invitations`)
         .set('Authorization', `Bearer ${ownerAccessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(Array.isArray(res.body)).toBe(true);
         });
     });
@@ -303,20 +293,18 @@ describe('Workspaces (e2e)', () => {
         .get(`/workspaces/${workspaceId}/invitations?status=PENDING`)
         .set('Authorization', `Bearer ${ownerAccessToken}`)
         .expect(200)
-        .expect((res) => {
-          res.body.forEach((invite) => {
+        .expect(res => {
+          res.body.forEach(invite => {
             expect(invite.status).toBe('PENDING');
           });
         });
     });
 
     it('should not allow non-members to view invitations', async () => {
-      const otherLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: 'other-workspace@example.com',
-          password: 'Test123!@#',
-        });
+      const otherLogin = await request(app.getHttpServer()).post('/auth/login').send({
+        email: 'other-workspace@example.com',
+        password: 'Test123!@#',
+      });
 
       return request(app.getHttpServer())
         .get(`/workspaces/${workspaceId}/invitations`)
@@ -335,19 +323,17 @@ describe('Workspaces (e2e)', () => {
         lastName: 'User',
       });
 
-      const invitedLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: 'invited@example.com',
-          password: 'Test123!@#',
-        });
+      const invitedLogin = await request(app.getHttpServer()).post('/auth/login').send({
+        email: 'invited@example.com',
+        password: 'Test123!@#',
+      });
 
       if (invitationId) {
         return request(app.getHttpServer())
           .post(`/workspaces/invitations/${invitationId}/accept`)
           .set('Authorization', `Bearer ${invitedLogin.body.accessToken}`)
           .expect(200)
-          .expect((res) => {
+          .expect(res => {
             expect(res.body.status).toBe('ACCEPTED');
           });
       }
@@ -371,12 +357,10 @@ describe('Workspaces (e2e)', () => {
         lastName: 'User',
       });
 
-      const expiredLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: 'expired@example.com',
-          password: 'Test123!@#',
-        });
+      const expiredLogin = await request(app.getHttpServer()).post('/auth/login').send({
+        email: 'expired@example.com',
+        password: 'Test123!@#',
+      });
 
       return request(app.getHttpServer())
         .post(`/workspaces/invitations/${expiredInvite.body.id}/accept`)
@@ -410,18 +394,16 @@ describe('Workspaces (e2e)', () => {
         lastName: 'Test',
       });
 
-      const declineLogin = await request(app.getHttpServer())
-        .post('/auth/login')
-        .send({
-          email: 'decline-test@example.com',
-          password: 'Test123!@#',
-        });
+      const declineLogin = await request(app.getHttpServer()).post('/auth/login').send({
+        email: 'decline-test@example.com',
+        password: 'Test123!@#',
+      });
 
       return request(app.getHttpServer())
         .post(`/workspaces/invitations/${invite.body.id}/decline`)
         .set('Authorization', `Bearer ${declineLogin.body.accessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(res.body.status).toBe('DECLINED');
         });
     });
@@ -435,7 +417,7 @@ describe('Workspaces (e2e)', () => {
         .set('Authorization', `Bearer ${ownerAccessToken}`);
 
       const memberToRemove = workspace.body.members.find(
-        (m) => m.email !== 'workspace-owner@example.com',
+        m => m.email !== 'workspace-owner@example.com',
       );
 
       if (memberToRemove) {
@@ -458,7 +440,7 @@ describe('Workspaces (e2e)', () => {
         .get(`/workspaces/${workspaceId}`)
         .set('Authorization', `Bearer ${ownerAccessToken}`);
 
-      const owner = workspace.body.members.find((m) => m.role === 'OWNER');
+      const owner = workspace.body.members.find(m => m.role === 'OWNER');
 
       if (owner) {
         return request(app.getHttpServer())
@@ -476,7 +458,7 @@ describe('Workspaces (e2e)', () => {
         .set('Authorization', `Bearer ${ownerAccessToken}`);
 
       const member = workspace.body.members.find(
-        (m) => m.role === 'MEMBER' && m.email !== 'workspace-owner@example.com',
+        m => m.role === 'MEMBER' && m.email !== 'workspace-owner@example.com',
       );
 
       if (member) {
@@ -487,7 +469,7 @@ describe('Workspaces (e2e)', () => {
             role: 'ADMIN',
           })
           .expect(200)
-          .expect((res) => {
+          .expect(res => {
             expect(res.body.role).toBe('ADMIN');
           });
       }
@@ -526,7 +508,7 @@ describe('Workspaces (e2e)', () => {
         .get(`/workspaces/${workspaceId}/activity`)
         .set('Authorization', `Bearer ${ownerAccessToken}`)
         .expect(200)
-        .expect((res) => {
+        .expect(res => {
           expect(Array.isArray(res.body)).toBe(true);
         });
     });

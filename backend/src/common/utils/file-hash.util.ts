@@ -6,7 +6,7 @@ export function calculateFileHash(filePath: string): Promise<string> {
     const hash = createHash('sha256');
     const stream = fs.createReadStream(filePath);
 
-    stream.on('data', (data) => hash.update(data));
+    stream.on('data', data => hash.update(data));
     stream.on('end', () => resolve(hash.digest('hex')));
     stream.on('error', reject);
   });
@@ -15,11 +15,3 @@ export function calculateFileHash(filePath: string): Promise<string> {
 export function calculateFileHashFromBuffer(buffer: Buffer): string {
   return createHash('sha256').update(buffer).digest('hex');
 }
-
-
-
-
-
-
-
-

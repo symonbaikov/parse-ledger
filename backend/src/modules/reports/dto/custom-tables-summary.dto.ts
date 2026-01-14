@@ -15,4 +15,3 @@ export class CustomTablesSummaryDto {
   @IsUUID('4', { each: true })
   tableIds?: string[];
 }
-
