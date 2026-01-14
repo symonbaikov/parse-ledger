@@ -1,16 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useState, useRef, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import ConfirmModal from '@/app/components/ConfirmModal';
+import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
+import { Icon } from '@iconify/react';
+import { Menu, MenuItem } from '@mui/material';
+import { format } from 'date-fns';
+import { enUS, kk, ru } from 'date-fns/locale';
 import {
   ArrowLeft,
   CalendarDays,
   Columns,
   Maximize2,
   Minimize2,
-  Pencil,
   PaintBucket,
+  Pencil,
   Plus,
   Rows,
   Save,
@@ -19,18 +23,22 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { Icon } from '@iconify/react';
-import { Menu, MenuItem } from '@mui/material';
-import toast from 'react-hot-toast';
-import apiClient from '@/app/lib/api';
-import { useAuth } from '@/app/hooks/useAuth';
-import ConfirmModal from '@/app/components/ConfirmModal';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import {
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { DayPicker } from 'react-day-picker';
-import { format } from 'date-fns';
-import { enUS, kk, ru } from 'date-fns/locale';
+import toast from 'react-hot-toast';
 import 'react-day-picker/style.css';
-import { CustomTableAgGrid } from './CustomTableAgGrid';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { CustomTableAgGrid } from './CustomTableAgGrid';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
 type EditingScope = 'name' | 'description' | 'both';
@@ -118,13 +126,18 @@ export default function CustomTableDetailPage() {
   const [isFullscreen, setIsFullscreen] = useState(true);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [editingMeta, setEditingMeta] = useState(false);
-  const [metaDraft, setMetaDraft] = useState<{ name: string; description: string }>({ name: '', description: '' });
+  const [metaDraft, setMetaDraft] = useState<{ name: string; description: string }>({
+    name: '',
+    description: '',
+  });
   const [savingMeta, setSavingMeta] = useState(false);
   const [editingScope, setEditingScope] = useState<EditingScope | null>('both');
   const [pencilMenuAnchor, setPencilMenuAnchor] = useState<HTMLElement | null>(null);
 
   const [table, setTable] = useState<CustomTable | null>(null);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; color?: string | null; icon?: string | null }>>([]);
+  const [categories, setCategories] = useState<
+    Array<{ id: string; name: string; color?: string | null; icon?: string | null }>
+  >([]);
   const [categoryId, setCategoryId] = useState<string>('');
   const [rows, setRows] = useState<CustomTableRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -188,18 +201,19 @@ export default function CustomTableDetailPage() {
     return [...cols].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   }, [table?.columns]);
 
-  const activeCategory =
-    categories.find((cat) => cat.id === categoryId) || table?.category || null;
+  const activeCategory = categories.find(cat => cat.id === categoryId) || table?.category || null;
 
   useEffect(() => {
-    const allowed = new Set(orderedColumns.map((c) => c.key));
-    setSelectedColumnKeys((prev) => prev.filter((k) => allowed.has(k)));
+    const allowed = new Set(orderedColumns.map(c => c.key));
+    setSelectedColumnKeys(prev => prev.filter(k => allowed.has(k)));
   }, [orderedColumns]);
 
   useEffect(() => {
     if (!table) return;
     const viewCols =
-      (table.viewSettings && typeof table.viewSettings === 'object' ? (table.viewSettings as any).columns : null) || {};
+      (table.viewSettings && typeof table.viewSettings === 'object'
+        ? (table.viewSettings as any).columns
+        : null) || {};
     const newWidths: Record<string, number> = {};
     for (const col of orderedColumns) {
       let width = viewCols?.[col.key]?.width;
@@ -214,7 +228,8 @@ export default function CustomTableDetailPage() {
     setColumnWidths(newWidths);
   }, [table?.id, orderedColumns, DEFAULT_COLUMN_WIDTH]);
 
-  const clampWidth = (width: number) => Math.max(MIN_COLUMN_WIDTH, Math.min(MAX_COLUMN_WIDTH, width));
+  const clampWidth = (width: number) =>
+    Math.max(MIN_COLUMN_WIDTH, Math.min(MAX_COLUMN_WIDTH, width));
 
   const getColumnWidth = (colKey: string) => {
     const width = columnWidths[colKey];
@@ -236,7 +251,7 @@ export default function CustomTableDetailPage() {
     const finalWidth = clampWidth(width);
     if (Math.abs(finalWidth - prevWidth) < 1) return;
 
-    setColumnWidths((prev) => ({ ...prev, [colKey]: finalWidth }));
+    setColumnWidths(prev => ({ ...prev, [colKey]: finalWidth }));
     try {
       await apiClient.patch(`/custom-tables/${tableId}/view-settings/columns`, {
         columnKey: colKey,
@@ -245,7 +260,7 @@ export default function CustomTableDetailPage() {
     } catch (error) {
       console.error('Failed to persist column width:', error);
       toast.error(t.grid.columnWidthSaveFailed.value);
-      setColumnWidths((prev) => ({ ...prev, [colKey]: prevWidth }));
+      setColumnWidths(prev => ({ ...prev, [colKey]: prevWidth }));
     }
   };
 
@@ -298,25 +313,30 @@ export default function CustomTableDetailPage() {
   const mapFontFamily = (value: string): string | undefined => {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
-    const quoted = /[\\s"]/g.test(trimmed) && !trimmed.includes(',') ? `"${trimmed.replace(/"/g, '\\"')}"` : trimmed;
+    const quoted =
+      /[\\s"]/g.test(trimmed) && !trimmed.includes(',')
+        ? `"${trimmed.replace(/"/g, '\\"')}"`
+        : trimmed;
     if (trimmed.includes(',')) return trimmed;
     return `${quoted}, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif`;
   };
 
   const getCellCss = (style: Record<string, any>) => {
-    const backgroundColor = typeof style.backgroundColor === 'string' ? style.backgroundColor : undefined;
+    const backgroundColor =
+      typeof style.backgroundColor === 'string' ? style.backgroundColor : undefined;
     const textAlign = mapHorizontalAlignment(style.horizontalAlignment);
     const verticalAlign = mapVerticalAlignment(style.verticalAlignment);
 
-    const tf = style.textFormat && typeof style.textFormat === 'object' ? (style.textFormat as any) : null;
+    const tf =
+      style.textFormat && typeof style.textFormat === 'object' ? (style.textFormat as any) : null;
     const color = tf && typeof tf.foregroundColor === 'string' ? tf.foregroundColor : undefined;
-    const fontWeight =
-      tf && typeof tf.bold === 'boolean' ? (tf.bold ? 700 : 400) : undefined;
+    const fontWeight = tf && typeof tf.bold === 'boolean' ? (tf.bold ? 700 : 400) : undefined;
     const fontStyle =
       tf && typeof tf.italic === 'boolean' ? (tf.italic ? 'italic' : 'normal') : undefined;
 
     const underline = tf && typeof tf.underline === 'boolean' ? tf.underline : undefined;
-    const strikethrough = tf && typeof tf.strikethrough === 'boolean' ? tf.strikethrough : undefined;
+    const strikethrough =
+      tf && typeof tf.strikethrough === 'boolean' ? tf.strikethrough : undefined;
     let textDecorationLine: CSSProperties['textDecorationLine'] | undefined;
     if (underline === true || strikethrough === true) {
       const parts: string[] = [];
@@ -328,11 +348,23 @@ export default function CustomTableDetailPage() {
     }
 
     const fontSize =
-      tf && typeof tf.fontSize === 'number' && Number.isFinite(tf.fontSize) && tf.fontSize > 0 ? tf.fontSize : undefined;
+      tf && typeof tf.fontSize === 'number' && Number.isFinite(tf.fontSize) && tf.fontSize > 0
+        ? tf.fontSize
+        : undefined;
     const fontFamily =
       tf && typeof tf.fontFamily === 'string' ? mapFontFamily(tf.fontFamily) : undefined;
 
-    return { backgroundColor, textAlign, verticalAlign, color, fontWeight, fontStyle, textDecorationLine, fontSize, fontFamily };
+    return {
+      backgroundColor,
+      textAlign,
+      verticalAlign,
+      color,
+      fontWeight,
+      fontStyle,
+      textDecorationLine,
+      fontSize,
+      fontFamily,
+    };
   };
 
   const loadCategories = async () => {
@@ -374,7 +406,7 @@ export default function CustomTableDetailPage() {
       });
       const items = response.data?.items || response.data?.data?.items || [];
       const next = Array.isArray(items) ? items : [];
-      setRows((prev) => {
+      setRows(prev => {
         const merged = opts?.reset ? next : [...prev, ...next];
         const seen = new Set<string>();
         const deduped: typeof merged = [];
@@ -434,12 +466,12 @@ export default function CustomTableDetailPage() {
         const to = state?.to ? new Date(`${state.to}T00:00:00`) : undefined;
         const fromOk = from && !Number.isNaN(from.getTime());
         const toOk = to && !Number.isNaN(to.getTime());
-        if (fromOk && toOk) {
-          result.push({ col: col.key, op: 'between', value: [toIsoDate(from!), toIsoDate(to!)] });
-        } else if (fromOk) {
-          result.push({ col: col.key, op: 'gte', value: toIsoDate(from!) });
-        } else if (toOk) {
-          result.push({ col: col.key, op: 'lte', value: toIsoDate(to!) });
+        if (fromOk && toOk && from && to) {
+          result.push({ col: col.key, op: 'between', value: [toIsoDate(from), toIsoDate(to)] });
+        } else if (fromOk && from) {
+          result.push({ col: col.key, op: 'gte', value: toIsoDate(from) });
+        } else if (toOk && to) {
+          result.push({ col: col.key, op: 'lte', value: toIsoDate(to) });
         }
         continue;
       }
@@ -493,7 +525,7 @@ export default function CustomTableDetailPage() {
   };
 
   const dateFilterColKey = useMemo(() => {
-    const firstDateCol = orderedColumns.find((c) => c.type === 'date');
+    const firstDateCol = orderedColumns.find(c => c.type === 'date');
     return firstDateCol?.key || null;
   }, [orderedColumns]);
 
@@ -507,17 +539,21 @@ export default function CustomTableDetailPage() {
 
     const toIsoDate = (date: Date) => format(date, 'yyyy-MM-dd', { locale: dateFnsLocale });
 
-    if (fromOk && toOk) {
-      return [{ col: dateFilterColKey, op: 'between', value: [toIsoDate(from!), toIsoDate(to!)] }];
+    if (fromOk && toOk && from && to) {
+      return [{ col: dateFilterColKey, op: 'between', value: [toIsoDate(from), toIsoDate(to)] }];
     }
-    if (fromOk) return [{ col: dateFilterColKey, op: 'gte', value: toIsoDate(from!) }];
-    return [{ col: dateFilterColKey, op: 'lte', value: toIsoDate(to!) }];
+    if (fromOk && from) return [{ col: dateFilterColKey, op: 'gte', value: toIsoDate(from) }];
+    if (toOk && to) return [{ col: dateFilterColKey, op: 'lte', value: toIsoDate(to) }];
+    return [];
   }, [dateFilterColKey, dateFrom, dateTo]);
 
   const combinedFiltersParam = useMemo(() => {
     const base = parseFiltersParam(gridFiltersParam);
-    const overrideCols = new Set<string>([...requestFilters.map((f) => f.col), ...dateFilters.map((f) => f.col)]);
-    const baseWithoutOverrides = base.filter((f) => !overrideCols.has(f.col));
+    const overrideCols = new Set<string>([
+      ...requestFilters.map(f => f.col),
+      ...dateFilters.map(f => f.col),
+    ]);
+    const baseWithoutOverrides = base.filter(f => !overrideCols.has(f.col));
     const merged = [...baseWithoutOverrides, ...requestFilters, ...dateFilters];
     return merged.length ? JSON.stringify(merged) : undefined;
   }, [gridFiltersParam, requestFilters, dateFilters]);
@@ -562,7 +598,7 @@ export default function CustomTableDetailPage() {
   }, [combinedFiltersParam, user, tableId]);
 
   const clearColumnFilter = (colKey: string) => {
-    setColumnFilters((prev) => {
+    setColumnFilters(prev => {
       const next = { ...prev };
       delete next[colKey];
       return next;
@@ -576,13 +612,13 @@ export default function CustomTableDetailPage() {
     setDateTo(null);
   };
 
-  const activeFilterCols = useMemo(() => new Set(requestFilters.map((f) => f.col)), [requestFilters]);
+  const activeFilterCols = useMemo(() => new Set(requestFilters.map(f => f.col)), [requestFilters]);
 
   const toggleFilterPopover = (colKey: string) => {
-    setActiveFilterColKey((prev) => (prev === colKey ? null : colKey));
-    setColumnFilters((prev) => {
+    setActiveFilterColKey(prev => (prev === colKey ? null : colKey));
+    setColumnFilters(prev => {
       if (prev[colKey]) return prev;
-      const col = orderedColumns.find((c) => c.key === colKey);
+      const col = orderedColumns.find(c => c.key === colKey);
       if (!col) return prev;
       const defaultsByType: Record<ColumnType, Record<string, any>> = {
         text: { op: 'contains', value: '' },
@@ -597,7 +633,7 @@ export default function CustomTableDetailPage() {
   };
 
   const setColumnFilterState = (colKey: string, nextState: Record<string, any>) => {
-    setColumnFilters((prev) => ({ ...prev, [colKey]: nextState }));
+    setColumnFilters(prev => ({ ...prev, [colKey]: nextState }));
   };
 
   const startColumnResize = (colKey: string, event: ReactPointerEvent) => {
@@ -632,7 +668,7 @@ export default function CustomTableDetailPage() {
       const { colKey, startX, startWidth } = resizeRef.current;
       const delta = event.clientX - startX;
       const nextWidth = clampWidth(startWidth + delta);
-      setColumnWidths((prev) => {
+      setColumnWidths(prev => {
         if (prev[colKey] === nextWidth) return prev;
         return { ...prev, [colKey]: nextWidth };
       });
@@ -666,7 +702,7 @@ export default function CustomTableDetailPage() {
       } catch (error) {
         console.error('Failed to persist column width:', error);
         toast.error(t.grid.columnWidthSaveFailed.value);
-        setColumnWidths((prev) => ({ ...prev, [colKey]: startWidth }));
+        setColumnWidths(prev => ({ ...prev, [colKey]: startWidth }));
       }
     };
 
@@ -822,15 +858,22 @@ export default function CustomTableDetailPage() {
       const response = await apiClient.post(`/custom-tables/${tableId}/rows`, { data: {} });
       const raw = response.data as any;
       const created =
-        raw && typeof raw === 'object' && typeof raw.id === 'string' && typeof raw.rowNumber === 'number'
+        raw &&
+        typeof raw === 'object' &&
+        typeof raw.id === 'string' &&
+        typeof raw.rowNumber === 'number'
           ? raw
-          : raw && typeof raw === 'object' && raw.data && typeof raw.data.id === 'string' && typeof raw.data.rowNumber === 'number'
+          : raw &&
+              typeof raw === 'object' &&
+              raw.data &&
+              typeof raw.data.id === 'string' &&
+              typeof raw.data.rowNumber === 'number'
             ? raw.data
             : null;
       if (!created) {
         throw new Error('Unexpected create row response');
       }
-      setRows((prev) => [...prev, created]);
+      setRows(prev => [...prev, created]);
       toast.success(t.addRow.success.value, { id: toastId });
     } catch (error) {
       console.error('Failed to add row:', error);
@@ -843,9 +886,13 @@ export default function CustomTableDetailPage() {
     const key = `${row.id}:${column.id}`;
     setSavingCell(key);
     try {
-      await apiClient.patch(`/custom-tables/${tableId}/rows/${row.id}`, { data: { [column.key]: value } });
-      setRows((prev) =>
-        prev.map((r) => (r.id === row.id ? { ...r, data: { ...(r.data || {}), [column.key]: value } } : r)),
+      await apiClient.patch(`/custom-tables/${tableId}/rows/${row.id}`, {
+        data: { [column.key]: value },
+      });
+      setRows(prev =>
+        prev.map(r =>
+          r.id === row.id ? { ...r, data: { ...(r.data || {}), [column.key]: value } } : r,
+        ),
       );
     } catch (error) {
       console.error('Failed to update cell:', error);
@@ -869,8 +916,8 @@ export default function CustomTableDetailPage() {
         data: dataPatch,
         ...(hasStyles ? { styles } : {}),
       });
-      setRows((prev) =>
-        prev.map((r) =>
+      setRows(prev =>
+        prev.map(r =>
           r.id === rowId
             ? {
                 ...r,
@@ -896,7 +943,7 @@ export default function CustomTableDetailPage() {
     setRowFillLoading(true);
     try {
       for (const rowId of selectedRowIds) {
-        const row = rows.find((r) => r.id === rowId);
+        const row = rows.find(r => r.id === rowId);
         if (!row) continue;
         const nextStyles = { ...(row.styles || {}) };
         if (color) {
@@ -917,21 +964,21 @@ export default function CustomTableDetailPage() {
   };
 
   const updateCellFromGrid = async (rowId: string, columnKey: string, value: any) => {
-    const row = rows.find((r) => r.id === rowId);
-    const column = orderedColumns.find((c) => c.key === columnKey);
+    const row = rows.find(r => r.id === rowId);
+    const column = orderedColumns.find(c => c.key === columnKey);
     if (!row || !column) return;
     await saveCell(row, column, value);
   };
 
   const requestDeleteRowFromGrid = (rowId: string) => {
-    const row = rows.find((r) => r.id === rowId);
+    const row = rows.find(r => r.id === rowId);
     if (!row) return;
     openDeleteRow(row);
   };
 
   const renameColumnTitleFromGrid = async (columnKey: string, nextTitle: string) => {
     if (!tableId) return;
-    const col = orderedColumns.find((c) => c.key === columnKey);
+    const col = orderedColumns.find(c => c.key === columnKey);
     if (!col) return;
     const title = nextTitle.trim();
     if (!title) return;
@@ -977,7 +1024,7 @@ export default function CustomTableDetailPage() {
     try {
       await apiClient.delete(`/custom-tables/${tableId}/rows/${deleteRowTarget.id}`);
       toast.success(t.deleteRow.success.value, { id: toastId });
-      setRows((prev) => prev.filter((r) => r.id !== deleteRowTarget.id));
+      setRows(prev => prev.filter(r => r.id !== deleteRowTarget.id));
       setDeleteRowModalOpen(false);
       setDeleteRowTarget(null);
     } catch (error) {
@@ -1033,10 +1080,10 @@ export default function CustomTableDetailPage() {
     if (!title) return;
     const toastId = toast.loading(t.addColumn.loading.value);
     try {
-      await apiClient.post(`/custom-tables/${tableId}/columns`, { 
-        title, 
+      await apiClient.post(`/custom-tables/${tableId}/columns`, {
+        title,
         type: newColumn.type,
-        config: { icon: newColumnIcon }
+        config: { icon: newColumnIcon },
       });
       toast.success(t.addColumn.success.value, { id: toastId });
       setNewColumnOpen(false);
@@ -1052,7 +1099,9 @@ export default function CustomTableDetailPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">{t.auth.loading}</div>
+      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">
+        {t.auth.loading}
+      </div>
     );
   }
 
@@ -1076,11 +1125,12 @@ export default function CustomTableDetailPage() {
     );
   }
 
-
   // Client-side only rendering to avoid hydration issues
   if (!mounted) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">{t.auth.loading}</div>
+      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">
+        {t.auth.loading}
+      </div>
     );
   }
 
@@ -1101,347 +1151,384 @@ export default function CustomTableDetailPage() {
             : 'mb-6 flex items-start justify-between gap-4'
         }
       >
-       {/* Fullscreen layout adjustment: Flex container for the header content */}
-        <div className={isFullscreen ? 'flex items-center justify-between gap-4 max-w-[1920px] mx-auto' : 'contents'}>
+        {/* Fullscreen layout adjustment: Flex container for the header content */}
+        <div
+          className={
+            isFullscreen
+              ? 'flex items-center justify-between gap-4 max-w-[1920px] mx-auto'
+              : 'contents'
+          }
+        >
           <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push('/custom-tables')}
-              className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
-            >
-              <ArrowLeft className="h-4 w-4" />
-	              <span className={isFullscreen ? 'hidden sm:inline' : ''}>{t.nav.back}</span>
-            </button>
-            {!isFullscreen && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => router.push('/custom-tables')}
+                className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className={isFullscreen ? 'hidden sm:inline' : ''}>{t.nav.back}</span>
+              </button>
+              {!isFullscreen && (
                 <Link href="/custom-tables" className="text-sm text-gray-400 hover:text-gray-600">
-	                / {t.nav.tables}
+                  / {t.nav.tables}
                 </Link>
-            )}
-          </div>
-          <div className="flex items-start gap-2">
-            <span
-              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm"
-              style={{ backgroundColor: activeCategory?.color || '#f3f4f6' }}
-            >
-              {activeCategory?.icon ? (
-                <Icon icon={activeCategory.icon} className="h-6 w-6 text-gray-900" />
-              ) : (
-                <span className="text-2xl font-semibold text-gray-900">
-                  {(activeCategory?.name || table.name || 'T').charAt(0)}
-                </span>
               )}
-            </span>
-            <div className="flex-1">
-              {editingMeta ? (
-                <div className="flex flex-col gap-1">
-                  {(editingScope ?? 'both') !== 'description' && (
-                    <input
-                      value={metaDraft.name}
-                      onChange={(e) => setMetaDraft((prev) => ({ ...prev, name: e.target.value }))}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          saveMeta();
+            </div>
+            <div className="flex items-start gap-2">
+              <span
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm"
+                style={{ backgroundColor: activeCategory?.color || '#f3f4f6' }}
+              >
+                {activeCategory?.icon ? (
+                  <Icon icon={activeCategory.icon} className="h-6 w-6 text-gray-900" />
+                ) : (
+                  <span className="text-2xl font-semibold text-gray-900">
+                    {(activeCategory?.name || table.name || 'T').charAt(0)}
+                  </span>
+                )}
+              </span>
+              <div className="flex-1">
+                {editingMeta ? (
+                  <div className="flex flex-col gap-1">
+                    {(editingScope ?? 'both') !== 'description' && (
+                      <input
+                        value={metaDraft.name}
+                        onChange={e => setMetaDraft(prev => ({ ...prev, name: e.target.value }))}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveMeta();
+                          }
+                          if (e.key === 'Escape') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            cancelEditMeta();
+                          }
+                        }}
+                        disabled={savingMeta}
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
+                        placeholder={t.meta.namePlaceholder.value}
+                      />
+                    )}
+                    {(editingScope ?? 'both') !== 'name' && (
+                      <textarea
+                        value={metaDraft.description}
+                        onChange={e =>
+                          setMetaDraft(prev => ({ ...prev, description: e.target.value }))
                         }
-                        if (e.key === 'Escape') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          cancelEditMeta();
+                        rows={1}
+                        disabled={savingMeta}
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
+                        placeholder={t.meta.descriptionPlaceholder.value}
+                      />
+                    )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={saveMeta}
+                        disabled={
+                          savingMeta ||
+                          ((editingScope ?? 'both') !== 'description' && !metaDraft.name.trim())
                         }
-                      }}
-                      disabled={savingMeta}
-                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
-                      placeholder={t.meta.namePlaceholder.value}
-                    />
-                  )}
-                  {(editingScope ?? 'both') !== 'name' && (
-                    <textarea
-                      value={metaDraft.description}
-                      onChange={(e) => setMetaDraft((prev) => ({ ...prev, description: e.target.value }))}
-                      rows={1}
-                      disabled={savingMeta}
-                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
-                      placeholder={t.meta.descriptionPlaceholder.value}
-                    />
-                  )}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={saveMeta}
-                      disabled={
-                        savingMeta ||
-                        ((editingScope ?? 'both') !== 'description' && !metaDraft.name.trim())
-                      }
-                      className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-                      title={t.meta.save.value}
-                    >
-                      <Save className="h-4 w-4" />
-                      <span className="ml-1 text-[11px]">{t.meta.save}</span>
-                    </button>
-                    <button
-                      onClick={cancelEditMeta}
-                      disabled={savingMeta}
-                      className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <X className="h-4 w-4" />
-                      <span className="ml-1 text-[11px]">{t.meta.cancel}</span>
-                    </button>
+                        className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={t.meta.save.value}
+                      >
+                        <Save className="h-4 w-4" />
+                        <span className="ml-1 text-[11px]">{t.meta.save}</span>
+                      </button>
+                      <button
+                        onClick={cancelEditMeta}
+                        disabled={savingMeta}
+                        className="inline-flex items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <X className="h-4 w-4" />
+                        <span className="ml-1 text-[11px]">{t.meta.cancel}</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 min-w-0">
-                  <h1 className="text-xl font-semibold text-gray-900 truncate">{table.name}</h1>
-                  <button
-                    onClick={handlePencilClick}
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 bg-white text-gray-700 hover:border-primary hover:text-primary"
-                    title={t.meta.editTooltip.value}
+                ) : (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h1 className="text-xl font-semibold text-gray-900 truncate">{table.name}</h1>
+                    <button
+                      onClick={handlePencilClick}
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg border border-gray-200 bg-white text-gray-700 hover:border-primary hover:text-primary"
+                      title={t.meta.editTooltip.value}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <Menu
+                      anchorEl={pencilMenuAnchor}
+                      open={Boolean(pencilMenuAnchor)}
+                      onClose={handleClosePencilMenu}
+                      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                      transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+                    >
+                      <MenuItem onClick={() => handleSelectEditScope('name')}>
+                        {t.meta.editMenu.name}
+                      </MenuItem>
+                      <MenuItem onClick={() => handleSelectEditScope('description')}>
+                        {t.meta.editMenu.description}
+                      </MenuItem>
+                      <MenuItem onClick={() => handleSelectEditScope('both')}>
+                        {t.meta.editMenu.both}
+                      </MenuItem>
+                    </Menu>
+                  </div>
+                )}
+              </div>
+              {!editingMeta && (
+                <div className="ml-3 flex items-center gap-2">
+                  <select
+                    value={categoryId}
+                    onChange={e => updateCategory(e.target.value)}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 max-w-[150px]"
                   >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <Menu
-                    anchorEl={pencilMenuAnchor}
-                    open={Boolean(pencilMenuAnchor)}
-                    onClose={handleClosePencilMenu}
-                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                    transformOrigin={{ vertical: 'top', horizontal: 'center' }}
-                  >
-                    <MenuItem onClick={() => handleSelectEditScope('name')}>{t.meta.editMenu.name}</MenuItem>
-                    <MenuItem onClick={() => handleSelectEditScope('description')}>{t.meta.editMenu.description}</MenuItem>
-                    <MenuItem onClick={() => handleSelectEditScope('both')}>{t.meta.editMenu.both}</MenuItem>
-                  </Menu>
+                    <option value="">{t.category.none}</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               )}
             </div>
-            {!editingMeta && (
-              <div className="ml-3 flex items-center gap-2">
-                <select
-                  value={categoryId}
-                  onChange={(e) => updateCategory(e.target.value)}
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 max-w-[150px]"
+            {!editingMeta &&
+              !isFullscreen && ( // Hide description in fullscreen header to save space
+                <div className="text-secondary ml-[52px]">{table.description || '—'}</div>
+              )}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-[11px]">
+            <div className="flex items-center gap-1">
+              <div className="relative" ref={calendarFromRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCalendarFromOpen(v => !v);
+                    setCalendarToOpen(false);
+                  }}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                    dateFrom
+                      ? 'border-primary bg-primary/10 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-white'
+                  }`}
                 >
-                  <option value="">{t.category.none}</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
+                  <CalendarDays
+                    className={`h-4 w-4 ${dateFrom ? 'text-primary' : 'text-gray-600'}`}
+                  />
+                  <span className="min-w-[80px] text-left">
+                    {dateFrom ? formatFilterInputValue(dateFrom, '') : t.dateFilters.from.value}
+                  </span>
+                  {dateFrom ? (
+                    <X
+                      className="h-3.5 w-3.5 text-gray-500 hover:text-gray-800"
+                      onClick={e => {
+                        e.stopPropagation();
+                        setDateFrom(null);
+                        setCalendarFromOpen(false);
+                      }}
+                    />
+                  ) : null}
+                </button>
+                {calendarFromOpen && (
+                  <div className="absolute right-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3 origin-top-right">
+                    <DayPicker
+                      mode="single"
+                      selected={selectedDateFrom}
+                      locale={dateFnsLocale}
+                      onSelect={date => {
+                        if (!date) return;
+                        setDateFrom(date.toISOString());
+                        setCalendarFromOpen(false);
+                      }}
+                      fromYear={2000}
+                      toYear={2035}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="relative" ref={calendarToRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCalendarToOpen(v => !v);
+                    setCalendarFromOpen(false);
+                  }}
+                  className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                    dateTo
+                      ? 'border-primary bg-primary/10 text-gray-900'
+                      : 'border-gray-200 bg-white text-gray-600 hover:bg-white'
+                  }`}
+                >
+                  <CalendarDays
+                    className={`h-4 w-4 ${dateTo ? 'text-primary' : 'text-gray-600'}`}
+                  />
+                  <span className="min-w-[80px] text-left">
+                    {dateTo ? formatFilterInputValue(dateTo, '') : t.dateFilters.to.value}
+                  </span>
+                  {dateTo ? (
+                    <X
+                      className="h-3.5 w-3.5 text-gray-500 hover:text-gray-800"
+                      onClick={e => {
+                        e.stopPropagation();
+                        setDateTo(null);
+                        setCalendarToOpen(false);
+                      }}
+                    />
+                  ) : null}
+                </button>
+                {calendarToOpen && (
+                  <div className="absolute right-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3 origin-top-right">
+                    <DayPicker
+                      mode="single"
+                      selected={selectedDateTo}
+                      locale={dateFnsLocale}
+                      onSelect={date => {
+                        if (!date) return;
+                        setDateTo(date.toISOString());
+                        setCalendarToOpen(false);
+                      }}
+                      fromYear={2000}
+                      toYear={2035}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setZoomLevel(z => Math.max(0.5, z - 0.1))}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition hover:border-primary hover:text-primary disabled:opacity-50"
+                disabled={zoomLevel <= 0.5}
+                title={t.zoom.out.value}
+              >
+                <ZoomOut className="h-4 w-4" />
+              </button>
+              <span className="w-12 text-center text-[11px] font-medium text-gray-700 select-none">
+                {Math.round(zoomLevel * 100)}%
+              </span>
+              <button
+                onClick={() => setZoomLevel(z => Math.min(1.5, z + 0.1))}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition hover:border-primary hover:text-primary disabled:opacity-50"
+                disabled={zoomLevel >= 1.5}
+                title={t.zoom.in.value}
+              >
+                <ZoomIn className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setNewColumnOpen(v => !v)}
+                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-700 transition hover:border-primary hover:text-primary"
+              >
+                <Columns className="h-4 w-4" />
+                <span>{t.fill.column}</span>
+              </button>
+              <button
+                onClick={addRow}
+                className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-[11px] font-medium text-white transition hover:bg-primary-hover"
+              >
+                <Rows className="h-4 w-4" />
+                <span>{t.fill.row}</span>
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-gray-500">
+                {selectedRowIds.length
+                  ? `${t.fill.selectedRowsPrefix.value}: ${selectedRowIds.length}`
+                  : t.fill.rowsFillTitle.value}
+              </span>
+              <input
+                type="color"
+                value={rowFillColor}
+                onChange={e => setRowFillColor(e.target.value)}
+                className="h-7 w-7 rounded-md border border-gray-200"
+                title={t.fill.colorTooltip.value}
+              />
+              <button
+                onClick={() => applyRowFill(rowFillColor)}
+                disabled={rowFillLoading || !selectedRowIds.length}
+                className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
+                  rowFillLoading || !selectedRowIds.length ? 'opacity-50 cursor-not-allowed' : ''
+                } border-gray-200 bg-white text-gray-700 hover:border-primary hover:text-primary`}
+              >
+                <span className="inline-flex items-center gap-1">
+                  <PaintBucket className="h-4 w-4" />
+                  <span>{t.fill.fillButton}</span>
+                </span>
+              </button>
+              <button
+                onClick={() => applyRowFill(null)}
+                disabled={rowFillLoading || !selectedRowIds.length}
+                className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
+                  rowFillLoading || !selectedRowIds.length ? 'opacity-50 cursor-not-allowed' : ''
+                } border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200`}
+              >
+                {t.fill.clear}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {newColumnOpen && (
+          <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm animate-in fade-in zoom-in-95 duration-200">
+            {/* Repurposed New Column Form */}
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+              <div className="md:col-span-2">
+                <label
+                  className="block text-xs font-semibold text-gray-700 mb-1"
+                  htmlFor="new-column-title"
+                >
+                  {t.addColumn.titleLabel}
+                </label>
+                <input
+                  id="new-column-title"
+                  value={newColumn.title}
+                  onChange={e => setNewColumn(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder={t.addColumn.titlePlaceholder.value}
+                />
+              </div>
+              <div className="md:col-span-1">
+                <label
+                  className="block text-xs font-semibold text-gray-700 mb-1"
+                  htmlFor="new-column-type"
+                >
+                  {t.addColumn.typeLabel}
+                </label>
+                <select
+                  id="new-column-type"
+                  value={newColumn.type}
+                  onChange={e =>
+                    setNewColumn(prev => ({ ...prev, type: e.target.value as ColumnType }))
+                  }
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                >
+                  {columnTypes.map(typeItem => (
+                    <option key={typeItem.value} value={typeItem.value}>
+                      {typeItem.label}
                     </option>
                   ))}
                 </select>
               </div>
-            )}
-          </div>
-          {!editingMeta && !isFullscreen && ( // Hide description in fullscreen header to save space
-             <div className="text-secondary ml-[52px]">{table.description || '—'}</div>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-[11px]">
-          <div className="flex items-center gap-1">
-            <div className="relative" ref={calendarFromRef}>
-              <button
-                type="button"
-                onClick={() => {
-                  setCalendarFromOpen((v) => !v);
-                  setCalendarToOpen(false);
-                }}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
-                  dateFrom ? 'border-primary bg-primary/10 text-gray-900' : 'border-gray-200 bg-white text-gray-600 hover:bg-white'
-                }`}
-              >
-                <CalendarDays className={`h-4 w-4 ${dateFrom ? 'text-primary' : 'text-gray-600'}`} />
-                <span className="min-w-[80px] text-left">
-                  {dateFrom ? formatFilterInputValue(dateFrom, '') : t.dateFilters.from.value}
-                </span>
-                {dateFrom ? (
-                  <X
-                    className="h-3.5 w-3.5 text-gray-500 hover:text-gray-800"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDateFrom(null);
-                      setCalendarFromOpen(false);
-                    }}
-                  />
-                ) : null}
-              </button>
-              {calendarFromOpen && (
-                <div className="absolute right-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3 origin-top-right">
-                  <DayPicker
-                    mode="single"
-                    selected={selectedDateFrom}
-                    locale={dateFnsLocale}
-                    onSelect={(date) => {
-                      if (!date) return;
-                      setDateFrom(date.toISOString());
-                      setCalendarFromOpen(false);
-                    }}
-                    fromYear={2000}
-                    toYear={2035}
-                  />
-                </div>
-              )}
-            </div>
-            <div className="relative" ref={calendarToRef}>
-              <button
-                type="button"
-                onClick={() => {
-                  setCalendarToOpen((v) => !v);
-                  setCalendarFromOpen(false);
-                }}
-                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
-                  dateTo ? 'border-primary bg-primary/10 text-gray-900' : 'border-gray-200 bg-white text-gray-600 hover:bg-white'
-                }`}
-              >
-                <CalendarDays className={`h-4 w-4 ${dateTo ? 'text-primary' : 'text-gray-600'}`} />
-                <span className="min-w-[80px] text-left">
-                  {dateTo ? formatFilterInputValue(dateTo, '') : t.dateFilters.to.value}
-                </span>
-                {dateTo ? (
-                  <X
-                    className="h-3.5 w-3.5 text-gray-500 hover:text-gray-800"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDateTo(null);
-                      setCalendarToOpen(false);
-                    }}
-                  />
-                ) : null}
-              </button>
-              {calendarToOpen && (
-                <div className="absolute right-0 z-30 mt-2 rounded-2xl border border-gray-200 bg-white shadow-lg p-3 origin-top-right">
-                  <DayPicker
-                    mode="single"
-                    selected={selectedDateTo}
-                    locale={dateFnsLocale}
-                    onSelect={(date) => {
-                      if (!date) return;
-                      setDateTo(date.toISOString());
-                      setCalendarToOpen(false);
-                    }}
-                    fromYear={2000}
-                    toYear={2035}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setZoomLevel((z) => Math.max(0.5, z - 0.1))}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition hover:border-primary hover:text-primary disabled:opacity-50"
-              disabled={zoomLevel <= 0.5}
-              title={t.zoom.out.value}
-            >
-              <ZoomOut className="h-4 w-4" />
-            </button>
-            <span className="w-12 text-center text-[11px] font-medium text-gray-700 select-none">
-              {Math.round(zoomLevel * 100)}%
-            </span>
-            <button
-              onClick={() => setZoomLevel((z) => Math.min(1.5, z + 0.1))}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 transition hover:border-primary hover:text-primary disabled:opacity-50"
-              disabled={zoomLevel >= 1.5}
-              title={t.zoom.in.value}
-            >
-              <ZoomIn className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setNewColumnOpen((v) => !v)}
-              className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1 text-[11px] font-medium text-gray-700 transition hover:border-primary hover:text-primary"
-            >
-              <Columns className="h-4 w-4" />
-              <span>{t.fill.column}</span>
-            </button>
-            <button
-              onClick={addRow}
-              className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-[11px] font-medium text-white transition hover:bg-primary-hover"
-            >
-              <Rows className="h-4 w-4" />
-              <span>{t.fill.row}</span>
-            </button>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-gray-500">
-              {selectedRowIds.length
-                ? `${t.fill.selectedRowsPrefix.value}: ${selectedRowIds.length}`
-                : t.fill.rowsFillTitle.value}
-            </span>
-            <input
-              type="color"
-              value={rowFillColor}
-              onChange={(e) => setRowFillColor(e.target.value)}
-              className="h-7 w-7 rounded-md border border-gray-200"
-              title={t.fill.colorTooltip.value}
-            />
-            <button
-              onClick={() => applyRowFill(rowFillColor)}
-              disabled={rowFillLoading || !selectedRowIds.length}
-              className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
-                rowFillLoading || !selectedRowIds.length ? 'opacity-50 cursor-not-allowed' : ''
-              } border-gray-200 bg-white text-gray-700 hover:border-primary hover:text-primary`}
-            >
-              <span className="inline-flex items-center gap-1">
-                <PaintBucket className="h-4 w-4" />
-                <span>{t.fill.fillButton}</span>
-              </span>
-            </button>
-            <button
-              onClick={() => applyRowFill(null)}
-              disabled={rowFillLoading || !selectedRowIds.length}
-              className={`rounded-full border px-3 py-1 text-[11px] font-medium transition ${
-                rowFillLoading || !selectedRowIds.length ? 'opacity-50 cursor-not-allowed' : ''
-              } border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200`}
-            >
-              {t.fill.clear}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {newColumnOpen && (
-         <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm animate-in fade-in zoom-in-95 duration-200">
-           {/* Repurposed New Column Form */}
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
-            <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.addColumn.titleLabel}</label>
-              <input
-                value={newColumn.title}
-                onChange={(e) => setNewColumn((prev) => ({ ...prev, title: e.target.value }))}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder={t.addColumn.titlePlaceholder.value}
-              />
-            </div>
-            <div className="md:col-span-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.addColumn.typeLabel}</label>
-              <select
-                value={newColumn.type}
-                onChange={(e) => setNewColumn((prev) => ({ ...prev, type: e.target.value as ColumnType }))}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                {columnTypes.map((typeItem) => (
-                  <option key={typeItem.value} value={typeItem.value}>
-                    {typeItem.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="md:col-span-1 relative">
+              <div className="md:col-span-1 relative">
                 {/* Icon Picker (Existing Logic) */}
-               <label className="block text-xs font-semibold text-gray-700 mb-1">{t.addColumn.iconLabel}</label>
-              <button
-                type="button"
-                onClick={() => setColumnIconOpen((v) => !v)}
-                className="w-full inline-flex items-center justify-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-              >
-                 <div className="h-4 w-4">
-                  {renderIconPreview(newColumnIcon || 'mdi:tag')}
-                </div>
-                <span className="text-sm font-semibold">{t.addColumn.choose}</span>
-              </button>
-              {columnIconOpen && (
-                 <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
+                <p className="block text-xs font-semibold text-gray-700 mb-1">
+                  {t.addColumn.iconLabel}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setColumnIconOpen(v => !v)}
+                  className="w-full inline-flex items-center justify-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                >
+                  <div className="h-4 w-4">{renderIconPreview(newColumnIcon || 'mdi:tag')}</div>
+                  <span className="text-sm font-semibold">{t.addColumn.choose}</span>
+                </button>
+                {columnIconOpen && (
+                  <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
                     {/* ... Icon grid ... */}
                     <div className="grid grid-cols-7 gap-2 mb-4">
-                      {COLUMN_ICONS.map((icon) => (
+                      {COLUMN_ICONS.map(icon => (
                         <button
                           key={icon}
                           type="button"
@@ -1455,13 +1542,11 @@ export default function CustomTableDetailPage() {
                               : 'border-gray-200 text-gray-700 hover:bg-gray-50'
                           }`}
                         >
-                           <div className="h-5 w-5">
-                            {renderIconPreview(icon)}
-                          </div>
+                          <div className="h-5 w-5">{renderIconPreview(icon)}</div>
                         </button>
                       ))}
                     </div>
-                     <div className="border-t border-gray-100 pt-4">
+                    <div className="border-t border-gray-100 pt-4">
                       <button
                         type="button"
                         onClick={() => {
@@ -1474,45 +1559,45 @@ export default function CustomTableDetailPage() {
                         {uploadingColumnIcon ? t.addColumn.uploading : t.addColumn.uploadIcon}
                       </button>
                     </div>
-                 </div>
-              )}
-            </div>
-            {/* Hidden Input */}
-             <input
-              ref={columnIconInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleColumnIconFileChange}
-            />
-            <div className="md:col-span-2 flex gap-2 justify-end">
-              <button
-                onClick={() => {
-                  setNewColumnOpen(false);
-                  setColumnIconOpen(false);
-                }}
-                className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                {t.addColumn.cancel}
-              </button>
-              <button
-                onClick={createColumn}
-                disabled={!newColumn.title.trim()}
-                className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Save className="h-4 w-4" />
-                {t.addColumn.save}
-              </button>
+                  </div>
+                )}
+              </div>
+              {/* Hidden Input */}
+              <input
+                ref={columnIconInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleColumnIconFileChange}
+              />
+              <div className="md:col-span-2 flex gap-2 justify-end">
+                <button
+                  onClick={() => {
+                    setNewColumnOpen(false);
+                    setColumnIconOpen(false);
+                  }}
+                  className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  {t.addColumn.cancel}
+                </button>
+                <button
+                  onClick={createColumn}
+                  disabled={!newColumn.title.trim()}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="h-4 w-4" />
+                  {t.addColumn.save}
+                </button>
+              </div>
             </div>
           </div>
-         </div>
-       )}
-    </div>
+        )}
+      </div>
 
       {/* Main Table Area */}
-      <div 
+      <div
         className={
-            isFullscreen 
+          isFullscreen
             ? `h-full w-full transition-all duration-300 pt-0` // No padding in full immersive
             : undefined
         }
@@ -1524,44 +1609,48 @@ export default function CustomTableDetailPage() {
               : 'overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm'
           }
         >
-          <div 
-             style={{ 
-               transform: `scale(${zoomLevel})`, 
-               transformOrigin: 'top left',
-               width: `${100 / zoomLevel}%`,
-               height: `${100 / zoomLevel}%`
-             }}
+          <div
+            style={{
+              transform: `scale(${zoomLevel})`,
+              transformOrigin: 'top left',
+              width: `${100 / zoomLevel}%`,
+              height: `${100 / zoomLevel}%`,
+            }}
           >
-          <CustomTableAgGrid
-            tableId={tableId as string}
-            columns={orderedColumns}
-            rows={rows}
-            columnWidths={gridColumnWidths}
-            isFullscreen={isFullscreen}
-            loadingRows={loadingRows}
-            hasMore={hasMore}
-            onLoadMore={loadRows}
-            onFiltersParamChange={onGridFiltersParamChange}
-            onUpdateCell={updateCellFromGrid}
-            
-          onDeleteRow={requestDeleteRowFromGrid}
-          onPersistColumnWidth={persistColumnWidth}
-          selectedColumnKeys={selectedColumnKeys}
-          onSelectedColumnKeysChange={setSelectedColumnKeys}
-          onRenameColumnTitle={renameColumnTitleFromGrid}
-          onDeleteColumn={(colKey) => {
-            const target = orderedColumns.find((c) => c.key === colKey);
-            if (target) openDeleteColumn(target);
-          }}
-          onSelectedRowIdsChange={setSelectedRowIds}
-        />
+            <CustomTableAgGrid
+              tableId={tableId as string}
+              columns={orderedColumns}
+              rows={rows}
+              columnWidths={gridColumnWidths}
+              isFullscreen={isFullscreen}
+              loadingRows={loadingRows}
+              hasMore={hasMore}
+              onLoadMore={loadRows}
+              onFiltersParamChange={onGridFiltersParamChange}
+              onUpdateCell={updateCellFromGrid}
+              onDeleteRow={requestDeleteRowFromGrid}
+              onPersistColumnWidth={persistColumnWidth}
+              selectedColumnKeys={selectedColumnKeys}
+              onSelectedColumnKeysChange={setSelectedColumnKeys}
+              onRenameColumnTitle={renameColumnTitleFromGrid}
+              onDeleteColumn={colKey => {
+                const target = orderedColumns.find(c => c.key === colKey);
+                if (target) openDeleteColumn(target);
+              }}
+              onSelectedRowIdsChange={setSelectedRowIds}
+            />
           </div>
         </div>
       </div>
-{/* Existing Modals ... */}
+      {/* Existing Modals ... */}
 
-
-      <div className={isFullscreen ? 'mt-3 flex items-center justify-center' : 'mt-4 flex items-center justify-center'}>
+      <div
+        className={
+          isFullscreen
+            ? 'mt-3 flex items-center justify-center'
+            : 'mt-4 flex items-center justify-center'
+        }
+      >
         <button
           onClick={() => loadRows()}
           disabled={!hasMore || loadingRows}

@@ -1,20 +1,26 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ComponentType } from 'react';
-import { useRouter } from 'next/navigation';
-import { Loader2, Mail, Shield, UserRound, KeyRound, LogOut } from 'lucide-react';
-import apiClient from '@/app/lib/api';
-import { useAuth } from '@/app/hooks/useAuth';
-import { useIntlayer, useLocale } from 'next-intlayer';
-import type { AxiosError } from 'axios';
-import { cn } from '@/app/lib/utils';
 import { Alert } from '@/app/components/ui/alert';
 import { Button } from '@/app/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/app/components/ui/card';
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { Select } from '@/app/components/ui/select';
 import { Separator } from '@/app/components/ui/separator';
+import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
+import { cn } from '@/app/lib/utils';
+import type { AxiosError } from 'axios';
+import { KeyRound, Loader2, LogOut, Mail, Shield, UserRound } from 'lucide-react';
+import { useIntlayer, useLocale } from 'next-intlayer';
+import { useRouter } from 'next/navigation';
+import { type ComponentType, useEffect, useMemo, useState } from 'react';
 
 type AppLocale = 'ru' | 'en' | 'kk';
 type ApiErrorResponse = { message?: string; error?: { message?: string } };
@@ -36,9 +42,7 @@ const normalizeSection = (value: string | null | undefined): SectionId => {
 const getApiErrorMessage = (error: unknown, fallback: string) => {
   const axiosError = error as AxiosError<ApiErrorResponse>;
   return (
-    axiosError?.response?.data?.message ||
-    axiosError?.response?.data?.error?.message ||
-    fallback
+    axiosError?.response?.data?.message || axiosError?.response?.data?.error?.message || fallback
   );
 };
 
@@ -144,9 +148,7 @@ export default function ProfileSettingsPage() {
         currentPassword: emailPassword,
       });
 
-      setEmailMessage(
-        response.data?.message || t.emailCard.successFallback.value,
-      );
+      setEmailMessage(response.data?.message || t.emailCard.successFallback.value);
       setEmailPassword('');
     } catch (error: unknown) {
       setEmailError(getApiErrorMessage(error, t.emailCard.errorFallback.value));
@@ -172,9 +174,7 @@ export default function ProfileSettingsPage() {
         newPassword: passwords.next,
       });
 
-      setPasswordMessage(
-        response.data?.message || t.passwordCard.successFallback.value,
-      );
+      setPasswordMessage(response.data?.message || t.passwordCard.successFallback.value);
       setPasswords({ current: '', next: '', confirm: '' });
     } catch (error: unknown) {
       setPasswordError(getApiErrorMessage(error, t.passwordCard.errorFallback.value));
@@ -201,13 +201,19 @@ export default function ProfileSettingsPage() {
     );
   }
 
-  const sectionMeta: Record<SectionId, { title: string; description?: string; icon: ComponentType<{ className?: string }> }> =
-    {
+  const sectionMeta: Record<
+    SectionId,
+    { title: string; description?: string; icon: ComponentType<{ className?: string }> }
+  > = {
     profile: { title: t.profileCard.title.value, icon: UserRound },
-    sessions: { title: t.sessionsCard.title.value, description: t.sessionsCard.logoutAllHelp.value, icon: Shield },
+    sessions: {
+      title: t.sessionsCard.title.value,
+      description: t.sessionsCard.logoutAllHelp.value,
+      icon: Shield,
+    },
     email: { title: t.emailCard.title.value, icon: Mail },
     password: { title: t.passwordCard.title.value, icon: KeyRound },
-    };
+  };
 
   const renderSection = () => {
     if (activeSection === 'profile') {
@@ -229,7 +235,7 @@ export default function ProfileSettingsPage() {
                 <Input
                   id="profile-name"
                   value={profileName}
-                  onChange={(e) => setProfileName(e.target.value)}
+                  onChange={e => setProfileName(e.target.value)}
                   required
                 />
               </div>
@@ -240,7 +246,7 @@ export default function ProfileSettingsPage() {
                   <Select
                     id="profile-locale"
                     value={profileLocale}
-                    onChange={(e) => setProfileLocale(normalizeLocale(e.target.value))}
+                    onChange={e => setProfileLocale(normalizeLocale(e.target.value))}
                   >
                     <option value="ru">{t.profileCard.languages.ru.value}</option>
                     <option value="en">{t.profileCard.languages.en.value}</option>
@@ -253,11 +259,13 @@ export default function ProfileSettingsPage() {
                   <Select
                     id="profile-timezone"
                     value={profileTimeZone}
-                    onChange={(e) => setProfileTimeZone(e.target.value)}
+                    onChange={e => setProfileTimeZone(e.target.value)}
                   >
                     <option value="">{t.profileCard.timeZones.auto.value}</option>
                     <option value="UTC">{t.profileCard.timeZones.utc.value}</option>
-                    <option value="Europe/Moscow">{t.profileCard.timeZones.europeMoscow.value}</option>
+                    <option value="Europe/Moscow">
+                      {t.profileCard.timeZones.europeMoscow.value}
+                    </option>
                     <option value="Asia/Almaty">{t.profileCard.timeZones.asiaAlmaty.value}</option>
                   </Select>
                   <p className="text-xs text-gray-500">{t.profileCard.timeZoneHelp.value}</p>
@@ -288,7 +296,9 @@ export default function ProfileSettingsPage() {
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="text-sm text-gray-600">
-              <span className="font-medium text-gray-900">{t.sessionsCard.lastLoginLabel.value}:</span>{' '}
+              <span className="font-medium text-gray-900">
+                {t.sessionsCard.lastLoginLabel.value}:
+              </span>{' '}
               {user?.lastLogin ? new Date(user.lastLogin).toLocaleString() : '—'}
             </div>
 
@@ -323,7 +333,7 @@ export default function ProfileSettingsPage() {
                   id="email-next"
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={e => setEmail(e.target.value)}
                   required
                 />
               </div>
@@ -334,7 +344,7 @@ export default function ProfileSettingsPage() {
                   id="email-password"
                   type="password"
                   value={emailPassword}
-                  onChange={(e) => setEmailPassword(e.target.value)}
+                  onChange={e => setEmailPassword(e.target.value)}
                   required
                 />
                 <p className="text-xs text-gray-500">{t.emailCard.currentPasswordHelp.value}</p>
@@ -371,7 +381,7 @@ export default function ProfileSettingsPage() {
                 id="password-current"
                 type="password"
                 value={passwords.current}
-                onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+                onChange={e => setPasswords({ ...passwords, current: e.target.value })}
                 required
               />
             </div>
@@ -384,7 +394,7 @@ export default function ProfileSettingsPage() {
                 id="password-next"
                 type="password"
                 value={passwords.next}
-                onChange={(e) => setPasswords({ ...passwords, next: e.target.value })}
+                onChange={e => setPasswords({ ...passwords, next: e.target.value })}
                 required
               />
               <p className="text-xs text-gray-500">{t.passwordCard.newPasswordHelp.value}</p>
@@ -396,7 +406,7 @@ export default function ProfileSettingsPage() {
                 id="password-confirm"
                 type="password"
                 value={passwords.confirm}
-                onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                onChange={e => setPasswords({ ...passwords, confirm: e.target.value })}
                 required
               />
             </div>
@@ -428,7 +438,7 @@ export default function ProfileSettingsPage() {
                 <CardTitle className="text-sm font-semibold">{t.navigation.title.value}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-1">
-                {sections.map((id) => {
+                {sections.map(id => {
                   const Icon = sectionMeta[id].icon;
                   const isActive = id === activeSection;
                   return (
@@ -458,9 +468,9 @@ export default function ProfileSettingsPage() {
               <Select
                 id="profile-section"
                 value={activeSection}
-                onChange={(e) => setActiveSection(normalizeSection(e.target.value))}
+                onChange={e => setActiveSection(normalizeSection(e.target.value))}
               >
-                {sections.map((id) => (
+                {sections.map(id => (
                   <option key={id} value={id}>
                     {sectionMeta[id].title}
                   </option>

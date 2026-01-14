@@ -1,22 +1,22 @@
 'use client';
 
-import { Suspense, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import apiClient from '@/app/lib/api';
 import {
-  TextField,
-  Button,
-  Typography,
-  Box,
-  Link,
   Alert,
+  Box,
+  Button,
   CircularProgress,
-  useTheme,
   Grid,
+  Link,
+  TextField,
+  Typography,
   useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import apiClient from '@/app/lib/api';
 import { useIntlayer } from 'next-intlayer';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
 
 function safeInternalPath(nextPath: string | null) {
   if (!nextPath) return null;
@@ -73,9 +73,7 @@ function LoginPageContent() {
       window.location.href = nextPath || '/';
     } catch (err: any) {
       setError(
-        err.response?.data?.message ||
-          err.response?.data?.error?.message ||
-          t.loginFailed.value,
+        err.response?.data?.message || err.response?.data?.error?.message || t.loginFailed.value,
       );
     } finally {
       setLoading(false);
@@ -141,7 +139,13 @@ function LoginPageContent() {
             </Typography>
           </Box>
 
-          <Typography component="h1" variant="h4" gutterBottom fontWeight="bold" color="text.primary">
+          <Typography
+            component="h1"
+            variant="h4"
+            gutterBottom
+            fontWeight="bold"
+            color="text.primary"
+          >
             {t.title}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
@@ -155,7 +159,7 @@ function LoginPageContent() {
           )}
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-	            <TextField
+            <TextField
               margin="normal"
               required
               fullWidth
@@ -165,9 +169,9 @@ function LoginPageContent() {
               autoComplete="email"
               autoFocus
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               InputProps={{
-                sx: { borderRadius: 2, bgcolor: 'background.default' }
+                sx: { borderRadius: 2, bgcolor: 'background.default' },
               }}
               sx={{ mb: 2 }}
             />
@@ -175,15 +179,15 @@ function LoginPageContent() {
               margin="normal"
               required
               fullWidth
-	              name="password"
-	              label={t.passwordLabel.value}
+              name="password"
+              label={t.passwordLabel.value}
               type="password"
               id="password"
               autoComplete="current-password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
               InputProps={{
-                sx: { borderRadius: 2, bgcolor: 'background.default' }
+                sx: { borderRadius: 2, bgcolor: 'background.default' },
               }}
               sx={{ mb: 3 }}
             />
@@ -192,26 +196,32 @@ function LoginPageContent() {
               fullWidth
               variant="contained"
               size="large"
-              sx={{ py: 1.5, borderRadius: 2, fontSize: '1rem', textTransform: 'none', boxShadow: 'none' }}
+              sx={{
+                py: 1.5,
+                borderRadius: 2,
+                fontSize: '1rem',
+                textTransform: 'none',
+                boxShadow: 'none',
+              }}
               disabled={loading}
-	            >
-	              {loading ? <CircularProgress size={24} color="inherit" /> : t.submit}
-	            </Button>
-	            <Box textAlign="center" sx={{ mt: 3 }}>
-	              <Link
-                  href={
-                    nextPath
-                      ? `/register?next=${encodeURIComponent(nextPath)}${
-                          inviteToken ? `&invite=${encodeURIComponent(inviteToken)}` : ''
-                        }`
-                      : '/register'
-                  }
-                  variant="body2"
-                  sx={{ textDecoration: 'none', fontWeight: 500 }}
-                >
-	                {t.noAccount}
-	              </Link>
-	            </Box>
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : t.submit}
+            </Button>
+            <Box textAlign="center" sx={{ mt: 3 }}>
+              <Link
+                href={
+                  nextPath
+                    ? `/register?next=${encodeURIComponent(nextPath)}${
+                        inviteToken ? `&invite=${encodeURIComponent(inviteToken)}` : ''
+                      }`
+                    : '/register'
+                }
+                variant="body2"
+                sx={{ textDecoration: 'none', fontWeight: 500 }}
+              >
+                {t.noAccount}
+              </Link>
+            </Box>
           </Box>
         </Box>
       </Grid>
@@ -238,7 +248,7 @@ function LoginPageContent() {
           }}
           transition={{
             duration: 10,
-            repeat: Infinity,
+            repeat: Number.POSITIVE_INFINITY,
             ease: 'easeInOut' as const,
           }}
           style={{
@@ -259,7 +269,7 @@ function LoginPageContent() {
           }}
           transition={{
             duration: 15,
-            repeat: Infinity,
+            repeat: Number.POSITIVE_INFINITY,
             ease: 'easeInOut' as const,
           }}
           style={{
@@ -274,14 +284,14 @@ function LoginPageContent() {
           }}
         />
 
-	        <Box sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 4 }}>
-	          <Typography variant="h2" fontWeight="bold" gutterBottom>
-	            FinFlow
-	          </Typography>
-	          <Typography variant="h5" sx={{ opacity: 0.8, maxWidth: 500 }}>
-	            {t.rightTagline}
-	          </Typography>
-	        </Box>
+        <Box sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 4 }}>
+          <Typography variant="h2" fontWeight="bold" gutterBottom>
+            FinFlow
+          </Typography>
+          <Typography variant="h5" sx={{ opacity: 0.8, maxWidth: 500 }}>
+            {t.rightTagline}
+          </Typography>
+        </Box>
       </Grid>
     </Grid>
   );

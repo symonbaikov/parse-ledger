@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'categoriesPage',
@@ -21,14 +21,30 @@ const content = {
       delete: t({ ru: 'Удалить', en: 'Delete', kk: 'Жою' }),
     },
     toasts: {
-      loadFailed: t({ ru: 'Не удалось загрузить категории', en: 'Failed to load categories', kk: 'Санаттарды жүктеу мүмкін болмады' }),
+      loadFailed: t({
+        ru: 'Не удалось загрузить категории',
+        en: 'Failed to load categories',
+        kk: 'Санаттарды жүктеу мүмкін болмады',
+      }),
       updated: t({ ru: 'Категория обновлена', en: 'Category updated', kk: 'Санат жаңартылды' }),
       created: t({ ru: 'Категория создана', en: 'Category created', kk: 'Санат құрылды' }),
-      saveFailed: t({ ru: 'Не удалось сохранить категорию', en: 'Failed to save category', kk: 'Санатты сақтау мүмкін болмады' }),
+      saveFailed: t({
+        ru: 'Не удалось сохранить категорию',
+        en: 'Failed to save category',
+        kk: 'Санатты сақтау мүмкін болмады',
+      }),
       deleted: t({ ru: 'Категория удалена', en: 'Category deleted', kk: 'Санат жойылды' }),
-      deleteFailed: t({ ru: 'Не удалось удалить категорию', en: 'Failed to delete category', kk: 'Санатты жою мүмкін болмады' }),
+      deleteFailed: t({
+        ru: 'Не удалось удалить категорию',
+        en: 'Failed to delete category',
+        kk: 'Санатты жою мүмкін болмады',
+      }),
       iconUploaded: t({ ru: 'Иконка загружена', en: 'Icon uploaded', kk: 'Иконка жүктелді' }),
-      iconUploadFailed: t({ ru: 'Не удалось загрузить иконку. Попробуйте ещё раз.', en: 'Failed to upload icon. Please try again.', kk: 'Иконканы жүктеу мүмкін болмады. Қайтадан көріңіз.' }),
+      iconUploadFailed: t({
+        ru: 'Не удалось загрузить иконку. Попробуйте ещё раз.',
+        en: 'Failed to upload icon. Please try again.',
+        kk: 'Иконканы жүктеу мүмкін болмады. Қайтадан көріңіз.',
+      }),
     },
     confirmDelete: t({
       ru: 'Вы уверены, что хотите удалить эту категорию?',
@@ -53,4 +69,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

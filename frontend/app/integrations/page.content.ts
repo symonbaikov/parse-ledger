@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'integrationsPage',
@@ -14,8 +14,16 @@ const content = {
       available: t({ ru: 'Доступно к подключению', en: 'Available', kk: 'Қолжетімді' }),
     },
     empty: {
-      connected: t({ ru: 'Пока нет активных интеграций.', en: 'No active integrations yet.', kk: 'Әзірше белсенді интеграциялар жоқ.' }),
-      available: t({ ru: 'Нет доступных интеграций.', en: 'No integrations available.', kk: 'Қолжетімді интеграциялар жоқ.' }),
+      connected: t({
+        ru: 'Пока нет активных интеграций.',
+        en: 'No active integrations yet.',
+        kk: 'Әзірше белсенді интеграциялар жоқ.',
+      }),
+      available: t({
+        ru: 'Нет доступных интеграций.',
+        en: 'No integrations available.',
+        kk: 'Қолжетімді интеграциялар жоқ.',
+      }),
     },
     cards: {
       googleSheets: {
@@ -47,4 +55,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

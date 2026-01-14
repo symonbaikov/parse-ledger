@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'storagePage',
@@ -9,7 +9,11 @@ const content = {
       en: 'Manage uploaded files and documents',
       kk: 'Жүктелген файлдар мен құжаттарды басқарыңыз',
     }),
-    searchPlaceholder: t({ ru: 'Поиск по файлам...', en: 'Search files...', kk: 'Файлдардан іздеу...' }),
+    searchPlaceholder: t({
+      ru: 'Поиск по файлам...',
+      en: 'Search files...',
+      kk: 'Файлдардан іздеу...',
+    }),
     filters: {
       button: t({ ru: 'Фильтры', en: 'Filters', kk: 'Сүзгілер' }),
       title: t({ ru: 'Фильтры', en: 'Filters', kk: 'Сүзгілер' }),
@@ -60,7 +64,7 @@ const content = {
       error: t({ ru: 'Ошибка', en: 'Error', kk: 'Қате' }),
       uploaded: t({ ru: 'Загружено', en: 'Uploaded', kk: 'Жүктелді' }),
       parsed: t({ ru: 'Распарсено', en: 'Parsed', kk: 'Өңделді' }),
-      },
+    },
     availability: {
       labels: {
         both: t({ ru: 'OK', en: 'OK', kk: 'OK' }),
@@ -100,14 +104,42 @@ const content = {
       tooltipDownload: t({ ru: 'Скачать', en: 'Download', kk: 'Жүктеу' }),
     },
     toasts: {
-      loadFilesFailed: t({ ru: 'Не удалось загрузить файлы', en: 'Failed to load files', kk: 'Файлдарды жүктеу мүмкін болмады' }),
-      loadCategoriesFailed: t({ ru: 'Не удалось загрузить категории', en: 'Failed to load categories', kk: 'Санаттарды жүктеу мүмкін болмады' }),
+      loadFilesFailed: t({
+        ru: 'Не удалось загрузить файлы',
+        en: 'Failed to load files',
+        kk: 'Файлдарды жүктеу мүмкін болмады',
+      }),
+      loadCategoriesFailed: t({
+        ru: 'Не удалось загрузить категории',
+        en: 'Failed to load categories',
+        kk: 'Санаттарды жүктеу мүмкін болмады',
+      }),
       downloaded: t({ ru: 'Файл скачан', en: 'File downloaded', kk: 'Файл жүктелді' }),
-      downloadFailed: t({ ru: 'Не удалось скачать файл', en: 'Failed to download file', kk: 'Файлды жүктеу мүмкін болмады' }),
-      shareOpened: t({ ru: 'Открыто окно доступа', en: 'Sharing opened', kk: 'Бөлісу терезесі ашылды' }),
-      permissionsOpened: t({ ru: 'Открыто управление правами', en: 'Permissions opened', kk: 'Құқықтарды басқару ашылды' }),
-      categoryUpdated: t({ ru: 'Категория обновлена', en: 'Category updated', kk: 'Санат жаңартылды' }),
-      categoryUpdateFailed: t({ ru: 'Не удалось обновить категорию файла', en: 'Failed to update file category', kk: 'Файл санатын жаңарту мүмкін болмады' }),
+      downloadFailed: t({
+        ru: 'Не удалось скачать файл',
+        en: 'Failed to download file',
+        kk: 'Файлды жүктеу мүмкін болмады',
+      }),
+      shareOpened: t({
+        ru: 'Открыто окно доступа',
+        en: 'Sharing opened',
+        kk: 'Бөлісу терезесі ашылды',
+      }),
+      permissionsOpened: t({
+        ru: 'Открыто управление правами',
+        en: 'Permissions opened',
+        kk: 'Құқықтарды басқару ашылды',
+      }),
+      categoryUpdated: t({
+        ru: 'Категория обновлена',
+        en: 'Category updated',
+        kk: 'Санат жаңартылды',
+      }),
+      categoryUpdateFailed: t({
+        ru: 'Не удалось обновить категорию файла',
+        en: 'Failed to update file category',
+        kk: 'Файл санатын жаңарту мүмкін болмады',
+      }),
     },
   },
 } satisfies Dictionary;

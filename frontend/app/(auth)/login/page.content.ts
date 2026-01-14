@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'loginPage',
@@ -42,4 +42,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

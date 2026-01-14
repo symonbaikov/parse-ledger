@@ -1,12 +1,13 @@
 'use client';
 
-import * as React from 'react';
 import { cn } from '@/app/lib/utils';
+import * as React from 'react';
 
-const Separator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn('h-px w-full bg-gray-100', className)} role="separator" {...props} />
-));
+const Separator = React.forwardRef<HTMLHRElement, React.HTMLAttributes<HTMLHRElement>>(
+  ({ className, ...props }, ref) => (
+    <hr ref={ref} className={cn('h-px w-full border-0 bg-gray-100', className)} {...props} />
+  ),
+);
 Separator.displayName = 'Separator';
 
 export { Separator };
-

@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { FileSpreadsheet, Loader2, Sparkles } from 'lucide-react';
-import { Icon } from '@iconify/react';
-import toast from 'react-hot-toast';
-import apiClient from '@/app/lib/api';
 import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
+import { Icon } from '@iconify/react';
+import { FileSpreadsheet, Loader2, Sparkles } from 'lucide-react';
 import { useIntlayer } from 'next-intlayer';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { type CSSProperties, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
 type LayoutType = 'auto' | 'flat' | 'matrix';
@@ -43,7 +43,11 @@ interface PreviewResponse {
   layoutSuggested: LayoutType;
   headerRowIndex: number;
   columns: PreviewColumn[];
-  sampleRows: Array<{ rowNumber: number; values: Array<string | null>; styles?: Array<Record<string, any> | null> }>;
+  sampleRows: Array<{
+    rowNumber: number;
+    values: Array<string | null>;
+    styles?: Array<Record<string, any> | null>;
+  }>;
 }
 
 export default function GoogleSheetsImportPage() {
@@ -78,12 +82,12 @@ export default function GoogleSheetsImportPage() {
   const [jobError, setJobError] = useState('');
 
   const selectedConnection = useMemo(
-    () => connections.find((c) => c.id === googleSheetId) || null,
+    () => connections.find(c => c.id === googleSheetId) || null,
     [connections, googleSheetId],
   );
 
   const canPreview = Boolean(googleSheetId && selectedConnection?.oauthConnected !== false);
-  const canCommit = Boolean(preview && tableName.trim() && columns.some((c) => c.include));
+  const canCommit = Boolean(preview && tableName.trim() && columns.some(c => c.include));
 
   const loadConnections = async () => {
     setLoadingConnections(true);
@@ -119,8 +123,8 @@ export default function GoogleSheetsImportPage() {
   useEffect(() => {
     if (!selectedConnection) return;
     const nextWorksheet = selectedConnection.worksheetName || '';
-    setWorksheetName((prev) => prev || nextWorksheet);
-    setTableName((prev) => prev || selectedConnection.sheetName || t.defaults.tableName.value);
+    setWorksheetName(prev => prev || nextWorksheet);
+    setTableName(prev => prev || selectedConnection.sheetName || t.defaults.tableName.value);
   }, [selectedConnection]);
 
   const handlePreview = async () => {
@@ -170,7 +174,7 @@ export default function GoogleSheetsImportPage() {
         headerRowIndex,
         importData,
         layoutType,
-        columns: columns.map((c) => ({
+        columns: columns.map(c => ({
           index: c.index,
           title: c.title,
           type: c.suggestedType,
@@ -272,14 +276,9 @@ export default function GoogleSheetsImportPage() {
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-gray-900">{t.header.title}</h1>
-          <p className="text-secondary mt-1">
-            {t.header.subtitle}
-          </p>
+          <p className="text-secondary mt-1">{t.header.subtitle}</p>
         </div>
-        <Link
-          href="/custom-tables"
-          className="text-sm text-gray-600 hover:text-gray-900"
-        >
+        <Link href="/custom-tables" className="text-sm text-gray-600 hover:text-gray-900">
           {t.header.back}
         </Link>
       </div>
@@ -292,15 +291,15 @@ export default function GoogleSheetsImportPage() {
               <span className="text-sm font-medium text-gray-700">{t.source.connectionLabel}</span>
               <select
                 value={googleSheetId}
-                onChange={(e) => {
+                onChange={e => {
                   setGoogleSheetId(e.target.value);
-          setPreview(null);
-          setColumns([]);
-        }}
-        className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
-      >
-        <option value="">{t.source.selectPlaceholder}</option>
-        {connections.map((c) => (
+                  setPreview(null);
+                  setColumns([]);
+                }}
+                className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              >
+                <option value="">{t.source.selectPlaceholder}</option>
+                {connections.map(c => (
                   <option key={c.id} value={c.id} disabled={c.oauthConnected === false}>
                     {c.sheetName}
                     {c.oauthConnected === false ? t.source.oauthNeededSuffix.value : ''}
@@ -313,7 +312,7 @@ export default function GoogleSheetsImportPage() {
               <span className="text-sm font-medium text-gray-700">{t.source.worksheetLabel}</span>
               <input
                 value={worksheetName}
-                onChange={(e) => setWorksheetName(e.target.value)}
+                onChange={e => setWorksheetName(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 placeholder={t.source.worksheetPlaceholder.value}
               />
@@ -324,7 +323,7 @@ export default function GoogleSheetsImportPage() {
               <span className="text-sm font-medium text-gray-700">{t.source.rangeLabel}</span>
               <input
                 value={range}
-                onChange={(e) => setRange(e.target.value)}
+                onChange={e => setRange(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 placeholder={t.source.rangePlaceholder.value}
               />
@@ -332,12 +331,14 @@ export default function GoogleSheetsImportPage() {
 
             <div className="grid grid-cols-2 gap-3 mb-3">
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">{t.source.headerOffsetLabel}</span>
+                <span className="text-sm font-medium text-gray-700">
+                  {t.source.headerOffsetLabel}
+                </span>
                 <input
                   type="number"
                   min={0}
                   value={headerRowIndex}
-                  onChange={(e) => setHeaderRowIndex(Number(e.target.value))}
+                  onChange={e => setHeaderRowIndex(Number(e.target.value))}
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 />
                 <div className="mt-1 text-xs text-gray-500">{t.source.headerOffsetHelp}</div>
@@ -347,7 +348,7 @@ export default function GoogleSheetsImportPage() {
                 <span className="text-sm font-medium text-gray-700">{t.source.layoutLabel}</span>
                 <select
                   value={layoutType}
-                  onChange={(e) => setLayoutType(e.target.value as LayoutType)}
+                  onChange={e => setLayoutType(e.target.value as LayoutType)}
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
                   <option value="auto">{t.source.layoutAuto}</option>
@@ -362,7 +363,9 @@ export default function GoogleSheetsImportPage() {
               disabled={!canPreview || loadingPreview || loadingConnections}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {(loadingPreview || loadingConnections) && <Loader2 className="h-4 w-4 animate-spin" />}
+              {(loadingPreview || loadingConnections) && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
               {loadingConnections ? t.source.previewButtonLoading : t.source.previewButton}
             </button>
             {loadingConnections && (
@@ -376,7 +379,7 @@ export default function GoogleSheetsImportPage() {
               <span className="text-sm font-medium text-gray-700">{t.result.tableNameLabel}</span>
               <input
                 value={tableName}
-                onChange={(e) => setTableName(e.target.value)}
+                onChange={e => setTableName(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 placeholder={t.result.tableNamePlaceholder.value}
               />
@@ -385,7 +388,7 @@ export default function GoogleSheetsImportPage() {
               <span className="text-sm font-medium text-gray-700">{t.result.descriptionLabel}</span>
               <input
                 value={tableDescription}
-                onChange={(e) => setTableDescription(e.target.value)}
+                onChange={e => setTableDescription(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
               />
             </label>
@@ -394,11 +397,11 @@ export default function GoogleSheetsImportPage() {
               <span className="text-sm font-medium text-gray-700">{t.result.categoryLabel}</span>
               <select
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
+                onChange={e => setCategoryId(e.target.value)}
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
               >
                 <option value="">{t.result.noCategory}</option>
-                {categories.map((c) => (
+                {categories.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
@@ -408,10 +411,13 @@ export default function GoogleSheetsImportPage() {
                 <div className="mt-2 flex items-center gap-2 text-xs text-gray-600">
                   <span
                     className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-gray-200"
-                    style={{ backgroundColor: categories.find((c) => c.id === categoryId)?.color || '#f3f4f6' }}
+                    style={{
+                      backgroundColor:
+                        categories.find(c => c.id === categoryId)?.color || '#f3f4f6',
+                    }}
                   >
                     {(() => {
-                      const selected = categories.find((c) => c.id === categoryId);
+                      const selected = categories.find(c => c.id === categoryId);
                       return selected?.icon ? (
                         <Icon icon={selected.icon} className="h-4 w-4 text-gray-900" />
                       ) : (
@@ -428,7 +434,7 @@ export default function GoogleSheetsImportPage() {
               <input
                 type="checkbox"
                 checked={importData}
-                onChange={(e) => setImportData(e.target.checked)}
+                onChange={e => setImportData(e.target.checked)}
                 className="h-4 w-4"
               />
               {t.result.importDataCheckbox}
@@ -439,23 +445,37 @@ export default function GoogleSheetsImportPage() {
               disabled={!canCommit || committing || Boolean(jobId)}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              {committing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {committing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
               {jobId ? t.result.importRunning : t.result.importButton}
             </button>
             {jobId ? (
               <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-semibold text-gray-900">{t.result.progressTitle}</div>
-                  <div className="text-sm font-semibold text-gray-700">{Math.round(jobProgress)}%</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {t.result.progressTitle}
+                  </div>
+                  <div className="text-sm font-semibold text-gray-700">
+                    {Math.round(jobProgress)}%
+                  </div>
                 </div>
                 <div className="mt-2 h-2 w-full rounded-full bg-gray-100 overflow-hidden">
-                  <div className="h-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, jobProgress))}%` }} />
+                  <div
+                    className="h-full bg-primary"
+                    style={{ width: `${Math.max(0, Math.min(100, jobProgress))}%` }}
+                  />
                 </div>
                 <div className="mt-2 text-xs text-gray-600">
-                  {t.result.statusLabel.value}: <span className="font-medium">{jobStatus || t.result.dash.value}</span>{' '}
+                  {t.result.statusLabel.value}:{' '}
+                  <span className="font-medium">{jobStatus || t.result.dash.value}</span>{' '}
                   {jobStage ? <span className="text-gray-500">({jobStage})</span> : null}
                 </div>
-                {jobError ? <div className="mt-2 text-xs text-red-600 break-words">{jobError}</div> : null}
+                {jobError ? (
+                  <div className="mt-2 text-xs text-red-600 break-words">{jobError}</div>
+                ) : null}
               </div>
             ) : null}
             {!preview && (
@@ -469,15 +489,14 @@ export default function GoogleSheetsImportPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-gray-900">{t.preview.title}</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {t.preview.subtitle}
-                </div>
+                <div className="text-xs text-gray-500 mt-1">{t.preview.subtitle}</div>
               </div>
               {preview && (
                 <div className="text-xs text-gray-500 text-right">
                   <div>{preview.usedRange.a1}</div>
                   <div>
-                    {preview.usedRange.rowsCount}×{preview.usedRange.colsCount}, {t.preview.layoutPrefix.value}: {preview.layoutSuggested}
+                    {preview.usedRange.rowsCount}×{preview.usedRange.colsCount},{' '}
+                    {t.preview.layoutPrefix.value}: {preview.layoutSuggested}
                   </div>
                 </div>
               )}
@@ -492,9 +511,14 @@ export default function GoogleSheetsImportPage() {
                 <table className="min-w-full text-xs">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="px-2 py-2 text-left font-semibold text-gray-700">{t.preview.rowHeader}</th>
-                      {preview.columns.slice(0, 12).map((c) => (
-                        <th key={c.index} className="px-2 py-2 text-left font-semibold text-gray-700">
+                      <th className="px-2 py-2 text-left font-semibold text-gray-700">
+                        {t.preview.rowHeader}
+                      </th>
+                      {preview.columns.slice(0, 12).map(c => (
+                        <th
+                          key={c.index}
+                          className="px-2 py-2 text-left font-semibold text-gray-700"
+                        >
                           {c.title}
                         </th>
                       ))}
@@ -504,7 +528,7 @@ export default function GoogleSheetsImportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {preview.sampleRows.map((r) => (
+                    {preview.sampleRows.map(r => (
                       <tr key={r.rowNumber} className="border-b border-gray-100 last:border-0">
                         <td className="px-2 py-1 text-gray-500">{r.rowNumber}</td>
                         {r.values.slice(0, 12).map((v, idx) => {
@@ -512,7 +536,7 @@ export default function GoogleSheetsImportPage() {
                           const css = sheetStyleToCss(style || {});
                           return (
                             <td
-                              key={idx}
+                              key={`${r.rowNumber}-${idx}`}
                               className="px-2 py-1 text-gray-700"
                               style={css}
                             >
@@ -535,13 +559,11 @@ export default function GoogleSheetsImportPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-gray-900">{t.columns.title}</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  {t.columns.subtitle}
-                </div>
+                <div className="text-xs text-gray-500 mt-1">{t.columns.subtitle}</div>
               </div>
               {preview && (
                 <button
-                  onClick={() => setColumns((prev) => prev.map((c) => ({ ...c, include: true })))}
+                  onClick={() => setColumns(prev => prev.map(c => ({ ...c, include: true })))}
                   className="text-xs text-primary hover:text-primary-hover"
                 >
                   {t.columns.enableAll}
@@ -558,22 +580,32 @@ export default function GoogleSheetsImportPage() {
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[84px]">{t.columns.tableHeaders.enabled}</th>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[80px]">A1</th>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700">{t.columns.tableHeaders.name}</th>
-                      <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[180px]">{t.columns.tableHeaders.type}</th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[84px]">
+                        {t.columns.tableHeaders.enabled}
+                      </th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[80px]">
+                        A1
+                      </th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-700">
+                        {t.columns.tableHeaders.name}
+                      </th>
+                      <th className="px-3 py-2 text-left font-semibold text-gray-700 w-[180px]">
+                        {t.columns.tableHeaders.type}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {columns.map((c) => (
+                    {columns.map(c => (
                       <tr key={c.index} className="border-b border-gray-100 last:border-0">
                         <td className="px-3 py-2">
                           <input
                             type="checkbox"
                             checked={c.include}
-                            onChange={(e) =>
-                              setColumns((prev) =>
-                                prev.map((x) => (x.index === c.index ? { ...x, include: e.target.checked } : x)),
+                            onChange={e =>
+                              setColumns(prev =>
+                                prev.map(x =>
+                                  x.index === c.index ? { ...x, include: e.target.checked } : x,
+                                ),
                               )
                             }
                             className="h-4 w-4"
@@ -583,9 +615,11 @@ export default function GoogleSheetsImportPage() {
                         <td className="px-3 py-2">
                           <input
                             value={c.title}
-                            onChange={(e) =>
-                              setColumns((prev) =>
-                                prev.map((x) => (x.index === c.index ? { ...x, title: e.target.value } : x)),
+                            onChange={e =>
+                              setColumns(prev =>
+                                prev.map(x =>
+                                  x.index === c.index ? { ...x, title: e.target.value } : x,
+                                ),
                               )
                             }
                             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -594,10 +628,12 @@ export default function GoogleSheetsImportPage() {
                         <td className="px-3 py-2">
                           <select
                             value={c.suggestedType}
-                            onChange={(e) =>
-                              setColumns((prev) =>
-                                prev.map((x) =>
-                                  x.index === c.index ? { ...x, suggestedType: e.target.value as ColumnType } : x,
+                            onChange={e =>
+                              setColumns(prev =>
+                                prev.map(x =>
+                                  x.index === c.index
+                                    ? { ...x, suggestedType: e.target.value as ColumnType }
+                                    : x,
                                 ),
                               )
                             }
@@ -635,12 +671,15 @@ const mapHorizontalAlignment = (value: unknown): CSSProperties['textAlign'] | un
 };
 
 const sheetStyleToCss = (style: Record<string, any>) => {
-  const backgroundColor = typeof style.backgroundColor === 'string' ? style.backgroundColor : undefined;
+  const backgroundColor =
+    typeof style.backgroundColor === 'string' ? style.backgroundColor : undefined;
   const textAlign = mapHorizontalAlignment(style.horizontalAlignment);
-  const tf = style.textFormat && typeof style.textFormat === 'object' ? (style.textFormat as any) : null;
+  const tf =
+    style.textFormat && typeof style.textFormat === 'object' ? (style.textFormat as any) : null;
   const color = tf && typeof tf.foregroundColor === 'string' ? tf.foregroundColor : undefined;
   const fontWeight = tf && typeof tf.bold === 'boolean' ? (tf.bold ? 700 : 400) : undefined;
-  const fontStyle = tf && typeof tf.italic === 'boolean' ? (tf.italic ? 'italic' : 'normal') : undefined;
+  const fontStyle =
+    tf && typeof tf.italic === 'boolean' ? (tf.italic ? 'italic' : 'normal') : undefined;
 
   const underline = tf && typeof tf.underline === 'boolean' ? tf.underline : undefined;
   const strikethrough = tf && typeof tf.strikethrough === 'boolean' ? tf.strikethrough : undefined;
@@ -655,11 +694,20 @@ const sheetStyleToCss = (style: Record<string, any>) => {
   }
 
   const fontSize =
-    tf && typeof tf.fontSize === 'number' && Number.isFinite(tf.fontSize) && tf.fontSize > 0 ? tf.fontSize : undefined;
-  const fontFamily =
-    tf && typeof tf.fontFamily === 'string' && tf.fontFamily.trim()
-      ? tf.fontFamily
+    tf && typeof tf.fontSize === 'number' && Number.isFinite(tf.fontSize) && tf.fontSize > 0
+      ? tf.fontSize
       : undefined;
+  const fontFamily =
+    tf && typeof tf.fontFamily === 'string' && tf.fontFamily.trim() ? tf.fontFamily : undefined;
 
-  return { backgroundColor, textAlign, color, fontWeight, fontStyle, textDecorationLine, fontSize, fontFamily };
+  return {
+    backgroundColor,
+    textAlign,
+    color,
+    fontWeight,
+    fontStyle,
+    textDecorationLine,
+    fontSize,
+    fontFamily,
+  };
 };

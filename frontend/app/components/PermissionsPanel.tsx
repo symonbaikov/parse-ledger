@@ -1,21 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
 import {
-  Paper,
+  PersonAdd as AddPersonIcon,
+  Delete as DeleteIcon,
+  Edit as EditIcon,
+} from '@mui/icons-material';
+import {
+  Alert,
   Box,
-  Typography,
   Button,
+  Chip,
   Dialog,
-  DialogTitle,
-  DialogContent,
   DialogActions,
-  TextField,
-  Select,
-  MenuItem,
+  DialogContent,
+  DialogTitle,
   FormControl,
-  InputLabel,
   FormControlLabel,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Paper,
+  Select,
   Switch,
   Table,
   TableBody,
@@ -23,18 +28,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  IconButton,
-  Chip,
+  TextField,
   Tooltip,
-  Alert,
+  Typography,
 } from '@mui/material';
-import {
-  PersonAdd as AddPersonIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-} from '@mui/icons-material';
-import api from '../lib/api';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import React, { useState } from 'react';
+import api from '../lib/api';
 
 interface Permission {
   id: string;
@@ -159,11 +159,14 @@ export default function PermissionsPanel({
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return date.toLocaleDateString(
+      locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US',
+      {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      },
+    );
   };
 
   const getPermissionLabel = (type: string): string => {

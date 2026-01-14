@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
 import {
   Alert,
   Box,
@@ -19,12 +20,11 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { Copy, MailPlus, Shield, Users } from 'lucide-react';
-import toast from 'react-hot-toast';
-import apiClient from '@/app/lib/api';
-import { useAuth } from '@/app/hooks/useAuth';
-import { useIntlayer, useLocale } from 'next-intlayer';
 import type { AxiosError } from 'axios';
+import { Copy, MailPlus, Shield, Users } from 'lucide-react';
+import { useIntlayer, useLocale } from 'next-intlayer';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 
 type WorkspaceOverview = {
   workspace: { id: string; name: string; ownerId?: string | null; createdAt?: string };
@@ -88,7 +88,7 @@ export default function WorkspaceSettingsPage() {
   });
 
   const isOwnerOrAdmin = useMemo(() => {
-    const member = overview?.members.find((m) => m.id === user?.id);
+    const member = overview?.members.find(m => m.id === user?.id);
     return member?.role === 'owner' || member?.role === 'admin';
   }, [overview?.members, user?.id]);
 
@@ -173,7 +173,8 @@ export default function WorkspaceSettingsPage() {
     const fallback =
       locale === 'kk'
         ? {
-            member: 'Деректермен жұмыс істей алады, бірақ қатысушылар мен қолжетімділікті басқара алмайды.',
+            member:
+              'Деректермен жұмыс істей алады, бірақ қатысушылар мен қолжетімділікті басқара алмайды.',
             admin: 'Қатысушылар мен қолжетімділікті басқарып, шақыру жібере алады.',
           }
         : locale === 'en'
@@ -243,9 +244,18 @@ export default function WorkspaceSettingsPage() {
       title: toNode(inviteAny.permissionsTitle, fallback.title),
       hint: toNode(inviteAny.permissionsHint, fallback.hint),
       labels: {
-        canEditStatements: toNode(permissionsAny.canEditStatements, fallback.labels.canEditStatements),
-        canEditCustomTables: toNode(permissionsAny.canEditCustomTables, fallback.labels.canEditCustomTables),
-        canEditCategories: toNode(permissionsAny.canEditCategories, fallback.labels.canEditCategories),
+        canEditStatements: toNode(
+          permissionsAny.canEditStatements,
+          fallback.labels.canEditStatements,
+        ),
+        canEditCustomTables: toNode(
+          permissionsAny.canEditCustomTables,
+          fallback.labels.canEditCustomTables,
+        ),
+        canEditCategories: toNode(
+          permissionsAny.canEditCategories,
+          fallback.labels.canEditCategories,
+        ),
         canEditDataEntry: toNode(permissionsAny.canEditDataEntry, fallback.labels.canEditDataEntry),
         canShareFiles: toNode(permissionsAny.canShareFiles, fallback.labels.canShareFiles),
       } satisfies Record<keyof InvitePermissions, ReactNode>,
@@ -300,7 +310,7 @@ export default function WorkspaceSettingsPage() {
                     </Typography>
                   </Stack>
                   <Stack spacing={1.5}>
-                    {overview.members.map((member) => (
+                    {overview.members.map(member => (
                       <Box
                         key={member.id}
                         sx={{
@@ -323,7 +333,13 @@ export default function WorkspaceSettingsPage() {
                         </Box>
                         <Chip
                           label={roleLabels[member.role] || member.role}
-                          color={member.role === 'owner' ? 'primary' : member.role === 'admin' ? 'secondary' : 'default'}
+                          color={
+                            member.role === 'owner'
+                              ? 'primary'
+                              : member.role === 'admin'
+                                ? 'secondary'
+                                : 'default'
+                          }
                           size="small"
                         />
                       </Box>
@@ -342,16 +358,12 @@ export default function WorkspaceSettingsPage() {
                       {t.invite.title}
                     </Typography>
                   </Stack>
-                  {!isOwnerOrAdmin && (
-                    <Alert severity="info">
-                      {t.invite.onlyAdminHint}
-                    </Alert>
-                  )}
+                  {!isOwnerOrAdmin && <Alert severity="info">{t.invite.onlyAdminHint}</Alert>}
                   <TextField
                     label="Email"
                     type="email"
                     value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
+                    onChange={e => setInviteEmail(e.target.value)}
                     fullWidth
                     required
                     disabled={!isOwnerOrAdmin}
@@ -418,7 +430,7 @@ export default function WorkspaceSettingsPage() {
                             'canEditDataEntry',
                             'canShareFiles',
                           ] as Array<keyof InvitePermissions>
-                        ).map((key) => (
+                        ).map(key => (
                           <FormControlLabel
                             key={key}
                             sx={{ m: 0 }}
@@ -426,11 +438,15 @@ export default function WorkspaceSettingsPage() {
                               <Checkbox
                                 checked={invitePermissions[key]}
                                 onChange={(_, checked) => {
-                                  setInvitePermissions((prev) => ({ ...prev, [key]: checked }));
+                                  setInvitePermissions(prev => ({ ...prev, [key]: checked }));
                                 }}
                               />
                             }
-                            label={<Typography variant="body2">{invitePermissionCopy.labels[key]}</Typography>}
+                            label={
+                              <Typography variant="body2">
+                                {invitePermissionCopy.labels[key]}
+                              </Typography>
+                            }
                           />
                         ))}
                       </Stack>
@@ -443,14 +459,22 @@ export default function WorkspaceSettingsPage() {
                       startIcon={<Shield size={16} />}
                       disabled={!isOwnerOrAdmin || inviteLoading}
                     >
-                      {inviteLoading ? <CircularProgress size={20} color="inherit" /> : t.invite.send}
+                      {inviteLoading ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        t.invite.send
+                      )}
                     </Button>
                   </Box>
                   {inviteLink && (
                     <Alert
                       severity="success"
                       action={
-                        <IconButton color="inherit" size="small" onClick={() => copyLink(inviteLink)}>
+                        <IconButton
+                          color="inherit"
+                          size="small"
+                          onClick={() => copyLink(inviteLink)}
+                        >
                           <Copy size={16} />
                         </IconButton>
                       }
@@ -465,19 +489,19 @@ export default function WorkspaceSettingsPage() {
         )}
 
         {overview && (
-            <Card variant="outlined">
-              <CardContent>
-                <Stack spacing={2}>
-                  <Typography variant="h6" fontWeight={600}>
-                    {t.pending.title}
+          <Card variant="outlined">
+            <CardContent>
+              <Stack spacing={2}>
+                <Typography variant="h6" fontWeight={600}>
+                  {t.pending.title}
+                </Typography>
+                {overview.invitations.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    {t.pending.empty}
                   </Typography>
-                  {overview.invitations.length === 0 && (
-                    <Typography variant="body2" color="text.secondary">
-                      {t.pending.empty}
-                    </Typography>
-                  )}
+                )}
                 <Stack spacing={1.5}>
-                  {overview.invitations.map((invite) => {
+                  {overview.invitations.map(invite => {
                     const link =
                       invite.link ||
                       `${(process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')}/invite/${invite.token}`;

@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'customTablesPage',
@@ -22,7 +22,11 @@ const content = {
     actions: {
       create: t({ ru: 'Создать', en: 'Create', kk: 'Құру' }),
       fromStatement: t({ ru: 'Из выписки', en: 'From statement', kk: 'Үзіндіден' }),
-      importGoogleSheets: t({ ru: 'Импорт из Google Sheets', en: 'Import from Google Sheets', kk: 'Google Sheets-тен импорт' }),
+      importGoogleSheets: t({
+        ru: 'Импорт из Google Sheets',
+        en: 'Import from Google Sheets',
+        kk: 'Google Sheets-тен импорт',
+      }),
       close: t({ ru: 'Закрыть', en: 'Close', kk: 'Жабу' }),
       cancel: t({ ru: 'Отмена', en: 'Cancel', kk: 'Болдырмау' }),
       delete: t({ ru: 'Удалить', en: 'Delete', kk: 'Жою' }),
@@ -39,12 +43,32 @@ const content = {
     }),
     loading: t({ ru: 'Загрузка...', en: 'Loading...', kk: 'Жүктелуде...' }),
     toasts: {
-      loadTablesFailed: t({ ru: 'Не удалось загрузить таблицы', en: 'Failed to load tables', kk: 'Кестелерді жүктеу мүмкін болмады' }),
-      loadStatementsFailed: t({ ru: 'Не удалось загрузить выписки', en: 'Failed to load statements', kk: 'Үзінділерді жүктеу мүмкін болмады' }),
+      loadTablesFailed: t({
+        ru: 'Не удалось загрузить таблицы',
+        en: 'Failed to load tables',
+        kk: 'Кестелерді жүктеу мүмкін болмады',
+      }),
+      loadStatementsFailed: t({
+        ru: 'Не удалось загрузить выписки',
+        en: 'Failed to load statements',
+        kk: 'Үзінділерді жүктеу мүмкін болмады',
+      }),
       created: t({ ru: 'Таблица создана', en: 'Table created', kk: 'Кесте құрылды' }),
-      createFailed: t({ ru: 'Не удалось создать таблицу', en: 'Failed to create table', kk: 'Кесте құру мүмкін болмады' }),
-      selectAtLeastOneStatement: t({ ru: 'Выберите хотя бы одну выписку', en: 'Select at least one statement', kk: 'Кемінде бір үзіндіні таңдаңыз' }),
-      createdFromStatement: t({ ru: 'Таблица создана из выписки', en: 'Table created from statements', kk: 'Кесте үзіндіден құрылды' }),
+      createFailed: t({
+        ru: 'Не удалось создать таблицу',
+        en: 'Failed to create table',
+        kk: 'Кесте құру мүмкін болмады',
+      }),
+      selectAtLeastOneStatement: t({
+        ru: 'Выберите хотя бы одну выписку',
+        en: 'Select at least one statement',
+        kk: 'Кемінде бір үзіндіні таңдаңыз',
+      }),
+      createdFromStatement: t({
+        ru: 'Таблица создана из выписки',
+        en: 'Table created from statements',
+        kk: 'Кесте үзіндіден құрылды',
+      }),
       createFromStatementFailed: t({
         ru: 'Не удалось создать таблицу из выписки',
         en: 'Failed to create table from statements',
@@ -52,15 +76,27 @@ const content = {
       }),
       deleting: t({ ru: 'Удаление...', en: 'Deleting...', kk: 'Жойылуда...' }),
       deleted: t({ ru: 'Таблица удалена', en: 'Table deleted', kk: 'Кесте жойылды' }),
-      deleteFailed: t({ ru: 'Не удалось удалить таблицу', en: 'Failed to delete table', kk: 'Кестені жою мүмкін болмады' }),
+      deleteFailed: t({
+        ru: 'Не удалось удалить таблицу',
+        en: 'Failed to delete table',
+        kk: 'Кестені жою мүмкін болмады',
+      }),
     },
     create: {
       title: t({ ru: 'Новая таблица', en: 'New table', kk: 'Жаңа кесте' }),
       name: t({ ru: 'Название', en: 'Name', kk: 'Атауы' }),
-      namePlaceholder: t({ ru: 'Например: Реестр платежей', en: 'e.g. Payments registry', kk: 'Мысалы: Төлемдер тізілімі' }),
+      namePlaceholder: t({
+        ru: 'Например: Реестр платежей',
+        en: 'e.g. Payments registry',
+        kk: 'Мысалы: Төлемдер тізілімі',
+      }),
       description: t({ ru: 'Описание', en: 'Description', kk: 'Сипаттама' }),
       descriptionPlaceholder: t({ ru: 'Опционально', en: 'Optional', kk: 'Міндетті емес' }),
-      category: t({ ru: 'Категория (иконка/цвет)', en: 'Category (icon/color)', kk: 'Санат (иконка/түс)' }),
+      category: t({
+        ru: 'Категория (иконка/цвет)',
+        en: 'Category (icon/color)',
+        kk: 'Санат (иконка/түс)',
+      }),
       noCategory: t({ ru: 'Без категории', en: 'No category', kk: 'Санатсыз' }),
       categoryHint: t({
         ru: 'Иконка/цвет будут взяты из категории',
@@ -70,10 +106,26 @@ const content = {
       creating: t({ ru: 'Создание...', en: 'Creating...', kk: 'Құрылуда...' }),
     },
     createFromStatements: {
-      title: t({ ru: 'Создать таблицу из выписки', en: 'Create table from statements', kk: 'Үзіндіден кесте құру' }),
-      nameOptional: t({ ru: 'Название (опционально)', en: 'Name (optional)', kk: 'Атауы (міндетті емес)' }),
-      namePlaceholder: t({ ru: 'Например: Платежи из выписки', en: 'e.g. Payments from statement', kk: 'Мысалы: Үзіндідегі төлемдер' }),
-      descriptionOptional: t({ ru: 'Описание (опционально)', en: 'Description (optional)', kk: 'Сипаттама (міндетті емес)' }),
+      title: t({
+        ru: 'Создать таблицу из выписки',
+        en: 'Create table from statements',
+        kk: 'Үзіндіден кесте құру',
+      }),
+      nameOptional: t({
+        ru: 'Название (опционально)',
+        en: 'Name (optional)',
+        kk: 'Атауы (міндетті емес)',
+      }),
+      namePlaceholder: t({
+        ru: 'Например: Платежи из выписки',
+        en: 'e.g. Payments from statement',
+        kk: 'Мысалы: Үзіндідегі төлемдер',
+      }),
+      descriptionOptional: t({
+        ru: 'Описание (опционально)',
+        en: 'Description (optional)',
+        kk: 'Сипаттама (міндетті емес)',
+      }),
       descriptionPlaceholder: t({ ru: 'Опционально', en: 'Optional', kk: 'Міндетті емес' }),
       statements: t({ ru: 'Выписки', en: 'Statements', kk: 'Үзінділер' }),
       statementsLoading: t({ ru: 'Загрузка...', en: 'Loading...', kk: 'Жүктелуде...' }),
@@ -109,4 +161,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

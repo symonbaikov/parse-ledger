@@ -1,11 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/app/hooks/useAuth';
+import { usePermissions } from '@/app/hooks/usePermissions';
+import apiClient from '@/app/lib/api';
+import {
+  AccessTime,
+  CheckCircleOutline,
+  ErrorOutline,
+  Send,
+  Telegram as TelegramIcon,
+} from '@mui/icons-material';
 import {
   Alert,
   Box,
   Button,
   Chip,
+  CircularProgress,
   Container,
   Divider,
   Paper,
@@ -18,19 +28,9 @@ import {
   TableRow,
   TextField,
   Typography,
-  CircularProgress,
 } from '@mui/material';
-import {
-  CheckCircleOutline,
-  ErrorOutline,
-  Send,
-  Telegram as TelegramIcon,
-  AccessTime,
-} from '@mui/icons-material';
-import apiClient from '@/app/lib/api';
-import { useAuth } from '@/app/hooks/useAuth';
-import { usePermissions } from '@/app/hooks/usePermissions';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { useEffect, useMemo, useState } from 'react';
 
 type ReportStatus = 'pending' | 'sent' | 'failed';
 type ReportType = 'daily' | 'monthly' | 'custom';
@@ -154,164 +154,181 @@ export default function TelegramSettingsPage() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Stack spacing={3}>
-	        <Box>
-	          <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 1 }}>
-	            {t.title}
-	          </Typography>
-	          <Typography variant="body1" color="text.secondary">
-	            {t.subtitle}
-	          </Typography>
-	        </Box>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 1 }}>
+            {t.title}
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            {t.subtitle}
+          </Typography>
+        </Box>
 
         {(statusMessage || error) && (
           <Box>
-            {statusMessage && <Alert severity="success" sx={{ mb: 1 }}>{statusMessage}</Alert>}
+            {statusMessage && (
+              <Alert severity="success" sx={{ mb: 1 }}>
+                {statusMessage}
+              </Alert>
+            )}
             {error && <Alert severity="error">{error}</Alert>}
           </Box>
         )}
 
-	        <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
-	          <Stack spacing={3}>
-	            <Box>
-	              <Typography variant="h6" sx={{ fontWeight: 600 }}>{t.connect.title}</Typography>
-	              <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-	                {t.connect.steps}
-	              </Typography>
-	            </Box>
+        <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
+          <Stack spacing={3}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {t.connect.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
+                {t.connect.steps}
+              </Typography>
+            </Box>
 
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-	              <TextField
-	                fullWidth
-	                label={t.connect.chatIdLabel.value}
-	                placeholder={t.connect.chatIdPlaceholder.value}
-	                value={chatId}
-	                onChange={(e) => setChatId(e.target.value)}
-	                helperText={t.connect.chatIdHelp.value}
-	              />
-	              <TextField
-	                fullWidth
-	                label={t.connect.telegramIdLabel.value}
-	                placeholder={t.connect.telegramIdPlaceholder.value}
-	                value={telegramId}
-	                onChange={(e) => setTelegramId(e.target.value)}
-	                helperText={t.connect.telegramIdHelp.value}
-	              />
-	            </Stack>
+              <TextField
+                fullWidth
+                label={t.connect.chatIdLabel.value}
+                placeholder={t.connect.chatIdPlaceholder.value}
+                value={chatId}
+                onChange={e => setChatId(e.target.value)}
+                helperText={t.connect.chatIdHelp.value}
+              />
+              <TextField
+                fullWidth
+                label={t.connect.telegramIdLabel.value}
+                placeholder={t.connect.telegramIdPlaceholder.value}
+                value={telegramId}
+                onChange={e => setTelegramId(e.target.value)}
+                helperText={t.connect.telegramIdHelp.value}
+              />
+            </Stack>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-	              <Button
-	                variant="contained"
-	                startIcon={<CheckCircleOutline />}
-	                onClick={connectTelegram}
-	                disabled={loading}
-	              >
-	                {t.connect.save}
-	              </Button>
-	              {user?.telegramId && (
-	                <Chip
-	                  icon={<TelegramIcon />}
-	                  color="success"
-	                  label={`${t.connect.linkedIdPrefix.value}: ${user.telegramId}`}
-	                  variant="outlined"
-	                />
-	              )}
-	            </Stack>
-	          </Stack>
-	        </Paper>
+              <Button
+                variant="contained"
+                startIcon={<CheckCircleOutline />}
+                onClick={connectTelegram}
+                disabled={loading}
+              >
+                {t.connect.save}
+              </Button>
+              {user?.telegramId && (
+                <Chip
+                  icon={<TelegramIcon />}
+                  color="success"
+                  label={`${t.connect.linkedIdPrefix.value}: ${user.telegramId}`}
+                  variant="outlined"
+                />
+              )}
+            </Stack>
+          </Stack>
+        </Paper>
 
-	        <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
-	          <Stack spacing={2} direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems="center">
-	            <Box>
-	              <Typography variant="h6" sx={{ fontWeight: 600 }}>{t.quickSend.title}</Typography>
-	              <Typography variant="body2" color="text.secondary">
-	                {t.quickSend.subtitle}
-	              </Typography>
-	            </Box>
-	            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+        <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
+          <Stack
+            spacing={2}
+            direction={{ xs: 'column', md: 'row' }}
+            justifyContent="space-between"
+            alignItems="center"
+          >
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {t.quickSend.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t.quickSend.subtitle}
+              </Typography>
+            </Box>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <Button
                 variant="contained"
                 color="primary"
                 startIcon={<Send />}
-	                onClick={() => sendReport('daily')}
-	                disabled={sendingDaily || !chatId}
-	              >
-	                {t.quickSend.sendToday}
-	              </Button>
+                onClick={() => sendReport('daily')}
+                disabled={sendingDaily || !chatId}
+              >
+                {t.quickSend.sendToday}
+              </Button>
               <Button
                 variant="outlined"
                 startIcon={<AccessTime />}
-	                onClick={() => sendReport('monthly')}
-	                disabled={sendingMonthly || !chatId}
-	              >
-	                {t.quickSend.sendMonth}
-	              </Button>
-	            </Stack>
-	          </Stack>
-	        </Paper>
+                onClick={() => sendReport('monthly')}
+                disabled={sendingMonthly || !chatId}
+              >
+                {t.quickSend.sendMonth}
+              </Button>
+            </Stack>
+          </Stack>
+        </Paper>
 
-	        <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
-	          <Stack spacing={2}>
-	            <Box>
-	              <Typography variant="h6" sx={{ fontWeight: 600 }}>{t.history.title}</Typography>
-	              <Typography variant="body2" color="text.secondary">
-	                {t.history.subtitle}
-	              </Typography>
-	            </Box>
+        <Paper elevation={0} sx={{ p: 3, border: '1px solid', borderColor: 'divider' }}>
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {t.history.title}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {t.history.subtitle}
+              </Typography>
+            </Box>
 
-	            <TableContainer>
-	              <Table size="small">
-	                <TableHead>
-	                  <TableRow>
-	                    <TableCell>{t.history.table.type}</TableCell>
-	                    <TableCell>{t.history.table.reportDate}</TableCell>
-	                    <TableCell>{t.history.table.chat}</TableCell>
-	                    <TableCell>{t.history.table.status}</TableCell>
-	                    <TableCell>{t.history.table.sentAt}</TableCell>
-	                  </TableRow>
-	                </TableHead>
-	                <TableBody>
-	                  {reports.length === 0 && !loadingReports && (
-	                    <TableRow>
-	                      <TableCell colSpan={5}>
-	                        <Typography variant="body2" color="text.secondary">
-	                          {t.history.empty}
-	                        </Typography>
-	                      </TableCell>
-	                    </TableRow>
-	                  )}
-	                  {reports.map((report) => (
-	                    <TableRow key={report.id} hover>
-	                      <TableCell>{reportTypeLabel(report.reportType, t)}</TableCell>
-	                      <TableCell>{formatDate(report.reportDate, locale, t)}</TableCell>
-	                      <TableCell>{report.chatId}</TableCell>
-	                      <TableCell>
-	                        <Chip
-	                          size="small"
-	                          color={getStatusColor(report.status)}
-	                          label={statusLabel(report.status, t)}
-	                        />
-	                      </TableCell>
-	                      <TableCell>{formatDate(report.sentAt || report.createdAt, locale, t)}</TableCell>
-	                    </TableRow>
-	                  ))}
-	                </TableBody>
-	              </Table>
-	            </TableContainer>
-	          </Stack>
-	        </Paper>
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t.history.table.type}</TableCell>
+                    <TableCell>{t.history.table.reportDate}</TableCell>
+                    <TableCell>{t.history.table.chat}</TableCell>
+                    <TableCell>{t.history.table.status}</TableCell>
+                    <TableCell>{t.history.table.sentAt}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {reports.length === 0 && !loadingReports && (
+                    <TableRow>
+                      <TableCell colSpan={5}>
+                        <Typography variant="body2" color="text.secondary">
+                          {t.history.empty}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {reports.map(report => (
+                    <TableRow key={report.id} hover>
+                      <TableCell>{reportTypeLabel(report.reportType, t)}</TableCell>
+                      <TableCell>{formatDate(report.reportDate, locale, t)}</TableCell>
+                      <TableCell>{report.chatId}</TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          color={getStatusColor(report.status)}
+                          label={statusLabel(report.status, t)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {formatDate(report.sentAt || report.createdAt, locale, t)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Stack>
+        </Paper>
 
-	        <Divider />
-	        <Paper elevation={0} sx={{ p: 3, border: '1px dashed', borderColor: 'divider' }}>
-	          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-	            {t.howTo.title}
-	          </Typography>
-	          <Typography variant="body2" color="text.secondary">
-	            {t.howTo.text}
-	          </Typography>
-	        </Paper>
-	      </Stack>
-	    </Container>
-	  );
+        <Divider />
+        <Paper elevation={0} sx={{ p: 3, border: '1px dashed', borderColor: 'divider' }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+            {t.howTo.title}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {t.howTo.text}
+          </Typography>
+        </Paper>
+      </Stack>
+    </Container>
+  );
 }
 
 function formatDate(dateString: string | null | undefined, locale: string, t: any) {

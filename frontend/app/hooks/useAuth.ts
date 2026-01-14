@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import apiClient from '@/app/lib/api';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface User {
   id: string;
@@ -29,7 +29,7 @@ export function useAuth() {
       // Fetch user profile
       apiClient
         .get('/auth/me')
-        .then((response) => {
+        .then(response => {
           setUser(response.data);
         })
         .catch(() => {

@@ -1,37 +1,37 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import type { ChangeEvent } from 'react';
+import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
+import { Icon } from '@iconify/react';
+import { Add, Check, Delete, Edit } from '@mui/icons-material';
 import {
-  Container,
-  Typography,
   Box,
   Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
-  Grid,
   Card,
-  CardContent,
   CardActions,
-  useTheme,
+  CardContent,
+  Chip,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  Grid,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Tooltip,
+  Typography,
   alpha,
-  Tooltip
+  useTheme,
 } from '@mui/material';
-import { Add, Edit, Delete, Check } from '@mui/icons-material';
-import { Icon } from '@iconify/react';
-import apiClient from '@/app/lib/api';
-import { useAuth } from '@/app/hooks/useAuth';
-import toast from 'react-hot-toast';
 import { useIntlayer } from 'next-intlayer';
+import { useEffect, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import toast from 'react-hot-toast';
 
 interface Category {
   id: string;
@@ -54,20 +54,58 @@ const resolveIconUrl = (iconValue?: string) => {
 };
 
 const PREDEFINED_ICONS = [
-  'mdi:home', 'mdi:food', 'mdi:car', 'mdi:shopping', 'mdi:cart',
-  'mdi:medical-bag', 'mdi:school', 'mdi:briefcase', 'mdi:airplane',
-  'mdi:gift', 'mdi:gamepad-variant', 'mdi:dumbbell', 'mdi:bank',
-  'mdi:cash', 'mdi:chart-line', 'mdi:credit-card', 'mdi:shield-check',
-  'mdi:cog', 'mdi:wrench', 'mdi:tag', 'mdi:coffee', 'mdi:monitor',
-  'mdi:phone', 'mdi:music', 'mdi:camera', 'mdi:book', 'mdi:heart',
-  'mdi:star', 'mdi:flag', 'mdi:bell'
+  'mdi:home',
+  'mdi:food',
+  'mdi:car',
+  'mdi:shopping',
+  'mdi:cart',
+  'mdi:medical-bag',
+  'mdi:school',
+  'mdi:briefcase',
+  'mdi:airplane',
+  'mdi:gift',
+  'mdi:gamepad-variant',
+  'mdi:dumbbell',
+  'mdi:bank',
+  'mdi:cash',
+  'mdi:chart-line',
+  'mdi:credit-card',
+  'mdi:shield-check',
+  'mdi:cog',
+  'mdi:wrench',
+  'mdi:tag',
+  'mdi:coffee',
+  'mdi:monitor',
+  'mdi:phone',
+  'mdi:music',
+  'mdi:camera',
+  'mdi:book',
+  'mdi:heart',
+  'mdi:star',
+  'mdi:flag',
+  'mdi:bell',
 ];
 
 const PREDEFINED_COLORS = [
-  '#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5',
-  '#2196F3', '#03A9F4', '#00BCD4', '#009688', '#4CAF50',
-  '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800',
-  '#FF5722', '#795548', '#9E9E9E', '#607D8B'
+  '#F44336',
+  '#E91E63',
+  '#9C27B0',
+  '#673AB7',
+  '#3F51B5',
+  '#2196F3',
+  '#03A9F4',
+  '#00BCD4',
+  '#009688',
+  '#4CAF50',
+  '#8BC34A',
+  '#CDDC39',
+  '#FFEB3B',
+  '#FFC107',
+  '#FF9800',
+  '#FF5722',
+  '#795548',
+  '#9E9E9E',
+  '#607D8B',
 ];
 
 export default function CategoriesPage() {
@@ -80,7 +118,7 @@ export default function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const iconInputRef = useRef<HTMLInputElement | null>(null);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -195,7 +233,7 @@ export default function CategoriesPage() {
       });
       const url = response.data?.url || response.data;
       if (url) {
-        setFormData((prev) => ({ ...prev, icon: url }));
+        setFormData(prev => ({ ...prev, icon: url }));
         toast.success(t.toasts.iconUploaded.value);
       }
     } catch (error) {
@@ -213,16 +251,16 @@ export default function CategoriesPage() {
     <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
       <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
-           <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
-             {t.title}
-           </Typography>
-           <Typography variant="body1" color="text.secondary">
-             {t.subtitle}
-           </Typography>
+          <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
+            {t.title}
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            {t.subtitle}
+          </Typography>
         </Box>
-        <Button 
-          variant="contained" 
-          startIcon={<Add />} 
+        <Button
+          variant="contained"
+          startIcon={<Add />}
           onClick={() => handleOpenDialog()}
           sx={{ borderRadius: 2, px: 3, py: 1 }}
         >
@@ -234,11 +272,11 @@ export default function CategoriesPage() {
         <Typography>{t.loading}</Typography>
       ) : (
         <Grid container spacing={3}>
-          {categories.map((category) => (
+          {categories.map(category => (
             <Grid size={{ xs: 12, sm: 6, md: 4 }} key={category.id}>
-              <Card 
-                variant="outlined" 
-                sx={{ 
+              <Card
+                variant="outlined"
+                sx={{
                   borderRadius: 3,
                   height: '100%',
                   display: 'flex',
@@ -247,11 +285,13 @@ export default function CategoriesPage() {
                   '&:hover': {
                     boxShadow: theme.shadows[4],
                     borderColor: 'primary.main',
-                    transform: 'translateY(-2px)'
-                  }
+                    transform: 'translateY(-2px)',
+                  },
                 }}
               >
-                <CardContent sx={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+                <CardContent
+                  sx={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', gap: 2 }}
+                >
                   <Box
                     sx={{
                       width: 56,
@@ -262,7 +302,7 @@ export default function CategoriesPage() {
                       justifyContent: 'center',
                       backgroundColor: alpha(category.color || '#2196F3', 0.1),
                       color: category.color || '#2196F3',
-                      flexShrink: 0
+                      flexShrink: 0,
                     }}
                   >
                     {resolveIconUrl(category.icon) ? (
@@ -290,12 +330,12 @@ export default function CategoriesPage() {
                   </Box>
                 </CardContent>
                 <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
-                   <Tooltip title={t.actions.edit.value}>
+                  <Tooltip title={t.actions.edit.value}>
                     <IconButton size="small" onClick={() => handleOpenDialog(category)}>
                       <Edit fontSize="small" />
                     </IconButton>
-                   </Tooltip>
-                   <Tooltip title={t.actions.delete.value}>
+                  </Tooltip>
+                  <Tooltip title={t.actions.delete.value}>
                     <IconButton
                       size="small"
                       color="error"
@@ -303,7 +343,7 @@ export default function CategoriesPage() {
                     >
                       <Delete fontSize="small" />
                     </IconButton>
-                   </Tooltip>
+                  </Tooltip>
                 </CardActions>
               </Card>
             </Grid>
@@ -317,7 +357,6 @@ export default function CategoriesPage() {
         </DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
-            
             {/* Name and Type */}
             <Box sx={{ display: 'flex', gap: 2 }}>
               <TextField
@@ -325,14 +364,14 @@ export default function CategoriesPage() {
                 placeholder={t.dialog.placeholderName.value}
                 fullWidth
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
               />
               <FormControl sx={{ minWidth: 120 }}>
                 <InputLabel>{t.type.label}</InputLabel>
                 <Select
                   value={formData.type}
                   label={t.type.label.value}
-                  onChange={(e) =>
+                  onChange={e =>
                     setFormData({ ...formData, type: e.target.value as 'income' | 'expense' })
                   }
                 >
@@ -354,20 +393,20 @@ export default function CategoriesPage() {
                 style={{ display: 'none' }}
                 onChange={handleIconFileChange}
               />
-              <Box 
-                sx={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))', 
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(40px, 1fr))',
                   gap: 1,
                   maxHeight: 200,
                   overflowY: 'auto',
                   p: 1,
                   border: '1px solid',
                   borderColor: 'divider',
-                  borderRadius: 1
+                  borderRadius: 1,
                 }}
               >
-                {PREDEFINED_ICONS.map((iconName) => (
+                {PREDEFINED_ICONS.map(iconName => (
                   <Box
                     key={iconName}
                     onClick={() => setFormData({ ...formData, icon: iconName })}
@@ -379,20 +418,32 @@ export default function CategoriesPage() {
                       justifyContent: 'center',
                       borderRadius: 1,
                       cursor: 'pointer',
-                      bgcolor: formData.icon === iconName ? alpha(formData.color, 0.2) : 'transparent',
+                      bgcolor:
+                        formData.icon === iconName ? alpha(formData.color, 0.2) : 'transparent',
                       color: formData.icon === iconName ? formData.color : 'text.secondary',
-                      border: formData.icon === iconName ? `2px solid ${formData.color}` : '1px solid transparent',
+                      border:
+                        formData.icon === iconName
+                          ? `2px solid ${formData.color}`
+                          : '1px solid transparent',
                       '&:hover': {
                         bgcolor: alpha(formData.color || theme.palette.primary.main, 0.1),
-                        color: formData.color || theme.palette.primary.main
-                      }
+                        color: formData.color || theme.palette.primary.main,
+                      },
                     }}
                   >
                     <Icon icon={iconName} width={24} height={24} />
                   </Box>
                 ))}
               </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1.5, gap: 2 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  mt: 1.5,
+                  gap: 2,
+                }}
+              >
                 {resolveIconUrl(formData.icon) && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Typography variant="body2" color="text.secondary">
@@ -402,7 +453,14 @@ export default function CategoriesPage() {
                       component="img"
                       src={resolveIconUrl(formData.icon) || formData.icon}
                       alt=""
-                      sx={{ width: 32, height: 32, borderRadius: 1, objectFit: 'contain', border: '1px solid', borderColor: 'divider' }}
+                      sx={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 1,
+                        objectFit: 'contain',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                      }}
                     />
                   </Box>
                 )}
@@ -419,12 +477,12 @@ export default function CategoriesPage() {
             </Box>
 
             {/* Color Picker (Preset colors) */}
-             <Box>
+            <Box>
               <Typography variant="subtitle2" gutterBottom>
                 {t.dialog.chooseColor}
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {PREDEFINED_COLORS.map((color) => (
+                {PREDEFINED_COLORS.map(color => (
                   <Box
                     key={color}
                     onClick={() => setFormData({ ...formData, color })}
@@ -440,8 +498,8 @@ export default function CategoriesPage() {
                       boxShadow: formData.color === color ? 3 : 0,
                       transform: formData.color === color ? 'scale(1.1)' : 'scale(1)',
                       transition: 'transform 0.2s',
-                      border: formData.color === color ? '2px solid white' : 'none', 
-                      outline: formData.color === color ? `2px solid ${color}` : 'none'
+                      border: formData.color === color ? '2px solid white' : 'none',
+                      outline: formData.color === color ? `2px solid ${color}` : 'none',
                     }}
                   >
                     {formData.color === color && <Check sx={{ color: 'white', fontSize: 20 }} />}
@@ -451,38 +509,47 @@ export default function CategoriesPage() {
             </Box>
 
             {/* Preview Section */}
-             <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  {t.dialog.preview}
-                </Typography>
-                <Box
-                    sx={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: alpha(formData.color || '#2196F3', 0.1),
-                      color: formData.color || '#2196F3',
-                    }}
-                  >
-                    {resolveIconUrl(formData.icon) ? (
-                      <Box
-                        component="img"
-                        src={resolveIconUrl(formData.icon) as string}
-                        alt=""
-                        sx={{ width: 28, height: 28, objectFit: 'contain' }}
-                      />
-                    ) : (
-                      <Icon icon={formData.icon || 'mdi:tag'} width={28} height={28} />
-                    )}
-                  </Box>
-                  <Typography variant="subtitle1" fontWeight="bold">
-                    {formData.name || t.dialog.placeholderName}
-                  </Typography>
-             </Box>
-
+            <Box
+              sx={{
+                mt: 2,
+                p: 2,
+                bgcolor: 'background.default',
+                borderRadius: 2,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+              }}
+            >
+              <Typography variant="body2" color="text.secondary">
+                {t.dialog.preview}
+              </Typography>
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: alpha(formData.color || '#2196F3', 0.1),
+                  color: formData.color || '#2196F3',
+                }}
+              >
+                {resolveIconUrl(formData.icon) ? (
+                  <Box
+                    component="img"
+                    src={resolveIconUrl(formData.icon) as string}
+                    alt=""
+                    sx={{ width: 28, height: 28, objectFit: 'contain' }}
+                  />
+                ) : (
+                  <Icon icon={formData.icon || 'mdi:tag'} width={28} height={28} />
+                )}
+              </Box>
+              <Typography variant="subtitle1" fontWeight="bold">
+                {formData.name || t.dialog.placeholderName}
+              </Typography>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

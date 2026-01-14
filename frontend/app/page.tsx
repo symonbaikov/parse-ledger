@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Container, Typography, Box, Button, CircularProgress } from '@mui/material';
-import Link from 'next/link';
-import { useAuth } from './hooks/useAuth';
+import { Box, Button, CircularProgress, Container, Typography } from '@mui/material';
 import { useIntlayer } from 'next-intlayer';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useAuth } from './hooks/useAuth';
 
 export default function Home() {
   const router = useRouter();
@@ -48,20 +48,15 @@ export default function Home() {
       }}
     >
       <Container maxWidth="md">
-        <Typography
-          variant="h2"
-          component="h1"
-          gutterBottom
-          sx={{ fontWeight: 700, mb: 2 }}
-        >
+        <Typography variant="h2" component="h1" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
           FinFlow
-	        </Typography>
-	        <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 4, opacity: 0.9 }}>
-	          {t.tagline}
-	        </Typography>
-	        <Typography variant="body1" sx={{ mb: 6, fontSize: '1.2rem', opacity: 0.8 }}>
-	          {t.description}
-	        </Typography>
+        </Typography>
+        <Typography variant="h5" component="h2" gutterBottom sx={{ mb: 4, opacity: 0.9 }}>
+          {t.tagline}
+        </Typography>
+        <Typography variant="body1" sx={{ mb: 6, fontSize: '1.2rem', opacity: 0.8 }}>
+          {t.description}
+        </Typography>
         <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
           <Button
             variant="contained"
@@ -75,9 +70,9 @@ export default function Home() {
               px: 4,
               py: 1.5,
             }}
-	          >
-	            {t.login}
-	          </Button>
+          >
+            {t.login}
+          </Button>
           <Button
             variant="outlined"
             component={Link}
@@ -90,9 +85,9 @@ export default function Home() {
               px: 4,
               py: 1.5,
             }}
-	          >
-	            {t.register}
-	          </Button>
+          >
+            {t.register}
+          </Button>
         </Box>
       </Container>
     </Box>

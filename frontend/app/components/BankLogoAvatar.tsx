@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
 import { resolveBankLogo } from '@bank-logos';
+import React from 'react';
 
 type Props = {
   bankName?: string | null;
@@ -33,7 +33,7 @@ export function BankLogoAvatar({ bankName, size = 32, className, rounded = true 
         ]
           .filter(Boolean)
           .join(' ')}
-        onError={() => setStage((prev) => (prev === 2 ? 2 : ((prev + 1) as 0 | 1 | 2)))}
+        onError={() => setStage(prev => (prev === 2 ? 2 : ((prev + 1) as 0 | 1 | 2)))}
       />
     );
   }

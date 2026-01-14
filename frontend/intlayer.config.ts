@@ -8,4 +8,3 @@ const config: IntlayerConfig = {
 };
 
 export default config;
-

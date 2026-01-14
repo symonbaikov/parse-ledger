@@ -1,10 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Icon } from '@iconify/react';
-import { Trash2 } from 'lucide-react';
-import { AgGridReact } from 'ag-grid-react';
-import { useIntlayer, useLocale } from 'next-intlayer';
 import type {
   CellMouseDownEvent,
   CellMouseOverEvent,
@@ -17,6 +13,10 @@ import type {
   RowClassParams,
   SelectionChangedEvent,
 } from 'ag-grid-community';
+import { AgGridReact } from 'ag-grid-react';
+import { Trash2 } from 'lucide-react';
+import { useIntlayer, useLocale } from 'next-intlayer';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
 
@@ -102,7 +102,11 @@ function EditableColumnHeader(
 
   const renderHeaderIcon = (iconStr?: string | null) => {
     if (!iconStr) return null;
-    if (iconStr.startsWith('http://') || iconStr.startsWith('https://') || iconStr.startsWith('/uploads/')) {
+    if (
+      iconStr.startsWith('http://') ||
+      iconStr.startsWith('https://') ||
+      iconStr.startsWith('/uploads/')
+    ) {
       return <img src={iconStr} alt="" className="h-4 w-4 object-contain" />;
     }
     return <Icon icon={iconStr} className="h-4 w-4" />;
@@ -111,11 +115,10 @@ function EditableColumnHeader(
   if (editing) {
     return (
       <input
-        autoFocus
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={e => setValue(e.target.value)}
         onBlur={() => void commit()}
-        onKeyDown={(e) => {
+        onKeyDown={e => {
           if (e.key === 'Enter') {
             e.preventDefault();
             void commit();
@@ -136,7 +139,11 @@ function EditableColumnHeader(
     >
       <div
         onDoubleClick={startEditing}
-        className={saving ? 'opacity-60 flex-1 truncate inline-flex items-center gap-1' : 'flex-1 truncate inline-flex items-center gap-1'}
+        className={
+          saving
+            ? 'opacity-60 flex-1 truncate inline-flex items-center gap-1'
+            : 'flex-1 truncate inline-flex items-center gap-1'
+        }
         style={{ minWidth: 0 }}
       >
         {renderHeaderIcon(params.headerIcon)}
@@ -145,7 +152,7 @@ function EditableColumnHeader(
       {!isSystem && params.onDeleteColumn ? (
         <button
           type="button"
-          onClick={(e) => {
+          onClick={e => {
             e.stopPropagation();
             params.onDeleteColumn?.(colId);
           }}
@@ -199,19 +206,25 @@ const mapHorizontalAlignment = (value: unknown): CSSProperties['textAlign'] | un
 const mapFontFamily = (value: string): string | undefined => {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
-  const quoted = /[\\s"]/g.test(trimmed) && !trimmed.includes(',') ? `"${trimmed.replace(/"/g, '\\"')}"` : trimmed;
+  const quoted =
+    /[\\s"]/g.test(trimmed) && !trimmed.includes(',')
+      ? `"${trimmed.replace(/"/g, '\\"')}"`
+      : trimmed;
   if (trimmed.includes(',')) return trimmed;
   return `${quoted}, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif`;
 };
 
 const sheetStyleToCss = (style: Record<string, any>) => {
-  const backgroundColor = typeof style.backgroundColor === 'string' ? style.backgroundColor : undefined;
+  const backgroundColor =
+    typeof style.backgroundColor === 'string' ? style.backgroundColor : undefined;
   const textAlign = mapHorizontalAlignment(style.horizontalAlignment);
 
-  const tf = style.textFormat && typeof style.textFormat === 'object' ? (style.textFormat as any) : null;
+  const tf =
+    style.textFormat && typeof style.textFormat === 'object' ? (style.textFormat as any) : null;
   const color = tf && typeof tf.foregroundColor === 'string' ? tf.foregroundColor : undefined;
   const fontWeight = tf && typeof tf.bold === 'boolean' ? (tf.bold ? 700 : 400) : undefined;
-  const fontStyle = tf && typeof tf.italic === 'boolean' ? (tf.italic ? 'italic' : 'normal') : undefined;
+  const fontStyle =
+    tf && typeof tf.italic === 'boolean' ? (tf.italic ? 'italic' : 'normal') : undefined;
 
   const underline = tf && typeof tf.underline === 'boolean' ? tf.underline : undefined;
   const strikethrough = tf && typeof tf.strikethrough === 'boolean' ? tf.strikethrough : undefined;
@@ -226,10 +239,22 @@ const sheetStyleToCss = (style: Record<string, any>) => {
   }
 
   const fontSize =
-    tf && typeof tf.fontSize === 'number' && Number.isFinite(tf.fontSize) && tf.fontSize > 0 ? tf.fontSize : undefined;
-  const fontFamily = tf && typeof tf.fontFamily === 'string' ? mapFontFamily(tf.fontFamily) : undefined;
+    tf && typeof tf.fontSize === 'number' && Number.isFinite(tf.fontSize) && tf.fontSize > 0
+      ? tf.fontSize
+      : undefined;
+  const fontFamily =
+    tf && typeof tf.fontFamily === 'string' ? mapFontFamily(tf.fontFamily) : undefined;
 
-  return { backgroundColor, textAlign, color, fontWeight, fontStyle, textDecorationLine, fontSize, fontFamily };
+  return {
+    backgroundColor,
+    textAlign,
+    color,
+    fontWeight,
+    fontStyle,
+    textDecorationLine,
+    fontSize,
+    fontFamily,
+  };
 };
 
 const normalizeFiltersParam = (filters: RowFilter[]): string | undefined => {
@@ -238,7 +263,10 @@ const normalizeFiltersParam = (filters: RowFilter[]): string | undefined => {
   return JSON.stringify(compact);
 };
 
-const agFilterModelToRowFilters = (model: any, columnsByKey: Map<string, CustomTableColumn>): RowFilter[] => {
+const agFilterModelToRowFilters = (
+  model: any,
+  columnsByKey: Map<string, CustomTableColumn>,
+): RowFilter[] => {
   if (!model || typeof model !== 'object') return [];
   const result: RowFilter[] = [];
 
@@ -281,7 +309,11 @@ const agFilterModelToRowFilters = (model: any, columnsByKey: Map<string, CustomT
     const dateTo = (value as any).dateTo;
 
     const textValue =
-      rawFilter === null || rawFilter === undefined ? '' : typeof rawFilter === 'string' ? rawFilter : String(rawFilter);
+      rawFilter === null || rawFilter === undefined
+        ? ''
+        : typeof rawFilter === 'string'
+          ? rawFilter
+          : String(rawFilter);
 
     const numberValue = typeof rawFilter === 'number' ? rawFilter : Number(rawFilter);
     const numberValueTo = typeof rawFilterTo === 'number' ? rawFilterTo : Number(rawFilterTo);
@@ -338,7 +370,8 @@ const agFilterModelToRowFilters = (model: any, columnsByKey: Map<string, CustomT
         continue;
       }
       const from = textValue.trim();
-      const to = typeof rawFilterTo === 'string' ? rawFilterTo.trim() : String(rawFilterTo ?? '').trim();
+      const to =
+        typeof rawFilterTo === 'string' ? rawFilterTo.trim() : String(rawFilterTo ?? '').trim();
       if (!from || !to) continue;
       result.push({ col: colKey, op: 'between', value: [from, to] });
       continue;
@@ -388,8 +421,11 @@ export function CustomTableAgGrid(props: {
   const { locale } = useLocale();
   const gridApiRef = useRef<any>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const columnsByKey = useMemo(() => new Map(props.columns.map((c) => [c.key, c])), [props.columns]);
-  const selectedColSet = useMemo(() => new Set(props.selectedColumnKeys), [props.selectedColumnKeys]);
+  const columnsByKey = useMemo(() => new Map(props.columns.map(c => [c.key, c])), [props.columns]);
+  const selectedColSet = useMemo(
+    () => new Set(props.selectedColumnKeys),
+    [props.selectedColumnKeys],
+  );
 
   const selectionDragRef = useRef<{
     active: boolean;
@@ -460,7 +496,7 @@ export function CustomTableAgGrid(props: {
     const api = gridApiRef.current;
     const cols = api?.getAllDisplayedColumns?.() || [];
     return (cols as any[])
-      .map((c) => (typeof c?.getColId === 'function' ? c.getColId() : null))
+      .map(c => (typeof c?.getColId === 'function' ? c.getColId() : null))
       .filter((id: any) => typeof id === 'string' && id && !id.startsWith('__'));
   };
 
@@ -486,7 +522,9 @@ export function CustomTableAgGrid(props: {
       if (tag && ['input', 'textarea', 'select', 'button'].includes(tag)) return null;
       if (el.closest('.ag-floating-filter')) return null;
       if (el.closest('.ag-header-cell-resize')) return null;
-      const cell = el.closest?.('.ag-header-row.ag-header-row-column .ag-header-cell') as HTMLElement | null;
+      const cell = el.closest?.(
+        '.ag-header-row.ag-header-row-column .ag-header-cell',
+      ) as HTMLElement | null;
       if (!cell) return null;
       const colId = cell.getAttribute('col-id');
       if (!colId || colId.startsWith('__')) return null;
@@ -564,7 +602,9 @@ export function CustomTableAgGrid(props: {
       if (!columnIndexById.has(colId)) return;
       const ref = { rowId, colId };
       setSelectionAnchor(ref);
-      setSelectionFocus((prev) => (prev?.rowId === ref.rowId && prev?.colId === ref.colId ? prev : ref));
+      setSelectionFocus(prev =>
+        prev?.rowId === ref.rowId && prev?.colId === ref.colId ? prev : ref,
+      );
       cellSelectionDragRef.current = true;
     },
     [columnIndexById],
@@ -577,7 +617,7 @@ export function CustomTableAgGrid(props: {
       const colId = event.colDef?.colId;
       if (!rowId || !colId || colId.startsWith('__')) return;
       if (!columnIndexById.has(colId)) return;
-      setSelectionFocus((prev) => {
+      setSelectionFocus(prev => {
         if (prev?.rowId === rowId && prev?.colId === colId) return prev;
         return { rowId, colId };
       });
@@ -661,23 +701,20 @@ export function CustomTableAgGrid(props: {
     };
   }, []);
 
-  const getRowStyle = useCallback(
-    (params: RowClassParams) => {
-      const styles = params.data?.styles || {};
-      if (styles.manualFill) {
-        return { backgroundColor: styles.manualFill, color: '#fff' };
-      }
-      const tag = styles.manualTag;
-      if (tag === 'heading') {
-        return { backgroundColor: '#111827', color: '#fff' };
-      }
-      if (tag === 'total') {
-        return { backgroundColor: '#0f172a', color: '#fff' };
-      }
-      return undefined;
-    },
-    [],
-  );
+  const getRowStyle = useCallback((params: RowClassParams) => {
+    const styles = params.data?.styles || {};
+    if (styles.manualFill) {
+      return { backgroundColor: styles.manualFill, color: '#fff' };
+    }
+    const tag = styles.manualTag;
+    if (tag === 'heading') {
+      return { backgroundColor: '#111827', color: '#fff' };
+    }
+    if (tag === 'total') {
+      return { backgroundColor: '#0f172a', color: '#fff' };
+    }
+    return undefined;
+  }, []);
 
   const colDefs = useMemo<Array<ColDef<CustomTableGridRow>>>(() => {
     const defs: Array<ColDef<CustomTableGridRow>> = [
@@ -690,7 +727,7 @@ export function CustomTableAgGrid(props: {
         maxWidth: 120,
         editable: false,
         filter: false,
-        valueGetter: (p) => p.data?.rowNumber,
+        valueGetter: p => p.data?.rowNumber,
         cellClass: 'text-gray-500',
       },
     ];
@@ -715,20 +752,23 @@ export function CustomTableAgGrid(props: {
           'ff-col-selected-cell': () => selectedColSet.has(col.key),
           'ff-cell-range-selected': (params: any) => isCellRangeSelected(params.data?.id, col.key),
         },
-        valueGetter: (p) => (p.data?.data ? p.data.data[col.key] : null),
-        valueSetter: (p) => {
+        valueGetter: p => (p.data?.data ? p.data.data[col.key] : null),
+        valueSetter: p => {
           if (!p.data) return false;
           p.data.data = { ...(p.data.data || {}), [col.key]: p.newValue };
           return true;
         },
-        valueFormatter: (p) => {
+        valueFormatter: p => {
           const v = p.value;
           if (Array.isArray(v)) return v.join(', ');
           if (v === null || v === undefined) return '';
           return String(v);
         },
-        cellStyle: (p) => {
-          const override = p.data?.styles && typeof p.data.styles === 'object' ? (p.data.styles as any)[col.key] : null;
+        cellStyle: p => {
+          const override =
+            p.data?.styles && typeof p.data.styles === 'object'
+              ? (p.data.styles as any)[col.key]
+              : null;
           const merged = mergeSheetStyle(baseCellStyle, override);
           const css = sheetStyleToCss(merged);
           return {
@@ -753,7 +793,7 @@ export function CustomTableAgGrid(props: {
                   <input
                     type="checkbox"
                     checked={checked}
-                    onChange={(e) => {
+                    onChange={e => {
                       e.stopPropagation();
                       p.setValue(Boolean(e.target.checked));
                     }}
@@ -783,7 +823,7 @@ export function CustomTableAgGrid(props: {
             type="button"
             title={t.tooltips.deleteRow.value}
             disabled={!canDelete}
-            onClick={(e) => {
+            onClick={e => {
               e.stopPropagation();
               if (canDelete) props.onDeleteRow(rowId);
             }}
@@ -796,7 +836,14 @@ export function CustomTableAgGrid(props: {
     });
 
     return defs;
-  }, [props.columns, props.columnWidths, props.onDeleteRow, props.onRenameColumnTitle, selectedColSet, isCellRangeSelected]);
+  }, [
+    props.columns,
+    props.columnWidths,
+    props.onDeleteRow,
+    props.onRenameColumnTitle,
+    selectedColSet,
+    isCellRangeSelected,
+  ]);
 
   const onGridReady = (event: GridReadyEvent) => {
     gridApiRef.current = event.api as any;
@@ -807,7 +854,7 @@ export function CustomTableAgGrid(props: {
     (event: SelectionChangedEvent) => {
       const rows = event.api.getSelectedRows?.() || [];
       const ids = rows
-        .map((row) => (row as CustomTableGridRow)?.id)
+        .map(row => (row as CustomTableGridRow)?.id)
         .filter((id): id is string => typeof id === 'string' && id.length > 0);
       props.onSelectedRowIdsChange(ids);
     },
@@ -838,7 +885,7 @@ export function CustomTableAgGrid(props: {
       if (typeof nextValue === 'string') {
         const arr = nextValue
           .split(',')
-          .map((v) => v.trim())
+          .map(v => v.trim())
           .filter(Boolean);
         nextValue = arr.length ? arr : null;
       } else if (Array.isArray(nextValue)) {
@@ -870,9 +917,7 @@ export function CustomTableAgGrid(props: {
 
     const onScroll = () => {
       if (props.loadingRows || !props.hasMore) return;
-      const last =
-        api.getLastDisplayedRowIndex?.() ??
-        api.getLastDisplayedRow?.();
+      const last = api.getLastDisplayedRowIndex?.() ?? api.getLastDisplayedRow?.();
       if (typeof last !== 'number') return;
       if (last >= props.rows.length - 10) {
         props.onLoadMore({ reset: false });
@@ -937,7 +982,11 @@ export function CustomTableAgGrid(props: {
     <div
       ref={rootRef}
       className={props.isFullscreen ? 'h-full' : undefined}
-      style={{ width: '100%', height: props.isFullscreen ? '100%' : '70vh', minHeight: props.isFullscreen ? undefined : 520 }}
+      style={{
+        width: '100%',
+        height: props.isFullscreen ? '100%' : '70vh',
+        minHeight: props.isFullscreen ? undefined : 520,
+      }}
     >
       <div className="ag-theme-quartz" style={{ width: '100%', height: '100%' }}>
         {headerCssRules ? <style>{headerCssRules}</style> : null}
@@ -950,11 +999,12 @@ export function CustomTableAgGrid(props: {
               deleteColumn: t.tooltips.deleteColumn.value,
             },
           }}
-          getRowId={(p) => {
+          getRowId={p => {
             const id = (p.data as any)?.id;
             if (typeof id === 'string' && id.trim()) return id;
             const rowNumber = (p.data as any)?.rowNumber;
-            if (typeof rowNumber === 'number' && Number.isFinite(rowNumber)) return `row_${rowNumber}`;
+            if (typeof rowNumber === 'number' && Number.isFinite(rowNumber))
+              return `row_${rowNumber}`;
             const idx = (p as any)?.rowIndex ?? (p as any)?.node?.rowIndex ?? 0;
             return `row_${idx}`;
           }}

@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'settingsProfilePage',
@@ -37,15 +37,27 @@ const content = {
     emailCard: {
       title: t({ ru: 'Email', en: 'Email', kk: 'Email' }),
       newEmailLabel: t({ ru: 'Новый email', en: 'New email', kk: 'Жаңа email' }),
-      currentPasswordLabel: t({ ru: 'Текущий пароль', en: 'Current password', kk: 'Ағымдағы құпиясөз' }),
+      currentPasswordLabel: t({
+        ru: 'Текущий пароль',
+        en: 'Current password',
+        kk: 'Ағымдағы құпиясөз',
+      }),
       currentPasswordHelp: t({
         ru: 'Мы запрашиваем пароль, чтобы подтвердить смену email.',
         en: 'We ask for your password to confirm the email change.',
         kk: 'Email өзгерісін растау үшін құпиясөз сұраймыз.',
       }),
       submit: t({ ru: 'Обновить email', en: 'Update email', kk: 'Email жаңарту' }),
-      successFallback: t({ ru: 'Email успешно обновлён.', en: 'Email updated successfully.', kk: 'Email сәтті жаңартылды.' }),
-      errorFallback: t({ ru: 'Не удалось обновить email.', en: 'Failed to update email.', kk: 'Email жаңарту мүмкін болмады.' }),
+      successFallback: t({
+        ru: 'Email успешно обновлён.',
+        en: 'Email updated successfully.',
+        kk: 'Email сәтті жаңартылды.',
+      }),
+      errorFallback: t({
+        ru: 'Не удалось обновить email.',
+        en: 'Failed to update email.',
+        kk: 'Email жаңарту мүмкін болмады.',
+      }),
     },
     profileCard: {
       title: t({ ru: 'Профиль', en: 'Profile', kk: 'Профиль' }),
@@ -89,21 +101,41 @@ const content = {
         en: 'Ends all active sessions on other devices and browsers.',
         kk: 'Басқа құрылғылар мен браузерлердегі барлық белсенді сеанстарды аяқтайды.',
       }),
-      logoutAllButton: t({ ru: 'Выйти со всех устройств', en: 'Log out of all devices', kk: 'Барлық құрылғылардан шығу' }),
+      logoutAllButton: t({
+        ru: 'Выйти со всех устройств',
+        en: 'Log out of all devices',
+        kk: 'Барлық құрылғылардан шығу',
+      }),
     },
     passwordCard: {
       title: t({ ru: 'Пароль', en: 'Password', kk: 'Құпиясөз' }),
-      currentPasswordLabel: t({ ru: 'Текущий пароль', en: 'Current password', kk: 'Ағымдағы құпиясөз' }),
+      currentPasswordLabel: t({
+        ru: 'Текущий пароль',
+        en: 'Current password',
+        kk: 'Ағымдағы құпиясөз',
+      }),
       newPasswordLabel: t({ ru: 'Новый пароль', en: 'New password', kk: 'Жаңа құпиясөз' }),
-      newPasswordHelp: t({ ru: 'Минимум 8 символов.', en: 'At least 8 characters.', kk: 'Кемінде 8 таңба.' }),
+      newPasswordHelp: t({
+        ru: 'Минимум 8 символов.',
+        en: 'At least 8 characters.',
+        kk: 'Кемінде 8 таңба.',
+      }),
       confirmPasswordLabel: t({
         ru: 'Подтвердите новый пароль',
         en: 'Confirm new password',
         kk: 'Жаңа құпиясөзді растаңыз',
       }),
       submit: t({ ru: 'Обновить пароль', en: 'Update password', kk: 'Құпиясөз жаңарту' }),
-      successFallback: t({ ru: 'Пароль успешно обновлён.', en: 'Password updated successfully.', kk: 'Құпиясөз сәтті жаңартылды.' }),
-      errorFallback: t({ ru: 'Не удалось обновить пароль.', en: 'Failed to update password.', kk: 'Құпиясөзді жаңарту мүмкін болмады.' }),
+      successFallback: t({
+        ru: 'Пароль успешно обновлён.',
+        en: 'Password updated successfully.',
+        kk: 'Құпиясөз сәтті жаңартылды.',
+      }),
+      errorFallback: t({
+        ru: 'Не удалось обновить пароль.',
+        en: 'Failed to update password.',
+        kk: 'Құпиясөзді жаңарту мүмкін болмады.',
+      }),
     },
   },
 } satisfies Dictionary;

@@ -12,22 +12,22 @@ const apiClient = axios.create({
 
 // Request interceptor for adding auth token
 apiClient.interceptors.request.use(
-  (config) => {
+  config => {
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
+  error => {
     return Promise.reject(error);
   },
 );
 
 // Response interceptor for handling errors
 apiClient.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  response => response,
+  async error => {
     const originalRequest = error.config;
 
     // Handle 401 Unauthorized - refresh token
@@ -67,10 +67,3 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
-
-
-
-
-
-
-

@@ -1,26 +1,23 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { Download as DownloadIcon, Lock as LockIcon } from '@mui/icons-material';
 import {
-  Container,
-  Typography,
-  Box,
-  Paper,
-  Button,
-  TextField,
   Alert,
-  Chip,
+  Box,
+  Button,
   Card,
   CardContent,
+  Chip,
+  Container,
+  Paper,
+  TextField,
+  Typography,
 } from '@mui/material';
-import {
-  Download as DownloadIcon,
-  Lock as LockIcon,
-} from '@mui/icons-material';
-import { useParams } from 'next/navigation';
-import api from '../../lib/api';
-import TransactionsView from '../../components/TransactionsView';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { useParams } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import TransactionsView from '../../components/TransactionsView';
+import api from '../../lib/api';
 
 interface SharedFileAccess {
   statement: any;
@@ -55,7 +52,7 @@ export default function SharedFilePage() {
 
       const params = pwd ? { password: pwd } : {};
       const response = await api.get(`/storage/shared/${token}`, { params });
-      
+
       setAccess(response.data);
       setNeedsPassword(false);
     } catch (err: any) {
@@ -83,7 +80,7 @@ export default function SharedFilePage() {
         params,
         responseType: 'blob',
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -98,17 +95,20 @@ export default function SharedFilePage() {
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return date.toLocaleDateString(
+      locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US',
+      {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      },
+    );
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   if (loading) {
@@ -132,15 +132,19 @@ export default function SharedFilePage() {
               {t.protected.subtitle}
             </Typography>
 
-            {error && <Alert severity="error" sx={{ width: '100%' }}>{error}</Alert>}
+            {error && (
+              <Alert severity="error" sx={{ width: '100%' }}>
+                {error}
+              </Alert>
+            )}
 
             <TextField
               fullWidth
               label={t.protected.passwordLabel.value}
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+              onChange={e => setPassword(e.target.value)}
+              onKeyPress={e => e.key === 'Enter' && handlePasswordSubmit()}
             />
 
             <Button
@@ -178,7 +182,10 @@ export default function SharedFilePage() {
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
           <Chip label={t.header.badge.value} size="small" color="info" />
           <Chip label={statement.bankName} size="small" variant="outlined" />
-          <Chip label={`${t.permission.prefix.value}: ${getPermissionLabel(permission, t)}`} size="small" />
+          <Chip
+            label={`${t.permission.prefix.value}: ${getPermissionLabel(permission, t)}`}
+            size="small"
+          />
           {canDownload && (
             <Button
               variant="contained"
@@ -218,9 +225,7 @@ export default function SharedFilePage() {
             <Typography variant="body2" color="text.secondary">
               {t.cards.fileSize}
             </Typography>
-            <Typography variant="h6">
-              {formatFileSize(statement.fileSize)}
-            </Typography>
+            <Typography variant="h6">{formatFileSize(statement.fileSize)}</Typography>
           </CardContent>
         </Card>
         <Card>
@@ -252,9 +257,7 @@ export default function SharedFilePage() {
           <TransactionsView transactions={transactions} />
         </Box>
       ) : (
-        <Alert severity="info">
-          {t.errors.noTransactionsAccess}
-        </Alert>
+        <Alert severity="info">{t.errors.noTransactionsAccess}</Alert>
       )}
     </Container>
   );

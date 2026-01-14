@@ -1,20 +1,20 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
+  CheckCircle2,
   Download,
+  FileText,
   RefreshCcw,
   TrendingUp,
-  FileText,
-  AlertTriangle,
-  CheckCircle2,
 } from 'lucide-react';
-import apiClient from '../lib/api';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import dynamic from 'next/dynamic';
+import { useEffect, useMemo, useState } from 'react';
+import apiClient from '../lib/api';
 
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
 
@@ -87,7 +87,14 @@ type StatementsSummaryResponse = {
   }>;
 };
 
-type StatementStatus = 'uploaded' | 'processing' | 'parsed' | 'validated' | 'completed' | 'error' | string;
+type StatementStatus =
+  | 'uploaded'
+  | 'processing'
+  | 'parsed'
+  | 'validated'
+  | 'completed'
+  | 'error'
+  | string;
 
 type StatementItem = {
   id: string;
@@ -178,7 +185,7 @@ export default function ReportsPage() {
     }
   };
 
-  const loadStatementSummary = async (daysOverride: number = 30) => {
+  const loadStatementSummary = async (daysOverride = 30) => {
     setLoadingStatementSummary(true);
     setError(null);
     try {
@@ -205,8 +212,8 @@ export default function ReportsPage() {
       const items = (payload?.items || []) as CustomTableListItem[];
       setCustomTables(items);
 
-      const ids = items.map((t) => t.id);
-      setSelectedTableIds((prev) => (prev.length ? prev : ids));
+      const ids = items.map(t => t.id);
+      setSelectedTableIds(prev => (prev.length ? prev : ids));
     } catch (err: any) {
       setError(err?.response?.data?.message || t.errors.loadTables.value);
     } finally {
@@ -278,14 +285,14 @@ export default function ReportsPage() {
       tooltip: { trigger: 'axis' },
       legend: { data: [t.labels.income.value, t.labels.expense.value] },
       grid: { left: 30, right: 30, bottom: 30, top: 30 },
-      xAxis: { type: 'category', data: data.timeseries.map((p) => p.date) },
+      xAxis: { type: 'category', data: data.timeseries.map(p => p.date) },
       yAxis: { type: 'value' },
       series: [
         {
           name: t.labels.income.value,
           type: 'line',
           smooth: true,
-          data: data.timeseries.map((p) => p.income),
+          data: data.timeseries.map(p => p.income),
           areaStyle: { color: 'rgba(16,185,129,0.15)' },
           lineStyle: { color: '#10b981' },
           itemStyle: { color: '#10b981' },
@@ -294,7 +301,7 @@ export default function ReportsPage() {
           name: t.labels.expense.value,
           type: 'line',
           smooth: true,
-          data: data.timeseries.map((p) => p.expense),
+          data: data.timeseries.map(p => p.expense),
           areaStyle: { color: 'rgba(239,68,68,0.08)' },
           lineStyle: { color: '#ef4444' },
           itemStyle: { color: '#ef4444' },
@@ -309,14 +316,14 @@ export default function ReportsPage() {
       tooltip: { trigger: 'axis' },
       legend: { data: [t.labels.income.value, t.labels.expense.value] },
       grid: { left: 30, right: 30, bottom: 30, top: 30 },
-      xAxis: { type: 'category', data: localSummary.timeseries.map((p) => p.date) },
+      xAxis: { type: 'category', data: localSummary.timeseries.map(p => p.date) },
       yAxis: { type: 'value' },
       series: [
         {
           name: t.labels.income.value,
           type: 'line',
           smooth: true,
-          data: localSummary.timeseries.map((p) => p.income),
+          data: localSummary.timeseries.map(p => p.income),
           areaStyle: { color: 'rgba(16,185,129,0.15)' },
           lineStyle: { color: '#10b981' },
           itemStyle: { color: '#10b981' },
@@ -325,7 +332,7 @@ export default function ReportsPage() {
           name: t.labels.expense.value,
           type: 'line',
           smooth: true,
-          data: localSummary.timeseries.map((p) => p.expense),
+          data: localSummary.timeseries.map(p => p.expense),
           areaStyle: { color: 'rgba(239,68,68,0.08)' },
           lineStyle: { color: '#ef4444' },
           itemStyle: { color: '#ef4444' },
@@ -345,7 +352,7 @@ export default function ReportsPage() {
           type: 'pie',
           radius: ['30%', '70%'],
           roseType: 'radius',
-          data: data.categories.map((c) => ({
+          data: data.categories.map(c => ({
             name: c.name,
             value: Number(c.amount.toFixed(2)),
           })),
@@ -365,7 +372,7 @@ export default function ReportsPage() {
           type: 'pie',
           radius: ['30%', '70%'],
           roseType: 'radius',
-          data: localSummary.categories.map((c) => ({
+          data: localSummary.categories.map(c => ({
             name: c.name,
             value: Number(c.amount.toFixed(2)),
           })),
@@ -382,12 +389,12 @@ export default function ReportsPage() {
       xAxis: { type: 'value' },
       yAxis: {
         type: 'category',
-        data: data.counterparties.map((c) => c.name),
+        data: data.counterparties.map(c => c.name),
       },
       series: [
         {
           type: 'bar',
-          data: data.counterparties.map((c) => Number(c.amount.toFixed(2))),
+          data: data.counterparties.map(c => Number(c.amount.toFixed(2))),
           itemStyle: {
             color: '#3b82f6',
             borderRadius: [4, 4, 4, 4],
@@ -405,12 +412,12 @@ export default function ReportsPage() {
       xAxis: { type: 'value' },
       yAxis: {
         type: 'category',
-        data: localSummary.counterparties.map((c) => c.name),
+        data: localSummary.counterparties.map(c => c.name),
       },
       series: [
         {
           type: 'bar',
-          data: localSummary.counterparties.map((c) => Number(c.amount.toFixed(2))),
+          data: localSummary.counterparties.map(c => Number(c.amount.toFixed(2))),
           itemStyle: {
             color: '#3b82f6',
             borderRadius: [4, 4, 4, 4],
@@ -449,7 +456,7 @@ export default function ReportsPage() {
     const bankMap = new Map<string, number>();
     const statusMap = new Map<string, number>();
 
-    statements.forEach((s) => {
+    statements.forEach(s => {
       if (processedStatuses.has(s.status)) processed += 1;
       if (processingStatuses.has(s.status)) processing += 1;
       if (s.status === 'error') {
@@ -489,14 +496,14 @@ export default function ReportsPage() {
     return {
       tooltip: { trigger: 'axis' },
       grid: { left: 30, right: 30, bottom: 30, top: 30 },
-      xAxis: { type: 'category', data: ts.map((p) => p.date) },
+      xAxis: { type: 'category', data: ts.map(p => p.date) },
       yAxis: { type: 'value' },
       series: [
         {
           name: t.labels.statements.value,
           type: 'line',
           smooth: true,
-          data: ts.map((p) => p.count),
+          data: ts.map(p => p.count),
           areaStyle: { color: 'rgba(37,99,235,0.12)' },
           lineStyle: { color: '#2563eb' },
           itemStyle: { color: '#2563eb' },
@@ -514,7 +521,7 @@ export default function ReportsPage() {
           name: t.labels.banks.value,
           type: 'pie',
           radius: ['30%', '70%'],
-          data: parsedStatements.banks.map((b) => ({ name: b.name, value: b.value })),
+          data: parsedStatements.banks.map(b => ({ name: b.name, value: b.value })),
         },
       ],
     };
@@ -525,11 +532,11 @@ export default function ReportsPage() {
       tooltip: { trigger: 'axis' },
       grid: { left: 60, right: 20, top: 20, bottom: 30 },
       xAxis: { type: 'value' },
-      yAxis: { type: 'category', data: parsedStatements.statuses.map((s) => s.name) },
+      yAxis: { type: 'category', data: parsedStatements.statuses.map(s => s.name) },
       series: [
         {
           type: 'bar',
-          data: parsedStatements.statuses.map((s) => s.value),
+          data: parsedStatements.statuses.map(s => s.value),
           itemStyle: { color: '#0f172a', borderRadius: [4, 4, 4, 4] },
         },
       ],
@@ -590,7 +597,7 @@ export default function ReportsPage() {
       {tab === 'sheets' && (
         <>
           <div className="flex items-center gap-2">
-            {[7, 30, 90].map((d) => (
+            {[7, 30, 90].map(d => (
               <button
                 key={d}
                 onClick={() => load(d)}
@@ -670,7 +677,12 @@ export default function ReportsPage() {
                   {t.labels.loadingEllipsis}
                 </div>
               ) : (
-                <ReactECharts style={{ height: 280 }} option={expensePieOption} notMerge lazyUpdate />
+                <ReactECharts
+                  style={{ height: 280 }}
+                  option={expensePieOption}
+                  notMerge
+                  lazyUpdate
+                />
               )}
             </div>
           </div>
@@ -686,7 +698,12 @@ export default function ReportsPage() {
                   {t.labels.loadingEllipsis}
                 </div>
               ) : (
-                <ReactECharts style={{ height: 280 }} option={incomeBarOption} notMerge lazyUpdate />
+                <ReactECharts
+                  style={{ height: 280 }}
+                  option={incomeBarOption}
+                  notMerge
+                  lazyUpdate
+                />
               )}
             </div>
 
@@ -696,7 +713,7 @@ export default function ReportsPage() {
                 <span className="text-xs text-gray-500">{t.labels.twentyRows}</span>
               </div>
               <div className="divide-y divide-gray-100">
-                {(data?.recent || []).map((row) => (
+                {(data?.recent || []).map(row => (
                   <div key={row.id} className="py-3 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-gray-900">
@@ -707,13 +724,17 @@ export default function ReportsPage() {
                         {new Date(row.updatedAt).toLocaleString(resolveLocale(locale))}
                       </p>
                     </div>
-                    <div className={`text-sm font-semibold ${row.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    <div
+                      className={`text-sm font-semibold ${row.amount >= 0 ? 'text-emerald-600' : 'text-red-600'}`}
+                    >
                       {formatCurrency(row.amount, locale)}
                     </div>
                   </div>
                 ))}
                 {(data?.recent || []).length === 0 && (
-                  <div className="py-6 text-sm text-gray-500 text-center">{t.labels.noDataPeriod}</div>
+                  <div className="py-6 text-sm text-gray-500 text-center">
+                    {t.labels.noDataPeriod}
+                  </div>
                 )}
               </div>
             </div>
@@ -724,7 +745,7 @@ export default function ReportsPage() {
       {tab === 'local' && (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            {[7, 30, 90].map((d) => (
+            {[7, 30, 90].map(d => (
               <button
                 key={d}
                 onClick={() => setLocalDays(d)}
@@ -759,7 +780,7 @@ export default function ReportsPage() {
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => setSelectedTableIds(customTables.map((t) => t.id))}
+                onClick={() => setSelectedTableIds(customTables.map(t => t.id))}
                 className="rounded-full border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 hover:border-primary"
                 disabled={loadingLocalTables || customTables.length === 0}
               >
@@ -773,11 +794,13 @@ export default function ReportsPage() {
               >
                 {t.labels.clear}
               </button>
-              {loadingLocalTables && <span className="text-sm text-gray-500">{t.labels.loadingTables}</span>}
+              {loadingLocalTables && (
+                <span className="text-sm text-gray-500">{t.labels.loadingTables}</span>
+              )}
             </div>
 
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {customTables.map((t) => {
+              {customTables.map(t => {
                 const checked = selectedTableIds.includes(t.id);
                 return (
                   <label
@@ -791,8 +814,8 @@ export default function ReportsPage() {
                       className="mt-0.5"
                       checked={checked}
                       onChange={() => {
-                        setSelectedTableIds((prev) =>
-                          prev.includes(t.id) ? prev.filter((id) => id !== t.id) : [...prev, t.id],
+                        setSelectedTableIds(prev =>
+                          prev.includes(t.id) ? prev.filter(id => id !== t.id) : [...prev, t.id],
                         );
                       }}
                     />
@@ -856,7 +879,13 @@ export default function ReportsPage() {
                       {t.labels.loadingEllipsis}
                     </div>
                   ) : (
-                    <ReactECharts style={{ height: 320 }} option={localCashflowOption} notMerge lazyUpdate theme="light" />
+                    <ReactECharts
+                      style={{ height: 320 }}
+                      option={localCashflowOption}
+                      notMerge
+                      lazyUpdate
+                      theme="light"
+                    />
                   )}
                 </div>
 
@@ -870,7 +899,12 @@ export default function ReportsPage() {
                       {t.labels.loadingEllipsis}
                     </div>
                   ) : (
-                    <ReactECharts style={{ height: 280 }} option={localExpensePieOption} notMerge lazyUpdate />
+                    <ReactECharts
+                      style={{ height: 280 }}
+                      option={localExpensePieOption}
+                      notMerge
+                      lazyUpdate
+                    />
                   )}
                 </div>
               </div>
@@ -886,7 +920,12 @@ export default function ReportsPage() {
                       {t.labels.loadingEllipsis}
                     </div>
                   ) : (
-                    <ReactECharts style={{ height: 280 }} option={localIncomeBarOption} notMerge lazyUpdate />
+                    <ReactECharts
+                      style={{ height: 280 }}
+                      option={localIncomeBarOption}
+                      notMerge
+                      lazyUpdate
+                    />
                   )}
                 </div>
 
@@ -896,7 +935,7 @@ export default function ReportsPage() {
                     <span className="text-xs text-gray-500">{t.labels.twentyRows}</span>
                   </div>
                   <div className="divide-y divide-gray-100">
-                    {(localSummary?.recent || []).map((row) => (
+                    {(localSummary?.recent || []).map(row => (
                       <div key={row.id} className="py-3 flex items-center justify-between">
                         <div>
                           <p className="text-sm font-semibold text-gray-900">
@@ -917,7 +956,9 @@ export default function ReportsPage() {
                       </div>
                     ))}
                     {(localSummary?.recent || []).length === 0 && (
-                      <div className="py-6 text-sm text-gray-500 text-center">{t.labels.noDataPeriod}</div>
+                      <div className="py-6 text-sm text-gray-500 text-center">
+                        {t.labels.noDataPeriod}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -932,7 +973,7 @@ export default function ReportsPage() {
                     </span>
                   </div>
                   <div className="divide-y divide-gray-100">
-                    {(localSummary?.tables || []).map((table) => (
+                    {(localSummary?.tables || []).map(table => (
                       <div key={table.id} className="py-3 flex items-center justify-between">
                         <div>
                           <p className="text-sm font-semibold text-gray-900">{table.name}</p>
@@ -1056,7 +1097,12 @@ export default function ReportsPage() {
                   {t.labels.loadingEllipsis}
                 </div>
               ) : (
-                <ReactECharts style={{ height: 280 }} option={statementsPieOption} notMerge lazyUpdate />
+                <ReactECharts
+                  style={{ height: 280 }}
+                  option={statementsPieOption}
+                  notMerge
+                  lazyUpdate
+                />
               )}
             </div>
           </div>
@@ -1072,7 +1118,12 @@ export default function ReportsPage() {
                   {t.labels.loadingEllipsis}
                 </div>
               ) : (
-                <ReactECharts style={{ height: 280 }} option={statementsBarOption} notMerge lazyUpdate />
+                <ReactECharts
+                  style={{ height: 280 }}
+                  option={statementsBarOption}
+                  notMerge
+                  lazyUpdate
+                />
               )}
             </div>
 
@@ -1082,17 +1133,20 @@ export default function ReportsPage() {
                 <span className="text-xs text-gray-500">{t.labels.upToTen}</span>
               </div>
               {loadingStatements ? (
-                <div className="py-6 text-sm text-gray-500 text-center">{t.labels.loadingEllipsis}</div>
+                <div className="py-6 text-sm text-gray-500 text-center">
+                  {t.labels.loadingEllipsis}
+                </div>
               ) : statements.length === 0 ? (
                 <div className="py-6 text-sm text-gray-500 text-center">{t.labels.noData}</div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {statements.slice(0, 10).map((s) => (
+                  {statements.slice(0, 10).map(s => (
                     <div key={s.id} className="py-3 flex items-center justify-between">
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{s.fileName}</p>
                         <p className="text-xs text-gray-500">
-                          {s.bankName || '—'} · {new Date(s.createdAt).toLocaleString(resolveLocale(locale))}
+                          {s.bankName || '—'} ·{' '}
+                          {new Date(s.createdAt).toLocaleString(resolveLocale(locale))}
                         </p>
                       </div>
                       <div className="text-right text-xs text-gray-600">

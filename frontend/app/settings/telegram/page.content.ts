@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'settingsTelegramPage',
@@ -60,16 +60,36 @@ const content = {
         kk: '1) Telegram-да ботты ашып, Telegram ID-іңізді көру үшін /start жіберіңіз.\n2) Төменге Telegram-дағы chatId енгізіңіз (жеке чатта ол әдетте user ID-іңізге сәйкес келеді).\n3) «Сақтау» басып, ботта /report орындаңыз.',
       }),
       chatIdLabel: t({ ru: 'Telegram chatId', en: 'Telegram chatId', kk: 'Telegram chatId' }),
-      chatIdPlaceholder: t({ ru: 'Например, 123456789', en: 'For example, 123456789', kk: 'Мысалы, 123456789' }),
-      chatIdHelp: t({ ru: 'Введите chatId, который показывает бот', en: 'Enter the chatId shown by the bot', kk: 'Бот көрсететін chatId енгізіңіз' }),
+      chatIdPlaceholder: t({
+        ru: 'Например, 123456789',
+        en: 'For example, 123456789',
+        kk: 'Мысалы, 123456789',
+      }),
+      chatIdHelp: t({
+        ru: 'Введите chatId, который показывает бот',
+        en: 'Enter the chatId shown by the bot',
+        kk: 'Бот көрсететін chatId енгізіңіз',
+      }),
       telegramIdLabel: t({ ru: 'Telegram ID', en: 'Telegram ID', kk: 'Telegram ID' }),
-      telegramIdPlaceholder: t({ ru: 'ID из команды /start', en: 'ID from the /start command', kk: '/start командасынан ID' }),
-      telegramIdHelp: t({ ru: 'Необязательно, но ускоряет привязку', en: 'Optional, but speeds up linking', kk: 'Міндетті емес, бірақ байланыстыруды жылдамдатады' }),
+      telegramIdPlaceholder: t({
+        ru: 'ID из команды /start',
+        en: 'ID from the /start command',
+        kk: '/start командасынан ID',
+      }),
+      telegramIdHelp: t({
+        ru: 'Необязательно, но ускоряет привязку',
+        en: 'Optional, but speeds up linking',
+        kk: 'Міндетті емес, бірақ байланыстыруды жылдамдатады',
+      }),
       save: t({ ru: 'Сохранить подключение', en: 'Save connection', kk: 'Қосуды сақтау' }),
       linkedIdPrefix: t({ ru: 'Связан ID', en: 'Linked ID', kk: 'Байланған ID' }),
     },
     quickSend: {
-      title: t({ ru: 'Быстрая отправка отчёта', en: 'Quick report send', kk: 'Есепті жылдам жіберу' }),
+      title: t({
+        ru: 'Быстрая отправка отчёта',
+        en: 'Quick report send',
+        kk: 'Есепті жылдам жіберу',
+      }),
       subtitle: t({
         ru: 'Ежедневные отчёты отправляются автоматически в 08:00 UTC, месячные — 1 числа в 09:00 UTC.',
         en: 'Daily reports are sent automatically at 08:00 UTC; monthly reports on the 1st at 09:00 UTC.',
@@ -92,7 +112,11 @@ const content = {
         status: t({ ru: 'Статус', en: 'Status', kk: 'Күйі' }),
         sentAt: t({ ru: 'Отправлено', en: 'Sent', kk: 'Жіберілді' }),
       },
-      empty: t({ ru: 'История пока пуста.', en: 'History is empty for now.', kk: 'Әзірше тарих бос.' }),
+      empty: t({
+        ru: 'История пока пуста.',
+        en: 'History is empty for now.',
+        kk: 'Әзірше тарих бос.',
+      }),
       dash: t({ ru: '—', en: '—', kk: '—' }),
     },
     reportType: {
@@ -106,7 +130,11 @@ const content = {
       pending: t({ ru: 'В очереди', en: 'Pending', kk: 'Кезекте' }),
     },
     howTo: {
-      title: t({ ru: 'Как узнать chatId?', en: 'How to find chatId?', kk: 'chatId қалай табуға болады?' }),
+      title: t({
+        ru: 'Как узнать chatId?',
+        en: 'How to find chatId?',
+        kk: 'chatId қалай табуға болады?',
+      }),
       text: t({
         ru: 'Откройте бота в Telegram, отправьте /start и скопируйте ID из ответа. Для личных чатов chatId совпадает с этим ID. Для групповых чатов понадобится chatId группы (отправьте сообщение и запросите через @userinfobot).',
         en: 'Open the bot in Telegram, send /start, and copy the ID from the reply. For private chats, chatId matches this ID. For group chats, you need the group chatId (send a message and query it via @userinfobot).',
@@ -117,4 +145,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

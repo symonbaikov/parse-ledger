@@ -1,34 +1,29 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
+import { CheckCircle, CloudUpload, Delete, Error as ErrorIcon } from '@mui/icons-material';
 import {
-  Container,
-  Paper,
-  Typography,
+  Alert,
   Box,
   Button,
-  Alert,
   CircularProgress,
+  Container,
   FormControl,
+  IconButton,
   InputLabel,
-  Select,
-  MenuItem,
   List,
   ListItem,
-  ListItemText,
   ListItemIcon,
-  IconButton,
+  ListItemText,
+  MenuItem,
+  Paper,
+  Select,
+  Typography,
 } from '@mui/material';
-import {
-  CloudUpload,
-  Delete,
-  CheckCircle,
-  Error as ErrorIcon,
-} from '@mui/icons-material';
-import apiClient from '@/app/lib/api';
-import { useAuth } from '@/app/hooks/useAuth';
 import { useIntlayer } from 'next-intlayer';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 
 interface GoogleSheet {
   id: string;
@@ -72,17 +67,17 @@ export default function UploadPage() {
       setOauthLoading(true);
       const response = await apiClient.get('/google-sheets/oauth/url');
       const url = response.data?.url;
-	      if (url) {
-	        window.location.href = url;
-	      } else {
-	      setError(t.oauthLinkMissing.value);
-	      }
-	    } catch (err: any) {
-	      setError(err.response?.data?.error?.message || t.oauthStartFailed.value);
-	    } finally {
-	      setOauthLoading(false);
-	    }
-	  };
+      if (url) {
+        window.location.href = url;
+      } else {
+        setError(t.oauthLinkMissing.value);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || t.oauthStartFailed.value);
+    } finally {
+      setOauthLoading(false);
+    }
+  };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -98,7 +93,7 @@ export default function UploadPage() {
   };
 
   const handleFiles = (newFiles: File[]) => {
-    const validFiles = newFiles.filter((file) => {
+    const validFiles = newFiles.filter(file => {
       const validTypes = [
         'application/pdf',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -110,32 +105,32 @@ export default function UploadPage() {
       return validTypes.includes(file.type);
     });
 
-	    const totalFiles = files.length + validFiles.length;
-	    if (totalFiles > 2) {
-	      setError(t.maxTwoFiles.value);
-	      return;
-	    }
+    const totalFiles = files.length + validFiles.length;
+    if (totalFiles > 2) {
+      setError(t.maxTwoFiles.value);
+      return;
+    }
 
-    setFiles((prev) => [...prev, ...validFiles]);
+    setFiles(prev => [...prev, ...validFiles]);
     setError('');
   };
 
   const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-	  const handleUpload = async () => {
-	    if (files.length === 0) {
-	      setError(t.pickAtLeastOne.value);
-	      return;
-	    }
+  const handleUpload = async () => {
+    if (files.length === 0) {
+      setError(t.pickAtLeastOne.value);
+      return;
+    }
 
     setUploading(true);
     setError('');
     setSuccess(false);
 
     const formData = new FormData();
-    files.forEach((file) => {
+    files.forEach(file => {
       formData.append('files', file);
     });
     // Only append googleSheetId if it's selected
@@ -156,23 +151,21 @@ export default function UploadPage() {
         router.push('/statements');
       }, 2000);
     } catch (err: any) {
-      setError(
-        err.response?.data?.error?.message || t.uploadFailed.value,
-      );
+      setError(err.response?.data?.error?.message || t.uploadFailed.value);
     } finally {
       setUploading(false);
     }
   };
 
   return (
-	    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-	      <Paper elevation={3} sx={{ p: 4 }}>
-	        <Typography variant="h5" component="h1" gutterBottom>
-	          {t.title}
-	        </Typography>
-	        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-	          {t.description}
-	        </Typography>
+    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Typography variant="h5" component="h1" gutterBottom>
+          {t.title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          {t.description}
+        </Typography>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
@@ -180,48 +173,53 @@ export default function UploadPage() {
           </Alert>
         )}
 
-	        {success && (
-	          <Alert severity="success" sx={{ mb: 2 }}>
-	            {t.success}
-	          </Alert>
-	        )}
+        {success && (
+          <Alert severity="success" sx={{ mb: 2 }}>
+            {t.success}
+          </Alert>
+        )}
 
-	        <Box sx={{ mb: 3 }}>
-	          <FormControl fullWidth>
-	            <InputLabel>{t.googleSheetOptional}</InputLabel>
-	            <Select
-	              value={googleSheetId}
-	              onChange={(e) => setGoogleSheetId(e.target.value)}
-	              label={t.googleSheetOptional.value}
-	            >
-	              <MenuItem value="">
-	                <em>{t.noSync}</em>
-	              </MenuItem>
-              {googleSheets.map((sheet) => (
+        <Box sx={{ mb: 3 }}>
+          <FormControl fullWidth>
+            <InputLabel>{t.googleSheetOptional}</InputLabel>
+            <Select
+              value={googleSheetId}
+              onChange={e => setGoogleSheetId(e.target.value)}
+              label={t.googleSheetOptional.value}
+            >
+              <MenuItem value="">
+                <em>{t.noSync}</em>
+              </MenuItem>
+              {googleSheets.map(sheet => (
                 <MenuItem key={sheet.id} value={sheet.id}>
                   {sheet.sheetName}
                 </MenuItem>
               ))}
             </Select>
-	          </FormControl>
-	          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-	            {t.googleSheetHelp}
-	          </Typography>
-	          {googleSheets.length === 0 && (
-	            <Box sx={{ mt: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
-	              <Typography variant="body2" color="text.secondary">
-	                {t.noConnectedSheets}
-	              </Typography>
-	              <Button variant="outlined" size="small" onClick={startGoogleOauth} disabled={oauthLoading}>
-	                {oauthLoading ? t.oauthOpening : t.connectGoogleSheets}
-	              </Button>
-	            </Box>
-	          )}
-	        </Box>
+          </FormControl>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            {t.googleSheetHelp}
+          </Typography>
+          {googleSheets.length === 0 && (
+            <Box sx={{ mt: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary">
+                {t.noConnectedSheets}
+              </Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={startGoogleOauth}
+                disabled={oauthLoading}
+              >
+                {oauthLoading ? t.oauthOpening : t.connectGoogleSheets}
+              </Button>
+            </Box>
+          )}
+        </Box>
 
         <Box
           onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
+          onDragOver={e => e.preventDefault()}
           sx={{
             border: '2px dashed',
             borderColor: 'primary.main',
@@ -244,32 +242,28 @@ export default function UploadPage() {
             onChange={handleFileSelect}
             style={{ display: 'none' }}
           />
-	          <label htmlFor="file-upload">
-	            <CloudUpload sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-	            <Typography variant="h6" gutterBottom>
-	              {t.dropTitle}
-	            </Typography>
-	            <Typography variant="body2" color="text.secondary">
-	              {t.dropSubtitle}
-	            </Typography>
-	          </label>
-	        </Box>
+          <label htmlFor="file-upload">
+            <CloudUpload sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
+            <Typography variant="h6" gutterBottom>
+              {t.dropTitle}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {t.dropSubtitle}
+            </Typography>
+          </label>
+        </Box>
 
-	        {files.length > 0 && (
-	          <Box sx={{ mb: 3 }}>
-	            <Typography variant="subtitle1" gutterBottom>
-	              {t.selectedFiles} ({files.length}/2):
-	            </Typography>
+        {files.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="subtitle1" gutterBottom>
+              {t.selectedFiles} ({files.length}/2):
+            </Typography>
             <List>
               {files.map((file, index) => (
                 <ListItem
-                  key={index}
+                  key={`${file.name}-${file.lastModified}`}
                   secondaryAction={
-                    <IconButton
-                      edge="end"
-                      onClick={() => removeFile(index)}
-                      disabled={uploading}
-                    >
+                    <IconButton edge="end" onClick={() => removeFile(index)} disabled={uploading}>
                       <Delete />
                     </IconButton>
                   }
@@ -277,42 +271,42 @@ export default function UploadPage() {
                   <ListItemIcon>
                     <CheckCircle color="success" />
                   </ListItemIcon>
-	                  <ListItemText
-	                    primary={file.name}
-	                    secondary={`${(file.size / 1024 / 1024).toFixed(2)} ${t.megabytesShort.value}`}
-	                  />
+                  <ListItemText
+                    primary={file.name}
+                    secondary={`${(file.size / 1024 / 1024).toFixed(2)} ${t.megabytesShort.value}`}
+                  />
                 </ListItem>
               ))}
             </List>
           </Box>
         )}
 
-	        <Button
+        <Button
           variant="contained"
           fullWidth
           onClick={handleUpload}
           disabled={uploading || files.length === 0}
           startIcon={uploading ? <CircularProgress size={20} /> : <CloudUpload />}
           sx={{ mt: 2 }}
-	        >
-	          {uploading ? t.uploadButtonLoading : t.uploadButtonIdle}
-	        </Button>
+        >
+          {uploading ? t.uploadButtonLoading : t.uploadButtonIdle}
+        </Button>
 
-	        <Box sx={{ mt: 3, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
-	          <Typography variant="subtitle2" gutterBottom>
-	            {t.afterUploadTitle}
-	          </Typography>
-	          <Typography variant="body2" component="div">
-	            <ol style={{ margin: 0, paddingLeft: 20 }}>
-	              <li>{t.afterUploadSteps.step1}</li>
-	              <li>{t.afterUploadSteps.step2}</li>
-	              <li>{t.afterUploadSteps.step3}</li>
-	              <li>{t.afterUploadSteps.step4}</li>
-	              <li>{t.afterUploadSteps.step5}</li>
-	              <li>{t.afterUploadSteps.step6}</li>
-	            </ol>
-	          </Typography>
-	        </Box>
+        <Box sx={{ mt: 3, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+          <Typography variant="subtitle2" gutterBottom>
+            {t.afterUploadTitle}
+          </Typography>
+          <Typography variant="body2" component="div">
+            <ol style={{ margin: 0, paddingLeft: 20 }}>
+              <li>{t.afterUploadSteps.step1}</li>
+              <li>{t.afterUploadSteps.step2}</li>
+              <li>{t.afterUploadSteps.step3}</li>
+              <li>{t.afterUploadSteps.step4}</li>
+              <li>{t.afterUploadSteps.step5}</li>
+              <li>{t.afterUploadSteps.step6}</li>
+            </ol>
+          </Typography>
+        </Box>
       </Paper>
     </Container>
   );

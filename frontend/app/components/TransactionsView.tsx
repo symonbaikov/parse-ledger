@@ -1,22 +1,22 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import { Search as SearchIcon } from '@mui/icons-material';
 import {
+  Box,
+  Chip,
+  InputAdornment,
   Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
-  Chip,
-  Box,
-  TextField,
-  InputAdornment,
   TablePagination,
+  TableRow,
+  TextField,
 } from '@mui/material';
-import { Search as SearchIcon } from '@mui/icons-material';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import React, { useMemo, useState } from 'react';
 
 interface Transaction {
   id: string;
@@ -160,7 +160,10 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
       currency: tx => tx.currency || 'KZT',
       exchangeRate: tx =>
         tx.exchangeRate
-          ? tx.exchangeRate.toLocaleString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', { minimumFractionDigits: 2 })
+          ? tx.exchangeRate.toLocaleString(
+              locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US',
+              { minimumFractionDigits: 2 },
+            )
           : t.dash,
       transactionType: tx => (
         <Chip
@@ -170,7 +173,11 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
         />
       ),
       category: tx =>
-        tx.category?.name ? <Chip label={tx.category.name} size="small" variant="outlined" /> : t.dash,
+        tx.category?.name ? (
+          <Chip label={tx.category.name} size="small" variant="outlined" />
+        ) : (
+          t.dash
+        ),
       branch: tx => tx.branch?.name || t.dash.value,
       wallet: tx => tx.wallet?.name || t.dash.value,
       paymentPurpose: tx => tx.paymentPurpose || t.dash.value,
@@ -179,7 +186,10 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
       documentNumber: tx => tx.documentNumber || t.dash.value,
       amountForeign: tx =>
         tx.amountForeign
-          ? tx.amountForeign.toLocaleString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', { minimumFractionDigits: 2 })
+          ? tx.amountForeign.toLocaleString(
+              locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US',
+              { minimumFractionDigits: 2 },
+            )
           : t.dash,
     };
 
@@ -207,7 +217,9 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
             return t.dash;
           }
           if (typeof value === 'number') {
-            return value.toLocaleString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US');
+            return value.toLocaleString(
+              locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US',
+            );
           }
           if (typeof value === 'object') {
             return value.name || JSON.stringify(value);
@@ -220,7 +232,11 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
     return columns;
   }, [transactions, locale, t]);
 
-  const getLabelDisplayedRows = ({ from, to, count }: { from: number; to: number; count: number }) => {
+  const getLabelDisplayedRows = ({
+    from,
+    to,
+    count,
+  }: { from: number; to: number; count: number }) => {
     return `${from}-${to} ${t.pagination.of.value} ${count}`;
   };
 
@@ -280,7 +296,7 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
           onPageChange={(_, newPage) => setPage(newPage)}
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={e => {
-            setRowsPerPage(parseInt(e.target.value, 10));
+            setRowsPerPage(Number.parseInt(e.target.value, 10));
             setPage(0);
           }}
           labelRowsPerPage={t.pagination.rowsPerPage.value}

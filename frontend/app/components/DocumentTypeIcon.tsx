@@ -1,7 +1,7 @@
 'use client';
 
+import { FileImage, FileSpreadsheet, FileText } from 'lucide-react';
 import Image from 'next/image';
-import { FileText, FileSpreadsheet, FileImage } from 'lucide-react';
 import pdfIcon from '../../public/images/pdf.png';
 
 const normalizeType = (fileType?: string, fileName?: string): string => {
@@ -24,7 +24,8 @@ export function DocumentTypeIcon(props: {
   const size = props.size ?? 20;
   const type = normalizeType(props.fileType, props.fileName);
 
-  const isPdf = type === 'pdf' || type.includes('pdf') || type.endsWith('/pdf') || type === 'application/pdf';
+  const isPdf =
+    type === 'pdf' || type.includes('pdf') || type.endsWith('/pdf') || type === 'application/pdf';
   if (isPdf) {
     const pdfSize = Math.round((size || 20) * 2);
     return (
@@ -52,7 +53,8 @@ export function DocumentTypeIcon(props: {
     return <FileSpreadsheet size={size} className={props.className} />;
   }
 
-  const isImage = type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(type);
+  const isImage =
+    type.startsWith('image/') || ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(type);
   if (isImage) {
     return <FileImage size={size} className={props.className} />;
   }

@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
-import { usePathname } from 'next/navigation';
-import Breadcrumbs from './Breadcrumbs';
 import { useIntlayer } from 'next-intlayer';
+import { usePathname } from 'next/navigation';
+import { useMemo } from 'react';
+import Breadcrumbs from './Breadcrumbs';
 
 const HIDDEN_PATHS = new Set<string>(['/login', '/register', '/auth', '/auth/callback']);
 

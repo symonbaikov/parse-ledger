@@ -1,16 +1,24 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'reportsPage',
   content: {
     errors: {
-      loadReport: t({ ru: 'Не удалось загрузить отчёт', en: 'Failed to load report', kk: 'Есепті жүктеу мүмкін болмады' }),
+      loadReport: t({
+        ru: 'Не удалось загрузить отчёт',
+        en: 'Failed to load report',
+        kk: 'Есепті жүктеу мүмкін болмады',
+      }),
       loadStatementsStats: t({
         ru: 'Не удалось загрузить статистику по выпискам',
         en: 'Failed to load statements statistics',
         kk: 'Үзінділер статистикасын жүктеу мүмкін болмады',
       }),
-      loadTables: t({ ru: 'Не удалось загрузить таблицы', en: 'Failed to load tables', kk: 'Кестелерді жүктеу мүмкін болмады' }),
+      loadTables: t({
+        ru: 'Не удалось загрузить таблицы',
+        en: 'Failed to load tables',
+        kk: 'Кестелерді жүктеу мүмкін болмады',
+      }),
       loadLocalReport: t({
         ru: 'Не удалось загрузить локальный отчёт',
         en: 'Failed to load local report',
@@ -39,9 +47,17 @@ const content = {
       net: t({ ru: 'Чистый поток', en: 'Net flow', kk: 'Таза ағын' }),
       rows: t({ ru: 'Строк', en: 'Rows', kk: 'Жолдар' }),
       loadingEllipsis: t({ ru: 'Загрузка…', en: 'Loading…', kk: 'Жүктелуде…' }),
-      lastOperations: t({ ru: 'Последние операции', en: 'Recent operations', kk: 'Соңғы операциялар' }),
+      lastOperations: t({
+        ru: 'Последние операции',
+        en: 'Recent operations',
+        kk: 'Соңғы операциялар',
+      }),
       twentyRows: t({ ru: '20 строк', en: '20 rows', kk: '20 жол' }),
-      noDataPeriod: t({ ru: 'Нет данных за выбранный период', en: 'No data for selected period', kk: 'Таңдалған кезеңге деректер жоқ' }),
+      noDataPeriod: t({
+        ru: 'Нет данных за выбранный период',
+        en: 'No data for selected period',
+        kk: 'Таңдалған кезеңге деректер жоқ',
+      }),
       banks: t({ ru: 'Банки', en: 'Banks', kk: 'Банктер' }),
       statuses: t({ ru: 'Статусы', en: 'Statuses', kk: 'Күйлер' }),
       distribution: t({ ru: 'Распределение', en: 'Distribution', kk: 'Бөлініс' }),
@@ -52,24 +68,48 @@ const content = {
       withoutName: t({ ru: 'Без названия', en: 'Untitled', kk: 'Атаусыз' }),
       withoutCategory: t({ ru: 'Без категории', en: 'No category', kk: 'Санатсыз' }),
       withoutBank: t({ ru: 'Без банка', en: 'No bank', kk: 'Банксіз' }),
-      expensesCategories: t({ ru: 'Категории расходов', en: 'Expense categories', kk: 'Шығыс санаттары' }),
-      incomeByCounterparty: t({ ru: 'Приходы по контрагентам', en: 'Income by counterparty', kk: 'Контрагент бойынша кірістер' }),
+      expensesCategories: t({
+        ru: 'Категории расходов',
+        en: 'Expense categories',
+        kk: 'Шығыс санаттары',
+      }),
+      incomeByCounterparty: t({
+        ru: 'Приходы по контрагентам',
+        en: 'Income by counterparty',
+        kk: 'Контрагент бойынша кірістер',
+      }),
       dailyTrend: t({ ru: 'Динамика по дням', en: 'Daily trend', kk: 'Күндік динамика' }),
       lastDaysPrefix: t({ ru: 'За последние', en: 'Last', kk: 'Соңғы' }),
       daysSuffix: t({ ru: 'дней', en: 'days', kk: 'күн' }),
       topTen: t({ ru: 'Top-10', en: 'Top-10', kk: 'Top-10' }),
       top: t({ ru: 'Top', en: 'Top', kk: 'Top' }),
-      tablesForReport: t({ ru: 'Таблицы для отчёта', en: 'Tables for report', kk: 'Есеп үшін кестелер' }),
+      tablesForReport: t({
+        ru: 'Таблицы для отчёта',
+        en: 'Tables for report',
+        kk: 'Есеп үшін кестелер',
+      }),
       selectAll: t({ ru: 'Выбрать все', en: 'Select all', kk: 'Барлығын таңдау' }),
       clear: t({ ru: 'Очистить', en: 'Clear', kk: 'Тазалау' }),
-      loadingTables: t({ ru: 'Загрузка таблиц…', en: 'Loading tables…', kk: 'Кестелер жүктелуде…' }),
-      noTables: t({ ru: 'Нет таблиц в разделе «Таблицы».', en: 'No tables in “Tables” section.', kk: '«Кестелер» бөлімінде кестелер жоқ.' }),
+      loadingTables: t({
+        ru: 'Загрузка таблиц…',
+        en: 'Loading tables…',
+        kk: 'Кестелер жүктелуде…',
+      }),
+      noTables: t({
+        ru: 'Нет таблиц в разделе «Таблицы».',
+        en: 'No tables in “Tables” section.',
+        kk: '«Кестелер» бөлімінде кестелер жоқ.',
+      }),
       selectAtLeastOneTable: t({
         ru: 'Выберите хотя бы одну таблицу для формирования отчёта.',
         en: 'Select at least one table to build the report.',
         kk: 'Есеп құру үшін кемінде бір кестені таңдаңыз.',
       }),
-      tablesSummary: t({ ru: 'Сводка по таблицам', en: 'Tables summary', kk: 'Кестелер қорытындысы' }),
+      tablesSummary: t({
+        ru: 'Сводка по таблицам',
+        en: 'Tables summary',
+        kk: 'Кестелер қорытындысы',
+      }),
       piecesShort: t({ ru: 'шт', en: 'pcs', kk: 'дана' }),
       refresh: t({ ru: 'Обновить', en: 'Refresh', kk: 'Жаңарту' }),
       total: t({ ru: 'Всего', en: 'Total', kk: 'Барлығы' }),
@@ -78,7 +118,11 @@ const content = {
       errorsLabel: t({ ru: 'Ошибки', en: 'Errors', kk: 'Қателер' }),
       operations: t({ ru: 'Операции', en: 'Operations', kk: 'Операциялар' }),
       uploadsTrend: t({ ru: 'Динамика загрузок', en: 'Uploads trend', kk: 'Жүктеу динамикасы' }),
-      byUploadDates: t({ ru: 'По датам загрузки', en: 'By upload dates', kk: 'Жүктеу күндері бойынша' }),
+      byUploadDates: t({
+        ru: 'По датам загрузки',
+        en: 'By upload dates',
+        kk: 'Жүктеу күндері бойынша',
+      }),
     },
   },
 } satisfies Dictionary;

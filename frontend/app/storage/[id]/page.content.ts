@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'storageDetailsPage',
@@ -6,7 +6,11 @@ const content = {
     loading: t({ ru: 'Загрузка...', en: 'Loading...', kk: 'Жүктелуде...' }),
     notFound: t({ ru: 'Файл не найден', en: 'File not found', kk: 'Файл табылмады' }),
     toasts: {
-      previewFailed: t({ ru: 'Не удалось загрузить превью файла', en: 'Failed to load file preview', kk: 'Файл превьюін жүктеу мүмкін болмады' }),
+      previewFailed: t({
+        ru: 'Не удалось загрузить превью файла',
+        en: 'Failed to load file preview',
+        kk: 'Файл превьюін жүктеу мүмкін болмады',
+      }),
     },
     availability: {
       labels: {
@@ -67,7 +71,11 @@ const content = {
     preview: {
       title: t({ ru: 'Предпросмотр файла', en: 'File preview', kk: 'Файл превьюі' }),
       refresh: t({ ru: 'Обновить', en: 'Refresh', kk: 'Жаңарту' }),
-      openNewTab: t({ ru: 'Открыть в новой вкладке', en: 'Open in new tab', kk: 'Жаңа қойындыда ашу' }),
+      openNewTab: t({
+        ru: 'Открыть в новой вкладке',
+        en: 'Open in new tab',
+        kk: 'Жаңа қойындыда ашу',
+      }),
       iframeTitle: t({ ru: 'Предпросмотр файла', en: 'File preview', kk: 'Файл превьюі' }),
       retry: t({ ru: 'Попробовать снова', en: 'Try again', kk: 'Қайтадан көру' }),
       unavailable: t({

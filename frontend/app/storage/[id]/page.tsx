@@ -1,37 +1,37 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { resolveBankLogo } from '@bank-logos';
 import {
-  Container,
-  Typography,
-  Box,
-  Paper,
-  Tabs,
-  Tab,
-  Button,
-  Chip,
-  Card,
-  CardContent,
-  IconButton,
-  Tooltip,
-  FormControl,
-  Select,
-  MenuItem,
-  Alert,
-  CircularProgress,
-} from '@mui/material';
-import {
+  ArrowBack as BackIcon,
   Download as DownloadIcon,
   Share as ShareIcon,
-  ArrowBack as BackIcon,
 } from '@mui/icons-material';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import api from '../../lib/api';
-import TransactionsView from '../../components/TransactionsView';
-import ShareDialog from '../../components/ShareDialog';
-import PermissionsPanel from '../../components/PermissionsPanel';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Container,
+  FormControl,
+  IconButton,
+  MenuItem,
+  Paper,
+  Select,
+  Tab,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { useIntlayer, useLocale } from 'next-intlayer';
-import { resolveBankLogo } from '@bank-logos';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import React, { useEffect, useRef, useState } from 'react';
+import PermissionsPanel from '../../components/PermissionsPanel';
+import ShareDialog from '../../components/ShareDialog';
+import TransactionsView from '../../components/TransactionsView';
+import api from '../../lib/api';
 
 type FileAvailabilityStatus = 'both' | 'disk' | 'db' | 'missing';
 
@@ -98,7 +98,7 @@ export default function FileDetailsPage() {
   const [details, setDetails] = useState<FileDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState(
-    initialTab === 'share' ? 1 : initialTab === 'permissions' ? 2 : 0
+    initialTab === 'share' ? 1 : initialTab === 'permissions' ? 2 : 0,
   );
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -222,7 +222,7 @@ export default function FileDetailsPage() {
       const response = await api.get(`/storage/files/${fileId}/download`, {
         responseType: 'blob',
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -241,17 +241,20 @@ export default function FileDetailsPage() {
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
+    return date.toLocaleDateString(
+      locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US',
+      {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      },
+    );
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const getPermissionLabel = (permission?: string | null) => {
@@ -349,7 +352,15 @@ export default function FileDetailsPage() {
     );
   }
 
-  const { statement, transactions, sharedLinks, permissions, isOwner, userPermission, fileAvailability } = details;
+  const {
+    statement,
+    transactions,
+    sharedLinks,
+    permissions,
+    isOwner,
+    userPermission,
+    fileAvailability,
+  } = details;
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -369,11 +380,7 @@ export default function FileDetailsPage() {
               color="primary"
               variant="outlined"
             />
-            <Chip
-              label={getStatusLabel(statement.status)}
-              size="small"
-              color="success"
-            />
+            <Chip label={getStatusLabel(statement.status)} size="small" color="success" />
             {renderAvailabilityChip(fileAvailability)}
             <Chip
               label={isOwner ? t.permission.owner.value : getPermissionLabel(userPermission)}
@@ -385,21 +392,13 @@ export default function FileDetailsPage() {
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title={t.actions.downloadTooltip.value}>
-            <Button
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              onClick={handleDownload}
-            >
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownload}>
               {t.actions.download}
             </Button>
           </Tooltip>
           {(isOwner || userPermission === 'editor') && (
             <Tooltip title={t.actions.shareTooltip.value}>
-              <Button
-                variant="contained"
-                startIcon={<ShareIcon />}
-                onClick={handleShare}
-              >
+              <Button variant="contained" startIcon={<ShareIcon />} onClick={handleShare}>
                 {t.actions.share}
               </Button>
             </Tooltip>
@@ -435,9 +434,7 @@ export default function FileDetailsPage() {
               <Typography variant="body2" color="text.secondary">
                 {t.cards.size}
               </Typography>
-              <Typography variant="h6">
-                {formatFileSize(statement.fileSize)}
-              </Typography>
+              <Typography variant="h6">{formatFileSize(statement.fileSize)}</Typography>
             </CardContent>
           </Card>
           <Card>
@@ -445,9 +442,7 @@ export default function FileDetailsPage() {
               <Typography variant="body2" color="text.secondary">
                 {t.cards.transactions}
               </Typography>
-              <Typography variant="h6">
-                {transactions.length}
-              </Typography>
+              <Typography variant="h6">{transactions.length}</Typography>
             </CardContent>
           </Card>
           <Card>
@@ -455,9 +450,7 @@ export default function FileDetailsPage() {
               <Typography variant="body2" color="text.secondary">
                 {t.cards.uploadedAt}
               </Typography>
-              <Typography variant="h6">
-                {formatDate(statement.createdAt)}
-              </Typography>
+              <Typography variant="h6">{formatDate(statement.createdAt)}</Typography>
             </CardContent>
           </Card>
           <Card>
@@ -484,7 +477,9 @@ export default function FileDetailsPage() {
             gap: 1.5,
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <Box
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+          >
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
               {t.preview.title}
             </Typography>
@@ -582,9 +577,7 @@ export default function FileDetailsPage() {
 
       {/* Tab panels */}
       <Box>
-        {currentTab === 0 && (
-          <TransactionsView transactions={transactions} />
-        )}
+        {currentTab === 0 && <TransactionsView transactions={transactions} />}
         {currentTab === 1 && (
           <ShareDialog
             open={true}

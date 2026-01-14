@@ -1,13 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
 import {
-  Container,
-  Paper,
-  Typography,
+  ArrowBack,
+  Cancel,
+  Category,
+  CheckCircle,
+  Delete,
+  ExpandMore,
+  Info,
+  Save,
+  WarningAmber,
+} from '@mui/icons-material';
+import {
+  Alert,
   Box,
   Button,
+  Checkbox,
+  CircularProgress,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  MenuItem,
+  Paper,
   Table,
   TableBody,
   TableCell,
@@ -15,35 +34,12 @@ import {
   TableHead,
   TableRow,
   TextField,
-  Checkbox,
-  IconButton,
-  Alert,
-  CircularProgress,
-  MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Typography,
 } from '@mui/material';
-import {
-  Save,
-  Delete,
-  ArrowBack,
-  CheckCircle,
-  Cancel,
-  Info,
-  ExpandMore,
-  WarningAmber,
-  Category,
-} from '@mui/icons-material';
-import {
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-} from '@mui/material';
-import apiClient from '@/app/lib/api';
-import { useAuth } from '@/app/hooks/useAuth';
+import { Accordion, AccordionDetails, AccordionSummary } from '@mui/material';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface CategoryOption {
   id: string;
@@ -118,7 +114,7 @@ interface Statement {
 }
 
 const flattenCategories = (items: CategoryOption[], prefix = ''): CategoryOption[] =>
-  items.flatMap((item) => {
+  items.flatMap(item => {
     const currentName = prefix ? `${prefix} / ${item.name}` : item.name;
     return [
       { ...item, name: currentName },
@@ -184,13 +180,14 @@ export default function EditStatementPage() {
     try {
       setLoading(true);
       setOptionsLoading(true);
-      const [statementRes, transactionsRes, categoriesRes, branchesRes, walletsRes] = await Promise.all([
-        apiClient.get(`/statements/${statementId}`),
-        apiClient.get(`/transactions?statement_id=${statementId}&limit=1000`),
-        apiClient.get('/categories'),
-        apiClient.get('/branches'),
-        apiClient.get('/wallets'),
-      ]);
+      const [statementRes, transactionsRes, categoriesRes, branchesRes, walletsRes] =
+        await Promise.all([
+          apiClient.get(`/statements/${statementId}`),
+          apiClient.get(`/transactions?statement_id=${statementId}&limit=1000`),
+          apiClient.get('/categories'),
+          apiClient.get('/branches'),
+          apiClient.get('/wallets'),
+        ]);
 
       const statementData = statementRes.data?.data || statementRes.data;
       setStatement(statementData);
@@ -204,15 +201,11 @@ export default function EditStatementPage() {
         balanceStart: normalizeNumberInput(
           statementData?.balanceStart ?? extractedMeta.balanceStart,
         ),
-        balanceEnd: normalizeNumberInput(
-          statementData?.balanceEnd ?? extractedMeta.balanceEnd,
-        ),
+        balanceEnd: normalizeNumberInput(statementData?.balanceEnd ?? extractedMeta.balanceEnd),
         statementDateFrom: normalizeDateInput(
           statementData?.statementDateFrom ?? extractedMeta.dateFrom,
         ),
-        statementDateTo: normalizeDateInput(
-          statementData?.statementDateTo ?? extractedMeta.dateTo,
-        ),
+        statementDateTo: normalizeDateInput(statementData?.statementDateTo ?? extractedMeta.dateTo),
       });
     } catch (err: any) {
       setError(err.response?.data?.error?.message || t.errors.loadData.value);
@@ -236,7 +229,7 @@ export default function EditStatementPage() {
     if (selectedRows.size === transactions.length) {
       setSelectedRows(new Set());
     } else {
-      setSelectedRows(new Set(transactions.map((t) => t.id)));
+      setSelectedRows(new Set(transactions.map(t => t.id)));
     }
   };
 
@@ -249,11 +242,7 @@ export default function EditStatementPage() {
     });
   };
 
-  const handleFieldChange = (
-    transactionId: string,
-    field: keyof Transaction,
-    value: any,
-  ) => {
+  const handleFieldChange = (transactionId: string, field: keyof Transaction, value: any) => {
     setEditedData({
       ...editedData,
       [transactionId]: {
@@ -280,7 +269,7 @@ export default function EditStatementPage() {
   };
 
   const handleMetadataChange = (field: keyof typeof metadataForm, value: string) => {
-    setMetadataForm((prev) => ({
+    setMetadataForm(prev => ({
       ...prev,
       [field]: value,
     }));
@@ -302,16 +291,10 @@ export default function EditStatementPage() {
 
       const meta = updatedStatement?.parsingDetails?.metadataExtracted || {};
       setMetadataForm({
-        balanceStart: normalizeNumberInput(
-          updatedStatement?.balanceStart ?? meta.balanceStart,
-        ),
+        balanceStart: normalizeNumberInput(updatedStatement?.balanceStart ?? meta.balanceStart),
         balanceEnd: normalizeNumberInput(updatedStatement?.balanceEnd ?? meta.balanceEnd),
-        statementDateFrom: normalizeDateInput(
-          updatedStatement?.statementDateFrom ?? meta.dateFrom,
-        ),
-        statementDateTo: normalizeDateInput(
-          updatedStatement?.statementDateTo ?? meta.dateTo,
-        ),
+        statementDateFrom: normalizeDateInput(updatedStatement?.statementDateFrom ?? meta.dateFrom),
+        statementDateTo: normalizeDateInput(updatedStatement?.statementDateTo ?? meta.dateTo),
       });
 
       setSuccess(true);
@@ -351,7 +334,7 @@ export default function EditStatementPage() {
 
     try {
       setSaving(true);
-      const updates = Array.from(selectedRows).map((id) => ({
+      const updates = Array.from(selectedRows).map(id => ({
         id,
         updates: editedData[id] || {},
       }));
@@ -375,14 +358,18 @@ export default function EditStatementPage() {
       return;
     }
 
-    if (!confirm(`${t.confirms.deleteManyPrefix.value}${selectedRows.size}${t.confirms.deleteManySuffix.value}`)) {
+    if (
+      !confirm(
+        `${t.confirms.deleteManyPrefix.value}${selectedRows.size}${t.confirms.deleteManySuffix.value}`,
+      )
+    ) {
       return;
     }
 
     try {
       setSaving(true);
       await Promise.all(
-        Array.from(selectedRows).map((id) => apiClient.delete(`/transactions/${id}`)),
+        Array.from(selectedRows).map(id => apiClient.delete(`/transactions/${id}`)),
       );
       await loadData();
       setSelectedRows(new Set());
@@ -411,7 +398,7 @@ export default function EditStatementPage() {
 
     try {
       setSaving(true);
-      const items = Array.from(selectedRows).map((id) => ({
+      const items = Array.from(selectedRows).map(id => ({
         id,
         updates: { categoryId: bulkCategoryId },
       }));
@@ -451,13 +438,13 @@ export default function EditStatementPage() {
     { key: 'walletId', label: t.columns.walletId.value },
   ];
 
-  const mandatoryColumns: ColumnKey[] = columnDefs.map((col) => col.key);
+  const mandatoryColumns: ColumnKey[] = columnDefs.map(col => col.key);
 
   const hasDataForColumn = (key: ColumnKey): boolean => {
     if (mandatoryColumns.includes(key)) {
       return true;
     }
-    return transactions.some((t) => {
+    return transactions.some(t => {
       const edited = editedData[t.id];
       const value = edited && key in edited ? edited[key] : t[key];
       if (value === null || value === undefined) return false;
@@ -466,7 +453,7 @@ export default function EditStatementPage() {
     });
   };
 
-  const visibleColumns = columnDefs.filter((col) => hasDataForColumn(col.key));
+  const visibleColumns = columnDefs.filter(col => hasDataForColumn(col.key));
 
   const formatNumber = (value?: number) =>
     value !== undefined && value !== null
@@ -520,7 +507,11 @@ export default function EditStatementPage() {
     }
   };
 
-  const renderEditCell = (transaction: Transaction, edited: Partial<Transaction>, column: ColumnDef) => {
+  const renderEditCell = (
+    transaction: Transaction,
+    edited: Partial<Transaction>,
+    column: ColumnDef,
+  ) => {
     const commonTextFieldProps = {
       size: 'small' as const,
       fullWidth: true,
@@ -538,10 +529,10 @@ export default function EditStatementPage() {
           <TextField
             {...commonTextFieldProps}
             type="date"
-            value={edited.transactionDate?.split('T')[0] || transaction.transactionDate.split('T')[0]}
-            onChange={(e) =>
-              handleFieldChange(transaction.id, 'transactionDate', e.target.value)
+            value={
+              edited.transactionDate?.split('T')[0] || transaction.transactionDate.split('T')[0]
             }
+            onChange={e => handleFieldChange(transaction.id, 'transactionDate', e.target.value)}
           />
         );
       case 'documentNumber':
@@ -551,7 +542,7 @@ export default function EditStatementPage() {
           <TextField
             {...commonTextFieldProps}
             value={(edited as any)[column.key] ?? (transaction as any)[column.key] ?? ''}
-            onChange={(e) => handleFieldChange(transaction.id, column.key, e.target.value)}
+            onChange={e => handleFieldChange(transaction.id, column.key, e.target.value)}
           />
         );
       case 'counterpartyBin':
@@ -561,13 +552,13 @@ export default function EditStatementPage() {
               {...commonTextFieldProps}
               placeholder={t.labels.binPlaceholder.value}
               value={edited.counterpartyBin ?? transaction.counterpartyBin ?? ''}
-              onChange={(e) => handleFieldChange(transaction.id, 'counterpartyBin', e.target.value)}
+              onChange={e => handleFieldChange(transaction.id, 'counterpartyBin', e.target.value)}
             />
             <TextField
               {...commonTextFieldProps}
               placeholder={t.labels.accountNumberPlaceholder.value}
               value={edited.counterpartyAccount ?? transaction.counterpartyAccount ?? ''}
-              onChange={(e) =>
+              onChange={e =>
                 handleFieldChange(transaction.id, 'counterpartyAccount', e.target.value)
               }
             />
@@ -578,7 +569,7 @@ export default function EditStatementPage() {
           <TextField
             {...commonTextFieldProps}
             value={edited.paymentPurpose ?? transaction.paymentPurpose ?? ''}
-            onChange={(e) => handleFieldChange(transaction.id, 'paymentPurpose', e.target.value)}
+            onChange={e => handleFieldChange(transaction.id, 'paymentPurpose', e.target.value)}
           />
         );
       case 'debit':
@@ -588,7 +579,7 @@ export default function EditStatementPage() {
             {...commonTextFieldProps}
             type="number"
             value={(edited as any)[column.key] ?? (transaction as any)[column.key] ?? ''}
-            onChange={(e) =>
+            onChange={e =>
               handleFieldChange(
                 transaction.id,
                 column.key,
@@ -599,21 +590,19 @@ export default function EditStatementPage() {
         );
       case 'categoryId': {
         const availableCategories = flattenCategories(categories).filter(
-          (cat) => !cat.type || cat.type === transaction.transactionType,
+          cat => !cat.type || cat.type === transaction.transactionType,
         );
         return (
           <TextField
             {...commonSelectProps}
             select
             value={edited.categoryId ?? transaction.categoryId ?? ''}
-            onChange={(e) =>
-              handleFieldChange(transaction.id, 'categoryId', e.target.value || null)
-            }
+            onChange={e => handleFieldChange(transaction.id, 'categoryId', e.target.value || null)}
             placeholder={t.labels.category.value}
             disabled={optionsLoading}
           >
             <MenuItem value="">{t.labels.noCategoryOption}</MenuItem>
-            {availableCategories.map((cat) => (
+            {availableCategories.map(cat => (
               <MenuItem key={cat.id} value={cat.id}>
                 {cat.name}
               </MenuItem>
@@ -627,14 +616,12 @@ export default function EditStatementPage() {
             {...commonSelectProps}
             select
             value={edited.branchId ?? transaction.branchId ?? ''}
-            onChange={(e) =>
-              handleFieldChange(transaction.id, 'branchId', e.target.value || null)
-            }
+            onChange={e => handleFieldChange(transaction.id, 'branchId', e.target.value || null)}
             placeholder={t.labels.branch.value}
             disabled={optionsLoading}
           >
             <MenuItem value="">{t.labels.noBranchOption}</MenuItem>
-            {branches.map((branch) => (
+            {branches.map(branch => (
               <MenuItem key={branch.id} value={branch.id}>
                 {branch.name}
               </MenuItem>
@@ -647,14 +634,12 @@ export default function EditStatementPage() {
             {...commonSelectProps}
             select
             value={edited.walletId ?? transaction.walletId ?? ''}
-            onChange={(e) =>
-              handleFieldChange(transaction.id, 'walletId', e.target.value || null)
-            }
+            onChange={e => handleFieldChange(transaction.id, 'walletId', e.target.value || null)}
             placeholder={t.labels.wallet.value}
             disabled={optionsLoading}
           >
             <MenuItem value="">{t.labels.noWalletOption}</MenuItem>
-            {wallets.map((wallet) => (
+            {wallets.map(wallet => (
               <MenuItem key={wallet.id} value={wallet.id}>
                 {wallet.name}
               </MenuItem>
@@ -739,7 +724,15 @@ export default function EditStatementPage() {
       </Alert>
 
       <Paper sx={{ mb: 3, p: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 2,
+            flexWrap: 'wrap',
+          }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Info color="primary" />
             <Typography variant="h6">{t.labels.statementInfoTitle}</Typography>
@@ -754,12 +747,19 @@ export default function EditStatementPage() {
           </Button>
         </Box>
 
-        <Box sx={{ mt: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2 }}>
+        <Box
+          sx={{
+            mt: 2,
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+            gap: 2,
+          }}
+        >
           <TextField
             label={t.labels.periodFrom.value}
             type="date"
             value={metadataForm.statementDateFrom}
-            onChange={(e) => handleMetadataChange('statementDateFrom', e.target.value)}
+            onChange={e => handleMetadataChange('statementDateFrom', e.target.value)}
             InputLabelProps={{ shrink: true }}
             helperText={
               statement?.parsingDetails?.metadataExtracted?.dateFrom
@@ -773,7 +773,7 @@ export default function EditStatementPage() {
             label={t.labels.periodTo.value}
             type="date"
             value={metadataForm.statementDateTo}
-            onChange={(e) => handleMetadataChange('statementDateTo', e.target.value)}
+            onChange={e => handleMetadataChange('statementDateTo', e.target.value)}
             InputLabelProps={{ shrink: true }}
             helperText={
               statement?.parsingDetails?.metadataExtracted?.dateTo
@@ -787,7 +787,7 @@ export default function EditStatementPage() {
             label={t.labels.balanceStart.value}
             type="number"
             value={metadataForm.balanceStart}
-            onChange={(e) => handleMetadataChange('balanceStart', e.target.value)}
+            onChange={e => handleMetadataChange('balanceStart', e.target.value)}
             helperText={
               statement?.parsingDetails?.metadataExtracted?.balanceStart !== undefined
                 ? `${t.labels.fromFilePrefix.value}${statement.parsingDetails.metadataExtracted.balanceStart}`
@@ -798,7 +798,7 @@ export default function EditStatementPage() {
             label={t.labels.balanceEnd.value}
             type="number"
             value={metadataForm.balanceEnd}
-            onChange={(e) => handleMetadataChange('balanceEnd', e.target.value)}
+            onChange={e => handleMetadataChange('balanceEnd', e.target.value)}
             helperText={
               statement?.parsingDetails?.metadataExtracted?.balanceEnd !== undefined
                 ? `${t.labels.fromFilePrefix.value}${statement.parsingDetails.metadataExtracted.balanceEnd}`
@@ -808,34 +808,34 @@ export default function EditStatementPage() {
         </Box>
 
         {statement?.parsingDetails && (
-            <Accordion sx={{ mt: 2 }}>
-              <AccordionSummary expandIcon={<ExpandMore />}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="subtitle1">{t.labels.parsingDetails}</Typography>
+          <Accordion sx={{ mt: 2 }}>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="subtitle1">{t.labels.parsingDetails}</Typography>
+              </Box>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    {t.labels.generalInfo}
+                  </Typography>
+                  <Typography variant="body2">
+                    {t.labels.bank}: {statement.parsingDetails.detectedBank || '—'}
+                  </Typography>
+                  <Typography variant="body2">
+                    {t.labels.format}: {statement.parsingDetails.detectedFormat || '—'}
+                  </Typography>
+                  <Typography variant="body2">
+                    {t.labels.parser}: {statement.parsingDetails.parserUsed || '—'}
+                  </Typography>
+                  <Typography variant="body2">
+                    {t.labels.processingTime}:{' '}
+                    {statement.parsingDetails.processingTime
+                      ? `${statement.parsingDetails.processingTime}ms`
+                      : '—'}
+                  </Typography>
                 </Box>
-              </AccordionSummary>
-              <AccordionDetails>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Box>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      {t.labels.generalInfo}
-                    </Typography>
-                    <Typography variant="body2">
-                      {t.labels.bank}: {statement.parsingDetails.detectedBank || '—'}
-                    </Typography>
-                    <Typography variant="body2">
-                      {t.labels.format}: {statement.parsingDetails.detectedFormat || '—'}
-                    </Typography>
-                    <Typography variant="body2">
-                      {t.labels.parser}: {statement.parsingDetails.parserUsed || '—'}
-                    </Typography>
-                    <Typography variant="body2">
-                      {t.labels.processingTime}:{' '}
-                      {statement.parsingDetails.processingTime
-                        ? `${statement.parsingDetails.processingTime}ms`
-                        : '—'}
-                    </Typography>
-                  </Box>
 
                 {statement.parsingDetails.metadataExtracted && (
                   <Box>
@@ -843,7 +843,8 @@ export default function EditStatementPage() {
                       {t.labels.extractedMetadata}
                     </Typography>
                     <Typography variant="body2">
-                      {t.labels.account}: {statement.parsingDetails.metadataExtracted.accountNumber || '—'}
+                      {t.labels.account}:{' '}
+                      {statement.parsingDetails.metadataExtracted.accountNumber || '—'}
                     </Typography>
                     <Typography variant="body2">
                       {t.labels.period}:{' '}
@@ -864,7 +865,8 @@ export default function EditStatementPage() {
                       {statement.parsingDetails.metadataExtracted.balanceStart ?? '—'}
                     </Typography>
                     <Typography variant="body2">
-                      {t.labels.balanceEnd}: {statement.parsingDetails.metadataExtracted.balanceEnd ?? '—'}
+                      {t.labels.balanceEnd}:{' '}
+                      {statement.parsingDetails.metadataExtracted.balanceEnd ?? '—'}
                     </Typography>
                   </Box>
                 )}
@@ -874,10 +876,12 @@ export default function EditStatementPage() {
                     {t.labels.parsingStats}
                   </Typography>
                   <Typography variant="body2">
-                    {t.labels.foundTransactions}: {statement.parsingDetails.transactionsFound ?? '—'}
+                    {t.labels.foundTransactions}:{' '}
+                    {statement.parsingDetails.transactionsFound ?? '—'}
                   </Typography>
                   <Typography variant="body2">
-                    {t.labels.createdTransactions}: {statement.parsingDetails.transactionsCreated ?? '—'}
+                    {t.labels.createdTransactions}:{' '}
+                    {statement.parsingDetails.transactionsCreated ?? '—'}
                   </Typography>
                   {statement.parsingDetails.totalLinesProcessed && (
                     <Typography variant="body2">
@@ -891,26 +895,27 @@ export default function EditStatementPage() {
                     <Typography variant="subtitle2" color="error">
                       {t.labels.errors} ({statement.parsingDetails.errors.length})
                     </Typography>
-                    {statement.parsingDetails.errors.map((error, idx) => (
-                      <Alert key={idx} severity="error" sx={{ mt: 1 }}>
+                    {statement.parsingDetails.errors.map(error => (
+                      <Alert key={error} severity="error" sx={{ mt: 1 }}>
                         {error}
                       </Alert>
                     ))}
                   </Box>
                 )}
 
-                {statement.parsingDetails.warnings && statement.parsingDetails.warnings.length > 0 && (
-                  <Box>
-                    <Typography variant="subtitle2" color="warning.main">
-                      {t.labels.warnings} ({statement.parsingDetails.warnings.length})
-                    </Typography>
-                    {statement.parsingDetails.warnings.map((warning, idx) => (
-                      <Alert key={idx} severity="warning" sx={{ mt: 1 }}>
-                        {warning}
-                      </Alert>
-                    ))}
-                  </Box>
-                )}
+                {statement.parsingDetails.warnings &&
+                  statement.parsingDetails.warnings.length > 0 && (
+                    <Box>
+                      <Typography variant="subtitle2" color="warning.main">
+                        {t.labels.warnings} ({statement.parsingDetails.warnings.length})
+                      </Typography>
+                      {statement.parsingDetails.warnings.map(warning => (
+                        <Alert key={warning} severity="warning" sx={{ mt: 1 }}>
+                          {warning}
+                        </Alert>
+                      ))}
+                    </Box>
+                  )}
 
                 {statement.parsingDetails.logEntries &&
                   statement.parsingDetails.logEntries.length > 0 && (
@@ -933,23 +938,21 @@ export default function EditStatementPage() {
                       >
                         {statement.parsingDetails.logEntries.map((log, idx) => (
                           <Box
-                            key={idx}
+                            key={`${log.timestamp}-${log.level}-${idx}`}
                             sx={{
                               color:
                                 log.level === 'error'
                                   ? 'error.main'
                                   : log.level === 'warn'
-                                  ? 'warning.main'
-                                  : 'text.primary',
+                                    ? 'warning.main'
+                                    : 'text.primary',
                               mb: 0.5,
                             }}
                           >
                             <span style={{ opacity: 0.7 }}>
                               {new Date(log.timestamp).toLocaleTimeString(resolveLocale(locale))}
                             </span>{' '}
-                            <span style={{ fontWeight: 'bold' }}>
-                              [{log.level.toUpperCase()}]
-                            </span>{' '}
+                            <span style={{ fontWeight: 'bold' }}>[{log.level.toUpperCase()}]</span>{' '}
                             {log.message}
                           </Box>
                         ))}
@@ -969,20 +972,18 @@ export default function EditStatementPage() {
               <TableCell padding="checkbox">
                 <Checkbox
                   checked={selectedRows.size === transactions.length && transactions.length > 0}
-                  indeterminate={
-                    selectedRows.size > 0 && selectedRows.size < transactions.length
-                  }
+                  indeterminate={selectedRows.size > 0 && selectedRows.size < transactions.length}
                   onChange={handleSelectAll}
                 />
               </TableCell>
-              {visibleColumns.map((col) => (
+              {visibleColumns.map(col => (
                 <TableCell key={col.key}>{col.label}</TableCell>
               ))}
               <TableCell>{t.labels.actions}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {transactions.map((transaction) => {
+            {transactions.map(transaction => {
               const isEditing = editingRow === transaction.id;
               const edited = editedData[transaction.id] || transaction;
               const missingCategory = !(
@@ -1006,7 +1007,7 @@ export default function EditStatementPage() {
                       onChange={() => handleRowSelect(transaction.id)}
                     />
                   </TableCell>
-                  {visibleColumns.map((col) => (
+                  {visibleColumns.map(col => (
                     <TableCell key={col.key}>
                       {isEditing
                         ? renderEditCell(transaction, edited, col)
@@ -1029,10 +1030,7 @@ export default function EditStatementPage() {
                       </Box>
                     ) : (
                       <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEdit(transaction)}
-                        >
+                        <IconButton size="small" onClick={() => handleEdit(transaction)}>
                           <Save />
                         </IconButton>
                         <IconButton
@@ -1052,7 +1050,12 @@ export default function EditStatementPage() {
         </Table>
       </TableContainer>
 
-      <Dialog open={bulkCategoryDialogOpen} onClose={() => setBulkCategoryDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={bulkCategoryDialogOpen}
+        onClose={() => setBulkCategoryDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>
           {t.labels.bulkCategoryTitlePrefix}
           {selectedRows.size}
@@ -1064,11 +1067,11 @@ export default function EditStatementPage() {
             label={t.labels.category.value}
             fullWidth
             value={bulkCategoryId}
-            onChange={(e) => setBulkCategoryId(e.target.value)}
+            onChange={e => setBulkCategoryId(e.target.value)}
             helperText={t.labels.bulkCategoryHelper.value}
           >
             <MenuItem value="">{t.labels.notSelected}</MenuItem>
-            {flattenCategories(categories).map((cat) => (
+            {flattenCategories(categories).map(cat => (
               <MenuItem key={cat.id} value={cat.id}>
                 {cat.name}
               </MenuItem>

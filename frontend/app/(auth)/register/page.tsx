@@ -1,21 +1,21 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import apiClient from '@/app/lib/api';
 import {
-  TextField,
-  Button,
-  Typography,
-  Box,
-  Link,
   Alert,
+  Box,
+  Button,
   CircularProgress,
-  useTheme,
   Grid,
+  Link,
+  TextField,
+  Typography,
+  useTheme,
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import apiClient from '@/app/lib/api';
 import { useIntlayer } from 'next-intlayer';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 
 function safeInternalPath(nextPath: string | null) {
   if (!nextPath) return null;
@@ -56,10 +56,10 @@ function RegisterPageContent() {
     setInviteLoading(true);
     apiClient
       .get(`/workspaces/invitations/${inviteToken}`)
-      .then((response) => {
+      .then(response => {
         const email = response.data?.email;
         if (typeof email === 'string' && email.trim()) {
-          setFormData((prev) => ({ ...prev, email }));
+          setFormData(prev => ({ ...prev, email }));
           setEmailLocked(true);
         }
       })
@@ -91,9 +91,7 @@ function RegisterPageContent() {
       window.location.href = nextPath || '/';
     } catch (err: any) {
       setError(
-        err.response?.data?.message ||
-          err.response?.data?.error?.message ||
-          t.registerFailed.value,
+        err.response?.data?.message || err.response?.data?.error?.message || t.registerFailed.value,
       );
     } finally {
       setLoading(false);
@@ -159,7 +157,13 @@ function RegisterPageContent() {
             </Typography>
           </Box>
 
-          <Typography component="h1" variant="h4" gutterBottom fontWeight="bold" color="text.primary">
+          <Typography
+            component="h1"
+            variant="h4"
+            gutterBottom
+            fontWeight="bold"
+            color="text.primary"
+          >
             {t.title}
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
@@ -173,22 +177,22 @@ function RegisterPageContent() {
           )}
 
           <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-	            <TextField
+            <TextField
               margin="normal"
               required
               fullWidth
               id="name"
-	              label={t.fullNameLabel.value}
+              label={t.fullNameLabel.value}
               name="name"
               autoComplete="name"
               autoFocus
               value={formData.name}
               onChange={handleChange}
               InputProps={{
-                sx: { borderRadius: 2, bgcolor: 'background.default' }
+                sx: { borderRadius: 2, bgcolor: 'background.default' },
               }}
             />
-	            <TextField
+            <TextField
               margin="normal"
               required
               fullWidth
@@ -200,35 +204,35 @@ function RegisterPageContent() {
               onChange={handleChange}
               disabled={emailLocked || inviteLoading}
               InputProps={{
-                sx: { borderRadius: 2, bgcolor: 'background.default' }
+                sx: { borderRadius: 2, bgcolor: 'background.default' },
               }}
             />
             <TextField
               margin="normal"
               required
               fullWidth
-	              name="password"
-	              label={t.passwordLabel.value}
+              name="password"
+              label={t.passwordLabel.value}
               type="password"
               id="password"
               autoComplete="new-password"
               value={formData.password}
               onChange={handleChange}
-	              helperText={t.passwordHelper.value}
+              helperText={t.passwordHelper.value}
               InputProps={{
-                sx: { borderRadius: 2, bgcolor: 'background.default' }
+                sx: { borderRadius: 2, bgcolor: 'background.default' },
               }}
             />
-	            <TextField
+            <TextField
               margin="normal"
               fullWidth
               id="company"
-	              label={t.companyLabel.value}
+              label={t.companyLabel.value}
               name="company"
               value={formData.company}
               onChange={handleChange}
               InputProps={{
-                sx: { borderRadius: 2, bgcolor: 'background.default' }
+                sx: { borderRadius: 2, bgcolor: 'background.default' },
               }}
               sx={{ mb: 3 }}
             />
@@ -237,20 +241,26 @@ function RegisterPageContent() {
               fullWidth
               variant="contained"
               size="large"
-              sx={{ py: 1.5, borderRadius: 2, fontSize: '1rem', textTransform: 'none', boxShadow: 'none' }}
+              sx={{
+                py: 1.5,
+                borderRadius: 2,
+                fontSize: '1rem',
+                textTransform: 'none',
+                boxShadow: 'none',
+              }}
               disabled={loading || inviteLoading}
-	            >
-	              {loading ? <CircularProgress size={24} color="inherit" /> : t.submit}
-	            </Button>
-	            <Box textAlign="center" sx={{ mt: 3 }}>
-	              <Link
-                  href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login'}
-                  variant="body2"
-                  sx={{ textDecoration: 'none', fontWeight: 500 }}
-                >
-	                {t.haveAccount}
-	              </Link>
-	            </Box>
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : t.submit}
+            </Button>
+            <Box textAlign="center" sx={{ mt: 3 }}>
+              <Link
+                href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login'}
+                variant="body2"
+                sx={{ textDecoration: 'none', fontWeight: 500 }}
+              >
+                {t.haveAccount}
+              </Link>
+            </Box>
           </Box>
         </Box>
       </Grid>
@@ -277,7 +287,7 @@ function RegisterPageContent() {
           }}
           transition={{
             duration: 12,
-            repeat: Infinity,
+            repeat: Number.POSITIVE_INFINITY,
             ease: 'easeInOut' as const,
           }}
           style={{
@@ -298,7 +308,7 @@ function RegisterPageContent() {
           }}
           transition={{
             duration: 18,
-            repeat: Infinity,
+            repeat: Number.POSITIVE_INFINITY,
             ease: 'easeInOut' as const,
           }}
           style={{
@@ -313,14 +323,14 @@ function RegisterPageContent() {
           }}
         />
 
-	        <Box sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 4 }}>
-	          <Typography variant="h2" fontWeight="bold" gutterBottom>
-	            {t.rightTitle}
-	          </Typography>
-	          <Typography variant="h5" sx={{ opacity: 0.8, maxWidth: 500 }}>
-	            {t.rightTagline}
-	          </Typography>
-	        </Box>
+        <Box sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 4 }}>
+          <Typography variant="h2" fontWeight="bold" gutterBottom>
+            {t.rightTitle}
+          </Typography>
+          <Typography variant="h5" sx={{ opacity: 0.8, maxWidth: 500 }}>
+            {t.rightTagline}
+          </Typography>
+        </Box>
       </Grid>
     </Grid>
   );

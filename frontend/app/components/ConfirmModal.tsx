@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
-import { X, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 import { useIntlayer } from 'next-intlayer';
+import React from 'react';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -35,17 +35,16 @@ export default function ConfirmModal({
     <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto overflow-x-hidden bg-black/50 backdrop-blur-sm p-4 md:inset-0 animate-in fade-in duration-200">
       <div className="relative w-full max-w-md max-h-full">
         <div className="relative bg-white rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 ring-1 ring-gray-200">
-          
           {/* Header */}
           <div className="flex items-center justify-between p-4 md:p-5 border-b border-gray-100">
-             <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${isDestructive ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-                   <AlertTriangle size={20} />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {title}
-                </h3>
-             </div>
+            <div className="flex items-center gap-3">
+              <div
+                className={`p-2 rounded-full ${isDestructive ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}
+              >
+                <AlertTriangle size={20} />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+            </div>
             <button
               onClick={onClose}
               type="button"
@@ -58,9 +57,7 @@ export default function ConfirmModal({
 
           {/* Body */}
           <div className="p-4 md:p-5">
-            <p className="text-gray-600 leading-relaxed">
-              {message}
-            </p>
+            <p className="text-gray-600 leading-relaxed">{message}</p>
           </div>
 
           {/* Footer */}
@@ -80,9 +77,11 @@ export default function ConfirmModal({
               type="button"
               className={`
                 py-2 px-4 text-sm font-medium text-white rounded-full focus:ring-4 focus:outline-none transition-colors shadow-sm
-                ${isDestructive 
-                  ? 'bg-red-600 hover:bg-red-700 focus:ring-red-300' 
-                  : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-300'}
+                ${
+                  isDestructive
+                    ? 'bg-red-600 hover:bg-red-700 focus:ring-red-300'
+                    : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-300'
+                }
               `}
             >
               {resolvedConfirmText}

@@ -88,12 +88,12 @@ export function usePermissions() {
 
   const hasAnyPermission = (permissions: string[]): boolean => {
     const userPermissions = getUserPermissions();
-    return permissions.some((p) => userPermissions.includes(p));
+    return permissions.some(p => userPermissions.includes(p));
   };
 
   const hasAllPermissions = (permissions: string[]): boolean => {
     const userPermissions = getUserPermissions();
-    return permissions.every((p) => userPermissions.includes(p));
+    return permissions.every(p => userPermissions.includes(p));
   };
 
   return {
@@ -104,9 +104,3 @@ export function usePermissions() {
     isAdmin: user?.role === 'admin',
   };
 }
-
-
-
-
-
-

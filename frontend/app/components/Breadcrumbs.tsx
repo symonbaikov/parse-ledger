@@ -1,8 +1,8 @@
 'use client';
 
+import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronRight } from 'lucide-react';
 
 interface Crumb {
   label: string;

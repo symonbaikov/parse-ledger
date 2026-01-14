@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import ConfirmModal from '@/app/components/ConfirmModal';
+import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
+import { Icon } from '@iconify/react';
+import { FileSpreadsheet, Plus, Table as TableIcon, Trash2 } from 'lucide-react';
+import { useIntlayer, useLocale } from 'next-intlayer';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FileSpreadsheet, Plus, Table as TableIcon, Trash2 } from 'lucide-react';
-import { Icon } from '@iconify/react';
+import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import apiClient from '@/app/lib/api';
-import { useAuth } from '@/app/hooks/useAuth';
-import ConfirmModal from '@/app/components/ConfirmModal';
-import { useIntlayer, useLocale } from 'next-intlayer';
 
 interface Category {
   id: string;
@@ -62,7 +62,10 @@ export default function CustomTablesPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', categoryId: '' });
   const [createFromStatementsOpen, setCreateFromStatementsOpen] = useState(false);
-  const [createFromStatementsForm, setCreateFromStatementsForm] = useState<{ name: string; description: string }>({
+  const [createFromStatementsForm, setCreateFromStatementsForm] = useState<{
+    name: string;
+    description: string;
+  }>({
     name: '',
     description: '',
   });
@@ -87,7 +90,8 @@ export default function CustomTablesPage() {
     setLoading(true);
     try {
       const response = await apiClient.get('/custom-tables');
-      const payload = response.data?.items || response.data?.data?.items || response.data?.data || [];
+      const payload =
+        response.data?.items || response.data?.data?.items || response.data?.data || [];
       setItems(Array.isArray(payload) ? payload : []);
     } catch (error) {
       console.error('Failed to load custom tables:', error);
@@ -160,7 +164,9 @@ export default function CustomTablesPage() {
     try {
       const response = await apiClient.post('/custom-tables/from-statements', {
         statementIds: selectedStatementIds,
-        name: createFromStatementsForm.name.trim() ? createFromStatementsForm.name.trim() : undefined,
+        name: createFromStatementsForm.name.trim()
+          ? createFromStatementsForm.name.trim()
+          : undefined,
         description: createFromStatementsForm.description.trim()
           ? createFromStatementsForm.description.trim()
           : undefined,
@@ -205,7 +211,9 @@ export default function CustomTablesPage() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">{t.auth.loading}</div>
+      <div className="flex min-h-[50vh] items-center justify-center text-gray-500">
+        {t.auth.loading}
+      </div>
     );
   }
 
@@ -228,9 +236,7 @@ export default function CustomTablesPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{t.header.title}</h1>
-            <p className="text-secondary mt-1">
-              {t.header.subtitle}
-            </p>
+            <p className="text-secondary mt-1">{t.header.subtitle}</p>
           </div>
         </div>
 
@@ -264,7 +270,9 @@ export default function CustomTablesPage() {
       {createFromStatementsOpen && (
         <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="text-sm font-semibold text-gray-900">{t.createFromStatements.title}</div>
+            <div className="text-sm font-semibold text-gray-900">
+              {t.createFromStatements.title}
+            </div>
             <button
               onClick={() => setCreateFromStatementsOpen(false)}
               className="text-sm text-gray-500 hover:text-gray-900"
@@ -275,33 +283,58 @@ export default function CustomTablesPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.createFromStatements.nameOptional}</label>
+              <label
+                className="block text-xs font-semibold text-gray-700 mb-1"
+                htmlFor="create-from-statements-name"
+              >
+                {t.createFromStatements.nameOptional}
+              </label>
               <input
+                id="create-from-statements-name"
                 value={createFromStatementsForm.name}
-                onChange={(e) => setCreateFromStatementsForm((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={e =>
+                  setCreateFromStatementsForm(prev => ({ ...prev, name: e.target.value }))
+                }
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder={t.createFromStatements.namePlaceholder.value}
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.createFromStatements.descriptionOptional}</label>
+              <label
+                className="block text-xs font-semibold text-gray-700 mb-1"
+                htmlFor="create-from-statements-description"
+              >
+                {t.createFromStatements.descriptionOptional}
+              </label>
               <input
+                id="create-from-statements-description"
                 value={createFromStatementsForm.description}
-                onChange={(e) => setCreateFromStatementsForm((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={e =>
+                  setCreateFromStatementsForm(prev => ({ ...prev, description: e.target.value }))
+                }
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder={t.createFromStatements.descriptionPlaceholder.value}
               />
             </div>
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.createFromStatements.statements}</label>
+              <label
+                className="block text-xs font-semibold text-gray-700 mb-1"
+                htmlFor="create-from-statements-select"
+              >
+                {t.createFromStatements.statements}
+              </label>
               <div className="max-h-44 overflow-auto rounded-lg border border-gray-200 p-2">
                 {statementsLoading ? (
-                  <div className="text-sm text-gray-500 px-2 py-1">{t.createFromStatements.statementsLoading}</div>
+                  <div className="text-sm text-gray-500 px-2 py-1">
+                    {t.createFromStatements.statementsLoading}
+                  </div>
                 ) : statements.length === 0 ? (
-                  <div className="text-sm text-gray-500 px-2 py-1">{t.createFromStatements.statementsEmpty}</div>
+                  <div className="text-sm text-gray-500 px-2 py-1">
+                    {t.createFromStatements.statementsEmpty}
+                  </div>
                 ) : (
                   <div className="space-y-1">
-                    {statements.map((s) => {
+                    {statements.map(s => {
                       const disabled =
                         !s.totalTransactions ||
                         s.status === 'error' ||
@@ -320,11 +353,11 @@ export default function CustomTablesPage() {
                             type="checkbox"
                             disabled={disabled}
                             checked={checked}
-                            onChange={(e) => {
+                            onChange={e => {
                               const nextChecked = e.target.checked;
-                              setSelectedStatementIds((prev) => {
+                              setSelectedStatementIds(prev => {
                                 if (nextChecked) return Array.from(new Set([...prev, s.id]));
-                                return prev.filter((id) => id !== s.id);
+                                return prev.filter(id => id !== s.id);
                               });
                             }}
                           />
@@ -376,32 +409,50 @@ export default function CustomTablesPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.create.name}</label>
+              <label
+                className="block text-xs font-semibold text-gray-700 mb-1"
+                htmlFor="create-name"
+              >
+                {t.create.name}
+              </label>
               <input
+                id="create-name"
                 value={form.name}
-                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder={t.create.namePlaceholder.value}
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.create.description}</label>
+              <label
+                className="block text-xs font-semibold text-gray-700 mb-1"
+                htmlFor="create-description"
+              >
+                {t.create.description}
+              </label>
               <input
+                id="create-description"
                 value={form.description}
-                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 placeholder={t.create.descriptionPlaceholder.value}
               />
             </div>
             <div className="md:col-span-1">
-              <label className="block text-xs font-semibold text-gray-700 mb-1">{t.create.category}</label>
+              <label
+                className="block text-xs font-semibold text-gray-700 mb-1"
+                htmlFor="create-category"
+              >
+                {t.create.category}
+              </label>
               <select
+                id="create-category"
                 value={form.categoryId}
-                onChange={(e) => setForm((prev) => ({ ...prev, categoryId: e.target.value }))}
+                onChange={e => setForm(prev => ({ ...prev, categoryId: e.target.value }))}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="">{t.create.noCategory}</option>
-                {categories.map((c) => (
+                {categories.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.name}
                   </option>
@@ -411,10 +462,13 @@ export default function CustomTablesPage() {
                 <div className="mt-2 flex items-center gap-2 text-xs text-gray-600">
                   <span
                     className="inline-flex h-6 w-6 items-center justify-center rounded-lg border border-gray-200"
-                    style={{ backgroundColor: categories.find((c) => c.id === form.categoryId)?.color || '#f3f4f6' }}
+                    style={{
+                      backgroundColor:
+                        categories.find(c => c.id === form.categoryId)?.color || '#f3f4f6',
+                    }}
                   >
                     {(() => {
-                      const selected = categories.find((c) => c.id === form.categoryId);
+                      const selected = categories.find(c => c.id === form.categoryId);
                       return selected?.icon ? (
                         <Icon icon={selected.icon} className="h-4 w-4 text-gray-900" />
                       ) : (
@@ -458,19 +512,12 @@ export default function CustomTablesPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {items.map((table) => (
-            <div
+          {items.map(table => (
+            <button
+              type="button"
               key={table.id}
-              role="button"
-              tabIndex={0}
               onClick={() => router.push(`/custom-tables/${table.id}`)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  router.push(`/custom-tables/${table.id}`);
-                }
-              }}
-              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm cursor-pointer hover:shadow-md hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm cursor-pointer hover:shadow-md hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/30 text-left"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -492,7 +539,7 @@ export default function CustomTablesPage() {
                   </div>
                 </div>
                 <button
-                  onClick={(e) => {
+                  onClick={e => {
                     e.stopPropagation();
                     confirmDelete(table);
                   }}
@@ -505,7 +552,9 @@ export default function CustomTablesPage() {
               <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
                 <div className="truncate">
                   {t.sources.label.value}:{' '}
-                  {table.source === 'google_sheets_import' ? t.sources.googleSheets.value : t.sources.manual.value}
+                  {table.source === 'google_sheets_import'
+                    ? t.sources.googleSheets.value
+                    : t.sources.manual.value}
                 </div>
                 <div className="truncate">
                   {table.createdAt
@@ -515,7 +564,7 @@ export default function CustomTablesPage() {
                     : ''}
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       )}

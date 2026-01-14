@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { enUS, kk, ru } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
+import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
 import { Icon } from '@iconify/react';
 import {
   Calendar as CalendarIcon,
@@ -19,15 +21,13 @@ import {
   Plus,
   Search,
   Table,
+  Trash2,
   TrendingDown,
   TrendingUp,
-  Trash2,
   X,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
-import { useAuth } from '@/app/hooks/useAuth';
-import apiClient from '@/app/lib/api';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import toast from 'react-hot-toast';
 
 type BaseTabKey = 'cash' | 'raw' | 'debit' | 'credit';
 type CustomFieldTabKey = `field:${string}`;
@@ -157,9 +157,7 @@ export default function DataEntryPage() {
   const [exportingTabToTable, setExportingTabToTable] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const iconInputRef = useRef<HTMLInputElement | null>(null);
-  const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(
-    null,
-  );
+  const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -182,7 +180,10 @@ export default function DataEntryPage() {
     [t],
   );
 
-  const tabMeta: Record<BaseTabKey | 'custom', { label: string; icon: ReactNode; description: string }> = useMemo(
+  const tabMeta: Record<
+    BaseTabKey | 'custom',
+    { label: string; icon: ReactNode; description: string }
+  > = useMemo(
     () => ({
       cash: {
         label: t.tabs.cash.label.value,
@@ -214,7 +215,7 @@ export default function DataEntryPage() {
   );
 
   const handleChange = (tab: TabKey, field: keyof FormState, value: string) => {
-    setForms((prev) => ({
+    setForms(prev => ({
       ...prev,
       [tab]: {
         ...(prev[tab] || { ...initialForm }),
@@ -244,7 +245,7 @@ export default function DataEntryPage() {
     setError(null);
     const isFieldTabValue = tab.startsWith('field:');
     const fieldId = isFieldTabValue ? tab.slice('field:'.length) : null;
-    const field = fieldId ? customFields.find((f) => f.id === fieldId) || null : null;
+    const field = fieldId ? customFields.find(f => f.id === fieldId) || null : null;
     const submitType: BaseTabKey = isFieldTabValue ? 'cash' : (tab as BaseTabKey);
     apiClient
       .post('/data-entry', {
@@ -255,7 +256,7 @@ export default function DataEntryPage() {
         note: payload.note || undefined,
         currency: payload.currency || 'KZT',
       })
-      .then((resp) => {
+      .then(resp => {
         const savedRaw: Entry = resp.data?.data || resp.data;
         const amountNumSafe = Number((savedRaw as any)?.amount);
         const saved: Entry = {
@@ -265,15 +266,13 @@ export default function DataEntryPage() {
         };
         if (isFieldTab(tab)) {
           const fieldId = getFieldId(tab);
-          setCustomFields((prev) =>
-            prev.map((f) =>
-              f.id === fieldId
-                ? { ...f, entriesCount: Number(f.entriesCount || 0) + 1 }
-                : f,
+          setCustomFields(prev =>
+            prev.map(f =>
+              f.id === fieldId ? { ...f, entriesCount: Number(f.entriesCount || 0) + 1 } : f,
             ),
           );
         }
-        setForms((prev) => ({
+        setForms(prev => ({
           ...prev,
           [tab]: {
             ...initialForm,
@@ -295,7 +294,7 @@ export default function DataEntryPage() {
           loadCustomTabEntries(fieldId, tab, { page: 1, query, date });
         }
       })
-      .catch((err) => {
+      .catch(err => {
         const message = err?.response?.data?.message || t.errors.saveFailed.value;
         setStatus({ type: 'error', message });
         toast.error(message);
@@ -337,24 +336,24 @@ export default function DataEntryPage() {
   const getFieldId = (tab: CustomFieldTabKey) => tab.slice('field:'.length);
 
   const setQueryForTab = (tab: TabKey, query: string) => {
-    setListQueryByTab((prev) => ({ ...prev, [tab]: query }));
-    setListPageByTab((prev) => ({ ...prev, [tab]: 1 }));
+    setListQueryByTab(prev => ({ ...prev, [tab]: query }));
+    setListPageByTab(prev => ({ ...prev, [tab]: 1 }));
   };
 
   const setDateForTab = (tab: TabKey, date: string) => {
-    setListDateByTab((prev) => ({ ...prev, [tab]: date }));
-    setListPageByTab((prev) => ({ ...prev, [tab]: 1 }));
+    setListDateByTab(prev => ({ ...prev, [tab]: date }));
+    setListPageByTab(prev => ({ ...prev, [tab]: 1 }));
   };
 
   const setPageForTab = (tab: TabKey, page: number) => {
-    setListPageByTab((prev) => ({ ...prev, [tab]: Math.max(1, page) }));
+    setListPageByTab(prev => ({ ...prev, [tab]: Math.max(1, page) }));
   };
 
   const getTabLabel = (tab: TabKey): string => {
     if (isBaseTab(tab)) return tabMeta[tab].label;
     if (tab === 'custom') return tabMeta.custom.label;
     const fieldId = getFieldId(tab);
-    const field = customFields.find((f) => f.id === fieldId);
+    const field = customFields.find(f => f.id === fieldId);
     return field?.name || t.tabs.custom.label.value;
   };
 
@@ -362,19 +361,19 @@ export default function DataEntryPage() {
     if (isBaseTab(tab)) return tabMeta[tab].icon;
     if (tab === 'custom') return tabMeta.custom.icon;
     const fieldId = getFieldId(tab);
-    const field = customFields.find((f) => f.id === fieldId);
+    const field = customFields.find(f => f.id === fieldId);
     return renderIconPreview(field?.icon || 'mdi:tag', 'h-4 w-4') || null;
   };
 
   const linkedTable = useMemo(() => {
     if (isBaseTab(activeTab)) {
       return dataEntryTables.find(
-        (table) => table.dataEntryScope === 'type' && table.dataEntryType === activeTab,
+        table => table.dataEntryScope === 'type' && table.dataEntryType === activeTab,
       );
     }
     if (isFieldTab(activeTab)) {
       const fieldId = getFieldId(activeTab);
-      return dataEntryTables.find((table) => table.dataEntryCustomTabId === fieldId);
+      return dataEntryTables.find(table => table.dataEntryCustomTabId === fieldId);
     }
     return null;
   }, [activeTab, dataEntryTables]);
@@ -382,13 +381,17 @@ export default function DataEntryPage() {
   const renderIconPreview = (icon: string, className?: string) => {
     if (!icon) return null;
     if (icon.startsWith('http')) {
-      return <img src={icon} alt={t.labels.iconAlt.value} className={`h-5 w-5 ${className || ''}`} />;
+      return (
+        <img src={icon} alt={t.labels.iconAlt.value} className={`h-5 w-5 ${className || ''}`} />
+      );
     }
     if (icon.startsWith('/uploads')) {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
       const baseUrl = apiUrl.replace('/api/v1', '');
       const fullUrl = baseUrl + icon;
-      return <img src={fullUrl} alt={t.labels.iconAlt.value} className={`h-5 w-5 ${className || ''}`} />;
+      return (
+        <img src={fullUrl} alt={t.labels.iconAlt.value} className={`h-5 w-5 ${className || ''}`} />
+      );
     }
     return <Icon icon={icon} className={`h-5 w-5 ${className || ''}`} />;
   };
@@ -422,11 +425,11 @@ export default function DataEntryPage() {
           date: date || undefined,
         },
       })
-      .then((resp) => {
+      .then(resp => {
         if (requestId !== listRequestSeq.current) return;
         const payload = resp.data?.data || resp.data;
         const rawItems: Entry[] = payload?.items || payload?.data?.items || payload?.data || [];
-        const items = rawItems.map((item) => {
+        const items = rawItems.map(item => {
           const amountNum = Number((item as any)?.amount);
           return {
             ...item,
@@ -437,11 +440,11 @@ export default function DataEntryPage() {
         const totalRaw = payload?.total ?? payload?.data?.total;
         const limitRaw = payload?.limit ?? payload?.data?.limit ?? PAGE_SIZE;
         const pageRaw = payload?.page ?? payload?.data?.page ?? page;
-        setEntries((prev) => ({
+        setEntries(prev => ({
           ...prev,
           [tab]: items,
         }));
-        setListMetaByTab((prev) => ({
+        setListMetaByTab(prev => ({
           ...prev,
           [tab]: {
             total: typeof totalRaw === 'number' ? totalRaw : items.length,
@@ -450,7 +453,7 @@ export default function DataEntryPage() {
           },
         }));
       })
-      .catch((err) => {
+      .catch(err => {
         if (requestId !== listRequestSeq.current) return;
         const message = err?.response?.data?.message || t.errors.loadEntriesFailed.value;
         setError(message);
@@ -482,11 +485,11 @@ export default function DataEntryPage() {
           date: date || undefined,
         },
       })
-      .then((resp) => {
+      .then(resp => {
         if (requestId !== listRequestSeq.current) return;
         const payload = resp.data?.data || resp.data;
         const rawItems: Entry[] = payload?.items || payload?.data?.items || payload?.data || [];
-        const items = rawItems.map((item) => {
+        const items = rawItems.map(item => {
           const amountNum = Number((item as any)?.amount);
           return {
             ...item,
@@ -497,11 +500,11 @@ export default function DataEntryPage() {
         const totalRaw = payload?.total ?? payload?.data?.total;
         const limitRaw = payload?.limit ?? payload?.data?.limit ?? PAGE_SIZE;
         const pageRaw = payload?.page ?? payload?.data?.page ?? page;
-        setEntries((prev) => ({
+        setEntries(prev => ({
           ...prev,
           [tabKey]: items,
         }));
-        setListMetaByTab((prev) => ({
+        setListMetaByTab(prev => ({
           ...prev,
           [tabKey]: {
             total: typeof totalRaw === 'number' ? totalRaw : items.length,
@@ -510,7 +513,7 @@ export default function DataEntryPage() {
           },
         }));
       })
-      .catch((err) => {
+      .catch(err => {
         if (requestId !== listRequestSeq.current) return;
         const message = err?.response?.data?.message || t.errors.loadEntriesFailed.value;
         setError(message);
@@ -526,12 +529,12 @@ export default function DataEntryPage() {
     setError(null);
     apiClient
       .get('/data-entry/custom-fields')
-      .then((resp) => {
+      .then(resp => {
         const payload = resp.data?.data || resp.data;
         const items = (payload?.items || []) as CustomField[];
         setCustomFields(items);
       })
-      .catch((err) => {
+      .catch(err => {
         const message = err?.response?.data?.message || t.errors.loadCustomColumnsFailed.value;
         setError(message);
         toast.error(message);
@@ -542,7 +545,7 @@ export default function DataEntryPage() {
   const loadDataEntryTables = () => {
     apiClient
       .get('/custom-tables')
-      .then((resp) => {
+      .then(resp => {
         const payload = resp.data?.items || resp.data?.data?.items || resp.data?.data || [];
         const items = Array.isArray(payload) ? payload : [];
         const linked = items.filter(
@@ -550,7 +553,7 @@ export default function DataEntryPage() {
         );
         setDataEntryTables(linked);
       })
-      .catch((err) => {
+      .catch(err => {
         const message = err?.response?.data?.message || t.errors.loadTablesFailed.value;
         setError(message);
         toast.error(message);
@@ -570,11 +573,13 @@ export default function DataEntryPage() {
         name,
         icon: newCustomFieldIcon?.trim() || undefined,
       })
-      .then((resp) => {
+      .then(resp => {
         const createdRaw: CustomField = resp.data?.data || resp.data;
         const created: CustomField = { ...createdRaw, entriesCount: 0 };
-      setCustomFields((prev) => {
-          const next = [...prev, created].sort((a, b) => a.name.localeCompare(b.name, resolveLocale(locale)));
+        setCustomFields(prev => {
+          const next = [...prev, created].sort((a, b) =>
+            a.name.localeCompare(b.name, resolveLocale(locale)),
+          );
           return next;
         });
         setActiveTab(`field:${created.id}`);
@@ -582,7 +587,7 @@ export default function DataEntryPage() {
         setStatus({ type: 'success', message: t.status.columnCreated.value });
         toast.success(t.status.columnCreatedToast.value);
       })
-      .catch((err) => {
+      .catch(err => {
         const message = err?.response?.data?.message || t.errors.createColumnFailed.value;
         setStatus({ type: 'error', message });
         toast.error(message);
@@ -595,11 +600,11 @@ export default function DataEntryPage() {
     apiClient
       .delete(`/data-entry/custom-fields/${id}`)
       .then(() => {
-        setCustomFields((prev) => prev.filter((f) => f.id !== id));
+        setCustomFields(prev => prev.filter(f => f.id !== id));
         if (activeTab === `field:${id}`) {
           setActiveTab('cash');
         }
-        setEntries((prev) => {
+        setEntries(prev => {
           const next = { ...prev };
           delete next[`field:${id}`];
           return next;
@@ -607,7 +612,7 @@ export default function DataEntryPage() {
         setStatus({ type: 'success', message: t.status.columnDeleted.value });
         toast.success(t.status.columnDeleted.value);
       })
-      .catch((err) => {
+      .catch(err => {
         const message = err?.response?.data?.message || t.errors.deleteColumnFailed.value;
         setStatus({ type: 'error', message });
         toast.error(message);
@@ -643,8 +648,8 @@ export default function DataEntryPage() {
       const tableId = payload?.tableId;
       if (!tableId) throw new Error('tableId missing');
       await apiClient.delete(`/data-entry/custom-fields/${deleteDialog.fieldId}`);
-      setCustomFields((prev) => prev.filter((f) => f.id !== deleteDialog.fieldId));
-      setEntries((prev) => {
+      setCustomFields(prev => prev.filter(f => f.id !== deleteDialog.fieldId));
+      setEntries(prev => {
         const next = { ...prev };
         delete next[`field:${deleteDialog.fieldId}`];
         return next;
@@ -667,8 +672,8 @@ export default function DataEntryPage() {
     setError(null);
     try {
       await apiClient.delete(`/data-entry/custom-fields/${deleteDialog.fieldId}`);
-      setCustomFields((prev) => prev.filter((f) => f.id !== deleteDialog.fieldId));
-      setEntries((prev) => {
+      setCustomFields(prev => prev.filter(f => f.id !== deleteDialog.fieldId));
+      setEntries(prev => {
         const next = { ...prev };
         delete next[`field:${deleteDialog.fieldId}`];
         return next;
@@ -736,8 +741,10 @@ export default function DataEntryPage() {
       });
       const syncedAt = payload?.syncedAt || payload?.dataEntrySyncedAt;
       if (syncedAt) {
-        setDataEntryTables((prev) =>
-          prev.map((table) => (table.id === tableId ? { ...table, dataEntrySyncedAt: syncedAt } : table)),
+        setDataEntryTables(prev =>
+          prev.map(table =>
+            table.id === tableId ? { ...table, dataEntrySyncedAt: syncedAt } : table,
+          ),
         );
       }
     } catch (err: any) {
@@ -797,7 +804,11 @@ export default function DataEntryPage() {
     }
     if (isFieldTab(activeTab)) {
       const id = getFieldId(activeTab);
-      loadCustomTabEntries(id, activeTab, { page: activePage, query: debouncedActiveQuery, date: activeDate });
+      loadCustomTabEntries(id, activeTab, {
+        page: activePage,
+        query: debouncedActiveQuery,
+        date: activeDate,
+      });
     }
   }, [activeTab, user, activePage, debouncedActiveQuery, activeDate]);
 
@@ -814,14 +825,14 @@ export default function DataEntryPage() {
     apiClient
       .delete(`/data-entry/${entryId}`)
       .then(() => {
-        setEntries((prev) => ({
+        setEntries(prev => ({
           ...prev,
-          [effectiveTab]: (prev[effectiveTab] || []).filter((e) => e.id !== entryId),
+          [effectiveTab]: (prev[effectiveTab] || []).filter(e => e.id !== entryId),
         }));
         if (isFieldTab(effectiveTab)) {
           const fieldId = getFieldId(effectiveTab);
-          setCustomFields((prev) =>
-            prev.map((f) =>
+          setCustomFields(prev =>
+            prev.map(f =>
               f.id === fieldId
                 ? { ...f, entriesCount: Math.max(0, Number(f.entriesCount || 0) - 1) }
                 : f,
@@ -839,7 +850,7 @@ export default function DataEntryPage() {
           loadCustomTabEntries(getFieldId(effectiveTab), effectiveTab, { page, query, date });
         }
       })
-      .catch((err) => {
+      .catch(err => {
         const message = err?.response?.data?.message || t.errors.deleteEntryFailed.value;
         setStatus({ type: 'error', message });
       })
@@ -878,62 +889,79 @@ export default function DataEntryPage() {
           </div>
         </div>
 
-        {(isBaseTab(activeTab) || isFieldTab(activeTab)) && <div className="relative">
-          <button
-            type="button"
-            disabled={exportingTable || syncingTable}
-            onClick={() => setExportMenuOpen((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {exportingTable ? <Loader2 className="h-4 w-4 animate-spin" /> : <Table className="h-4 w-4" />}
-            {t.labels.tableActions}
-          </button>
+        {(isBaseTab(activeTab) || isFieldTab(activeTab)) && (
+          <div className="relative">
+            <button
+              type="button"
+              disabled={exportingTable || syncingTable}
+              onClick={() => setExportMenuOpen(v => !v)}
+              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {exportingTable ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Table className="h-4 w-4" />
+              )}
+              {t.labels.tableActions}
+            </button>
 
-          {exportMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setExportMenuOpen(false)} />
-              <div className="absolute right-0 mt-2 z-20 w-80 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => createTableFromDataEntry('type')}
-                  disabled={exportingTable || syncingTable}
-                  className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {t.labels.createTableForTabPrefix}
-                  <span className="font-semibold">{getTabLabel(activeTab)}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => createTableFromDataEntry('all')}
-                  disabled={exportingTable || syncingTable}
-                  className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {t.labels.createSingleTable}
-                </button>
-                {linkedTable && (
+            {exportMenuOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setExportMenuOpen(false)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setExportMenuOpen(false);
+                    }
+                  }}
+                />
+                <div className="absolute right-0 mt-2 z-20 w-80 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
                   <button
                     type="button"
-                    onClick={() => syncDataEntryTable(linkedTable.id)}
+                    onClick={() => createTableFromDataEntry('type')}
+                    disabled={exportingTable || syncingTable}
+                    className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {t.labels.createTableForTabPrefix}
+                    <span className="font-semibold">{getTabLabel(activeTab)}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => createTableFromDataEntry('all')}
                     disabled={exportingTable || syncingTable}
                     className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    {syncingTable ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        {t.labels.syncing}
-                      </span>
-                    ) : (
-                      <>
-                        {t.labels.syncWithTablePrefix}
-                        <span className="font-semibold">{linkedTable.name}</span>
-                      </>
-                    )}
+                    {t.labels.createSingleTable}
                   </button>
-                )}
-              </div>
-            </>
-          )}
-        </div>}
+                  {linkedTable && (
+                    <button
+                      type="button"
+                      onClick={() => syncDataEntryTable(linkedTable.id)}
+                      disabled={exportingTable || syncingTable}
+                      className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {syncingTable ? (
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          {t.labels.syncing}
+                        </span>
+                      ) : (
+                        <>
+                          {t.labels.syncWithTablePrefix}
+                          <span className="font-semibold">{linkedTable.name}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {(status || error) && (
@@ -952,10 +980,10 @@ export default function DataEntryPage() {
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="border-b border-gray-100 flex overflow-x-auto">
           {(['cash', 'raw', 'debit', 'credit'] as BaseTabKey[])
-            .map((t) => t as TabKey)
-            .concat(customFields.map((f) => `field:${f.id}` as CustomFieldTabKey))
+            .map(t => t as TabKey)
+            .concat(customFields.map(f => `field:${f.id}` as CustomFieldTabKey))
             .concat(['custom' as const])
-            .map((tab) => {
+            .map(tab => {
               const isActive = tab === activeTab;
               return (
                 <button
@@ -979,200 +1007,235 @@ export default function DataEntryPage() {
                   {getTabIcon(tab)}
                   {getTabLabel(tab)}
                   {isFieldTab(tab) && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
+                    <button
+                      type="button"
+                      onClick={e => {
                         e.stopPropagation();
                         const fieldId = getFieldId(tab);
-                        const field = customFields.find((f) => f.id === fieldId);
+                        const field = customFields.find(f => f.id === fieldId);
                         if (field) openDeleteDialog(field);
                       }}
-                      onKeyDown={(e) => {
+                      onKeyDown={e => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
                           e.stopPropagation();
                           const fieldId = getFieldId(tab);
-                          const field = customFields.find((f) => f.id === fieldId);
+                          const field = customFields.find(f => f.id === fieldId);
                           if (field) openDeleteDialog(field);
                         }
-	                      }}
-	                      className="ml-1 inline-flex items-center justify-center h-6 w-6 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50"
-	                      title={t.labels.deleteTabTitle.value}
-	                    >
-	                      <Trash2 className="h-4 w-4" />
-	                    </span>
-	                  )}
+                      }}
+                      className="ml-1 inline-flex items-center justify-center h-6 w-6 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      title={t.labels.deleteTabTitle.value}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </button>
               );
             })}
         </div>
 
-		        <div className="p-4 space-y-4">
-			          <div className="text-sm text-gray-600">
-                {isFieldTab(activeTab)
-                  ? `${t.labels.dataEntryForTabPrefix.value}${getTabLabel(activeTab)}${t.labels.dataEntryForTabSuffix.value}`
-                  : currentMeta.description}
-              </div>
+        <div className="p-4 space-y-4">
+          <div className="text-sm text-gray-600">
+            {isFieldTab(activeTab)
+              ? `${t.labels.dataEntryForTabPrefix.value}${getTabLabel(activeTab)}${t.labels.dataEntryForTabSuffix.value}`
+              : currentMeta.description}
+          </div>
 
-		          {activeTab === 'custom' ? (
-		            <div className="space-y-4">
-	              <div
-	                ref={customFieldRef}
-	                className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all ${
-	                  customFieldHighlight ? 'ring-2 ring-primary/40' : ''
-	                }`}
-	              >
-	                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-		                  <label className="block md:col-span-2">
-		                    <span className="text-sm font-medium text-gray-700 block mb-1">{t.labels.columnNameLabel}</span>
-		                    <input
-		                      type="text"
-		                      value={newCustomFieldName}
-		                      onChange={(e) => setNewCustomFieldName(e.target.value)}
-		                      placeholder={t.labels.columnNamePlaceholder.value}
-		                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-		                    />
-		                  </label>
+          {activeTab === 'custom' ? (
+            <div className="space-y-4">
+              <div
+                ref={customFieldRef}
+                className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all ${
+                  customFieldHighlight ? 'ring-2 ring-primary/40' : ''
+                }`}
+              >
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                  <label className="block md:col-span-2">
+                    <span className="text-sm font-medium text-gray-700 block mb-1">
+                      {t.labels.columnNameLabel}
+                    </span>
+                    <input
+                      type="text"
+                      value={newCustomFieldName}
+                      onChange={e => setNewCustomFieldName(e.target.value)}
+                      placeholder={t.labels.columnNamePlaceholder.value}
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                    />
+                  </label>
 
-	                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center justify-between gap-2">
                     <button
                       type="button"
                       onClick={() => {
                         setCalendarOpen(false);
                         setExportMenuOpen(false);
-                        setCustomIconOpen((v) => !v);
-	                      }}
-	                      className="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-	                      title={t.labels.chooseIconTitle.value}
-	                    >
-	                      {renderIconPreview(newCustomFieldIcon || 'mdi:tag')}
-	                      <span className="text-sm font-semibold">{t.labels.iconLabel}</span>
-	                    </button>
-	                    <button
-	                      type="button"
-	                      onClick={createCustomField}
-		                      disabled={creatingCustomField}
-		                      className="inline-flex items-center justify-center h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-hover disabled:opacity-50"
-		                    >
-		                      {creatingCustomField ? <Loader2 className="h-4 w-4 animate-spin" /> : t.labels.create}
-		                    </button>
-	                  </div>
-	                </div>
+                        setCustomIconOpen(v => !v);
+                      }}
+                      className="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      title={t.labels.chooseIconTitle.value}
+                    >
+                      {renderIconPreview(newCustomFieldIcon || 'mdi:tag')}
+                      <span className="text-sm font-semibold">{t.labels.iconLabel}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={createCustomField}
+                      disabled={creatingCustomField}
+                      className="inline-flex items-center justify-center h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-hover disabled:opacity-50"
+                    >
+                      {creatingCustomField ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        t.labels.create
+                      )}
+                    </button>
+                  </div>
+                </div>
 
-	                {customIconOpen && (
-	                  <>
-	                    <div className="fixed inset-0 z-10" onClick={() => setCustomIconOpen(false)} />
-	                    <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
-	                      <div className="grid grid-cols-7 gap-2 mb-4">
-	                        {CUSTOM_FIELD_ICONS.map((icon) => (
-	                          <button
-	                            key={icon}
-	                            type="button"
-	                            onClick={() => {
-	                              setNewCustomFieldIcon(icon);
-	                              setCustomIconOpen(false);
-	                            }}
-	                            className={`inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors ${
-	                              newCustomFieldIcon === icon
-	                                ? 'border-primary bg-primary/10 text-primary'
-	                                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-	                            }`}
-	                            title={icon}
-	                          >
-	                            {renderIconPreview(icon)}
-	                          </button>
-	                        ))}
-	                      </div>
-	                      <div className="border-t border-gray-100 pt-4">
-	                        <button
-	                          type="button"
-	                          onClick={() => {
-	                            triggerIconUpload();
-	                            // Keep input mounted while the OS file picker opens.
-	                            setTimeout(() => setCustomIconOpen(false), 0);
-	                          }}
-	                          disabled={uploadingIcon}
-	                          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-white py-2 text-sm font-semibold hover:bg-primary-hover disabled:opacity-50 transition-all"
-	                        >
-		                          {uploadingIcon ? (
-		                            <>
-		                              <Loader2 className="h-4 w-4 animate-spin" />
-		                              {t.labels.loading}
-		                            </>
-		                          ) : (
-		                            t.labels.uploadIcon
-		                          )}
-		                        </button>
-		                      </div>
-		                    </div>
-		                  </>
-	                )}
-	              </div>
-                <input
-                  ref={iconInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleIconFileChange}
-                />
-
-		              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-		                <div className="flex items-center justify-between mb-2">
-		                  <h3 className="font-semibold text-gray-900">{t.labels.myColumns}</h3>
-		                  <span className="text-xs text-gray-500">
-		                    {loadingCustomFields ? t.labels.loadingEllipsis : `${customFields.length} ${t.labels.piecesShort.value}`}
-		                  </span>
-		                </div>
-	                <div className="divide-y divide-gray-100">
-	                  {customFields.map((field) => (
-	                    <div key={field.id} className="py-2 flex items-center justify-between">
-	                      <div className="flex items-center gap-2">
-	                        {renderIconPreview(field.icon || 'mdi:tag', 'h-5 w-5 text-gray-700')}
-	                        <span className="text-sm font-semibold text-gray-900">{field.name}</span>
-	                      </div>
-		                      <button
-		                        type="button"
-			                        onClick={() => openDeleteDialog(field)}
-			                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-			                      >
-			                        <Trash2 className="h-4 w-4" /> {t.labels.delete}
-			                      </button>
-		                    </div>
-		                  ))}
-		                  {!loadingCustomFields && customFields.length === 0 && (
-		                    <div className="py-6 text-sm text-gray-500 text-center">{t.labels.noColumnsYet}</div>
-		                  )}
-		                </div>
-		              </div>
-	            </div>
-	          ) : (
-	            <>
-		              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-		            <div className="relative">
-		              <span className="text-sm font-medium text-gray-700 block mb-1">{t.labels.date}</span>
-		              <div 
-	                className={`w-full rounded-lg border bg-white px-3 py-2 text-sm flex items-center justify-between cursor-pointer transition-colors ${
-	                   calendarOpen ? 'border-primary ring-1 ring-primary' : 'border-gray-200 hover:border-gray-300'
-	                }`}
-                onClick={() => setCalendarOpen(!calendarOpen)}
-              >
-	                 <span className={currentForm.date ? 'text-gray-900' : 'text-gray-400'}>
-	                    {currentForm.date 
-	                      ? format(new Date(currentForm.date), 'd MMMM yyyy', { locale: dateFnsLocale }) 
-	                      : t.labels.selectDate}
-	                 </span>
-                 <CalendarIcon className="h-4 w-4 text-gray-500" />
+                {customIconOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setCustomIconOpen(false)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setCustomIconOpen(false);
+                        }
+                      }}
+                    />
+                    <div className="absolute mt-2 z-20 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
+                      <div className="grid grid-cols-7 gap-2 mb-4">
+                        {CUSTOM_FIELD_ICONS.map(icon => (
+                          <button
+                            key={icon}
+                            type="button"
+                            onClick={() => {
+                              setNewCustomFieldIcon(icon);
+                              setCustomIconOpen(false);
+                            }}
+                            className={`inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors ${
+                              newCustomFieldIcon === icon
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                            }`}
+                            title={icon}
+                          >
+                            {renderIconPreview(icon)}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="border-t border-gray-100 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerIconUpload();
+                            // Keep input mounted while the OS file picker opens.
+                            setTimeout(() => setCustomIconOpen(false), 0);
+                          }}
+                          disabled={uploadingIcon}
+                          className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-white py-2 text-sm font-semibold hover:bg-primary-hover disabled:opacity-50 transition-all"
+                        >
+                          {uploadingIcon ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              {t.labels.loading}
+                            </>
+                          ) : (
+                            t.labels.uploadIcon
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
+              <input
+                ref={iconInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleIconFileChange}
+              />
 
-              {calendarOpen && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-10" 
-                    onClick={() => setCalendarOpen(false)} 
-                  />
-                  <div className="absolute top-full left-0 mt-2 z-20 bg-white rounded-xl shadow-xl border border-gray-200 p-3 animate-in fade-in zoom-in-95 duration-200">
-                     <style>{`
+              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-gray-900">{t.labels.myColumns}</h3>
+                  <span className="text-xs text-gray-500">
+                    {loadingCustomFields
+                      ? t.labels.loadingEllipsis
+                      : `${customFields.length} ${t.labels.piecesShort.value}`}
+                  </span>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {customFields.map(field => (
+                    <div key={field.id} className="py-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {renderIconPreview(field.icon || 'mdi:tag', 'h-5 w-5 text-gray-700')}
+                        <span className="text-sm font-semibold text-gray-900">{field.name}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openDeleteDialog(field)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                      >
+                        <Trash2 className="h-4 w-4" /> {t.labels.delete}
+                      </button>
+                    </div>
+                  ))}
+                  {!loadingCustomFields && customFields.length === 0 && (
+                    <div className="py-6 text-sm text-gray-500 text-center">
+                      {t.labels.noColumnsYet}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                <div className="relative">
+                  <span className="text-sm font-medium text-gray-700 block mb-1">
+                    {t.labels.date}
+                  </span>
+                  <button
+                    type="button"
+                    className={`w-full rounded-lg border bg-white px-3 py-2 text-sm flex items-center justify-between transition-colors ${
+                      calendarOpen
+                        ? 'border-primary ring-1 ring-primary'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setCalendarOpen(!calendarOpen)}
+                  >
+                    <span className={currentForm.date ? 'text-gray-900' : 'text-gray-400'}>
+                      {currentForm.date
+                        ? format(new Date(currentForm.date), 'd MMMM yyyy', {
+                            locale: dateFnsLocale,
+                          })
+                        : t.labels.selectDate}
+                    </span>
+                    <CalendarIcon className="h-4 w-4 text-gray-500" />
+                  </button>
+
+                  {calendarOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setCalendarOpen(false)}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setCalendarOpen(false);
+                          }
+                        }}
+                      />
+                      <div className="absolute top-full left-0 mt-2 z-20 bg-white rounded-xl shadow-xl border border-gray-200 p-3 animate-in fade-in zoom-in-95 duration-200">
+                        <style>{`
                        .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #0a66c2; --rdp-background-color: #e3f2fd; margin: 0; }
                        .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f3f2ef; font-weight: bold; }
                        .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover { background-color: var(--rdp-accent-color); color: white; font-weight: bold; }
@@ -1181,155 +1244,172 @@ export default function DataEntryPage() {
                        .rdp-nav_button { color: #666; }
                        .rdp-nav_button:hover { background-color: #f3f2ef; color: #0a66c2; }
                      `}</style>
-                     <DayPicker
-                       mode="single"
-                       selected={currentForm.date ? new Date(currentForm.date) : undefined}
-	                       onSelect={(day) => {
-	                         if (day) {
-	                           handleChange(activeTab, 'date', format(day, 'yyyy-MM-dd'));
-	                           setCalendarOpen(false);
-	                         }
-	                       }}
-	                       locale={dateFnsLocale}
-	                       className="rounded-lg"
-	                     />
+                        <DayPicker
+                          mode="single"
+                          selected={currentForm.date ? new Date(currentForm.date) : undefined}
+                          onSelect={day => {
+                            if (day) {
+                              handleChange(activeTab, 'date', format(day, 'yyyy-MM-dd'));
+                              setCalendarOpen(false);
+                            }
+                          }}
+                          locale={dateFnsLocale}
+                          className="rounded-lg"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700 block mb-1">
+                    {t.labels.amount}
+                  </span>
+                  <input
+                    type="number"
+                    value={currentForm.amount}
+                    onChange={e => handleChange(activeTab, 'amount', e.target.value)}
+                    placeholder="0.00"
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700 block mb-1">
+                    {t.labels.comment}
+                  </span>
+                  <input
+                    type="text"
+                    value={currentForm.note}
+                    onChange={e => handleChange(activeTab, 'note', e.target.value)}
+                    placeholder={t.labels.commentPlaceholder.value}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700 block mb-1">
+                    {t.labels.currency}
+                  </span>
+                  <div className="mt-1 w-full rounded-lg border border-gray-200 bg-white text-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                    <select
+                      className="w-full bg-transparent px-3 py-2 outline-none"
+                      value={currentForm.currency}
+                      onChange={e => handleChange(activeTab, 'currency', e.target.value)}
+                    >
+                      {currencies.map(cur => (
+                        <option key={cur.code} value={cur.code}>
+                          {cur.code} — {cur.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                </>
-	              )}
-	            </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {currencies.map(cur => (
+                      <button
+                        key={cur.code}
+                        type="button"
+                        onClick={() => handleChange(activeTab, 'currency', cur.code)}
+                        className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
+                          currentForm.currency === cur.code
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-gray-200 text-gray-700 hover:border-primary'
+                        }`}
+                      >
+                        {cur.code}
+                      </button>
+                    ))}
+                  </div>
+                </label>
+              </div>
 
-		            <label className="block">
-	              <span className="text-sm font-medium text-gray-700 block mb-1">{t.labels.amount}</span>
-	              <input
-	                type="number"
-	                value={currentForm.amount}
-	                onChange={(e) => handleChange(activeTab, 'amount', e.target.value)}
-	                placeholder="0.00"
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-              />
-	            </label>
-
-		            <label className="block">
-	              <span className="text-sm font-medium text-gray-700 block mb-1">{t.labels.comment}</span>
-	              <input
-	                type="text"
-	                value={currentForm.note}
-	                onChange={(e) => handleChange(activeTab, 'note', e.target.value)}
-	                placeholder={t.labels.commentPlaceholder.value}
-	                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-	              />
-		            </label>
-
-		            <label className="block">
-	              <span className="text-sm font-medium text-gray-700 block mb-1">{t.labels.currency}</span>
-	              <div className="mt-1 w-full rounded-lg border border-gray-200 bg-white text-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
-                <select
-                  className="w-full bg-transparent px-3 py-2 outline-none"
-                  value={currentForm.currency}
-                  onChange={(e) => handleChange(activeTab, 'currency', e.target.value)}
+              <div className="flex justify-end pt-2">
+                <button
+                  onClick={() => handleSubmit(activeTab)}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
                 >
-                  {currencies.map((cur) => (
-                    <option key={cur.code} value={cur.code}>
-                      {cur.code} — {cur.label}
-                    </option>
-                  ))}
-                </select>
+                  {t.labels.saveEntry}
+                </button>
               </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {currencies.map((cur) => (
+            </>
+          )}
+        </div>
+      </div>
+
+      {(isBaseTab(activeTab) || isFieldTab(activeTab)) && (
+        <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 bg-gray-50/50 rounded-t-xl sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Droplets className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-gray-900">
+                {t.labels.recentEntriesTitlePrefix}
+                {getTabLabel(activeTab)}
+              </h3>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="search"
+                    value={activeQuery}
+                    onChange={e => setQueryForTab(activeTab, e.target.value)}
+                    placeholder={t.labels.searchEntriesPlaceholder.value}
+                    className="w-full rounded-full border border-gray-200 bg-white pl-9 pr-9 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                  />
+                  {activeQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setQueryForTab(activeTab, '')}
+                      title={t.labels.clearSearchTitle.value}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="relative w-full sm:w-48">
                   <button
-                    key={cur.code}
                     type="button"
-                    onClick={() => handleChange(activeTab, 'currency', cur.code)}
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
-                      currentForm.currency === cur.code
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-gray-200 text-gray-700 hover:border-primary'
+                    className={`w-full rounded-full border bg-white pl-9 pr-9 py-1.5 text-sm flex items-center justify-between transition-colors ${
+                      listCalendarOpen
+                        ? 'border-primary ring-1 ring-primary'
+                        : 'border-gray-200 hover:border-gray-300'
                     }`}
+                    onClick={() => {
+                      setCalendarOpen(false);
+                      setCustomIconOpen(false);
+                      setExportMenuOpen(false);
+                      setListCalendarOpen(v => !v);
+                    }}
+                    title={t.labels.filterDateTitle.value}
                   >
-                    {cur.code}
+                    <span className={activeDate ? 'text-gray-900' : 'text-gray-400'}>
+                      {activeDate
+                        ? format(new Date(activeDate), 'd MMMM yyyy', { locale: dateFnsLocale })
+                        : t.labels.selectDate}
+                    </span>
+                    <CalendarIcon className="h-4 w-4 text-gray-500" />
                   </button>
-                ))}
-              </div>
-	            </label>
 
-	          </div>
-
-		              <div className="flex justify-end pt-2">
-		                <button
-		                  onClick={() => handleSubmit(activeTab)}
-		                  disabled={saving}
-		                  className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
-		                >
-		                  {t.labels.saveEntry}
-		                </button>
-		              </div>
-	            </>
-	          )}
-	        </div>
-	      </div>
-
-	      {(isBaseTab(activeTab) || isFieldTab(activeTab)) && (
-		      <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
-		        <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 bg-gray-50/50 rounded-t-xl sm:flex-row sm:items-center sm:justify-between">
-		          <div className="flex items-center gap-2">
-		            <Droplets className="h-5 w-5 text-primary" />
-		            <h3 className="font-semibold text-gray-900">
-		              {t.labels.recentEntriesTitlePrefix}
-		              {getTabLabel(activeTab)}
-		            </h3>
-		          </div>
-		          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-		            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-		              <div className="relative w-full sm:w-72">
-		              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-		              <input
-		                type="search"
-		                value={activeQuery}
-		                onChange={(e) => setQueryForTab(activeTab, e.target.value)}
-		                placeholder={t.labels.searchEntriesPlaceholder.value}
-		                className="w-full rounded-full border border-gray-200 bg-white pl-9 pr-9 py-1.5 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-		              />
-		              {activeQuery ? (
-		                <button
-		                  type="button"
-		                  onClick={() => setQueryForTab(activeTab, '')}
-		                  title={t.labels.clearSearchTitle.value}
-		                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-		                >
-		                  <X className="h-4 w-4" />
-		                </button>
-		              ) : null}
-		              </div>
-
-  		              <div className="relative w-full sm:w-48">
-		                <div
-		                  className={`w-full rounded-full border bg-white pl-9 pr-9 py-1.5 text-sm flex items-center justify-between cursor-pointer transition-colors ${
-		                    listCalendarOpen
-		                      ? 'border-primary ring-1 ring-primary'
-		                      : 'border-gray-200 hover:border-gray-300'
-		                  }`}
-		                  onClick={() => {
-		                    setCalendarOpen(false);
-		                    setCustomIconOpen(false);
-		                    setExportMenuOpen(false);
-		                    setListCalendarOpen((v) => !v);
-		                  }}
-		                  title={t.labels.filterDateTitle.value}
-		                >
-		                  <span className={activeDate ? 'text-gray-900' : 'text-gray-400'}>
-		                    {activeDate
-		                      ? format(new Date(activeDate), 'd MMMM yyyy', { locale: dateFnsLocale })
-		                      : t.labels.selectDate}
-		                  </span>
-		                  <CalendarIcon className="h-4 w-4 text-gray-500" />
-		                </div>
-
-		                {listCalendarOpen && (
-		                  <>
-		                    <div className="fixed inset-0 z-10" onClick={() => setListCalendarOpen(false)} />
-		                    <div className="absolute top-full left-0 mt-2 z-20 bg-white rounded-xl shadow-xl border border-gray-200 p-3 animate-in fade-in zoom-in-95 duration-200">
-		                      <style>{`
+                  {listCalendarOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setListCalendarOpen(false)}
+                        onKeyDown={event => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setListCalendarOpen(false);
+                          }
+                        }}
+                      />
+                      <div className="absolute top-full left-0 mt-2 z-20 bg-white rounded-xl shadow-xl border border-gray-200 p-3 animate-in fade-in zoom-in-95 duration-200">
+                        <style>{`
 		                        .rdp { --rdp-cell-size: 40px; --rdp-accent-color: #0a66c2; --rdp-background-color: #e3f2fd; margin: 0; }
 		                        .rdp-button:hover:not([disabled]):not(.rdp-day_selected) { background-color: #f3f2ef; font-weight: bold; }
 		                        .rdp-day_selected, .rdp-day_selected:focus-visible, .rdp-day_selected:hover { background-color: var(--rdp-accent-color); color: white; font-weight: bold; }
@@ -1338,166 +1418,184 @@ export default function DataEntryPage() {
 		                        .rdp-nav_button { color: #666; }
 		                        .rdp-nav_button:hover { background-color: #f3f2ef; color: #0a66c2; }
 		                      `}</style>
-		                      <DayPicker
-		                        mode="single"
-		                        selected={activeDate ? new Date(activeDate) : undefined}
-		                        onSelect={(day) => {
-		                          if (day) {
-		                            setDateForTab(activeTab, format(day, 'yyyy-MM-dd'));
-		                            setListCalendarOpen(false);
-		                          }
-		                        }}
-		                        locale={dateFnsLocale}
-		                        className="rounded-lg"
-		                      />
-		                    </div>
-		                  </>
-		                )}
-		                {activeDate ? (
-		                  <button
-		                    type="button"
-		                    onClick={() => {
-		                      setDateForTab(activeTab, '');
-		                      setListCalendarOpen(false);
-		                    }}
-		                    title={t.labels.clearDateTitle.value}
-		                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-		                  >
-		                    <X className="h-4 w-4" />
-		                  </button>
-		                ) : null}
-		              </div>
-		            </div>
-		            <span className="text-xs text-gray-500 font-medium">{t.labels.recentEntriesHint}</span>
-		          </div>
-		        </div>
-		
-		        {loadingList ? (
-		          <div className="px-4 py-8 text-center text-sm text-gray-500">{t.labels.loadingData}</div>
-		          ) : currentEntries.length === 0 ? (
-		          <div className="px-4 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
-		             <div className="bg-gray-100 p-3 rounded-full mb-3">
-		                <ClipboardList className="h-6 w-6 text-gray-400" />
-		             </div>
-			             {activeQuery.trim() || activeDate ? t.labels.noEntriesFound : t.labels.noEntriesForTab}
-		          </div>
-		        ) : (
-		          <>
-		            <div className="divide-y divide-gray-100">
-		              {currentEntries.map((entry) => (
-		                <div
-		                  key={entry.id}
-		                  className="px-4 py-3 flex items-center justify-between hover:bg-gray-50/80 transition-colors group"
-		                >
-		                  <div>
-		                    <div className="flex items-center gap-2">
-		                      <p className="text-sm font-bold text-gray-900">
-		                        {format(new Date(entry.date), 'dd.MM.yyyy')}
-		                      </p>
-		                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
-		                        {getTabLabel(activeTab)}
-		                      </span>
-		                    </div>
-		                    <p className="text-xs text-gray-600 mt-0.5">
-		                      {entry.note || t.labels.noComment.value}
-		                      {entry.customFieldName && entry.customFieldValue ? (
-		                        <span className="inline-flex items-center gap-1">
-		                          <span className="mx-1">•</span>
-		                          {entry.customFieldIcon ? (
-		                            <Icon
-		                              icon={entry.customFieldIcon}
-		                              className="h-3.5 w-3.5 text-gray-500"
-		                            />
-		                          ) : null}
-		                          <span>
-		                            {entry.customFieldName}: {entry.customFieldValue}
-		                          </span>
-		                        </span>
-		                      ) : null}
-		                    </p>
-		                  </div>
-		                  <div className="flex items-center gap-4">
-		                    <div className="text-right">
-		                      <p className="text-sm font-bold text-gray-900 font-mono">
-		                        {Number(entry.amount || 0).toLocaleString(resolveLocale(locale), {
-		                          minimumFractionDigits: 2,
-		                        })}
-		                      </p>
-		                      <div className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold text-right">
-		                        {entry.currency || 'KZT'}
-		                      </div>
-		                    </div>
-		                    <button
-		                      onClick={() => handleDelete(entry.id)}
-		                      disabled={removingId === entry.id}
-		                      className="p-2 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-		                      title={t.labels.deleteEntryTitle.value}
-		                    >
-		                      <Trash2 className="h-4 w-4" />
-		                    </button>
-		                  </div>
-		                </div>
-		              ))}
-		            </div>
+                        <DayPicker
+                          mode="single"
+                          selected={activeDate ? new Date(activeDate) : undefined}
+                          onSelect={day => {
+                            if (day) {
+                              setDateForTab(activeTab, format(day, 'yyyy-MM-dd'));
+                              setListCalendarOpen(false);
+                            }
+                          }}
+                          locale={dateFnsLocale}
+                          className="rounded-lg"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {activeDate ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDateForTab(activeTab, '');
+                        setListCalendarOpen(false);
+                      }}
+                      title={t.labels.clearDateTitle.value}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <span className="text-xs text-gray-500 font-medium">
+                {t.labels.recentEntriesHint}
+              </span>
+            </div>
+          </div>
 
-		            {showPagination && (
-		              <div className="flex flex-col gap-2 border-t border-gray-100 px-4 py-3 bg-gray-50/30 sm:flex-row sm:items-center sm:justify-between">
-		                <div className="text-xs text-gray-500 font-medium">
-		                  {t.labels.paginationShowingPrefix.value}{' '}
-		                  {effectiveStartIndex}–{effectiveEndIndex} {t.labels.paginationShowingOf.value}{' '}
-		                  {effectiveListMeta.total}
-		                </div>
-		                <div className="flex items-center justify-end gap-2">
-		                  <button
-		                    type="button"
-		                    onClick={() => setPageForTab(activeTab, effectiveListMeta.page - 1)}
-		                    disabled={!canGoPrev}
-		                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
-		                  >
-		                    <ChevronLeft className="h-4 w-4" />
-		                    {t.labels.paginationPrev.value}
-		                  </button>
-		                  <span className="text-xs text-gray-600 font-semibold">
-		                    {t.labels.paginationPageShort.value} {effectiveListMeta.page} / {effectiveTotalPages}
-		                  </span>
-		                  <button
-		                    type="button"
-		                    onClick={() => setPageForTab(activeTab, effectiveListMeta.page + 1)}
-		                    disabled={!canGoNext}
-		                    className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
-		                  >
-		                    {t.labels.paginationNext.value}
-		                    <ChevronRight className="h-4 w-4" />
-		                  </button>
-		                </div>
-		              </div>
-		            )}
-		          </>
-	        )}
-	      </div>
-	      )}
+          {loadingList ? (
+            <div className="px-4 py-8 text-center text-sm text-gray-500">
+              {t.labels.loadingData}
+            </div>
+          ) : currentEntries.length === 0 ? (
+            <div className="px-4 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
+              <div className="bg-gray-100 p-3 rounded-full mb-3">
+                <ClipboardList className="h-6 w-6 text-gray-400" />
+              </div>
+              {activeQuery.trim() || activeDate
+                ? t.labels.noEntriesFound
+                : t.labels.noEntriesForTab}
+            </div>
+          ) : (
+            <>
+              <div className="divide-y divide-gray-100">
+                {currentEntries.map(entry => (
+                  <div
+                    key={entry.id}
+                    className="px-4 py-3 flex items-center justify-between hover:bg-gray-50/80 transition-colors group"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-gray-900">
+                          {format(new Date(entry.date), 'dd.MM.yyyy')}
+                        </p>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
+                          {getTabLabel(activeTab)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 mt-0.5">
+                        {entry.note || t.labels.noComment.value}
+                        {entry.customFieldName && entry.customFieldValue ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="mx-1">•</span>
+                            {entry.customFieldIcon ? (
+                              <Icon
+                                icon={entry.customFieldIcon}
+                                className="h-3.5 w-3.5 text-gray-500"
+                              />
+                            ) : null}
+                            <span>
+                              {entry.customFieldName}: {entry.customFieldValue}
+                            </span>
+                          </span>
+                        ) : null}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-gray-900 font-mono">
+                          {Number(entry.amount || 0).toLocaleString(resolveLocale(locale), {
+                            minimumFractionDigits: 2,
+                          })}
+                        </p>
+                        <div className="text-[10px] text-gray-400 uppercase tracking-wider font-semibold text-right">
+                          {entry.currency || 'KZT'}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDelete(entry.id)}
+                        disabled={removingId === entry.id}
+                        className="p-2 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        title={t.labels.deleteEntryTitle.value}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {showPagination && (
+                <div className="flex flex-col gap-2 border-t border-gray-100 px-4 py-3 bg-gray-50/30 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-xs text-gray-500 font-medium">
+                    {t.labels.paginationShowingPrefix.value} {effectiveStartIndex}–
+                    {effectiveEndIndex} {t.labels.paginationShowingOf.value}{' '}
+                    {effectiveListMeta.total}
+                  </div>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPageForTab(activeTab, effectiveListMeta.page - 1)}
+                      disabled={!canGoPrev}
+                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      {t.labels.paginationPrev.value}
+                    </button>
+                    <span className="text-xs text-gray-600 font-semibold">
+                      {t.labels.paginationPageShort.value} {effectiveListMeta.page} /{' '}
+                      {effectiveTotalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPageForTab(activeTab, effectiveListMeta.page + 1)}
+                      disabled={!canGoNext}
+                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
+                    >
+                      {t.labels.paginationNext.value}
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {deleteDialog.open && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/30" onClick={closeDeleteDialog} />
+          <div
+            className="fixed inset-0 z-40 bg-black/30"
+            role="button"
+            tabIndex={0}
+            onClick={closeDeleteDialog}
+            onKeyDown={event => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                closeDeleteDialog();
+              }
+            }}
+          />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white shadow-2xl">
-	              <div className="p-5">
-	                <h3 className="text-lg font-bold text-gray-900">{t.labels.deleteTabTitle}</h3>
-	                <p className="mt-2 text-sm text-gray-600">
-	                  {t.labels.tabLabel}{' '}
-	                  <span className="font-semibold text-gray-900">{deleteDialog.fieldName}</span>
-	                </p>
-	                {deleteDialog.entriesCount > 0 ? (
-	                  <p className="mt-2 text-sm text-gray-600">
-	                    {t.labels.tabHasDataPrefix.value}
-	                    {deleteDialog.entriesCount}
-	                    {t.labels.tabHasDataSuffix.value}
-	                  </p>
-	                ) : (
-	                  <p className="mt-2 text-sm text-gray-600">{t.labels.tabNoData}</p>
-	                )}
-	              </div>
+              <div className="p-5">
+                <h3 className="text-lg font-bold text-gray-900">{t.labels.deleteTabTitle}</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  {t.labels.tabLabel}{' '}
+                  <span className="font-semibold text-gray-900">{deleteDialog.fieldName}</span>
+                </p>
+                {deleteDialog.entriesCount > 0 ? (
+                  <p className="mt-2 text-sm text-gray-600">
+                    {t.labels.tabHasDataPrefix.value}
+                    {deleteDialog.entriesCount}
+                    {t.labels.tabHasDataSuffix.value}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-600">{t.labels.tabNoData}</p>
+                )}
+              </div>
 
               <div className="flex flex-col gap-2 border-t border-gray-100 p-4">
                 {deleteDialog.entriesCount > 0 && (
@@ -1506,26 +1604,26 @@ export default function DataEntryPage() {
                     onClick={exportTabToCustomTableAndDelete}
                     disabled={exportingTabToTable || deletingTab}
                     className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
-	                  >
-	                    {exportingTabToTable ? t.labels.copying : t.labels.copyAndDelete}
-	                  </button>
-	                )}
+                  >
+                    {exportingTabToTable ? t.labels.copying : t.labels.copyAndDelete}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={deleteTabOnly}
                   disabled={exportingTabToTable || deletingTab}
-	                  className="w-full rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-	                >
-	                  {deletingTab ? t.labels.deleting : t.labels.deleteTabTitle}
-	                </button>
+                  className="w-full rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                >
+                  {deletingTab ? t.labels.deleting : t.labels.deleteTabTitle}
+                </button>
                 <button
                   type="button"
                   onClick={closeDeleteDialog}
-	                  disabled={exportingTabToTable || deletingTab}
-	                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-	                >
-	                  {t.labels.cancel}
-	                </button>
+                  disabled={exportingTabToTable || deletingTab}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {t.labels.cancel}
+                </button>
               </div>
             </div>
           </div>

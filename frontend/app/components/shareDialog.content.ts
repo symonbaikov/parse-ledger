@@ -1,18 +1,34 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'shareDialog',
   content: {
-    createTitle: t({ ru: 'Создать новую ссылку', en: 'Create a new link', kk: 'Жаңа сілтеме жасау' }),
+    createTitle: t({
+      ru: 'Создать новую ссылку',
+      en: 'Create a new link',
+      kk: 'Жаңа сілтеме жасау',
+    }),
     accessLevel: {
       label: t({ ru: 'Уровень доступа', en: 'Access level', kk: 'Қолжетімділік деңгейі' }),
       view: t({ ru: 'Только просмотр', en: 'View only', kk: 'Тек қарау' }),
-      download: t({ ru: 'Просмотр и скачивание', en: 'View and download', kk: 'Қарау және жүктеу' }),
+      download: t({
+        ru: 'Просмотр и скачивание',
+        en: 'View and download',
+        kk: 'Қарау және жүктеу',
+      }),
       edit: t({ ru: 'Полный доступ', en: 'Full access', kk: 'Толық қолжетімділік' }),
     },
-    expiresAt: t({ ru: 'Срок действия (опционально)', en: 'Expiration (optional)', kk: 'Жарамдылық мерзімі (міндетті емес)' }),
+    expiresAt: t({
+      ru: 'Срок действия (опционально)',
+      en: 'Expiration (optional)',
+      kk: 'Жарамдылық мерзімі (міндетті емес)',
+    }),
     password: {
-      label: t({ ru: 'Пароль (опционально)', en: 'Password (optional)', kk: 'Құпиясөз (міндетті емес)' }),
+      label: t({
+        ru: 'Пароль (опционально)',
+        en: 'Password (optional)',
+        kk: 'Құпиясөз (міндетті емес)',
+      }),
       help: t({
         ru: 'Добавьте пароль для дополнительной защиты',
         en: 'Add a password for extra protection',
@@ -20,7 +36,11 @@ const content = {
       }),
     },
     description: {
-      label: t({ ru: 'Описание (опционально)', en: 'Description (optional)', kk: 'Сипаттама (міндетті емес)' }),
+      label: t({
+        ru: 'Описание (опционально)',
+        en: 'Description (optional)',
+        kk: 'Сипаттама (міндетті емес)',
+      }),
       help: t({
         ru: 'Добавьте заметку о том, для кого эта ссылка',
         en: 'Add a note about who this link is for',
@@ -64,4 +84,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

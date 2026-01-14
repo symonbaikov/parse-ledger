@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'settingsWorkspacePage',
@@ -36,7 +36,11 @@ const content = {
       }),
     },
     toasts: {
-      inviteSent: t({ ru: 'Приглашение отправлено', en: 'Invitation sent', kk: 'Шақыру жіберілді' }),
+      inviteSent: t({
+        ru: 'Приглашение отправлено',
+        en: 'Invitation sent',
+        kk: 'Шақыру жіберілді',
+      }),
       linkCopied: t({ ru: 'Ссылка скопирована', en: 'Link copied', kk: 'Сілтеме көшірілді' }),
     },
     roles: {
@@ -65,7 +69,11 @@ const content = {
         en: 'Only the owner or an admin can send invitations.',
         kk: 'Шақыруларды тек иесі немесе әкімші жібере алады.',
       }),
-      permissionsTitle: t({ ru: 'Права доступа', en: 'Access permissions', kk: 'Қолжетімділік құқықтары' }),
+      permissionsTitle: t({
+        ru: 'Права доступа',
+        en: 'Access permissions',
+        kk: 'Қолжетімділік құқықтары',
+      }),
       permissionsHint: t({
         ru: 'Отметьте, что может редактировать участник. Если не отмечено — только просмотр.',
         en: 'Select what the member can edit. If unchecked, they can only view.',
@@ -76,14 +84,30 @@ const content = {
         canEditCustomTables: t({ ru: 'Таблицы', en: 'Tables', kk: 'Кестелер' }),
         canEditCategories: t({ ru: 'Категории', en: 'Categories', kk: 'Санаттар' }),
         canEditDataEntry: t({ ru: 'Ввод данных', en: 'Data entry', kk: 'Деректерді енгізу' }),
-        canShareFiles: t({ ru: 'Ссылки и доступ к файлам', en: 'File sharing & access', kk: 'Файлдарға сілтеме және қолжетімділік' }),
+        canShareFiles: t({
+          ru: 'Ссылки и доступ к файлам',
+          en: 'File sharing & access',
+          kk: 'Файлдарға сілтеме және қолжетімділік',
+        }),
       },
       send: t({ ru: 'Отправить приглашение', en: 'Send invitation', kk: 'Шақыру жіберу' }),
-      inviteLinkLabel: t({ ru: 'Ссылка на приглашение', en: 'Invitation link', kk: 'Шақыру сілтемесі' }),
+      inviteLinkLabel: t({
+        ru: 'Ссылка на приглашение',
+        en: 'Invitation link',
+        kk: 'Шақыру сілтемесі',
+      }),
     },
     pending: {
-      title: t({ ru: 'Ожидающие приглашения', en: 'Pending invitations', kk: 'Күтілетін шақырулар' }),
-      empty: t({ ru: 'Пока нет активных приглашений.', en: 'No active invitations yet.', kk: 'Әзірше белсенді шақырулар жоқ.' }),
+      title: t({
+        ru: 'Ожидающие приглашения',
+        en: 'Pending invitations',
+        kk: 'Күтілетін шақырулар',
+      }),
+      empty: t({
+        ru: 'Пока нет активных приглашений.',
+        en: 'No active invitations yet.',
+        kk: 'Әзірше белсенді шақырулар жоқ.',
+      }),
       validUntil: t({ ru: 'Действительно до', en: 'Valid until', kk: 'Мерзімі' }),
       copyLink: t({ ru: 'Копировать ссылку', en: 'Copy link', kk: 'Сілтемені көшіру' }),
     },

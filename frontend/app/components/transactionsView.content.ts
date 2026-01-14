@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'transactionsView',
@@ -8,7 +8,11 @@ const content = {
       en: 'Search by counterparty, purpose, or category...',
       kk: 'Контрагент, мақсат немесе санат бойынша іздеу...',
     }),
-    empty: t({ ru: 'Транзакции не найдены', en: 'No transactions found', kk: 'Транзакциялар табылмады' }),
+    empty: t({
+      ru: 'Транзакции не найдены',
+      en: 'No transactions found',
+      kk: 'Транзакциялар табылмады',
+    }),
     pagination: {
       rowsPerPage: t({ ru: 'Строк на странице:', en: 'Rows per page:', kk: 'Беттегі жолдар:' }),
       of: t({ ru: 'из', en: 'of', kk: '/' }),

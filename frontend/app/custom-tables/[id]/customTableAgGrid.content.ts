@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'customTableAgGrid',
@@ -14,7 +14,11 @@ const content = {
     },
     agGrid: {
       loadingOoo: t({ ru: 'Загрузка...', en: 'Loading...', kk: 'Жүктелуде...' }),
-      noRowsToShow: t({ ru: 'Нет строк для отображения', en: 'No rows to show', kk: 'Көрсететін жолдар жоқ' }),
+      noRowsToShow: t({
+        ru: 'Нет строк для отображения',
+        en: 'No rows to show',
+        kk: 'Көрсететін жолдар жоқ',
+      }),
       enabled: t({ ru: 'Включено', en: 'Enabled', kk: 'Қосулы' }),
       disabled: t({ ru: 'Отключено', en: 'Disabled', kk: 'Өшірулі' }),
       filterOoo: t({ ru: 'Фильтр...', en: 'Filter...', kk: 'Сүзгі...' }),
@@ -25,8 +29,16 @@ const content = {
       empty: t({ ru: 'Выберите', en: 'Select', kk: 'Таңдаңыз' }),
       lessThan: t({ ru: 'Меньше', en: 'Less than', kk: 'Кіші' }),
       greaterThan: t({ ru: 'Больше', en: 'Greater than', kk: 'Үлкен' }),
-      lessThanOrEqual: t({ ru: 'Меньше или равно', en: 'Less than or equal', kk: 'Кіші немесе тең' }),
-      greaterThanOrEqual: t({ ru: 'Больше или равно', en: 'Greater than or equal', kk: 'Үлкен немесе тең' }),
+      lessThanOrEqual: t({
+        ru: 'Меньше или равно',
+        en: 'Less than or equal',
+        kk: 'Кіші немесе тең',
+      }),
+      greaterThanOrEqual: t({
+        ru: 'Больше или равно',
+        en: 'Greater than or equal',
+        kk: 'Үлкен немесе тең',
+      }),
       inRange: t({ ru: 'В диапазоне', en: 'In range', kk: 'Аралықта' }),
       inRangeStart: t({ ru: 'От', en: 'From', kk: 'Бастап' }),
       inRangeEnd: t({ ru: 'До', en: 'To', kk: 'Дейін' }),
@@ -66,4 +78,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

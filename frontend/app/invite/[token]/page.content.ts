@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'invitePage',
@@ -50,7 +50,11 @@ const content = {
       login: t({ ru: 'Войти', en: 'Log in', kk: 'Кіру' }),
       register: t({ ru: 'Зарегистрироваться', en: 'Sign up', kk: 'Тіркелу' }),
       accept: t({ ru: 'Принять приглашение', en: 'Accept invitation', kk: 'Шақыруды қабылдау' }),
-      loginAnother: t({ ru: 'Войти другим аккаунтом', en: 'Log in with another account', kk: 'Басқа аккаунтпен кіру' }),
+      loginAnother: t({
+        ru: 'Войти другим аккаунтом',
+        en: 'Log in with another account',
+        kk: 'Басқа аккаунтпен кіру',
+      }),
       goToApp: t({ ru: 'Перейти в приложение', en: 'Go to app', kk: 'Қосымшаға өту' }),
     },
     messages: {

@@ -1,9 +1,9 @@
 'use client';
 
-import Image from 'next/image';
-import Link from 'next/link';
 import { CheckCircle2, ExternalLink, Plug } from 'lucide-react';
 import { useIntlayer } from 'next-intlayer';
+import Image from 'next/image';
+import Link from 'next/link';
 
 export default function IntegrationsPage() {
   const t = useIntlayer('integrationsPage');
@@ -25,7 +25,11 @@ export default function IntegrationsPage() {
       ),
       actions: [
         { label: t.cards.googleSheets.actions.connect, href: '/integrations/google-sheets' },
-        { label: t.cards.googleSheets.actions.docs, href: 'https://support.google.com/docs', external: true },
+        {
+          label: t.cards.googleSheets.actions.docs,
+          href: 'https://support.google.com/docs',
+          external: true,
+        },
       ],
     },
     {
@@ -45,13 +49,17 @@ export default function IntegrationsPage() {
       ),
       actions: [
         { label: t.cards.telegram.actions.setup, href: '/settings/telegram' },
-        { label: t.cards.telegram.actions.guide, href: 'https://core.telegram.org/bots', external: true },
+        {
+          label: t.cards.telegram.actions.guide,
+          href: 'https://core.telegram.org/bots',
+          external: true,
+        },
       ],
     },
   ];
 
-  const active = integrations.filter((item) => item.active);
-  const available = integrations.filter((item) => !item.active);
+  const active = integrations.filter(item => item.active);
+  const available = integrations.filter(item => !item.active);
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -61,9 +69,7 @@ export default function IntegrationsPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
-          <p className="text-secondary mt-1">
-            {t.subtitle}
-          </p>
+          <p className="text-secondary mt-1">{t.subtitle}</p>
         </div>
       </div>
 
@@ -76,13 +82,15 @@ export default function IntegrationsPage() {
                 {t.empty.connected}
               </div>
             )}
-            {active.map((item) => (
+            {active.map(item => (
               <div
                 key={item.key}
                 className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">{item.icon}</div>
+                  <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
+                    {item.icon}
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg font-semibold text-gray-900">{item.name}</h2>
@@ -92,7 +100,7 @@ export default function IntegrationsPage() {
                     </div>
                     <p className="text-sm text-gray-600 mt-1">{item.description}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {item.actions.map((action) =>
+                      {item.actions.map(action =>
                         action.external ? (
                           <a
                             key={action.href}
@@ -130,13 +138,15 @@ export default function IntegrationsPage() {
                 {t.empty.available}
               </div>
             )}
-            {available.map((item) => (
+            {available.map(item => (
               <div
                 key={item.key}
                 className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">{item.icon}</div>
+                  <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
+                    {item.icon}
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <h2 className="text-lg font-semibold text-gray-900">{item.name}</h2>
@@ -146,7 +156,7 @@ export default function IntegrationsPage() {
                     </div>
                     <p className="text-sm text-gray-600 mt-1">{item.description}</p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {item.actions.map((action) =>
+                      {item.actions.map(action =>
                         action.external ? (
                           <a
                             key={action.href}

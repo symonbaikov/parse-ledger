@@ -1,39 +1,39 @@
 'use client';
 
-import React, { useState } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  FormControlLabel,
-  Switch,
-  Box,
-  Paper,
-  Typography,
-  IconButton,
-  Chip,
-  Alert,
-  Tooltip,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-} from '@mui/material';
 import {
   ContentCopy as CopyIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
   Link as LinkIcon,
 } from '@mui/icons-material';
-import api from '../lib/api';
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormControlLabel,
+  IconButton,
+  InputLabel,
+  List,
+  ListItem,
+  ListItemSecondaryAction,
+  ListItemText,
+  MenuItem,
+  Paper,
+  Select,
+  Switch,
+  TextField,
+  Tooltip,
+  Typography,
+} from '@mui/material';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import React, { useState } from 'react';
+import api from '../lib/api';
 
 interface SharedLink {
   id: string;
@@ -230,9 +230,7 @@ export default function ShareDialog({
             {t.createButton}
           </Button>
 
-          {copiedToken && (
-            <Alert severity="success">{t.createdCopied}</Alert>
-          )}
+          {copiedToken && <Alert severity="success">{t.createdCopied}</Alert>}
         </Box>
       </Paper>
 
@@ -259,7 +257,11 @@ export default function ShareDialog({
                 <ListItemText
                   primary={
                     <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
-                      <Chip label={getPermissionLabel(link.permission)} size="small" color="primary" />
+                      <Chip
+                        label={getPermissionLabel(link.permission)}
+                        size="small"
+                        color="primary"
+                      />
                       <Chip
                         label={getStatusLabel(link.status)}
                         size="small"
@@ -282,7 +284,8 @@ export default function ShareDialog({
                         </Typography>
                       )}
                       <Typography variant="caption" color="text.secondary">
-                        {t.createdPrefix.value}: {formatDate(link.createdAt)} • {t.visitsPrefix.value}: {link.accessCount}
+                        {t.createdPrefix.value}: {formatDate(link.createdAt)} •{' '}
+                        {t.visitsPrefix.value}: {link.accessCount}
                       </Typography>
                     </Box>
                   }

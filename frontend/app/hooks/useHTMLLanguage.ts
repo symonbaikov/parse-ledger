@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
 import { getHTMLTextDir } from 'intlayer';
 import { useLocale } from 'next-intlayer';
+import { useEffect } from 'react';
 
 export function useHTMLLanguage() {
   const { locale } = useLocale();
@@ -13,4 +13,3 @@ export function useHTMLLanguage() {
     document.documentElement.dir = getHTMLTextDir(locale);
   }, [locale]);
 }
-

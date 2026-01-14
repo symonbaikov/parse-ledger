@@ -1,38 +1,38 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Cancel, Edit, Save } from '@mui/icons-material';
 import {
-  Container,
-  Typography,
+  Alert,
   Box,
+  Button,
+  Checkbox,
+  Chip,
+  CircularProgress,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControl,
+  FormControlLabel,
+  FormGroup,
+  IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Chip,
   TextField,
-  Button,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  FormControlLabel,
-  Checkbox,
-  FormGroup,
-  MenuItem,
-  Select,
-  FormControl,
-  InputLabel,
-  Alert,
-  CircularProgress,
+  Typography,
 } from '@mui/material';
-import { Edit, Save, Cancel } from '@mui/icons-material';
-import apiClient from '../../lib/api';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { useEffect, useState } from 'react';
+import apiClient from '../../lib/api';
 
 interface User {
   id: string;
@@ -151,10 +151,8 @@ export default function UsersManagementPage() {
   };
 
   const handleTogglePermission = (permission: string) => {
-    setSelectedPermissions((prev) =>
-      prev.includes(permission)
-        ? prev.filter((p) => p !== permission)
-        : [...prev, permission],
+    setSelectedPermissions(prev =>
+      prev.includes(permission) ? prev.filter(p => p !== permission) : [...prev, permission],
     );
   };
 
@@ -179,7 +177,7 @@ export default function UsersManagementPage() {
   };
 
   const filteredUsers = users.filter(
-    (u) =>
+    u =>
       u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
@@ -202,7 +200,7 @@ export default function UsersManagementPage() {
             <TextField
               label={t.search.value}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               sx={{ flexGrow: 1 }}
             />
             <Button variant="outlined" onClick={loadUsers} disabled={loading}>
@@ -229,7 +227,7 @@ export default function UsersManagementPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredUsers.map((user) => (
+                  {filteredUsers.map(user => (
                     <TableRow key={user.id}>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>{user.name}</TableCell>
@@ -237,7 +235,7 @@ export default function UsersManagementPage() {
                         <FormControl size="small" sx={{ minWidth: 120 }}>
                           <Select
                             value={user.role}
-                            onChange={(e) => handleUpdateRole(user.id, e.target.value)}
+                            onChange={e => handleUpdateRole(user.id, e.target.value)}
                           >
                             <MenuItem value="admin">{t.roles.admin}</MenuItem>
                             <MenuItem value="user">{t.roles.user}</MenuItem>
@@ -299,10 +297,11 @@ export default function UsersManagementPage() {
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              {t.dialog.rolePrefix.value}: <strong>{editingUser?.role}</strong>. {t.dialog.subtitleSuffix}
+              {t.dialog.rolePrefix.value}: <strong>{editingUser?.role}</strong>.{' '}
+              {t.dialog.subtitleSuffix}
             </Typography>
             <FormGroup>
-              {ALL_PERMISSIONS.map((perm) => (
+              {ALL_PERMISSIONS.map(perm => (
                 <FormControlLabel
                   key={perm.value}
                   control={
@@ -338,8 +337,3 @@ export default function UsersManagementPage() {
     </Container>
   );
 }
-
-
-
-
-

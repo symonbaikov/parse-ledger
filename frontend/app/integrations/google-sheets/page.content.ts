@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'googleSheetsIntegrationPage',
@@ -41,8 +41,16 @@ const content = {
         en: 'Opening Google authorization…',
         kk: 'Google авторизациясы ашылуда…',
       }),
-      syncStarted: t({ ru: 'Синхронизация запущена', en: 'Sync started', kk: 'Синхрондау басталды' }),
-      removed: t({ ru: 'Подключение отключено', en: 'Connection removed', kk: 'Қосылым ажыратылды' }),
+      syncStarted: t({
+        ru: 'Синхронизация запущена',
+        en: 'Sync started',
+        kk: 'Синхрондау басталды',
+      }),
+      removed: t({
+        ru: 'Подключение отключено',
+        en: 'Connection removed',
+        kk: 'Қосылым ажыратылды',
+      }),
     },
     loginRequired: {
       title: t({
@@ -57,7 +65,11 @@ const content = {
       }),
     },
     header: {
-      title: t({ ru: 'Подключение Google Sheets', en: 'Google Sheets connection', kk: 'Google Sheets қосу' }),
+      title: t({
+        ru: 'Подключение Google Sheets',
+        en: 'Google Sheets connection',
+        kk: 'Google Sheets қосу',
+      }),
       subtitle: t({
         ru: 'Укажите таблицу и лист, куда будут отправляться данные. После подключения вставьте Apps Script из документации для отправки вебхуков.',
         en: 'Specify the spreadsheet and sheet tab for sending data. After connecting, paste the Apps Script from the docs to send webhooks.',
@@ -67,14 +79,22 @@ const content = {
     step1: {
       label: t({ ru: 'Шаг 1', en: 'Step 1', kk: '1-қадам' }),
       title: t({ ru: 'Добавить таблицу', en: 'Add a sheet', kk: 'Кесте қосу' }),
-      sheetUrlLabel: t({ ru: 'Ссылка или ID таблицы', en: 'Spreadsheet URL or ID', kk: 'Кестенің сілтемесі немесе ID' }),
+      sheetUrlLabel: t({
+        ru: 'Ссылка или ID таблицы',
+        en: 'Spreadsheet URL or ID',
+        kk: 'Кестенің сілтемесі немесе ID',
+      }),
       sheetUrlPlaceholder: t({
         ru: 'https://docs.google.com/spreadsheets/d/… или 1A2B3C…',
         en: 'https://docs.google.com/spreadsheets/d/… or 1A2B3C…',
         kk: 'https://docs.google.com/spreadsheets/d/… немесе 1A2B3C…',
       }),
       nameLabel: t({ ru: 'Название в системе', en: 'Name in system', kk: 'Жүйедегі атауы' }),
-      namePlaceholder: t({ ru: 'Например: Выписки Казахстан', en: 'e.g. KZ statements', kk: 'Мысалы: Қазақстан үзінділері' }),
+      namePlaceholder: t({
+        ru: 'Например: Выписки Казахстан',
+        en: 'e.g. KZ statements',
+        kk: 'Мысалы: Қазақстан үзінділері',
+      }),
       nameHelp: t({
         ru: 'Если оставить пустым — используем название из Google Sheets.',
         en: 'If empty, we will use the name from Google Sheets.',
@@ -85,8 +105,16 @@ const content = {
         en: 'Worksheet name (optional, if not Sheet1)',
         kk: 'Парақ атауы (міндетті емес, Sheet1 болмаса)',
       }),
-      worksheetPlaceholder: t({ ru: 'Например: Отгрузки', en: 'e.g. Shipments', kk: 'Мысалы: Жөнелтулер' }),
-      connectButton: t({ ru: 'Авторизоваться и подключить', en: 'Authorize and connect', kk: 'Авторизация жасап қосу' }),
+      worksheetPlaceholder: t({
+        ru: 'Например: Отгрузки',
+        en: 'e.g. Shipments',
+        kk: 'Мысалы: Жөнелтулер',
+      }),
+      connectButton: t({
+        ru: 'Авторизоваться и подключить',
+        en: 'Authorize and connect',
+        kk: 'Авторизация жасап қосу',
+      }),
     },
     step2: {
       label: t({ ru: 'Шаг 2', en: 'Step 2', kk: '2-қадам' }),
@@ -96,15 +124,31 @@ const content = {
         en: 'Copy the script from our guide and set an onEdit trigger to send changes via webhook.',
         kk: 'Нұсқаулықтағы скриптті көшіріп, өзгерістерді вебхук арқылы жіберу үшін onEdit триггерін орнатыңыз.',
       }),
-      appsScriptDoc: t({ ru: 'Инструкция по Apps Script', en: 'Apps Script guide', kk: 'Apps Script нұсқаулығы' }),
-      openSheets: t({ ru: 'Открыть Google Sheets', en: 'Open Google Sheets', kk: 'Google Sheets ашу' }),
-      webhookEndpointLabel: t({ ru: 'Эндпоинт вебхука', en: 'Webhook endpoint', kk: 'Вебхук эндпоинты' }),
+      appsScriptDoc: t({
+        ru: 'Инструкция по Apps Script',
+        en: 'Apps Script guide',
+        kk: 'Apps Script нұсқаулығы',
+      }),
+      openSheets: t({
+        ru: 'Открыть Google Sheets',
+        en: 'Open Google Sheets',
+        kk: 'Google Sheets ашу',
+      }),
+      webhookEndpointLabel: t({
+        ru: 'Эндпоинт вебхука',
+        en: 'Webhook endpoint',
+        kk: 'Вебхук эндпоинты',
+      }),
       webhookHeaderLabel: t({ ru: 'Заголовок', en: 'Header', kk: 'Тақырыпша' }),
       webhookTokenHint: t({ ru: 'ваш токен', en: 'your token', kk: 'сіздің токеніңіз' }),
     },
     list: {
       title: t({ ru: 'Подключённые таблицы', en: 'Connected sheets', kk: 'Қосылған кестелер' }),
-      subtitle: t({ ru: 'Автообновление по вебхуку', en: 'Auto updates via webhook', kk: 'Вебхук арқылы авто жаңарту' }),
+      subtitle: t({
+        ru: 'Автообновление по вебхуку',
+        en: 'Auto updates via webhook',
+        kk: 'Вебхук арқылы авто жаңарту',
+      }),
       empty: t({
         ru: 'Пока нет подключений. Добавьте первую таблицу через форму слева.',
         en: 'No connections yet. Add your first sheet using the form on the left.',
@@ -117,7 +161,11 @@ const content = {
       fields: {
         idPrefix: t({ ru: 'ID', en: 'ID', kk: 'ID' }),
         worksheetPrefix: t({ ru: 'Лист', en: 'Sheet', kk: 'Парақ' }),
-        lastSyncPrefix: t({ ru: 'Последняя синхронизация', en: 'Last sync', kk: 'Соңғы синхрондау' }),
+        lastSyncPrefix: t({
+          ru: 'Последняя синхронизация',
+          en: 'Last sync',
+          kk: 'Соңғы синхрондау',
+        }),
       },
       actions: {
         authorize: t({ ru: 'Авторизовать', en: 'Authorize', kk: 'Авторизация' }),
@@ -130,4 +178,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

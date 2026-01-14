@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
 import {
   AlertCircle,
   CheckCircle2,
@@ -11,10 +12,9 @@ import {
   RefreshCcw,
   Trash2,
 } from 'lucide-react';
-import apiClient from '@/app/lib/api';
-import toast from 'react-hot-toast';
-import { useAuth } from '@/app/hooks/useAuth';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 
 interface GoogleSheetConnection {
   id: string;
@@ -85,7 +85,11 @@ export default function GoogleSheetsIntegrationPage() {
     }
   };
 
-  const startOauth = async (payload: { sheetId: string; sheetName?: string; worksheetName?: string }) => {
+  const startOauth = async (payload: {
+    sheetId: string;
+    sheetName?: string;
+    worksheetName?: string;
+  }) => {
     const state = encodeOauthState({
       sheetId: payload.sheetId,
       sheetName: payload.sheetName?.trim() || undefined,
@@ -183,9 +187,7 @@ export default function GoogleSheetsIntegrationPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm text-center">
           <p className="text-gray-800 font-semibold mb-2">{t.loginRequired.title}</p>
-          <p className="text-sm text-gray-600">
-            {t.loginRequired.subtitle}
-          </p>
+          <p className="text-sm text-gray-600">{t.loginRequired.subtitle}</p>
         </div>
       </div>
     );
@@ -199,9 +201,7 @@ export default function GoogleSheetsIntegrationPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t.header.title}</h1>
-          <p className="text-secondary mt-1">
-            {t.header.subtitle}
-          </p>
+          <p className="text-secondary mt-1">{t.header.subtitle}</p>
         </div>
       </div>
 
@@ -243,7 +243,7 @@ export default function GoogleSheetsIntegrationPage() {
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   placeholder={t.step1.sheetUrlPlaceholder.value}
                   value={sheetUrl}
-                  onChange={(e) => setSheetUrl(e.target.value)}
+                  onChange={e => setSheetUrl(e.target.value)}
                 />
               </label>
 
@@ -254,23 +254,19 @@ export default function GoogleSheetsIntegrationPage() {
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   placeholder={t.step1.namePlaceholder.value}
                   value={sheetName}
-                  onChange={(e) => setSheetName(e.target.value)}
+                  onChange={e => setSheetName(e.target.value)}
                 />
-                <div className="mt-1 text-xs text-gray-500">
-                  {t.step1.nameHelp}
-                </div>
+                <div className="mt-1 text-xs text-gray-500">{t.step1.nameHelp}</div>
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-gray-700">
-                  {t.step1.worksheetLabel}
-                </span>
+                <span className="text-sm font-medium text-gray-700">{t.step1.worksheetLabel}</span>
                 <input
                   type="text"
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   placeholder={t.step1.worksheetPlaceholder.value}
                   value={worksheetName}
-                  onChange={(e) => setWorksheetName(e.target.value)}
+                  onChange={e => setWorksheetName(e.target.value)}
                 />
               </label>
 
@@ -296,9 +292,7 @@ export default function GoogleSheetsIntegrationPage() {
                 <h2 className="text-lg font-semibold text-gray-900">{t.step2.title}</h2>
               </div>
             </div>
-            <p className="text-sm text-gray-600 mb-3">
-              {t.step2.description}
-            </p>
+            <p className="text-sm text-gray-600 mb-3">{t.step2.description}</p>
             <div className="flex flex-wrap gap-2">
               <a
                 href="https://github.com/symonbaikov/parse-ledger/blob/main/docs/google-sheets-apps-script.md"
@@ -323,7 +317,9 @@ export default function GoogleSheetsIntegrationPage() {
               {t.step2.webhookEndpointLabel.value}:{' '}
               <code className="font-mono">/api/v1/integrations/google-sheets/update</code> <br />
               {t.step2.webhookHeaderLabel.value}:{' '}
-              <code className="font-mono">X-Webhook-Token: &lt;{t.step2.webhookTokenHint.value}&gt;</code>
+              <code className="font-mono">
+                X-Webhook-Token: &lt;{t.step2.webhookTokenHint.value}&gt;
+              </code>
             </div>
           </div>
         </div>
@@ -337,7 +333,7 @@ export default function GoogleSheetsIntegrationPage() {
 
             {loadingList ? (
               <div className="space-y-2">
-                {[1, 2].map((key) => (
+                {[1, 2].map(key => (
                   <div
                     key={key}
                     className="animate-pulse rounded-lg border border-gray-100 bg-gray-50 p-3 h-20"
@@ -350,7 +346,7 @@ export default function GoogleSheetsIntegrationPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {connections.map((item) => (
+                {connections.map(item => (
                   <div
                     key={item.id}
                     className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm"
@@ -370,9 +366,7 @@ export default function GoogleSheetsIntegrationPage() {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mt-1 break-all">
-                            ID: {item.sheetId}
-                          </p>
+                          <p className="text-xs text-gray-500 mt-1 break-all">ID: {item.sheetId}</p>
                           {item.worksheetName && (
                             <p className="text-xs text-gray-500">
                               {t.list.fields.worksheetPrefix.value}: {item.worksheetName}
@@ -381,7 +375,9 @@ export default function GoogleSheetsIntegrationPage() {
                           <p className="text-xs text-gray-500">
                             {t.list.fields.lastSyncPrefix.value}:{' '}
                             {item.lastSync
-                              ? new Date(item.lastSync).toLocaleString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US')
+                              ? new Date(item.lastSync).toLocaleString(
+                                  locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US',
+                                )
                               : t.list.dash}
                           </p>
                         </div>
@@ -390,7 +386,13 @@ export default function GoogleSheetsIntegrationPage() {
                         {item.oauthConnected === false && (
                           <button
                             type="button"
-                            onClick={() => startOauth({ sheetId: item.sheetId, sheetName: item.sheetName, worksheetName: item.worksheetName || undefined })}
+                            onClick={() =>
+                              startOauth({
+                                sheetId: item.sheetId,
+                                sheetName: item.sheetName,
+                                worksheetName: item.worksheetName || undefined,
+                              })
+                            }
                             className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
                           >
                             <Plug className="h-4 w-4" />

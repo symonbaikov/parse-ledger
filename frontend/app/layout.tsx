@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import { Providers } from './providers';
-import Navigation from './components/Navigation';
-import GlobalBreadcrumbs from './components/GlobalBreadcrumbs';
-import { IntlayerServerProvider, getLocale } from 'next-intlayer/server';
 import { getIntlayer } from 'next-intlayer';
+import { IntlayerServerProvider, getLocale } from 'next-intlayer/server';
+import GlobalBreadcrumbs from './components/GlobalBreadcrumbs';
+import Navigation from './components/Navigation';
+import { Providers } from './providers';
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -19,13 +19,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const resolvedLocale = typeof locale === 'string' ? locale : 'en';
+  const direction = resolvedLocale.startsWith('ar') ? 'rtl' : 'ltr';
+
   return (
-    <html lang={undefined} dir={undefined}>
+    <html lang={resolvedLocale} dir={direction}>
       <body>
         <IntlayerServerProvider>
           <Providers>

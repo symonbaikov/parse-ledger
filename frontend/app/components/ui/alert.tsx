@@ -1,7 +1,7 @@
 'use client';
 
-import * as React from 'react';
 import { cn } from '@/app/lib/utils';
+import * as React from 'react';
 
 export type AlertVariant = 'default' | 'success' | 'error';
 
@@ -11,17 +11,17 @@ const variantClasses: Record<AlertVariant, string> = {
   error: 'border-red-200 bg-red-50 text-red-950',
 };
 
-const Alert = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & { variant?: AlertVariant }>(
-  ({ className, variant = 'default', ...props }, ref) => (
-    <div
-      ref={ref}
-      role="alert"
-      className={cn('rounded-2xl border px-4 py-3 text-sm', variantClasses[variant], className)}
-      {...props}
-    />
-  ),
-);
+const Alert = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { variant?: AlertVariant }
+>(({ className, variant = 'default', ...props }, ref) => (
+  <div
+    ref={ref}
+    role="alert"
+    className={cn('rounded-2xl border px-4 py-3 text-sm', variantClasses[variant], className)}
+    {...props}
+  />
+));
 Alert.displayName = 'Alert';
 
 export { Alert };
-

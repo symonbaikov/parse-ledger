@@ -1,4 +1,4 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'statementsPage',
@@ -41,20 +41,40 @@ const content = {
     },
     download: {
       loading: t({ ru: 'Скачивание файла...', en: 'Downloading...', kk: 'Жүктелуде...' }),
-      success: t({ ru: 'Файл успешно скачан', en: 'Downloaded successfully', kk: 'Файл сәтті жүктелді' }),
-      failed: t({ ru: 'Не удалось скачать файл', en: 'Failed to download file', kk: 'Файлды жүктеу мүмкін болмады' }),
+      success: t({
+        ru: 'Файл успешно скачан',
+        en: 'Downloaded successfully',
+        kk: 'Файл сәтті жүктелді',
+      }),
+      failed: t({
+        ru: 'Не удалось скачать файл',
+        en: 'Failed to download file',
+        kk: 'Файлды жүктеу мүмкін болмады',
+      }),
     },
     viewFile: {
-      failed: t({ ru: 'Не удалось открыть файл', en: 'Failed to open file', kk: 'Файлды ашу мүмкін болмады' }),
+      failed: t({
+        ru: 'Не удалось открыть файл',
+        en: 'Failed to open file',
+        kk: 'Файлды ашу мүмкін болмады',
+      }),
       previewTitle: t({ ru: 'Предпросмотр файла', en: 'File preview', kk: 'Файл алдын ала қарау' }),
       close: t({ ru: 'Закрыть', en: 'Close', kk: 'Жабу' }),
       download: t({ ru: 'Скачать файл', en: 'Download file', kk: 'Файлды жүктеу' }),
     },
     logs: {
-      openFailed: t({ ru: 'Не удалось получить логи обработки', en: 'Failed to load logs', kk: 'Өңдеу логтарын жүктеу мүмкін болмады' }),
+      openFailed: t({
+        ru: 'Не удалось получить логи обработки',
+        en: 'Failed to load logs',
+        kk: 'Өңдеу логтарын жүктеу мүмкін болмады',
+      }),
       title: t({ ru: 'Логи обработки', en: 'Processing logs', kk: 'Өңдеу логтары' }),
       empty: t({ ru: 'Логи пока отсутствуют', en: 'No logs yet', kk: 'Әзірше логтар жоқ' }),
-      autoRefresh: t({ ru: 'Обновляется каждые 3 секунды. Закройте окно, чтобы остановить.', en: 'Refreshes every 3 seconds. Close the window to stop.', kk: 'Әр 3 секунд сайын жаңарады. Тоқтату үшін терезені жабыңыз.' }),
+      autoRefresh: t({
+        ru: 'Обновляется каждые 3 секунды. Закройте окно, чтобы остановить.',
+        en: 'Refreshes every 3 seconds. Close the window to stop.',
+        kk: 'Әр 3 секунд сайын жаңарады. Тоқтату үшін терезені жабыңыз.',
+      }),
     },
     loadListError: t({
       ru: 'Не удалось загрузить список выписок',
@@ -98,19 +118,39 @@ const content = {
         en: 'PDF, Excel, CSV and images are supported',
         kk: 'PDF, Excel, CSV және суреттер қолдау көрсетіледі',
       }),
-      unsupportedFormat: t({ ru: 'Неподдерживаемый формат файла', en: 'Unsupported file format', kk: 'Қолдау көрсетілмейтін файл форматы' }),
-      pickAtLeastOne: t({ ru: 'Выберите хотя бы один файл', en: 'Select at least one file', kk: 'Кемінде бір файл таңдаңыз' }),
+      unsupportedFormat: t({
+        ru: 'Неподдерживаемый формат файла',
+        en: 'Unsupported file format',
+        kk: 'Қолдау көрсетілмейтін файл форматы',
+      }),
+      pickAtLeastOne: t({
+        ru: 'Выберите хотя бы один файл',
+        en: 'Select at least one file',
+        kk: 'Кемінде бір файл таңдаңыз',
+      }),
       uploadFailed: t({
         ru: 'Не удалось загрузить файлы',
         en: 'Failed to upload files',
         kk: 'Файлдарды жүктеу мүмкін болмады',
       }),
-      uploadedProcessing: t({ ru: 'Файлы загружены, начата обработка', en: 'Files uploaded, processing started', kk: 'Файлдар жүктелді, өңдеу басталды' }),
+      uploadedProcessing: t({
+        ru: 'Файлы загружены, начата обработка',
+        en: 'Files uploaded, processing started',
+        kk: 'Файлдар жүктелді, өңдеу басталды',
+      }),
       uploading: t({ ru: 'Загрузка...', en: 'Uploading...', kk: 'Жүктелуде...' }),
       uploadFiles: t({ ru: 'Загрузить файлы', en: 'Upload files', kk: 'Файлдарды жүктеу' }),
       dropHint1: t({ ru: 'Нажмите для выбора', en: 'Click to select', kk: 'Таңдау үшін басыңыз' }),
-      dropHint2: t({ ru: 'или перетащите файлы', en: 'or drag and drop files', kk: 'немесе файлдарды сүйреп әкеліңіз' }),
-      maxHint: t({ ru: 'Максимум 5 файлов до 10 МБ каждый', en: 'Up to 5 files, 10 MB each', kk: 'Ең көбі 5 файл, әрқайсысы 10 МБ дейін' }),
+      dropHint2: t({
+        ru: 'или перетащите файлы',
+        en: 'or drag and drop files',
+        kk: 'немесе файлдарды сүйреп әкеліңіз',
+      }),
+      maxHint: t({
+        ru: 'Максимум 5 файлов до 10 МБ каждый',
+        en: 'Up to 5 files, 10 MB each',
+        kk: 'Ең көбі 5 файл, әрқайсысы 10 МБ дейін',
+      }),
       mbShort: t({ ru: 'МБ', en: 'MB', kk: 'МБ' }),
       cancel: t({ ru: 'Отмена', en: 'Cancel', kk: 'Болдырмау' }),
     },

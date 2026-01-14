@@ -3,7 +3,7 @@
 @import "ag-grid-community/styles/ag-theme-quartz.css";
 
 :root {
-  --background: #F3F2EF; /* LinkedIn light gray background */
+  --background: #f3f2ef; /* LinkedIn light gray background */
   --foreground: #191919;
   --primary: #0a66c2; /* LinkedIn Blue */
   --primary-hover: #004182;
@@ -27,7 +27,8 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Fira Sans", Ubuntu, Oxygen, "Oxygen Sans", Cantarell, "Droid Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Lucida Grande", Helvetica, Arial, sans-serif;
+  font-family:
+    -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Fira Sans", Ubuntu, Oxygen, "Oxygen Sans", Cantarell, "Droid Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Lucida Grande", Helvetica, Arial, sans-serif;
   margin: 0;
   padding: 0;
   min-height: 100vh;
@@ -71,7 +72,7 @@ body.ff-col-resizing {
 }
 
 .ag-theme-quartz .ag-header-row .ag-header-cell.ff-col-selected::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -132,15 +133,18 @@ body.ff-col-resizing {
   border-top: 2px solid rgb(59, 130, 246) !important;
 }
 
-.ag-theme-quartz .ag-cell.ag-cell-range-selected:not(.ag-cell-range-single-cell).ag-cell-range-right {
+.ag-theme-quartz
+  .ag-cell.ag-cell-range-selected:not(.ag-cell-range-single-cell).ag-cell-range-right {
   border-right: 2px solid rgb(59, 130, 246) !important;
 }
 
-.ag-theme-quartz .ag-cell.ag-cell-range-selected:not(.ag-cell-range-single-cell).ag-cell-range-bottom {
+.ag-theme-quartz
+  .ag-cell.ag-cell-range-selected:not(.ag-cell-range-single-cell).ag-cell-range-bottom {
   border-bottom: 2px solid rgb(59, 130, 246) !important;
 }
 
-.ag-theme-quartz .ag-cell.ag-cell-range-selected:not(.ag-cell-range-single-cell).ag-cell-range-left {
+.ag-theme-quartz
+  .ag-cell.ag-cell-range-selected:not(.ag-cell-range-single-cell).ag-cell-range-left {
   border-left: 2px solid rgb(59, 130, 246) !important;
 }
 

@@ -2,20 +2,20 @@
 
 export const dynamic = 'force-dynamic';
 
-import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import apiClient from '@/app/lib/api';
 import {
+  Alert,
   Box,
   Button,
+  CircularProgress,
   Container,
   Paper,
   TextField,
   Typography,
-  Alert,
-  CircularProgress,
 } from '@mui/material';
-import apiClient from '@/app/lib/api';
 import { useIntlayer } from 'next-intlayer';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 
 const decodeOauthState = (raw: string): Record<string, any> | null => {
   try {
@@ -123,20 +123,20 @@ function CallbackContent() {
           <TextField
             label={t.fields.sheetId.value}
             value={sheetId}
-            onChange={(e) => setSheetId(e.target.value)}
+            onChange={e => setSheetId(e.target.value)}
             placeholder={t.fields.sheetIdPlaceholder.value}
             required
           />
           <TextField
             label={t.fields.connectionName.value}
             value={sheetName}
-            onChange={(e) => setSheetName(e.target.value)}
+            onChange={e => setSheetName(e.target.value)}
             placeholder={t.fields.connectionNamePlaceholder.value}
           />
           <TextField
             label={t.fields.worksheet.value}
             value={worksheetName}
-            onChange={(e) => setWorksheetName(e.target.value)}
+            onChange={e => setWorksheetName(e.target.value)}
             placeholder={t.fields.worksheetPlaceholder.value}
           />
           <Button variant="contained" onClick={handleSubmit} disabled={loading || !code}>

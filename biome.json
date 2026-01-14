@@ -10,6 +10,7 @@
       "**/coverage/**",
       "frontend/next-env.d.ts",
       "frontend/.intlayer/**",
+      ".intlayer/**",
       "frontend/.next/**",
       "frontend/out/**",
       "backend/uploads/**"
@@ -38,6 +39,12 @@
     "enabled": true,
     "rules": {
         "recommended": true,
+        "a11y": {
+          "useButtonType": "off"
+        },
+        "correctness": {
+          "useExhaustiveDependencies": "off"
+        },
         "suspicious": {
           "noExplicitAny": "off"
         },
@@ -52,6 +59,22 @@
     }
   },
   "overrides": [
+    {
+      "include": [
+        "frontend/**/*.{ts,tsx,js,jsx}",
+        "app/**/*.{ts,tsx,js,jsx}"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useButtonType": "off"
+          },
+          "correctness": {
+            "useExhaustiveDependencies": "off"
+          }
+        }
+      }
+    },
     {
       "include": [
         "**/@tests/**/*.{ts,tsx}",

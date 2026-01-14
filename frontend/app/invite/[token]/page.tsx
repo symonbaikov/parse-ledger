@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import apiClient from '@/app/lib/api';
 import {
   Alert,
   Box,
@@ -14,8 +13,9 @@ import {
   Typography,
 } from '@mui/material';
 import { ShieldCheck } from 'lucide-react';
-import apiClient from '@/app/lib/api';
 import { useIntlayer } from 'next-intlayer';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 
 type InvitationStatus = 'pending' | 'accepted' | 'cancelled' | 'expired';
 
@@ -69,7 +69,7 @@ export default function AcceptInvitePage() {
 
     apiClient
       .get(`/workspaces/invitations/${token}`)
-      .then((response) => {
+      .then(response => {
         setInvitation(response.data);
       })
       .catch((err: any) => {
@@ -87,7 +87,7 @@ export default function AcceptInvitePage() {
     setAuthLoading(true);
     apiClient
       .get('/auth/me')
-      .then((response) => {
+      .then(response => {
         setUser(response.data);
       })
       .catch(() => {
@@ -248,7 +248,12 @@ export default function AcceptInvitePage() {
                   {t.actions.accept}
                 </Button>
               ) : (
-                <Button variant="contained" onClick={() => (window.location.href = '/settings/workspace')}>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    window.location.href = '/settings/workspace';
+                  }}
+                >
                   {t.actions.goToApp}
                 </Button>
               )}

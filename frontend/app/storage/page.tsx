@@ -1,46 +1,39 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { resolveBankLogo } from '@bank-logos';
+import { Icon } from '@iconify/react';
 import {
-  Container,
-  Typography,
   Box,
+  Button,
+  Chip,
+  Container,
+  Divider,
+  FormControl,
+  InputAdornment,
+  Menu,
+  MenuItem,
   Paper,
+  Popover,
+  Select,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Chip,
   TextField,
-  InputAdornment,
-  Button,
   Tooltip,
-  Menu,
-  MenuItem,
-  FormControl,
-  Select,
-  Popover,
-  Divider,
+  Typography,
 } from '@mui/material';
-import {
-  Eye,
-  Download,
-  Share2,
-  MoreVertical,
-  Search,
-  Filter,
-} from 'lucide-react';
-import { Icon } from '@iconify/react';
-import { useRouter } from 'next/navigation';
 import { alpha } from '@mui/material/styles';
-import api from '../lib/api';
-import { DocumentTypeIcon } from '../components/DocumentTypeIcon';
-import toast from 'react-hot-toast';
+import { Download, Eye, Filter, MoreVertical, Search, Share2 } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { BankLogoAvatar } from '../components/BankLogoAvatar';
-import { resolveBankLogo } from '@bank-logos';
+import { DocumentTypeIcon } from '../components/DocumentTypeIcon';
+import api from '../lib/api';
 
 type FileAvailabilityStatus = 'both' | 'disk' | 'db' | 'missing';
 
@@ -162,7 +155,7 @@ export default function StoragePage() {
       const response = await api.get(`/storage/files/${fileId}/download`, {
         responseType: 'blob',
       });
-      
+
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -193,8 +186,8 @@ export default function StoragePage() {
         categoryId: categoryId || null,
       });
 
-      setFiles((prev) =>
-        prev.map((file) =>
+      setFiles(prev =>
+        prev.map(file =>
           file.id === fileId
             ? {
                 ...file,
@@ -212,20 +205,23 @@ export default function StoragePage() {
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString(locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return date.toLocaleDateString(
+      locale === 'kk' ? 'kk-KZ' : locale === 'ru' ? 'ru-RU' : 'en-US',
+      {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      },
+    );
   };
 
   const getStatusColor = (status: string) => {
@@ -272,8 +268,8 @@ export default function StoragePage() {
     }
   };
 
-  const bankOptions = Array.from(new Set(files.map((f) => f.bankName).filter(Boolean)));
-  const statusOptions = Array.from(new Set(files.map((f) => f.status).filter(Boolean)));
+  const bankOptions = Array.from(new Set(files.map(f => f.bankName).filter(Boolean)));
+  const statusOptions = Array.from(new Set(files.map(f => f.status).filter(Boolean)));
 
   const getAvailabilityLabel = (status: FileAvailabilityStatus) => {
     switch (status) {
@@ -333,7 +329,7 @@ export default function StoragePage() {
     );
   };
 
-  const filteredFiles = files.filter((file) => {
+  const filteredFiles = files.filter(file => {
     const normalizedBank = (file.bankName || '').toLowerCase();
     const normalizedCategoryName = (file.category?.name || '').toLowerCase();
     const normalizedAccount = (file.metadata?.accountNumber || '').toLowerCase();
@@ -348,14 +344,13 @@ export default function StoragePage() {
     const matchesBank = !filters.bank || file.bankName === filters.bank;
     const matchesCategory = !filters.categoryId || file.categoryId === filters.categoryId;
     const matchesOwnership =
-      !filters.ownership ||
-      (filters.ownership === 'owned' ? file.isOwner : !file.isOwner);
+      !filters.ownership || (filters.ownership === 'owned' ? file.isOwner : !file.isOwner);
 
     return matchesSearch && matchesStatus && matchesBank && matchesCategory && matchesOwnership;
   });
 
   const handleFilterChange = (field: keyof typeof filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }));
+    setFilters(prev => ({ ...prev, [field]: value }));
   };
 
   const handleOpenFilters = (event: React.MouseEvent<HTMLElement>) => {
@@ -383,7 +378,10 @@ export default function StoragePage() {
       {/* Header Section */}
       <Box sx={{ mb: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Box>
-          <Typography variant="h5" sx={{ mb: 1, color: '#111827', fontWeight: 600, letterSpacing: '-0.01em' }}>
+          <Typography
+            variant="h5"
+            sx={{ mb: 1, color: '#111827', fontWeight: 600, letterSpacing: '-0.01em' }}
+          >
             {t.title}
           </Typography>
           <Typography variant="body2" sx={{ color: '#6B7280', maxWidth: 600 }}>
@@ -394,34 +392,46 @@ export default function StoragePage() {
       </Box>
 
       {/* Main Content Card */}
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          borderRadius: 3, 
+      <Paper
+        elevation={0}
+        sx={{
+          borderRadius: 3,
           border: '1px solid #F3F4F6',
           overflow: 'hidden',
           bgcolor: 'white',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px 0 rgba(0, 0, 0, 0.01)'
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px 0 rgba(0, 0, 0, 0.01)',
         }}
       >
         {/* Controls Bar */}
-        <Box sx={{ p: 2.5, display: 'flex', gap: 2, borderBottom: '1px solid #F3F4F6', alignItems: 'center' }}>
+        <Box
+          sx={{
+            p: 2.5,
+            display: 'flex',
+            gap: 2,
+            borderBottom: '1px solid #F3F4F6',
+            alignItems: 'center',
+          }}
+        >
           <TextField
             placeholder={t.searchPlaceholder.value}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
             size="small"
             sx={{
-                width: 320,
-                '& .MuiOutlinedInput-root': {
-                    bgcolor: '#F9FAFB',
-                    borderRadius: 2,
-                    fontSize: '0.875rem',
-                    '& fieldset': { border: '1px solid transparent', transition: 'all 0.2s' },
-                    '&:hover fieldset': { borderColor: '#E5E7EB' },
-                    '&.Mui-focused fieldset': { borderColor: '#E5E7EB', borderWidth: 1, boxShadow: '0 0 0 2px rgba(243, 244, 246, 0.5)' },
+              width: 320,
+              '& .MuiOutlinedInput-root': {
+                bgcolor: '#F9FAFB',
+                borderRadius: 2,
+                fontSize: '0.875rem',
+                '& fieldset': { border: '1px solid transparent', transition: 'all 0.2s' },
+                '&:hover fieldset': { borderColor: '#E5E7EB' },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#E5E7EB',
+                  borderWidth: 1,
+                  boxShadow: '0 0 0 2px rgba(243, 244, 246, 0.5)',
                 },
-                '& .MuiOutlinedInput-input': { py: 1.25 }
+              },
+              '& .MuiOutlinedInput-input': { py: 1.25 },
             }}
             InputProps={{
               startAdornment: (
@@ -435,7 +445,7 @@ export default function StoragePage() {
             variant="text"
             startIcon={<Filter size={16} />}
             onClick={handleOpenFilters}
-            sx={{ 
+            sx={{
               color: filtersApplied ? '#111827' : '#6B7280',
               bgcolor: filtersApplied ? '#F3F4F6' : 'transparent',
               borderRadius: 2,
@@ -444,11 +454,24 @@ export default function StoragePage() {
               textTransform: 'none',
               fontWeight: 500,
               fontSize: '0.875rem',
-              '&:hover': { bgcolor: '#F9FAFB', color: '#111827' }
+              '&:hover': { bgcolor: '#F9FAFB', color: '#111827' },
             }}
-	          >
-	            {t.filters.button} {filtersApplied && <Box component="span" sx={{ ml: 1, display: 'inline-flex', width: 6, height: 6, borderRadius: '50%', bgcolor: '#3B82F6' }} />}
-	          </Button>
+          >
+            {t.filters.button}{' '}
+            {filtersApplied && (
+              <Box
+                component="span"
+                sx={{
+                  ml: 1,
+                  display: 'inline-flex',
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  bgcolor: '#3B82F6',
+                }}
+              />
+            )}
+          </Button>
         </Box>
 
         {/* Files Table */}
@@ -456,15 +479,126 @@ export default function StoragePage() {
           <Table sx={{ minWidth: 800 }}>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ pl: 3, py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.fileName}</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.bank}</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.account}</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.size}</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.status}</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.category}</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.access}</TableCell>
-                <TableCell sx={{ py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.createdAt}</TableCell>
-                <TableCell align="right" sx={{ pr: 3, py: 2, fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F3F4F6' }}>{t.table.actions}</TableCell>
+                <TableCell
+                  sx={{
+                    pl: 3,
+                    py: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#6B7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #F3F4F6',
+                  }}
+                >
+                  {t.table.fileName}
+                </TableCell>
+                <TableCell
+                  sx={{
+                    py: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#6B7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #F3F4F6',
+                  }}
+                >
+                  {t.table.bank}
+                </TableCell>
+                <TableCell
+                  sx={{
+                    py: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#6B7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #F3F4F6',
+                  }}
+                >
+                  {t.table.account}
+                </TableCell>
+                <TableCell
+                  sx={{
+                    py: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#6B7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #F3F4F6',
+                  }}
+                >
+                  {t.table.size}
+                </TableCell>
+                <TableCell
+                  sx={{
+                    py: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#6B7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #F3F4F6',
+                  }}
+                >
+                  {t.table.status}
+                </TableCell>
+                <TableCell
+                  sx={{
+                    py: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#6B7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #F3F4F6',
+                  }}
+                >
+                  {t.table.category}
+                </TableCell>
+                <TableCell
+                  sx={{
+                    py: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#6B7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #F3F4F6',
+                  }}
+                >
+                  {t.table.access}
+                </TableCell>
+                <TableCell
+                  sx={{
+                    py: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#6B7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #F3F4F6',
+                  }}
+                >
+                  {t.table.createdAt}
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={{
+                    pr: 3,
+                    py: 2,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: '#6B7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #F3F4F6',
+                  }}
+                >
+                  {t.table.actions}
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -472,101 +606,148 @@ export default function StoragePage() {
                 <TableRow>
                   <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
                     </Box>
                   </TableCell>
                 </TableRow>
               ) : filteredFiles.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} align="center" sx={{ py: 12 }}>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 2,
+                      }}
+                    >
                       <Box sx={{ p: 3, bgcolor: '#F9FAFB', borderRadius: '50%' }}>
-                         <Search size={32} className="text-gray-300" />
+                        <Search size={32} className="text-gray-300" />
                       </Box>
-                      <Typography variant="body1" sx={{ color: '#374151', fontWeight: 500 }}>{t.empty.title}</Typography>
-                      <Typography variant="body2" sx={{ color: '#9CA3AF' }}>{t.empty.subtitle}</Typography>
+                      <Typography variant="body1" sx={{ color: '#374151', fontWeight: 500 }}>
+                        {t.empty.title}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
+                        {t.empty.subtitle}
+                      </Typography>
                     </Box>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredFiles.map((file) => (
+                filteredFiles.map(file => (
                   <TableRow
                     key={file.id}
                     sx={{
                       '&:hover': { bgcolor: '#F9FAFB' },
                       borderBottom: '1px solid #F3F4F6',
-                      transition: 'background-color 0.1s'
+                      transition: 'background-color 0.1s',
                     }}
                   >
                     <TableCell sx={{ pl: 3, py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
                       <Box sx={{ display: 'flex', items: 'center', gap: 2 }}>
-                        <Box sx={{ 
-                            width: 36, 
-                            height: 36, 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            borderRadius: '8px', 
-                            bgcolor: '#EEF2FF', 
+                        <Box
+                          sx={{
+                            width: 36,
+                            height: 36,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: '8px',
+                            bgcolor: '#EEF2FF',
                             color: '#4F46E5',
-                            flexShrink: 0
-                        }}>
-                           <DocumentTypeIcon
-                             fileType={file.fileType}
-                             fileName={file.fileName}
-                             size={20}
-                             className="text-indigo-600"
-                           />
+                            flexShrink: 0,
+                          }}
+                        >
+                          <DocumentTypeIcon
+                            fileType={file.fileType}
+                            fileName={file.fileName}
+                            size={20}
+                            className="text-indigo-600"
+                          />
                         </Box>
                         <Box sx={{ minWidth: 0 }}>
-                           <Typography variant="body2" sx={{ fontWeight: 500, color: '#111827', mb: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                             {file.fileName}
-                           </Typography>
-                           {(file.sharedLinksCount > 0 || file.fileAvailability) && (
-                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                               {file.sharedLinksCount > 0 && (
-                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                   <Share2 size={12} className="text-blue-500" />
-                                   <Typography variant="caption" sx={{ color: '#3B82F6', fontWeight: 500 }}>
-                                     {file.sharedLinksCount} {t.sharedLinksShort}
-                                   </Typography>
-                                 </Box>
-                               )}
-                               {renderAvailabilityChip(file.fileAvailability)}
-                             </Box>
-                           )}
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontWeight: 500,
+                              color: '#111827',
+                              mb: 0.5,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {file.fileName}
+                          </Typography>
+                          {(file.sharedLinksCount > 0 || file.fileAvailability) && (
+                            <Box
+                              sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              {file.sharedLinksCount > 0 && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Share2 size={12} className="text-blue-500" />
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ color: '#3B82F6', fontWeight: 500 }}
+                                  >
+                                    {file.sharedLinksCount} {t.sharedLinksShort}
+                                  </Typography>
+                                </Box>
+                              )}
+                              {renderAvailabilityChip(file.fileAvailability)}
+                            </Box>
+                          )}
                         </Box>
                       </Box>
                     </TableCell>
                     <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                          <BankLogoAvatar bankName={file.bankName} size={28} />
-                          <Typography variant="body2" sx={{ color: '#374151' }}>
-                            {getBankDisplayName(file.bankName)}
-                          </Typography>
-                        </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <BankLogoAvatar bankName={file.bankName} size={28} />
+                        <Typography variant="body2" sx={{ color: '#374151' }}>
+                          {getBankDisplayName(file.bankName)}
+                        </Typography>
+                      </Box>
                     </TableCell>
                     <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                       <Typography variant="body2" sx={{ color: '#6B7280', fontFamily: 'monospace', fontSize: '0.8rem' }}>
-                         {file.metadata?.accountNumber ? `••••${file.metadata.accountNumber.slice(-4)}` : '—'}
-                       </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{ color: '#6B7280', fontFamily: 'monospace', fontSize: '0.8rem' }}
+                      >
+                        {file.metadata?.accountNumber
+                          ? `••••${file.metadata.accountNumber.slice(-4)}`
+                          : '—'}
+                      </Typography>
                     </TableCell>
                     <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                        <Typography variant="body2" sx={{ color: '#6B7280' }}>{formatFileSize(file.fileSize)}</Typography>
+                      <Typography variant="body2" sx={{ color: '#6B7280' }}>
+                        {formatFileSize(file.fileSize)}
+                      </Typography>
                     </TableCell>
                     <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                         <Box sx={{ 
-                             width: 8, 
-                             height: 8, 
-                             borderRadius: '50%', 
-                             bgcolor: getStatusColor(file.status) === 'success' ? '#10B981' : 
-                                      getStatusColor(file.status) === 'warning' ? '#F59E0B' : 
-                                      getStatusColor(file.status) === 'error' ? '#EF4444' : '#6B7280'
-                         }} />
-                         <Typography variant="body2" sx={{ color: '#374151' }}>
-                             {getStatusLabel(file.status)}
-                         </Typography>
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            bgcolor:
+                              getStatusColor(file.status) === 'success'
+                                ? '#10B981'
+                                : getStatusColor(file.status) === 'warning'
+                                  ? '#F59E0B'
+                                  : getStatusColor(file.status) === 'error'
+                                    ? '#EF4444'
+                                    : '#6B7280',
+                          }}
+                        />
+                        <Typography variant="body2" sx={{ color: '#374151' }}>
+                          {getStatusLabel(file.status)}
+                        </Typography>
                       </Box>
                     </TableCell>
                     <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
@@ -575,25 +756,44 @@ export default function StoragePage() {
                           value={file.categoryId || ''}
                           disableUnderline
                           displayEmpty
-                          onChange={(e) => handleCategoryChange(file.id, e.target.value as string)}
-                          disabled={categoriesLoading || (!file.isOwner && file.permissionType !== 'editor')}
-                          sx={{ 
-                             fontSize: '0.875rem',
-                             color: '#374151',
-                             '& .MuiSelect-select': { py: 0.5, display: 'flex', alignItems: 'center', gap: 1, px: 0 },
-                             '& .MuiSelect-icon': { color: '#9CA3AF' }
+                          onChange={e => handleCategoryChange(file.id, e.target.value as string)}
+                          disabled={
+                            categoriesLoading || (!file.isOwner && file.permissionType !== 'editor')
+                          }
+                          sx={{
+                            fontSize: '0.875rem',
+                            color: '#374151',
+                            '& .MuiSelect-select': {
+                              py: 0.5,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 1,
+                              px: 0,
+                            },
+                            '& .MuiSelect-icon': { color: '#9CA3AF' },
                           }}
-                          renderValue={(selected) => {
+                          renderValue={selected => {
                             const selectedCategory =
-                              categories.find((cat) => cat.id === selected) || file.category;
+                              categories.find(cat => cat.id === selected) || file.category;
 
                             if (!selectedCategory) {
-                              return <Typography variant="body2" sx={{ color: '#9CA3AF' }}>{t.categoryCell.choose}</Typography>;
+                              return (
+                                <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
+                                  {t.categoryCell.choose}
+                                </Typography>
+                              );
                             }
 
                             return (
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: selectedCategory.color || '#9CA3AF' }} />
+                                <Box
+                                  sx={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: '50%',
+                                    bgcolor: selectedCategory.color || '#9CA3AF',
+                                  }}
+                                />
                                 <Typography variant="body2" sx={{ color: '#374151' }}>
                                   {selectedCategory.name}
                                 </Typography>
@@ -602,12 +802,21 @@ export default function StoragePage() {
                           }}
                         >
                           <MenuItem value="">
-                            <Typography variant="body2" color="text.secondary">{t.categoryCell.none}</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {t.categoryCell.none}
+                            </Typography>
                           </MenuItem>
-                          {categories.map((cat) => (
+                          {categories.map(cat => (
                             <MenuItem key={cat.id} value={cat.id}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: cat.color || '#9CA3AF' }} />
+                                <Box
+                                  sx={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: '50%',
+                                    bgcolor: cat.color || '#9CA3AF',
+                                  }}
+                                />
                                 {cat.name}
                               </Box>
                             </MenuItem>
@@ -616,29 +825,40 @@ export default function StoragePage() {
                       </FormControl>
                     </TableCell>
                     <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                        <Typography variant="caption" sx={{ 
-                            px: 1, 
-                            py: 0.25, 
-                            borderRadius: '4px', 
-                            bgcolor: file.isOwner ? '#F3F4F6' : '#EEF2FF', 
-                            color: file.isOwner ? '#4B5563' : '#4F46E5', 
-                            fontWeight: 500,
-                            fontSize: '0.75rem' 
-                        }}>
-                           {file.isOwner ? t.permission.owner.value : getPermissionLabel(file.permissionType)}
-                        </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          px: 1,
+                          py: 0.25,
+                          borderRadius: '4px',
+                          bgcolor: file.isOwner ? '#F3F4F6' : '#EEF2FF',
+                          color: file.isOwner ? '#4B5563' : '#4F46E5',
+                          fontWeight: 500,
+                          fontSize: '0.75rem',
+                        }}
+                      >
+                        {file.isOwner
+                          ? t.permission.owner.value
+                          : getPermissionLabel(file.permissionType)}
+                      </Typography>
                     </TableCell>
                     <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                            <Typography variant="body2" sx={{ color: '#374151' }}>
-                                {new Date(file.createdAt).toLocaleDateString('ru-RU')}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#9CA3AF' }}>
-                                {new Date(file.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                            </Typography>
-                        </Box>
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="body2" sx={{ color: '#374151' }}>
+                          {new Date(file.createdAt).toLocaleDateString('ru-RU')}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#9CA3AF' }}>
+                          {new Date(file.createdAt).toLocaleTimeString('ru-RU', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </Typography>
+                      </Box>
                     </TableCell>
-                    <TableCell align="right" sx={{ pr: 3, py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
+                    <TableCell
+                      align="right"
+                      sx={{ pr: 3, py: 2.5, borderBottom: '1px solid #F3F4F6' }}
+                    >
                       <div className="flex items-center justify-end gap-1">
                         <Tooltip title="View">
                           <button
@@ -657,8 +877,8 @@ export default function StoragePage() {
                           </button>
                         </Tooltip>
                         <button
-                          onClick={(e) => handleMenuOpen(e, file)}
-                           className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors"
+                          onClick={e => handleMenuOpen(e, file)}
+                          className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors"
                         >
                           <MoreVertical size={16} />
                         </button>
@@ -678,41 +898,53 @@ export default function StoragePage() {
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
         PaperProps={{
-            elevation: 0,
-            sx: { 
-                borderRadius: 2, 
-                mt: 1, 
-                minWidth: 160,
-                border: '1px solid #F3F4F6',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-            }
+          elevation: 0,
+          sx: {
+            borderRadius: 2,
+            mt: 1,
+            minWidth: 160,
+            border: '1px solid #F3F4F6',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          },
         }}
       >
-        <MenuItem onClick={() => {
-          if (selectedFile) handleView(selectedFile.id);
-          handleMenuClose();
-        }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
-           <Eye size={16} /> {t.actions.view}
+        <MenuItem
+          onClick={() => {
+            if (selectedFile) handleView(selectedFile.id);
+            handleMenuClose();
+          }}
+          sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}
+        >
+          <Eye size={16} /> {t.actions.view}
         </MenuItem>
-        <MenuItem onClick={() => {
-          if (selectedFile) handleDownload(selectedFile.id, selectedFile.fileName);
-          handleMenuClose();
-        }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
-           <Download size={16} /> {t.actions.download}
+        <MenuItem
+          onClick={() => {
+            if (selectedFile) handleDownload(selectedFile.id, selectedFile.fileName);
+            handleMenuClose();
+          }}
+          sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}
+        >
+          <Download size={16} /> {t.actions.download}
         </MenuItem>
         {selectedFile?.isOwner && (
           <>
-            <MenuItem onClick={() => {
-              if (selectedFile) handleShare(selectedFile.id);
-              handleMenuClose();
-            }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
-               <Share2 size={16} /> {t.actions.share}
+            <MenuItem
+              onClick={() => {
+                if (selectedFile) handleShare(selectedFile.id);
+                handleMenuClose();
+              }}
+              sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}
+            >
+              <Share2 size={16} /> {t.actions.share}
             </MenuItem>
-            <MenuItem onClick={() => {
-              if (selectedFile) handleManagePermissions(selectedFile.id);
-              handleMenuClose();
-            }} sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}>
-               <Icon icon="mdi:shield-account-outline" width={16} /> {t.actions.permissions}
+            <MenuItem
+              onClick={() => {
+                if (selectedFile) handleManagePermissions(selectedFile.id);
+                handleMenuClose();
+              }}
+              sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}
+            >
+              <Icon icon="mdi:shield-account-outline" width={16} /> {t.actions.permissions}
             </MenuItem>
           </>
         )}
@@ -724,39 +956,41 @@ export default function StoragePage() {
         onClose={handleCloseFilters}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{ 
-            paper: { 
-                sx: { 
-                    p: 2.5, 
-                    width: 320, 
-                    borderRadius: 3, 
-                    marginTop: 1, 
-                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                    border: '1px solid #F3F4F6',
-                    elevation: 0
-                } 
-            } 
+        slotProps={{
+          paper: {
+            sx: {
+              p: 2.5,
+              width: 320,
+              borderRadius: 3,
+              marginTop: 1,
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+              border: '1px solid #F3F4F6',
+              elevation: 0,
+            },
+          },
         }}
         elevation={0}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#111827' }}>
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}
+        >
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#111827' }}>
             {t.filters.title}
-            </Typography>
-            <Button 
-                size="small" 
-                onClick={handleResetFilters}
-                sx={{ 
-                    minWidth: 'auto', 
-                    p: 0.5, 
-                    fontSize: '0.75rem', 
-                    color: '#6B7280', 
-                    textTransform: 'none',
-                    '&:hover': { color: '#111827', bgcolor: 'transparent' } 
-                }}
-            >
-                {t.filters.reset}
-            </Button>
+          </Typography>
+          <Button
+            size="small"
+            onClick={handleResetFilters}
+            sx={{
+              minWidth: 'auto',
+              p: 0.5,
+              fontSize: '0.75rem',
+              color: '#6B7280',
+              textTransform: 'none',
+              '&:hover': { color: '#111827', bgcolor: 'transparent' },
+            }}
+          >
+            {t.filters.reset}
+          </Button>
         </Box>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           <FormControl size="small" fullWidth>
@@ -765,19 +999,21 @@ export default function StoragePage() {
             </Typography>
             <Select
               value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value as string)}
+              onChange={e => handleFilterChange('status', e.target.value as string)}
               displayEmpty
-              sx={{ 
-                  borderRadius: 1.5, 
-                  bgcolor: '#F9FAFB',
-                  '& fieldset': { border: '1px solid #E5E7EB' },
-                  '&:hover fieldset': { border: '1px solid #D1D5DB' },
+              sx={{
+                borderRadius: 1.5,
+                bgcolor: '#F9FAFB',
+                '& fieldset': { border: '1px solid #E5E7EB' },
+                '&:hover fieldset': { border: '1px solid #D1D5DB' },
               }}
             >
               <MenuItem value="">
-                <Typography variant="body2" color="text.secondary">{t.filters.all}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t.filters.all}
+                </Typography>
               </MenuItem>
-              {statusOptions.map((status) => (
+              {statusOptions.map(status => (
                 <MenuItem key={status} value={status}>
                   {getStatusLabel(status)}
                 </MenuItem>
@@ -791,19 +1027,21 @@ export default function StoragePage() {
             </Typography>
             <Select
               value={filters.bank}
-              onChange={(e) => handleFilterChange('bank', e.target.value as string)}
+              onChange={e => handleFilterChange('bank', e.target.value as string)}
               displayEmpty
-               sx={{ 
-                  borderRadius: 1.5, 
-                  bgcolor: '#F9FAFB',
-                  '& fieldset': { border: '1px solid #E5E7EB' },
-                  '&:hover fieldset': { border: '1px solid #D1D5DB' },
+              sx={{
+                borderRadius: 1.5,
+                bgcolor: '#F9FAFB',
+                '& fieldset': { border: '1px solid #E5E7EB' },
+                '&:hover fieldset': { border: '1px solid #D1D5DB' },
               }}
             >
               <MenuItem value="">
-                 <Typography variant="body2" color="text.secondary">{t.filters.all}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t.filters.all}
+                </Typography>
               </MenuItem>
-              {bankOptions.map((bank) => (
+              {bankOptions.map(bank => (
                 <MenuItem key={bank} value={bank}>
                   {bank}
                 </MenuItem>
@@ -817,19 +1055,21 @@ export default function StoragePage() {
             </Typography>
             <Select
               value={filters.categoryId}
-              onChange={(e) => handleFilterChange('categoryId', e.target.value as string)}
+              onChange={e => handleFilterChange('categoryId', e.target.value as string)}
               displayEmpty
-               sx={{ 
-                  borderRadius: 1.5, 
-                  bgcolor: '#F9FAFB',
-                  '& fieldset': { border: '1px solid #E5E7EB' },
-                  '&:hover fieldset': { border: '1px solid #D1D5DB' },
+              sx={{
+                borderRadius: 1.5,
+                bgcolor: '#F9FAFB',
+                '& fieldset': { border: '1px solid #E5E7EB' },
+                '&:hover fieldset': { border: '1px solid #D1D5DB' },
               }}
             >
               <MenuItem value="">
-                 <Typography variant="body2" color="text.secondary">{t.filters.all}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t.filters.all}
+                </Typography>
               </MenuItem>
-              {categories.map((cat) => (
+              {categories.map(cat => (
                 <MenuItem key={cat.id} value={cat.id}>
                   {cat.name}
                 </MenuItem>
@@ -843,35 +1083,37 @@ export default function StoragePage() {
             </Typography>
             <Select
               value={filters.ownership}
-              onChange={(e) => handleFilterChange('ownership', e.target.value as string)}
+              onChange={e => handleFilterChange('ownership', e.target.value as string)}
               displayEmpty
-               sx={{ 
-                  borderRadius: 1.5, 
-                  bgcolor: '#F9FAFB',
-                  '& fieldset': { border: '1px solid #E5E7EB' },
-                  '&:hover fieldset': { border: '1px solid #D1D5DB' },
+              sx={{
+                borderRadius: 1.5,
+                bgcolor: '#F9FAFB',
+                '& fieldset': { border: '1px solid #E5E7EB' },
+                '&:hover fieldset': { border: '1px solid #D1D5DB' },
               }}
             >
               <MenuItem value="">
-                 <Typography variant="body2" color="text.secondary">{t.filters.all}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {t.filters.all}
+                </Typography>
               </MenuItem>
               <MenuItem value="owned">{t.filters.owned}</MenuItem>
               <MenuItem value="shared">{t.filters.shared}</MenuItem>
             </Select>
           </FormControl>
 
-          <Button 
-            variant="contained" 
-            onClick={handleCloseFilters} 
+          <Button
+            variant="contained"
+            onClick={handleCloseFilters}
             fullWidth
-            sx={{ 
-                mt: 1,
-                borderRadius: 2, 
-                textTransform: 'none', 
-                bgcolor: '#111827',
-                color: 'white',
-                boxShadow: 'none',
-                '&:hover': { bgcolor: '#1F2937', boxShadow: 'none' }
+            sx={{
+              mt: 1,
+              borderRadius: 2,
+              textTransform: 'none',
+              bgcolor: '#111827',
+              color: 'white',
+              boxShadow: 'none',
+              '&:hover': { bgcolor: '#1F2937', boxShadow: 'none' },
             }}
           >
             {t.filters.apply}

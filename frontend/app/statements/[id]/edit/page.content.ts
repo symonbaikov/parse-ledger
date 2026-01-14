@@ -1,10 +1,14 @@
-import { t, type Dictionary } from 'intlayer';
+import { type Dictionary, t } from 'intlayer';
 
 const content = {
   key: 'statementEditPage',
   content: {
     errors: {
-      loadData: t({ ru: 'Не удалось загрузить данные', en: 'Failed to load data', kk: 'Деректерді жүктеу мүмкін болмады' }),
+      loadData: t({
+        ru: 'Не удалось загрузить данные',
+        en: 'Failed to load data',
+        kk: 'Деректерді жүктеу мүмкін болмады',
+      }),
       saveTransaction: t({
         ru: 'Не удалось сохранить транзакцию',
         en: 'Failed to save transaction',
@@ -72,18 +76,38 @@ const content = {
         kk: 'Үзіндіні өңдеу: ',
       }),
       transactionsCount: t({ ru: 'транзакций', en: 'transactions', kk: 'транзакция' }),
-      assignCategory: t({ ru: 'Назначить категорию', en: 'Assign category', kk: 'Санат тағайындау' }),
-      saveSelectedPrefix: t({ ru: 'Сохранить выбранные (', en: 'Save selected (', kk: 'Таңдалғанды сақтау (' }),
+      assignCategory: t({
+        ru: 'Назначить категорию',
+        en: 'Assign category',
+        kk: 'Санат тағайындау',
+      }),
+      saveSelectedPrefix: t({
+        ru: 'Сохранить выбранные (',
+        en: 'Save selected (',
+        kk: 'Таңдалғанды сақтау (',
+      }),
       saveSelectedSuffix: t({ ru: ')', en: ')', kk: ')' }),
       deleteSelected: t({ ru: 'Удалить выбранные', en: 'Delete selected', kk: 'Таңдалғанды жою' }),
-      changesSaved: t({ ru: 'Изменения успешно сохранены!', en: 'Changes saved successfully!', kk: 'Өзгерістер сәтті сақталды!' }),
+      changesSaved: t({
+        ru: 'Изменения успешно сохранены!',
+        en: 'Changes saved successfully!',
+        kk: 'Өзгерістер сәтті сақталды!',
+      }),
       infoHint: t({
         ru: 'После загрузки сразу переходите к проверке: строки без категории подсвечены, выберите им категорию вручную или через массовое действие.',
         en: 'After upload, start reviewing right away: rows without a category are highlighted. Assign categories manually or in bulk.',
         kk: 'Жүктегеннен кейін бірден тексеріңіз: санаты жоқ жолдар белгіленген. Санатты қолмен немесе жаппай әрекет арқылы тағайындаңыз.',
       }),
-      statementInfoTitle: t({ ru: 'Информация о выписке', en: 'Statement information', kk: 'Үзінді туралы ақпарат' }),
-      saveStatementData: t({ ru: 'Сохранить данные выписки', en: 'Save statement data', kk: 'Үзінді деректерін сақтау' }),
+      statementInfoTitle: t({
+        ru: 'Информация о выписке',
+        en: 'Statement information',
+        kk: 'Үзінді туралы ақпарат',
+      }),
+      saveStatementData: t({
+        ru: 'Сохранить данные выписки',
+        en: 'Save statement data',
+        kk: 'Үзінді деректерін сақтау',
+      }),
       periodFrom: t({ ru: 'Период с', en: 'Period from', kk: 'Кезең (бастап)' }),
       periodTo: t({ ru: 'Период по', en: 'Period to', kk: 'Кезең (дейін)' }),
       balanceStart: t({ ru: 'Остаток на начало', en: 'Opening balance', kk: 'Бастапқы қалдық' }),
@@ -94,27 +118,55 @@ const content = {
         en: 'Enter manually if it was not detected',
         kk: 'Егер анықталмаса, қолмен енгізіңіз',
       }),
-      parsingDetails: t({ ru: 'Детали парсинга', en: 'Parsing details', kk: 'Парсинг мәліметтері' }),
+      parsingDetails: t({
+        ru: 'Детали парсинга',
+        en: 'Parsing details',
+        kk: 'Парсинг мәліметтері',
+      }),
       generalInfo: t({ ru: 'Общая информация', en: 'General information', kk: 'Жалпы ақпарат' }),
       bank: t({ ru: 'Банк', en: 'Bank', kk: 'Банк' }),
       format: t({ ru: 'Формат', en: 'Format', kk: 'Формат' }),
       parser: t({ ru: 'Парсер', en: 'Parser', kk: 'Парсер' }),
       processingTime: t({ ru: 'Время обработки', en: 'Processing time', kk: 'Өңдеу уақыты' }),
-      extractedMetadata: t({ ru: 'Извлеченные метаданные', en: 'Extracted metadata', kk: 'Шығарылған метадеректер' }),
+      extractedMetadata: t({
+        ru: 'Извлеченные метаданные',
+        en: 'Extracted metadata',
+        kk: 'Шығарылған метадеректер',
+      }),
       account: t({ ru: 'Счет', en: 'Account', kk: 'Есепшот' }),
       period: t({ ru: 'Период', en: 'Period', kk: 'Кезең' }),
-      parsingStats: t({ ru: 'Статистика парсинга', en: 'Parsing statistics', kk: 'Парсинг статистикасы' }),
-      foundTransactions: t({ ru: 'Найдено транзакций', en: 'Transactions found', kk: 'Табылған транзакциялар' }),
-      createdTransactions: t({ ru: 'Создано транзакций', en: 'Transactions created', kk: 'Жасалған транзакциялар' }),
+      parsingStats: t({
+        ru: 'Статистика парсинга',
+        en: 'Parsing statistics',
+        kk: 'Парсинг статистикасы',
+      }),
+      foundTransactions: t({
+        ru: 'Найдено транзакций',
+        en: 'Transactions found',
+        kk: 'Табылған транзакциялар',
+      }),
+      createdTransactions: t({
+        ru: 'Создано транзакций',
+        en: 'Transactions created',
+        kk: 'Жасалған транзакциялар',
+      }),
       processedLines: t({ ru: 'Обработано строк', en: 'Lines processed', kk: 'Өңделген жолдар' }),
       errors: t({ ru: 'Ошибки', en: 'Errors', kk: 'Қателер' }),
       warnings: t({ ru: 'Предупреждения', en: 'Warnings', kk: 'Ескертулер' }),
-      processingLogPrefix: t({ ru: 'Лог обработки (', en: 'Processing log (', kk: 'Өңдеу журналы (' }),
+      processingLogPrefix: t({
+        ru: 'Лог обработки (',
+        en: 'Processing log (',
+        kk: 'Өңдеу журналы (',
+      }),
       processingLogSuffix: t({ ru: ' записей)', en: ' entries)', kk: ' жазба)' }),
       actions: t({ ru: 'Действия', en: 'Actions', kk: 'Әрекеттер' }),
       noCategory: t({ ru: 'Нет категории', en: 'No category', kk: 'Санат жоқ' }),
       binPlaceholder: t({ ru: 'БИН', en: 'BIN', kk: 'БСН' }),
-      accountNumberPlaceholder: t({ ru: 'Номер счёта', en: 'Account number', kk: 'Есепшот нөмірі' }),
+      accountNumberPlaceholder: t({
+        ru: 'Номер счёта',
+        en: 'Account number',
+        kk: 'Есепшот нөмірі',
+      }),
       category: t({ ru: 'Категория', en: 'Category', kk: 'Санат' }),
       branch: t({ ru: 'Филиал', en: 'Branch', kk: 'Филиал' }),
       wallet: t({ ru: 'Кошелек', en: 'Wallet', kk: 'Әмиян' }),
@@ -122,7 +174,11 @@ const content = {
       noBranchOption: t({ ru: 'Без филиала', en: 'No branch', kk: 'Филиалсыз' }),
       noWalletOption: t({ ru: 'Без кошелька', en: 'No wallet', kk: 'Әмиянсыз' }),
       notSelected: t({ ru: 'Не выбрано', en: 'Not selected', kk: 'Таңдалмаған' }),
-      bulkCategoryTitlePrefix: t({ ru: 'Назначить категорию (', en: 'Assign category (', kk: 'Санат тағайындау (' }),
+      bulkCategoryTitlePrefix: t({
+        ru: 'Назначить категорию (',
+        en: 'Assign category (',
+        kk: 'Санат тағайындау (',
+      }),
       bulkCategoryTitleSuffix: t({ ru: ' шт.)', en: ' pcs)', kk: ' дана)' }),
       bulkCategoryHelper: t({
         ru: 'Категория будет применена ко всем выбранным транзакциям',
@@ -135,9 +191,21 @@ const content = {
     columns: {
       transactionDate: t({ ru: 'Дата операции', en: 'Transaction date', kk: 'Операция күні' }),
       documentNumber: t({ ru: 'Номер документа', en: 'Document number', kk: 'Құжат нөмірі' }),
-      counterpartyName: t({ ru: 'Наименование контрагента', en: 'Counterparty name', kk: 'Контрагент атауы' }),
-      counterpartyBin: t({ ru: 'БИН/номер счёта контрагента', en: 'Counterparty BIN/account', kk: 'Контрагент БСН/есепшот' }),
-      counterpartyBank: t({ ru: 'Реквизиты банка контрагента', en: 'Counterparty bank details', kk: 'Контрагент банк реквизиттері' }),
+      counterpartyName: t({
+        ru: 'Наименование контрагента',
+        en: 'Counterparty name',
+        kk: 'Контрагент атауы',
+      }),
+      counterpartyBin: t({
+        ru: 'БИН/номер счёта контрагента',
+        en: 'Counterparty BIN/account',
+        kk: 'Контрагент БСН/есепшот',
+      }),
+      counterpartyBank: t({
+        ru: 'Реквизиты банка контрагента',
+        en: 'Counterparty bank details',
+        kk: 'Контрагент банк реквизиттері',
+      }),
       debit: t({ ru: 'Дебет', en: 'Debit', kk: 'Дебет' }),
       credit: t({ ru: 'Кредит', en: 'Credit', kk: 'Кредит' }),
       paymentPurpose: t({ ru: 'Назначение платежа', en: 'Payment purpose', kk: 'Төлем мақсаты' }),
@@ -149,4 +217,3 @@ const content = {
 } satisfies Dictionary;
 
 export default content;
-

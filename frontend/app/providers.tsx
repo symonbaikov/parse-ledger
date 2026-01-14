@@ -1,11 +1,11 @@
 'use client';
 
-import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { Toaster } from 'react-hot-toast';
-import { theme } from './theme';
+import { ThemeProvider } from '@mui/material/styles';
 import { IntlayerClientProvider } from 'next-intlayer';
+import { Toaster } from 'react-hot-toast';
 import { useHTMLLanguage } from './hooks/useHTMLLanguage';
+import { theme } from './theme';
 
 function HTMLLanguageSync() {
   useHTMLLanguage();
@@ -30,8 +30,3 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </IntlayerClientProvider>
   );
 }
-
-
-
-
-
