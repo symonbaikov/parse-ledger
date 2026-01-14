@@ -177,21 +177,21 @@ test-e2e: ## Run end-to-end tests
 ##@ Code Quality
 
 lint: ## Lint and fix code
-	@echo "🔍 Linting code..."
+	@echo "🔍 Linting code (Biome)..."
 	@cd backend && npm run lint
 	@cd frontend && npm run lint
 	@echo "✅ Linting complete!"
 
 lint-check: ## Check linting without fixing
-	@echo "🔍 Checking linting..."
+	@echo "🔍 Checking linting (Biome)..."
 	@cd backend && npm run lint:check
-	@cd frontend && npm run lint
+	@cd frontend && npm run lint:check
 	@echo "✅ Linting check complete!"
 
-format: ## Format code with Prettier
+format: ## Format code with Biome
 	@echo "✨ Formatting code..."
-	@cd backend && npm run format || echo "No format script"
-	@cd frontend && npm run format || echo "No format script"
+	@cd backend && npm run format
+	@cd frontend && npm run format
 	@echo "✅ Formatting complete!"
 
 type-check: ## Run TypeScript type checking

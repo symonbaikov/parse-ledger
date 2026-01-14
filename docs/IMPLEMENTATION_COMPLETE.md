@@ -169,7 +169,7 @@ docker-compose up -d --build
 
 ### Code Quality
 - ✅ TypeScript strict mode
-- ✅ ESLint + Prettier
+- ✅ Biome (linting, formatting)
 - ✅ Conventional Commits
 - ✅ Git hooks (documented)
 

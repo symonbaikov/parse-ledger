@@ -549,8 +549,8 @@ We welcome contributions from the community! Here's how to get started:
 ### Code Style
 
 - TypeScript with strict mode
-- ESLint + Prettier
-- Run `make lint` before committing
+- Biome for linting and formatting
+- Run `make lint` (and `make format` if needed) before committing
 - Follow existing code patterns
 
 ### Commit Messages

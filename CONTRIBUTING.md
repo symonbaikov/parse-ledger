@@ -145,7 +145,7 @@ chore(deps): update dependencies to latest versions
 
 ### TypeScript Style Guide
 
-We use ESLint and Prettier to enforce code style:
+We use Biome to enforce code style (linting, formatting, import sorting):
 
 **Key principles:**
 - Use TypeScript strict mode
@@ -197,13 +197,16 @@ export class usrSvc { // bad naming
 **Running linters:**
 ```bash
 # Check for linting errors
-npm run lint:check
+npm --prefix backend run lint:check
+npm --prefix frontend run lint:check
 
 # Auto-fix linting errors
-npm run lint
+npm --prefix backend run lint
+npm --prefix frontend run lint
 
-# Format code with Prettier
-npm run format
+# Format code explicitly (Biome also formats on lint --write)
+npm --prefix backend run format
+npm --prefix frontend run format
 ```
 
 ### Documentation Style Guide

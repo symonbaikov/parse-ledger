@@ -98,7 +98,7 @@
 ## Best Practices
 
 - ✅ Conventional commit messages documented
-- ✅ Code style guidelines (ESLint, Prettier)
+- ✅ Code style guidelines (Biome)
 - ✅ TypeScript strict mode
 - ✅ Git hooks (recommended to add pre-commit)
 - ✅ Branch naming conventions
