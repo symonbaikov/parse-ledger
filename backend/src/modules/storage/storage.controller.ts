@@ -17,13 +17,13 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { buildContentDisposition } from '../../common/utils/http-file.util';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import type { AccessSharedLinkDto } from './dto/access-shared-link.dto';
-import type { CreateSharedLinkDto } from './dto/create-shared-link.dto';
-import type { GrantPermissionDto } from './dto/grant-permission.dto';
-import type { UpdateFileCategoryDto } from './dto/update-file-category.dto';
-import type { UpdatePermissionDto } from './dto/update-permission.dto';
-import type { UpdateSharedLinkDto } from './dto/update-shared-link.dto';
-import type { StorageService } from './storage.service';
+import { AccessSharedLinkDto } from './dto/access-shared-link.dto';
+import { CreateSharedLinkDto } from './dto/create-shared-link.dto';
+import { GrantPermissionDto } from './dto/grant-permission.dto';
+import { UpdateFileCategoryDto } from './dto/update-file-category.dto';
+import { UpdatePermissionDto } from './dto/update-permission.dto';
+import { UpdateSharedLinkDto } from './dto/update-shared-link.dto';
+import { StorageService } from './storage.service';
 
 /**
  * Storage controller for file management, sharing, and permissions

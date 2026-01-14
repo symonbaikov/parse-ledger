@@ -10,7 +10,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { MoreThan, type Repository } from 'typeorm';
-import type { FileStorageService } from '../../common/services/file-storage.service';
+import { FileStorageService } from '../../common/services/file-storage.service';
 import {
   Category,
   FilePermission,

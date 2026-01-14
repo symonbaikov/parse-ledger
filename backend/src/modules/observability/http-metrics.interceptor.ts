@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { Observable } from 'rxjs';
-import type { MetricsService } from './metrics.service';
+import { MetricsService } from './metrics.service';
 
 const getRouteLabel = (req: Request): string => {
   const baseUrl = (req as any).baseUrl || '';

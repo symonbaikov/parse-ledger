@@ -13,9 +13,9 @@ import {
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { ConnectSheetDto } from './dto/connect-sheet.dto';
-import type { OAuthCallbackDto } from './dto/oauth-callback.dto';
-import type { GoogleSheetsService } from './google-sheets.service';
+import { ConnectSheetDto } from './dto/connect-sheet.dto';
+import { OAuthCallbackDto } from './dto/oauth-callback.dto';
+import { GoogleSheetsService } from './google-sheets.service';
 
 @Controller('google-sheets')
 @UseGuards(JwtAuthGuard)

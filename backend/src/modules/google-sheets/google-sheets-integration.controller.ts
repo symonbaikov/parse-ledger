@@ -14,14 +14,14 @@ import type { Observable } from 'rxjs';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import type { GoogleSheetsBatchUpdateDto, GoogleSheetsUpdateDto } from './dto/sheets-update.dto';
+import { GoogleSheetsBatchUpdateDto, GoogleSheetsUpdateDto } from './dto/sheets-update.dto';
 import { GoogleSheetsWebhookGuard } from './guards/google-sheets-webhook.guard';
-import type {
+import {
   GoogleSheetsAnalyticsService,
   GoogleSheetsSummaryResponse,
 } from './services/google-sheets-analytics.service';
-import type { GoogleSheetsRealtimeService } from './services/google-sheets-realtime.service';
-import type { GoogleSheetsUpdatesService } from './services/google-sheets-updates.service';
+import { GoogleSheetsRealtimeService } from './services/google-sheets-realtime.service';
+import { GoogleSheetsUpdatesService } from './services/google-sheets-updates.service';
 
 @Controller('integrations/google-sheets')
 export class GoogleSheetsIntegrationController {

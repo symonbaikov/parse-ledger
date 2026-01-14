@@ -5,9 +5,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { ConnectTelegramDto } from './dto/connect-telegram.dto';
-import type { SendTelegramReportDto } from './dto/send-report.dto';
-import type { TelegramService } from './telegram.service';
+import { ConnectTelegramDto } from './dto/connect-telegram.dto';
+import { SendTelegramReportDto } from './dto/send-report.dto';
+import { TelegramService } from './telegram.service';
 
 @Controller('telegram')
 @UseGuards(JwtAuthGuard)

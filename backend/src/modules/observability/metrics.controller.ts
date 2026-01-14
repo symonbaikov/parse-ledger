@@ -1,7 +1,7 @@
 import { Controller, ForbiddenException, Get, Headers, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
-import type { MetricsService } from './metrics.service';
+import { MetricsService } from './metrics.service';
 
 @Public()
 @Controller('metrics')

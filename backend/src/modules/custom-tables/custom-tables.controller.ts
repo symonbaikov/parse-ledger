@@ -15,24 +15,24 @@ import {
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { CustomTableImportJobsService } from './custom-table-import-jobs.service';
-import type { CustomTablesImportService } from './custom-tables-import.service';
-import type { CustomTablesService } from './custom-tables.service';
-import type { BatchCreateCustomTableRowsDto } from './dto/batch-create-custom-table-rows.dto';
-import type { CreateCustomTableColumnDto } from './dto/create-custom-table-column.dto';
-import type { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
-import type { CreateCustomTableFromDataEntryDto } from './dto/create-custom-table-from-data-entry.dto';
-import type { CreateCustomTableFromStatementsDto } from './dto/create-custom-table-from-statements.dto';
-import type { CreateCustomTableRowDto } from './dto/create-custom-table-row.dto';
-import type { CreateCustomTableDto } from './dto/create-custom-table.dto';
-import type { GoogleSheetsImportCommitDto } from './dto/google-sheets-import-commit.dto';
-import type { GoogleSheetsImportPreviewDto } from './dto/google-sheets-import-preview.dto';
-import type { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
-import type { ReorderCustomTableColumnsDto } from './dto/reorder-custom-table-columns.dto';
-import type { UpdateCustomTableColumnDto } from './dto/update-custom-table-column.dto';
-import type { UpdateCustomTableRowDto } from './dto/update-custom-table-row.dto';
-import type { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
-import type { UpdateCustomTableDto } from './dto/update-custom-table.dto';
+import { CustomTableImportJobsService } from './custom-table-import-jobs.service';
+import { CustomTablesImportService } from './custom-tables-import.service';
+import { CustomTablesService } from './custom-tables.service';
+import { BatchCreateCustomTableRowsDto } from './dto/batch-create-custom-table-rows.dto';
+import { CreateCustomTableColumnDto } from './dto/create-custom-table-column.dto';
+import { CreateCustomTableFromDataEntryCustomTabDto } from './dto/create-custom-table-from-data-entry-custom-tab.dto';
+import { CreateCustomTableFromDataEntryDto } from './dto/create-custom-table-from-data-entry.dto';
+import { CreateCustomTableFromStatementsDto } from './dto/create-custom-table-from-statements.dto';
+import { CreateCustomTableRowDto } from './dto/create-custom-table-row.dto';
+import { CreateCustomTableDto } from './dto/create-custom-table.dto';
+import { GoogleSheetsImportCommitDto } from './dto/google-sheets-import-commit.dto';
+import { GoogleSheetsImportPreviewDto } from './dto/google-sheets-import-preview.dto';
+import { CustomTableRowFilterDto } from './dto/list-custom-table-rows.dto';
+import { ReorderCustomTableColumnsDto } from './dto/reorder-custom-table-columns.dto';
+import { UpdateCustomTableColumnDto } from './dto/update-custom-table-column.dto';
+import { UpdateCustomTableRowDto } from './dto/update-custom-table-row.dto';
+import { UpdateCustomTableViewSettingsColumnDto } from './dto/update-custom-table-view-settings.dto';
+import { UpdateCustomTableDto } from './dto/update-custom-table.dto';
 
 @Controller('custom-tables')
 @UseGuards(JwtAuthGuard)

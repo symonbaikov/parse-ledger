@@ -8,12 +8,12 @@ import { Semaphore } from '../../../common/utils/semaphore.util';
 import { Statement, StatementStatus } from '../../../entities/statement.entity';
 import { BankName } from '../../../entities/statement.entity';
 import { Transaction, TransactionType } from '../../../entities/transaction.entity';
-import type { ClassificationService } from '../../classification/services/classification.service';
+import { ClassificationService } from '../../classification/services/classification.service';
 import { GoogleSheetsService } from '../../google-sheets/google-sheets.service';
 import { AiParseValidator } from '../helpers/ai-parse-validator.helper';
 import type { ParsedTransaction } from '../interfaces/parsed-statement.interface';
 import type { ParsedStatement } from '../interfaces/parsed-statement.interface';
-import type { ParserFactoryService } from './parser-factory.service';
+import { ParserFactoryService } from './parser-factory.service';
 
 function parsePositiveInt(value: string | undefined, fallback: number) {
   if (!value) return fallback;

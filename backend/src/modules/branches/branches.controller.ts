@@ -5,9 +5,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { BranchesService } from './branches.service';
-import type { CreateBranchDto } from './dto/create-branch.dto';
-import type { UpdateBranchDto } from './dto/update-branch.dto';
+import { BranchesService } from './branches.service';
+import { CreateBranchDto } from './dto/create-branch.dto';
+import { UpdateBranchDto } from './dto/update-branch.dto';
 
 @Controller('branches')
 @UseGuards(JwtAuthGuard)

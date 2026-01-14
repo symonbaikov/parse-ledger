@@ -95,7 +95,7 @@ export class UsersService {
     }
 
     if ('passwordHash' in user) {
-      (user as any).passwordHash = undefined;
+      delete (user as any).passwordHash;
     }
 
     return user;

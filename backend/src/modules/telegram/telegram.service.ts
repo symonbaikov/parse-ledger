@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { TimeoutError, retry } from '../../common/utils/async.util';
@@ -9,8 +9,8 @@ import { ReportStatus, ReportType, TelegramReport } from '../../entities/telegra
 import { User } from '../../entities/user.entity';
 import type { DailyReport } from '../reports/interfaces/daily-report.interface';
 import type { MonthlyReport } from '../reports/interfaces/monthly-report.interface';
-import type { ReportsService } from '../reports/reports.service';
-import type { StatementsService } from '../statements/statements.service';
+import { ReportsService } from '../reports/reports.service';
+import { StatementsService } from '../statements/statements.service';
 import type { ConnectTelegramDto } from './dto/connect-telegram.dto';
 import type { SendTelegramReportDto } from './dto/send-report.dto';
 

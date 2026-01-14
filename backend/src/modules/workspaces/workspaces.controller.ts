@@ -13,9 +13,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { User } from '../../entities';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import type { AcceptInvitationDto } from './dto/accept-invitation.dto';
-import type { InviteMemberDto } from './dto/invite-member.dto';
-import type { WorkspacesService } from './workspaces.service';
+import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { InviteMemberDto } from './dto/invite-member.dto';
+import { WorkspacesService } from './workspaces.service';
 
 @Controller('workspaces')
 export class WorkspacesController {

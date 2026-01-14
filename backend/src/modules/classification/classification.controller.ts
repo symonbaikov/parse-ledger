@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Transaction } from '../../entities/transaction.entity';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { ClassificationService } from './services/classification.service';
+import { ClassificationService } from './services/classification.service';
 
 @Controller('classification')
 @UseGuards(JwtAuthGuard)

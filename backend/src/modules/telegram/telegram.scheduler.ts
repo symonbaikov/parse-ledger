@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, type Repository } from 'typeorm';
 import { ReportType } from '../../entities/telegram-report.entity';
 import { User } from '../../entities/user.entity';
-import type { TelegramService } from './telegram.service';
+import { TelegramService } from './telegram.service';
 
 @Injectable()
 export class TelegramScheduler {

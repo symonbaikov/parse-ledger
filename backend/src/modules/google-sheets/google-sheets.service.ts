@@ -8,7 +8,7 @@ import { Transaction } from '../../entities/transaction.entity';
 import type { User } from '../../entities/user.entity';
 import { Wallet } from '../../entities/wallet.entity';
 import type { ConnectSheetDto } from './dto/connect-sheet.dto';
-import type { GoogleSheetsApiService } from './services/google-sheets-api.service';
+import { GoogleSheetsApiService } from './services/google-sheets-api.service';
 
 @Injectable()
 export class GoogleSheetsService {

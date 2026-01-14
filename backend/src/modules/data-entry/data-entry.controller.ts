@@ -22,10 +22,10 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { DataEntryType } from '../../entities/data-entry.entity';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { DataEntryService } from './data-entry.service';
-import type { CreateDataEntryCustomFieldDto } from './dto/create-data-entry-custom-field.dto';
-import type { CreateDataEntryDto } from './dto/create-data-entry.dto';
-import type { UpdateDataEntryCustomFieldDto } from './dto/update-data-entry-custom-field.dto';
+import { DataEntryService } from './data-entry.service';
+import { CreateDataEntryCustomFieldDto } from './dto/create-data-entry-custom-field.dto';
+import { CreateDataEntryDto } from './dto/create-data-entry.dto';
+import { UpdateDataEntryCustomFieldDto } from './dto/update-data-entry-custom-field.dto';
 
 @Controller('data-entry')
 @UseGuards(JwtAuthGuard)

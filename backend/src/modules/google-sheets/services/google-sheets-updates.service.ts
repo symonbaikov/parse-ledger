@@ -5,13 +5,13 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import type { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { GoogleSheetRow } from '../../../entities/google-sheet-row.entity';
 import { GoogleSheet } from '../../../entities/google-sheet.entity';
 import type { GoogleSheetsBatchUpdateDto, GoogleSheetsUpdateDto } from '../dto/sheets-update.dto';
-import type {
+import {
   GoogleSheetRowEventPayload,
   GoogleSheetsRealtimeService,
 } from './google-sheets-realtime.service';

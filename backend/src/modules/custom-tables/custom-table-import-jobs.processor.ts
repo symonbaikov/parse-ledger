@@ -8,8 +8,8 @@ import {
   CustomTableImportJobStatus,
   CustomTableImportJobType,
 } from '../../entities/custom-table-import-job.entity';
-import type { CustomTableImportJobsService } from './custom-table-import-jobs.service';
-import type { CustomTablesImportService } from './custom-tables-import.service';
+import { CustomTableImportJobsService } from './custom-table-import-jobs.service';
+import { CustomTablesImportService } from './custom-tables-import.service';
 
 @Injectable()
 export class CustomTableImportJobsProcessor {

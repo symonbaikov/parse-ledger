@@ -5,9 +5,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { CreateWalletDto } from './dto/create-wallet.dto';
-import type { UpdateWalletDto } from './dto/update-wallet.dto';
-import type { WalletsService } from './wallets.service';
+import { CreateWalletDto } from './dto/create-wallet.dto';
+import { UpdateWalletDto } from './dto/update-wallet.dto';
+import { WalletsService } from './wallets.service';
 
 @Controller('wallets')
 @UseGuards(JwtAuthGuard)

@@ -16,17 +16,17 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { type User, UserRole } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { ChangeEmailDto } from './dto/change-email.dto';
-import type { ChangePasswordDto } from './dto/change-password.dto';
-import type { UpdateMyPreferencesDto } from './dto/update-my-preferences.dto';
+import { ChangeEmailDto } from './dto/change-email.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateMyPreferencesDto } from './dto/update-my-preferences.dto';
 import type {
   AddPermissionDto,
   RemovePermissionDto,
   UpdatePermissionsDto,
 } from './dto/update-permissions.dto';
-import type { UpdateUserDto } from './dto/update-user.dto';
-import type { PermissionsService } from './services/permissions.service';
-import type { UsersService } from './users.service';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { PermissionsService } from './services/permissions.service';
+import { UsersService } from './users.service';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)

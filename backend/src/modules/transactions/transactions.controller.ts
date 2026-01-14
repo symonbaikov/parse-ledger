@@ -17,9 +17,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { BulkUpdateTransactionDto } from './dto/bulk-update-transaction.dto';
-import type { UpdateTransactionDto } from './dto/update-transaction.dto';
-import type { TransactionsService } from './transactions.service';
+import { BulkUpdateTransactionDto } from './dto/bulk-update-transaction.dto';
+import { UpdateTransactionDto } from './dto/update-transaction.dto';
+import { TransactionsService } from './transactions.service';
 
 @Controller('transactions')
 @UseGuards(JwtAuthGuard)

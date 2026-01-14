@@ -21,9 +21,9 @@ import { buildContentDisposition } from '../../common/utils/http-file.util';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { type CustomReportDto, ReportFormat } from './dto/custom-report.dto';
-import type { CustomTablesSummaryDto } from './dto/custom-tables-summary.dto';
+import { CustomTablesSummaryDto } from './dto/custom-tables-summary.dto';
 import { ExportFormat, type ExportReportDto } from './dto/export-report.dto';
-import type { ReportsService } from './reports.service';
+import { ReportsService } from './reports.service';
 
 @Controller('reports')
 @UseGuards(JwtAuthGuard)
