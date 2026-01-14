@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ClassificationService } from './classification.service';
+import { ClassificationService } from '@/modules/classification/services/classification.service';
 import {
   Transaction,
   TransactionType,
-} from '../../../entities/transaction.entity';
-import { Category, CategoryType } from '../../../entities/category.entity';
-import { Branch } from '../../../entities/branch.entity';
-import { Wallet } from '../../../entities/wallet.entity';
+} from '@/entities/transaction.entity';
+import { Category, CategoryType } from '@/entities/category.entity';
+import { Branch } from '@/entities/branch.entity';
+import { Wallet } from '@/entities/wallet.entity';
 
 describe('ClassificationService', () => {
   let testingModule: TestingModule;

@@ -1,8 +1,8 @@
-import { ClassificationService } from '../src/modules/classification/services/classification.service';
-import { Transaction, TransactionType } from '../src/entities/transaction.entity';
-import { Category, CategoryType } from '../src/entities/category.entity';
-import { Branch } from '../src/entities/branch.entity';
-import { Wallet } from '../src/entities/wallet.entity';
+import { ClassificationService } from '@/modules/classification/services/classification.service';
+import { Transaction, TransactionType } from '@/entities/transaction.entity';
+import { Category, CategoryType } from '@/entities/category.entity';
+import { Branch } from '@/entities/branch.entity';
+import { Wallet } from '@/entities/wallet.entity';
 
 function createRepoMock<T>() {
   return {

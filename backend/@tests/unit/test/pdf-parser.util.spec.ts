@@ -6,7 +6,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 import {
   extractTablesFromPdf,
   extractTextAndLayoutFromPdf,
-} from '../src/common/utils/pdf-parser.util';
+} from '@/common/utils/pdf-parser.util';
 
 const resolvedPython = resolvePythonPath();
 const suite = resolvedPython ? describe : describe.skip;

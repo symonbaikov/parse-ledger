@@ -5,8 +5,8 @@ const config: Config = {
   ...baseConfig,
   displayName: 'unit',
   maxWorkers: '50%',
-  testMatch: ['<rootDir>/src/**/*.spec.ts', '<rootDir>/test/**/*.spec.ts'],
-  testPathIgnorePatterns: ['<rootDir>/test/.*\\.e2e-spec\\.ts'],
+  testMatch: ['<rootDir>/@tests/**/*.spec.ts'],
+  testPathIgnorePatterns: ['<rootDir>/@tests/e2e/.*\\.e2e-spec\\.ts'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.spec.ts',

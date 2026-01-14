@@ -1,4 +1,4 @@
-import { normalizeFilename } from '../src/common/utils/filename.util';
+import { normalizeFilename } from '@/common/utils/filename.util';
 
 describe('normalizeFilename', () => {
   it('decodes UTF-8->latin1 mojibake for Cyrillic filenames', () => {

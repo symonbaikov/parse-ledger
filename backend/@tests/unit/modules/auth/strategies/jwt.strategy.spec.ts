@@ -1,10 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { JwtStrategy } from './jwt.strategy';
+import { JwtStrategy } from '@/modules/auth/strategies/jwt.strategy';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UnauthorizedException } from '@nestjs/common';
-import { User, UserRole } from '../../../entities/user.entity';
+import { User, UserRole } from '@/entities/user.entity';
 
 describe('JwtStrategy', () => {
   let testingModule: TestingModule;

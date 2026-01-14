@@ -6,7 +6,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { StorageService } from './storage.service';
+import { StorageService } from '@/modules/storage/storage.service';
 import {
   SharedLink,
   FilePermission,
@@ -17,9 +17,9 @@ import {
   User,
   WorkspaceMember,
   WorkspaceRole,
-} from '../../entities';
-import { FileStorageService } from '../../common/services/file-storage.service';
-import { CreateSharedLinkDto } from './dto/create-shared-link.dto';
+} from '@/entities';
+import { FileStorageService } from '@/common/services/file-storage.service';
+import { CreateSharedLinkDto } from '@/modules/storage/dto/create-shared-link.dto';
 
 describe('StorageService', () => {
   let testingModule: TestingModule;

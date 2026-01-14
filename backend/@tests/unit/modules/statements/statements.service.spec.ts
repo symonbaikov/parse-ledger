@@ -7,26 +7,26 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
-import { StatementsService } from './statements.service';
+import { StatementsService } from '@/modules/statements/statements.service';
 import {
   Statement,
   StatementStatus,
   FileType,
   BankName,
-} from '../../entities/statement.entity';
-import { Transaction } from '../../entities/transaction.entity';
-import { AuditLog, AuditAction } from '../../entities/audit-log.entity';
-import { User, UserRole } from '../../entities/user.entity';
+} from '@/entities/statement.entity';
+import { Transaction } from '@/entities/transaction.entity';
+import { AuditLog, AuditAction } from '@/entities/audit-log.entity';
+import { User, UserRole } from '@/entities/user.entity';
 import {
   WorkspaceMember,
   WorkspaceRole,
-} from '../../entities/workspace-member.entity';
-import { StatementProcessingService } from '../parsing/services/statement-processing.service';
-import { FileStorageService } from '../../common/services/file-storage.service';
+} from '@/entities/workspace-member.entity';
+import { StatementProcessingService } from '@/modules/parsing/services/statement-processing.service';
+import { FileStorageService } from '@/common/services/file-storage.service';
 import * as fs from 'fs';
-jest.mock('../../common/utils/file-hash.util');
-jest.mock('../../common/utils/file-validator.util');
-jest.mock('../../common/utils/filename.util');
+jest.mock('@/common/utils/file-hash.util');
+jest.mock('@/common/utils/file-validator.util');
+jest.mock('@/common/utils/filename.util');
 
 describe('StatementsService', () => {
   let testingModule: TestingModule;
@@ -175,11 +175,11 @@ describe('StatementsService', () => {
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue({
         role: WorkspaceRole.ADMIN,
       } as WorkspaceMember);
-      const { calculateFileHash } = require('../../common/utils/file-hash.util');
+      const { calculateFileHash } = require('@/common/utils/file-hash.util');
       calculateFileHash.mockResolvedValue('abc123');
-      const { getFileTypeFromMime } = require('../../common/utils/file-validator.util');
+      const { getFileTypeFromMime } = require('@/common/utils/file-validator.util');
       getFileTypeFromMime.mockReturnValue(FileType.PDF);
-      const { normalizeFilename } = require('../../common/utils/filename.util');
+      const { normalizeFilename } = require('@/common/utils/filename.util');
       normalizeFilename.mockReturnValue('statement.pdf');
     });
 
@@ -229,7 +229,7 @@ describe('StatementsService', () => {
     });
 
     it('should calculate file hash', async () => {
-      const { calculateFileHash } = require('../../common/utils/file-hash.util');
+      const { calculateFileHash } = require('@/common/utils/file-hash.util');
       jest.spyOn(statementRepository, 'findOne').mockResolvedValue(null);
       jest
         .spyOn(statementRepository, 'create')
@@ -244,7 +244,7 @@ describe('StatementsService', () => {
     });
 
     it('should normalize filename', async () => {
-      const { normalizeFilename } = require('../../common/utils/filename.util');
+      const { normalizeFilename } = require('@/common/utils/filename.util');
       jest.spyOn(statementRepository, 'findOne').mockResolvedValue(null);
       jest
         .spyOn(statementRepository, 'create')

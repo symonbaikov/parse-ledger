@@ -6,13 +6,13 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
-import { CategoriesService } from './categories.service';
-import { Category, CategoryType } from '../../entities/category.entity';
-import { User, UserRole } from '../../entities/user.entity';
+import { CategoriesService } from '@/modules/categories/categories.service';
+import { Category, CategoryType } from '@/entities/category.entity';
+import { User, UserRole } from '@/entities/user.entity';
 import {
   WorkspaceMember,
   WorkspaceRole,
-} from '../../entities/workspace-member.entity';
+} from '@/entities/workspace-member.entity';
 
 describe('CategoriesService', () => {
   let testingModule: TestingModule;

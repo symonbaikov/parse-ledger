@@ -5,17 +5,17 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { TransactionsService } from './transactions.service';
+import { TransactionsService } from '@/modules/transactions/transactions.service';
 import {
   Transaction,
   TransactionType,
-} from '../../entities/transaction.entity';
-import { Statement } from '../../entities/statement.entity';
-import { User, UserRole } from '../../entities/user.entity';
+} from '@/entities/transaction.entity';
+import { Statement } from '@/entities/statement.entity';
+import { User, UserRole } from '@/entities/user.entity';
 import {
   WorkspaceMember,
   WorkspaceRole,
-} from '../../entities/workspace-member.entity';
+} from '@/entities/workspace-member.entity';
 
 describe('TransactionsService', () => {
   let testingModule: TestingModule;

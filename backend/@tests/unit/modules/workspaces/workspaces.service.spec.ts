@@ -7,7 +7,7 @@ import {
   BadRequestException,
   ConflictException,
 } from '@nestjs/common';
-import { WorkspacesService } from './workspaces.service';
+import { WorkspacesService } from '@/modules/workspaces/workspaces.service';
 import {
   Workspace,
   WorkspaceMember,
@@ -16,7 +16,7 @@ import {
   WorkspaceInvitationStatus,
   User,
   UserRole,
-} from '../../entities';
+} from '@/entities';
 
 describe('WorkspacesService', () => {
   let testingModule: TestingModule;

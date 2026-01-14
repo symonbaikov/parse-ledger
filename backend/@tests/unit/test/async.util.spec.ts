@@ -1,4 +1,4 @@
-import { retry, sleep, TimeoutError, withTimeout } from '../src/common/utils/async.util';
+import { retry, sleep, TimeoutError, withTimeout } from '@/common/utils/async.util';
 
 describe('async.util', () => {
   it('withTimeout returns result when completed on time', async () => {

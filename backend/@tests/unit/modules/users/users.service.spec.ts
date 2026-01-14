@@ -8,8 +8,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { UsersService } from './users.service';
-import { User, UserRole } from '../../entities/user.entity';
+import { UsersService } from '@/modules/users/users.service';
+import { User, UserRole } from '@/entities/user.entity';
 
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),

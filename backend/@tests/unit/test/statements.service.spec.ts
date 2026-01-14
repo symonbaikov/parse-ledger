@@ -1,8 +1,8 @@
-import { StatementsService } from '../src/modules/statements/statements.service';
-import { calculateFileHash } from '../src/common/utils/file-hash.util';
+import { StatementsService } from '@/modules/statements/statements.service';
+import { calculateFileHash } from '@/common/utils/file-hash.util';
 import * as fs from 'fs';
 
-jest.mock('../src/common/utils/file-hash.util', () => ({
+jest.mock('@/common/utils/file-hash.util', () => ({
   calculateFileHash: jest.fn(),
 }));
 

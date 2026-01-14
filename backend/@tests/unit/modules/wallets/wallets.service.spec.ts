@@ -2,8 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
-import { WalletsService } from './wallets.service';
-import { Wallet } from '../../entities/wallet.entity';
+import { WalletsService } from '@/modules/wallets/wallets.service';
+import { Wallet } from '@/entities/wallet.entity';
 
 describe('WalletsService', () => {
   let testingModule: TestingModule;

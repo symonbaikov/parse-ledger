@@ -2,8 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotFoundException } from '@nestjs/common';
-import { BranchesService } from './branches.service';
-import { Branch } from '../../entities/branch.entity';
+import { BranchesService } from '@/modules/branches/branches.service';
+import { Branch } from '@/entities/branch.entity';
 
 describe('BranchesService', () => {
   let testingModule: TestingModule;

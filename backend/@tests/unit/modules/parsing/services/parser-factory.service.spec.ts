@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ParserFactoryService } from './parser-factory.service';
-import { BankName, FileType } from '../../../entities/statement.entity';
-import { BerekeNewParser } from '../parsers/bereke-new.parser';
-import { BerekeOldParser } from '../parsers/bereke-old.parser';
-import { KaspiParser } from '../parsers/kaspi.parser';
-import { GenericPdfParser } from '../parsers/generic-pdf.parser';
-import { ExcelParser } from '../parsers/excel.parser';
-import { CsvParser } from '../parsers/csv.parser';
+import { ParserFactoryService } from '@/modules/parsing/services/parser-factory.service';
+import { BankName, FileType } from '@/entities/statement.entity';
+import { BerekeNewParser } from '@/modules/parsing/parsers/bereke-new.parser';
+import { BerekeOldParser } from '@/modules/parsing/parsers/bereke-old.parser';
+import { KaspiParser } from '@/modules/parsing/parsers/kaspi.parser';
+import { GenericPdfParser } from '@/modules/parsing/parsers/generic-pdf.parser';
+import { ExcelParser } from '@/modules/parsing/parsers/excel.parser';
+import { CsvParser } from '@/modules/parsing/parsers/csv.parser';
 
-jest.mock('../../../common/utils/pdf-parser.util', () => ({
+jest.mock('@/common/utils/pdf-parser.util', () => ({
   extractTextFromPdf: jest.fn().mockResolvedValue('kaspi bank statement'),
 }));
 

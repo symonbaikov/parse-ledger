@@ -7,7 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { AuthService } from './auth.service';
+import { AuthService } from '@/modules/auth/auth.service';
 import {
   User,
   Workspace,
@@ -15,7 +15,7 @@ import {
   WorkspaceMember,
   UserRole,
   WorkspaceRole,
-} from '../../entities';
+} from '@/entities';
 
 jest.mock('bcrypt', () => ({
   hash: jest.fn(async (value: string) => `hashed_${value}`),

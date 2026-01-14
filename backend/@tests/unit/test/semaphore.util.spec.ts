@@ -1,5 +1,5 @@
-import { Semaphore } from '../src/common/utils/semaphore.util';
-import { sleep } from '../src/common/utils/async.util';
+import { Semaphore } from '@/common/utils/semaphore.util';
+import { sleep } from '@/common/utils/async.util';
 
 describe('Semaphore', () => {
   it('limits concurrency', async () => {

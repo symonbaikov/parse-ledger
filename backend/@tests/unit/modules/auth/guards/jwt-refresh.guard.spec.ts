@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { JwtRefreshGuard } from './jwt-refresh.guard';
+import { JwtRefreshGuard } from '@/modules/auth/guards/jwt-refresh.guard';
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
