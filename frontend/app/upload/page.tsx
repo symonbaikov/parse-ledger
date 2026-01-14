@@ -10,6 +10,7 @@ import {
   CircularProgress,
   Container,
   FormControl,
+  FormControlLabel,
   IconButton,
   InputLabel,
   List,
@@ -18,6 +19,7 @@ import {
   ListItemText,
   MenuItem,
   Paper,
+  Checkbox,
   Select,
   Typography,
 } from '@mui/material';
@@ -38,6 +40,7 @@ export default function UploadPage() {
   const [googleSheetId, setGoogleSheetId] = useState('');
   const [googleSheets, setGoogleSheets] = useState<GoogleSheet[]>([]);
   const [files, setFiles] = useState<File[]>([]);
+  const [allowDuplicates, setAllowDuplicates] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState('');
@@ -136,6 +139,9 @@ export default function UploadPage() {
     // Only append googleSheetId if it's selected
     if (googleSheetId) {
       formData.append('googleSheetId', googleSheetId);
+    }
+    if (allowDuplicates) {
+      formData.append('allowDuplicates', 'true');
     }
 
     try {
@@ -252,6 +258,18 @@ export default function UploadPage() {
             </Typography>
           </label>
         </Box>
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={allowDuplicates}
+              onChange={(_, checked) => setAllowDuplicates(checked)}
+              color="primary"
+            />
+          }
+          label={t.allowDuplicates?.value ?? 'Разрешить загрузку дубликатов'}
+          sx={{ mb: 1 }}
+        />
 
         {files.length > 0 && (
           <Box sx={{ mb: 3 }}>

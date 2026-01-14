@@ -8,6 +8,8 @@ import apiClient from '@/app/lib/api';
 import { resolveBankLogo } from '@bank-logos';
 import {
   AlertCircle,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   Clock,
   Download,
@@ -15,6 +17,7 @@ import {
   File,
   Loader2,
   RefreshCw,
+  Search,
   Terminal,
   Trash2,
   UploadCloud,
@@ -70,9 +73,15 @@ export default function StatementsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const t = useIntlayer('statementsPage');
+  const PAGE_SIZE = 20;
   const [statements, setStatements] = useState<Statement[]>([]);
   const statementsRef = useRef<Statement[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [total, setTotal] = useState(0);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
   const [viewingFile, setViewingFile] = useState<string | null>(null);
   const [fileViewUrl, setFileViewUrl] = useState<string | null>(null);
   const [logStatementId, setLogStatementId] = useState<string | null>(null);
@@ -85,36 +94,82 @@ export default function StatementsPage() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [allowDuplicates, setAllowDuplicates] = useState(false);
+  const allowDuplicatesLabel =
+    (t.uploadModal as any)?.allowDuplicates?.value ?? 'Разрешить загрузку дубликатов';
+  const totalPagesCount = Math.max(1, Math.ceil(total / pageSize) || 1);
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = total === 0 ? 0 : Math.min(total, page * pageSize);
 
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [statementToDelete, setStatementToDelete] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
-      loadStatements();
-    }
-  }, [user]);
+    const timer = setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   useEffect(() => {
     statementsRef.current = statements;
   }, [statements]);
 
-  const loadStatements = async (opts?: { silent?: boolean; notifyOnCompletion?: boolean }) => {
+  useEffect(() => {
+    if (!user) return;
+    loadStatements({ page, search });
+  }, [user, page, search]);
+
+  const loadStatements = async (opts?: {
+    silent?: boolean;
+    notifyOnCompletion?: boolean;
+    page?: number;
+    search?: string;
+  }) => {
     try {
       const { silent = false, notifyOnCompletion = false } = opts || {};
+      const targetPage = opts?.page ?? page;
+      const targetSearch = opts?.search ?? search;
       const prevStatements = statementsRef.current;
       const prevStatusById = new Map(prevStatements.map(s => [s.id, s.status]));
       if (!silent) setLoading(true);
 
-      const response = await apiClient.get('/statements');
-      const statementsData = response.data.data || response.data;
-      const statementsWithFileType = Array.isArray(statementsData)
-        ? statementsData.map((stmt: Statement & { file_type?: string }) => ({
-            ...stmt,
-            fileType: stmt.fileType || stmt.file_type || 'pdf',
-          }))
-        : statementsData;
+      const response = await apiClient.get('/statements', {
+        params: {
+          page: targetPage,
+          limit: PAGE_SIZE,
+          search: targetSearch || undefined,
+        },
+      });
+
+      const payload = response.data;
+      const rawData = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload.data)
+          ? payload.data
+          : [];
+
+      const statementsWithFileType = rawData.map((stmt: Statement & { file_type?: string }) => ({
+        ...stmt,
+        fileType: stmt.fileType || stmt.file_type || 'pdf',
+      }));
+
+      const nextTotal =
+        !Array.isArray(payload) && typeof payload.total === 'number'
+          ? payload.total
+          : statementsWithFileType.length;
+      const nextPage =
+        !Array.isArray(payload) && payload.page ? Number(payload.page) : targetPage;
+      const nextLimit =
+        !Array.isArray(payload) && payload.limit ? Number(payload.limit) : PAGE_SIZE;
+      const nextTotalPages = Math.max(1, Math.ceil(nextTotal / nextLimit) || 1);
+
+      if (nextPage > nextTotalPages && nextTotal > 0) {
+        setPage(nextTotalPages);
+        return;
+      }
 
       if (notifyOnCompletion && Array.isArray(statementsWithFileType)) {
         const processedStatuses = new Set(['parsed', 'validated', 'completed']);
@@ -137,6 +192,9 @@ export default function StatementsPage() {
       }
 
       setStatements(statementsWithFileType);
+      setTotal(nextTotal);
+      setPageSize(nextLimit);
+      setPage(nextPage);
     } catch (error) {
       console.error('Failed to load statements:', error);
       toast.error(t.loadListError.value);
@@ -152,16 +210,16 @@ export default function StatementsPage() {
     );
     if (!hasProcessing) return;
     const interval = setInterval(() => {
-      loadStatements({ silent: true, notifyOnCompletion: true });
+      loadStatements({ silent: true, notifyOnCompletion: true, page, search });
     }, 3000);
     return () => clearInterval(interval);
-  }, [statements]);
+  }, [statements, page, search]);
 
   const handleReprocess = async (id: string) => {
     const toastId = toast.loading(t.reprocessStart.value);
     try {
       await apiClient.post(`/statements/${id}/reprocess`);
-      await loadStatements();
+      await loadStatements({ page, search });
       toast.success(t.reprocessSuccess.value, { id: toastId });
     } catch (error) {
       console.error('Failed to reprocess statement:', error);
@@ -180,7 +238,7 @@ export default function StatementsPage() {
     const toastId = toast.loading(t.deleteLoading.value);
     try {
       await apiClient.delete(`/statements/${statementToDelete}`);
-      await loadStatements();
+      await loadStatements({ page, search });
       toast.success(t.deleteSuccess.value, { id: toastId });
     } catch (error) {
       console.error('Failed to delete statement:', error);
@@ -230,6 +288,9 @@ export default function StatementsPage() {
     setUploadError(null);
     const formData = new FormData();
     uploadFiles.forEach(file => formData.append('files', file));
+    if (allowDuplicates) {
+      formData.append('allowDuplicates', 'true');
+    }
 
     try {
       await apiClient.post('/statements/upload', formData, {
@@ -238,9 +299,12 @@ export default function StatementsPage() {
       toast.success(t.uploadModal.uploadedProcessing.value);
       setUploadFiles([]);
       setUploadModalOpen(false);
-      await loadStatements();
+      setAllowDuplicates(false);
+      setPage(1);
+      await loadStatements({ page: 1, search });
     } catch (err: any) {
-      const message = err?.response?.data?.message || t.uploadModal.uploadFailed.value;
+      const message =
+        err?.response?.data?.error?.message || err?.response?.data?.message || t.uploadModal.uploadFailed.value;
       setUploadError(message);
       toast.error(message);
     } finally {
@@ -407,13 +471,26 @@ export default function StatementsPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
           <p className="text-secondary mt-1">{t.subtitle}</p>
         </div>
-        <button
-          onClick={() => setUploadModalOpen(true)}
-          className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
-        >
-          <UploadCloud className="-ml-1 mr-2 h-5 w-5" />
-          {t.uploadStatement}
-        </button>
+        <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
+          <div className="relative w-full md:w-80">
+            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
+            <input
+              type="text"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              placeholder="Поиск по названию"
+              aria-label="Поиск по выпискам"
+              className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <button
+            onClick={() => setUploadModalOpen(true)}
+            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
+          >
+            <UploadCloud className="-ml-1 mr-2 h-5 w-5" />
+            {t.uploadStatement}
+          </button>
+        </div>
       </div>
 
       {/* Content Table */}
@@ -444,167 +521,204 @@ export default function StatementsPage() {
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50/50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[40%]"
-                  >
-                    {t.table.file}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-[15%]"
-                  >
-                    {t.table.status}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[15%] hidden md:table-cell"
-                  >
-                    {t.table.bank}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%] hidden lg:table-cell"
-                  >
-                    {t.table.transactions}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%]"
-                  >
-                    {t.table.date}
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%]"
-                  >
-                    {t.table.actions}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {statements.map(statement => (
-                  <tr
-                    key={statement.id}
-                    className={`transition-all duration-200 group hover:shadow-md hover:bg-white hover:z-10 relative ${
-                      statement.status === 'processing' ? 'bg-blue-50/30' : ''
-                    }`}
-                  >
-                    <td className="px-6 py-5">
-                      <button
-                        type="button"
-                        className="flex items-center w-full text-left cursor-pointer group/file"
-                        onClick={() => handleViewFile(statement.id)}
-                      >
-                        <div className="flex-shrink-0 h-12 w-12 flex items-center justify-center rounded-xl bg-red-50 text-red-500 group-hover/file:bg-red-100 group-hover/file:scale-110 transition-all duration-200">
-                          {getFileIcon(statement.fileType, statement.fileName)}
-                        </div>
-                        <div className="ml-4 min-w-0 flex-1">
-                          <div
-                            className="text-base font-semibold text-gray-900 truncate group-hover:text-primary transition-colors"
-                            title={statement.fileName}
-                          >
-                            {statement.fileName.length > 20
-                              ? `${statement.fileName.substring(0, 20)}...`
-                              : statement.fileName}
-                          </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-xs text-gray-400">
-                              {(statement.fileType || 'document').toUpperCase()}
-                            </span>
-                          </div>
-                        </div>
-                      </button>
-                    </td>
-                    <td className="px-6 py-5 text-center whitespace-nowrap">
-                      {getStatusBadge(statement.status)}
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap hidden md:table-cell">
-                      <div className="flex items-center">
-                        <BankLogoAvatar bankName={statement.bankName} size={32} className="mr-3" />
-                        <span className="text-sm font-medium text-gray-700 capitalize">
-                          {getBankDisplayName(statement.bankName)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap hidden lg:table-cell">
-                      <div className="text-sm font-medium text-gray-900">
-                        {statement.totalTransactions > 0 ? statement.totalTransactions : '—'}
-                        <span className="text-gray-400 ml-1 font-normal text-xs">
-                          {t.table.opsShort}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="text-smfont-medium text-gray-900">
-                          {new Date(statement.createdAt).toLocaleDateString()}
-                        </span>
-                        <span className="text-xs text-gray-500 mt-0.5">
-                          {new Date(statement.createdAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleViewFile(statement.id)}
-                          className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all"
-                          title={t.actions.view.value}
-                        >
-                          <Eye size={20} />
-                        </button>
-                        <button
-                          onClick={() => handleDownloadFile(statement.id, statement.fileName)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
-                          title={t.actions.download.value}
-                        >
-                          <Download size={20} />
-                        </button>
-
-                        <button
-                          onClick={() => openLogs(statement.id, statement.fileName)}
-                          disabled={logLoading && logStatementId === statement.id}
-                          className={`p-2 rounded-lg transition-all ${
-                            logLoading && logStatementId === statement.id
-                              ? 'text-gray-300 cursor-not-allowed'
-                              : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
-                          }`}
-                          title={t.actions.logs.value}
-                        >
-                          <Terminal size={20} />
-                        </button>
-
-                        {statement.status === 'error' && (
-                          <button
-                            onClick={() => handleReprocess(statement.id)}
-                            className="p-2 rounded-lg text-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all"
-                            title={t.actions.retry.value}
-                          >
-                            <RefreshCw size={20} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => confirmDelete(statement.id)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all"
-                          title={t.actions.delete.value}
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50/50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[40%]"
+                    >
+                      {t.table.file}
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-4 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider w-[15%]"
+                    >
+                      {t.table.status}
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[15%] hidden md:table-cell"
+                    >
+                      {t.table.bank}
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%] hidden lg:table-cell"
+                    >
+                      {t.table.transactions}
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%]"
+                    >
+                      {t.table.date}
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-[10%]"
+                    >
+                      {t.table.actions}
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {statements.map(statement => (
+                    <tr
+                      key={statement.id}
+                      className={`transition-all duration-200 group hover:shadow-md hover:bg-white hover:z-10 relative ${
+                        statement.status === 'processing' ? 'bg-blue-50/30' : ''
+                      }`}
+                    >
+                      <td className="px-6 py-5">
+                        <button
+                          type="button"
+                          className="flex items-center w-full text-left cursor-pointer group/file"
+                          onClick={() => handleViewFile(statement.id)}
+                        >
+                          <div className="flex-shrink-0 h-12 w-12 flex items-center justify-center rounded-xl bg-red-50 text-red-500 group-hover/file:bg-red-100 group-hover/file:scale-110 transition-all duration-200">
+                            {getFileIcon(statement.fileType, statement.fileName)}
+                          </div>
+                          <div className="ml-4 min-w-0 flex-1">
+                            <div
+                              className="text-base font-semibold text-gray-900 truncate group-hover:text-primary transition-colors"
+                              title={statement.fileName}
+                            >
+                              {statement.fileName.length > 20
+                                ? `${statement.fileName.substring(0, 20)}...`
+                                : statement.fileName}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-gray-400">
+                                {(statement.fileType || 'document').toUpperCase()}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      </td>
+                      <td className="px-6 py-5 text-center whitespace-nowrap">
+                        {getStatusBadge(statement.status)}
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap hidden md:table-cell">
+                        <div className="flex items-center">
+                          <BankLogoAvatar bankName={statement.bankName} size={32} className="mr-3" />
+                          <span className="text-sm font-medium text-gray-700 capitalize">
+                            {getBankDisplayName(statement.bankName)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap hidden lg:table-cell">
+                        <div className="text-sm font-medium text-gray-900">
+                          {statement.totalTransactions > 0 ? statement.totalTransactions : '—'}
+                          <span className="text-gray-400 ml-1 font-normal text-xs">
+                            {t.table.opsShort}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-smfont-medium text-gray-900">
+                            {new Date(statement.createdAt).toLocaleDateString()}
+                          </span>
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            {new Date(statement.createdAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleViewFile(statement.id)}
+                            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all"
+                            title={t.actions.view.value}
+                          >
+                            <Eye size={20} />
+                          </button>
+                          <button
+                            onClick={() => handleDownloadFile(statement.id, statement.fileName)}
+                            className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
+                            title={t.actions.download.value}
+                          >
+                            <Download size={20} />
+                          </button>
+
+                          <button
+                            onClick={() => openLogs(statement.id, statement.fileName)}
+                            disabled={logLoading && logStatementId === statement.id}
+                            className={`p-2 rounded-lg transition-all ${
+                              logLoading && logStatementId === statement.id
+                                ? 'text-gray-300 cursor-not-allowed'
+                                : 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
+                            }`}
+                            title={t.actions.logs.value}
+                          >
+                            <Terminal size={20} />
+                          </button>
+
+                          {statement.status === 'error' && (
+                            <button
+                              onClick={() => handleReprocess(statement.id)}
+                              className="p-2 rounded-lg text-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all"
+                              title={t.actions.retry.value}
+                            >
+                              <RefreshCw size={20} />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => confirmDelete(statement.id)}
+                            className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                            title={t.actions.delete.value}
+                          >
+                            <Trash2 size={20} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-6 py-4 border-t border-gray-200">
+              <div className="text-sm text-gray-600">
+                {total === 0
+                  ? t.empty.title
+                  : `Показано ${rangeStart}–${rangeEnd} из ${total}`}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                  disabled={page <= 1}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm border transition-all ${
+                    page <= 1
+                      ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <ChevronLeft className="h-4 w-4" /> Предыдущая
+                </button>
+                <span className="text-sm text-gray-600">
+                  Страница {page} из {totalPagesCount}
+                </span>
+                <button
+                  onClick={() => setPage(prev => Math.min(totalPagesCount, prev + 1))}
+                  disabled={page >= totalPagesCount}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm border transition-all ${
+                    page >= totalPagesCount
+                      ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                      : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  Следующая <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
 
@@ -618,6 +732,7 @@ export default function StatementsPage() {
               setUploadModalOpen(false);
               setUploadFiles([]);
               setUploadError(null);
+              setAllowDuplicates(false);
             }}
             onKeyDown={event => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -625,6 +740,7 @@ export default function StatementsPage() {
                 setUploadModalOpen(false);
                 setUploadFiles([]);
                 setUploadError(null);
+                setAllowDuplicates(false);
               }
             }}
           />
@@ -640,6 +756,7 @@ export default function StatementsPage() {
                   setUploadModalOpen(false);
                   setUploadFiles([]);
                   setUploadError(null);
+                  setAllowDuplicates(false);
                 }}
                 className="rounded-full p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
               >
@@ -678,6 +795,19 @@ export default function StatementsPage() {
                   </p>
                   <p className="mt-2 text-xs text-gray-400">{t.uploadModal.maxHint}</p>
                 </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-2">
+                <input
+                  id="allow-duplicates"
+                  type="checkbox"
+                  checked={allowDuplicates}
+                  onChange={e => setAllowDuplicates(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label htmlFor="allow-duplicates" className="text-sm text-gray-700">
+                  {allowDuplicatesLabel}
+                </label>
               </div>
 
               {uploadFiles.length > 0 && (
@@ -722,6 +852,7 @@ export default function StatementsPage() {
                   setUploadModalOpen(false);
                   setUploadFiles([]);
                   setUploadError(null);
+                  setAllowDuplicates(false);
                 }}
                 className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
                 disabled={uploading}

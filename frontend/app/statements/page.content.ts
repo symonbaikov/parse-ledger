@@ -146,6 +146,11 @@ const content = {
         en: 'or drag and drop files',
         kk: 'немесе файлдарды сүйреп әкеліңіз',
       }),
+      allowDuplicates: t({
+        ru: 'Разрешить загрузку дубликатов',
+        en: 'Allow uploading duplicates',
+        kk: 'Дубликаттарды жүктеуге рұқсат беру',
+      }),
       maxHint: t({
         ru: 'Максимум 5 файлов до 10 МБ каждый',
         en: 'Up to 5 files, 10 MB each',

@@ -33,6 +33,11 @@ const content = {
       en: 'You can upload up to 2 files at a time',
       kk: 'Бір ретте ең көбі 2 файл жүктеуге болады',
     }),
+    allowDuplicates: t({
+      ru: 'Разрешить загрузку дубликатов',
+      en: 'Allow uploading duplicates',
+      kk: 'Дубликаттарды жүктеуге рұқсат беру',
+    }),
     uploadFailed: t({
       ru: 'Не удалось загрузить файлы. Попробуйте снова.',
       en: 'Failed to upload files. Please try again.',
