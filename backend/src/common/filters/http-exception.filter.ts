@@ -24,6 +24,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const message =
       exception instanceof HttpException ? exception.getResponse() : 'Internal server error';
 
+    const locale = this.resolveLocale(request);
+
     // Debug log to surface unexpected errors in logs
     if (!(exception instanceof HttpException)) {
       this.logger.error(
@@ -35,7 +37,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const errorResponse = {
       error: {
         code: this.getErrorCode(status),
-        message: typeof message === 'string' ? message : (message as any).message,
+        message: this.getLocalizedMessage(status, message, locale),
         details:
           typeof message === 'object' && (message as any).message ? (message as any) : undefined,
       },
@@ -59,5 +61,53 @@ export class HttpExceptionFilter implements ExceptionFilter {
       500: 'INTERNAL_SERVER_ERROR',
     };
     return codes[status] || 'UNKNOWN_ERROR';
+  }
+
+  private resolveLocale(request: Request): 'en' | 'ru' {
+    const userLocale = (request as any)?.user?.locale as string | undefined;
+    const headerLocale = request.headers['accept-language'];
+    const normalizedHeader = Array.isArray(headerLocale)
+      ? headerLocale[0]
+      : headerLocale?.split(',')[0];
+
+    const locale = userLocale || normalizedHeader || 'ru';
+    return locale.startsWith('en') ? 'en' : 'ru';
+  }
+
+  private getLocalizedMessage(status: number, rawMessage: unknown, locale: 'en' | 'ru'): string {
+    const localizedByStatus: Record<number, { en: string; ru: string }> = {
+      400: { en: 'Bad request', ru: 'Некорректный запрос' },
+      401: { en: 'Unauthorized', ru: 'Не авторизован' },
+      403: { en: 'Forbidden', ru: 'Доступ запрещен' },
+      404: { en: 'Not found', ru: 'Ресурс не найден' },
+      422: { en: 'Validation error', ru: 'Ошибка валидации' },
+      429: { en: 'Too many requests', ru: 'Слишком много запросов' },
+      500: { en: 'Internal server error', ru: 'Внутренняя ошибка сервера' },
+    };
+
+    const defaultEnglishMessages = new Set([
+      'Internal server error',
+      'Forbidden resource',
+      'Unauthorized',
+      'Too Many Requests',
+      'Bad Request',
+      'Not Found',
+      'Validation failed',
+    ]);
+
+    const extractedMessage =
+      typeof rawMessage === 'string'
+        ? rawMessage
+        : (rawMessage as any)?.message ?? localizedByStatus[status]?.[locale] ?? 'Error';
+
+    if (Array.isArray(extractedMessage)) {
+      return localizedByStatus[status]?.[locale] ?? 'Error';
+    }
+
+    if (defaultEnglishMessages.has(extractedMessage)) {
+      return localizedByStatus[status]?.[locale] ?? extractedMessage;
+    }
+
+    return extractedMessage || localizedByStatus[status]?.[locale] || 'Error';
   }
 }
