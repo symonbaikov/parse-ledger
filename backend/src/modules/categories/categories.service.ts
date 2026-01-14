@@ -87,6 +87,10 @@ export class CategoriesService {
     await this.ensureCanEditCategories(userId);
     const category = await this.findOne(id, userId);
 
+    if (category.isSystem) {
+      throw new ForbiddenException('Cannot modify system category');
+    }
+
     // Check for duplicate name if name is being changed
     if (updateDto.name && updateDto.name !== category.name) {
       const existing = await this.categoryRepository.findOne({
@@ -107,7 +111,7 @@ export class CategoriesService {
     const category = await this.findOne(id, userId);
 
     if (category.isSystem) {
-      throw new ConflictException('Cannot delete system category');
+      throw new ForbiddenException('Cannot delete system category');
     }
 
     await this.categoryRepository.remove(category);

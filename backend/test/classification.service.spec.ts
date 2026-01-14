@@ -22,6 +22,8 @@ describe('ClassificationService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    walletRepo.find.mockResolvedValue([]);
+    branchRepo.find.mockResolvedValue([]);
     service = new ClassificationService(categoryRepo, branchRepo, walletRepo);
   });
 

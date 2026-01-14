@@ -54,42 +54,17 @@ export class UsersService {
     return user;
   }
 
-  async findAll(page: number = 1, limit: number = 20): Promise<{
-    data: User[];
-    total: number;
-    page: number;
-    limit: number;
-  }> {
-    const [data, total] = await this.userRepository.findAndCount({
-      skip: (page - 1) * limit,
+  async findAll(workspaceId?: string | number, limit: number = 20): Promise<User[]> {
+    const where: any = { deletedAt: null };
+    if (workspaceId !== undefined && workspaceId !== null) {
+      where.workspaceId = String(workspaceId);
+    }
+
+    return this.userRepository.find({
+      where,
       take: limit,
       order: { createdAt: 'DESC' },
-      select: [
-        'id',
-        'email',
-        'name',
-        'company',
-        'role',
-        'workspaceId',
-        'googleId',
-        'telegramId',
-        'telegramChatId',
-        'createdAt',
-        'updatedAt',
-        'lastLogin',
-        'isActive',
-        'permissions',
-        'locale',
-        'timeZone',
-      ],
     });
-
-    return {
-      data,
-      total,
-      page,
-      limit,
-    };
   }
 
   async findOne(id: string): Promise<User> {
@@ -117,6 +92,10 @@ export class UsersService {
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if ('passwordHash' in user) {
+      delete (user as any).passwordHash;
     }
 
     return user;
@@ -181,8 +160,8 @@ export class UsersService {
       throw new ForbiddenException('You cannot delete your own account');
     }
 
-    const user = await this.findOne(id);
-    await this.userRepository.remove(user);
+    await this.findOne(id);
+    await this.userRepository.softDelete(id);
   }
 
   async getProfile(userId: string): Promise<User> {
@@ -228,6 +207,7 @@ export class UsersService {
     }
 
     user.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    user.tokenVersion = (user.tokenVersion ?? 0) + 1;
     await this.userRepository.save(user);
   }
 

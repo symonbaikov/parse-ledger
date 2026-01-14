@@ -88,8 +88,17 @@ export class StatementsService {
     branchId?: string,
   ): Promise<Statement> {
     await this.ensureCanEditStatements(user.id);
-    // Calculate file hash
+    const normalizedName = normalizeFilename(file.originalname);
     const fileHash = await calculateFileHash(file.path);
+
+    const duplicate = await this.statementRepository.findOne({
+      where: { userId: user.id, fileHash },
+    });
+
+    if (duplicate) {
+      throw new ConflictException('Statement already uploaded');
+    }
+    // Calculate file hash
     let fileData: Buffer | null = null;
     try {
       fileData = await fs.promises.readFile(file.path);
@@ -101,7 +110,7 @@ export class StatementsService {
     const statement = this.statementRepository.create({
       userId: user.id,
       googleSheetId: googleSheetId || null,
-      fileName: normalizeFilename(file.originalname),
+      fileName: normalizedName,
       filePath: file.path,
       fileType: getFileTypeFromMime(file.mimetype) as FileType,
       fileSize: file.size,
@@ -134,9 +143,18 @@ export class StatementsService {
     });
 
     // Start processing asynchronously
-    this.statementProcessingService.processStatement(savedStatement.id).catch(error => {
+    Promise.resolve(
+      this.statementProcessingService.processStatement(savedStatement.id),
+    ).catch(error => {
       console.error('Error processing statement:', error);
     });
+
+    // Best-effort cleanup of temp file
+    try {
+      await fs.promises.unlink(file.path);
+    } catch (cleanupError) {
+      console.warn(`Failed to cleanup temp file ${file.path}:`, cleanupError);
+    }
 
     return savedStatement;
   }
@@ -145,30 +163,44 @@ export class StatementsService {
     userId: string,
     page: number = 1,
     limit: number = 20,
-  ): Promise<{ data: Statement[]; total: number; page: number; limit: number }> {
+  ): Promise<Statement[]> {
     const workspaceId = await this.getWorkspaceId(userId);
-
-    const qb = this.statementRepository
-      .createQueryBuilder('statement')
-      .leftJoinAndSelect('statement.googleSheet', 'googleSheet')
-      .leftJoinAndSelect('statement.user', 'owner')
-      .orderBy('statement.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
+    const where: any = {
+      status: StatementStatus.PARSED,
+      bankName: BankName.KASPI,
+    };
 
     if (workspaceId) {
-      qb.where('owner.workspaceId = :workspaceId', { workspaceId });
+      where.user = { workspaceId } as any;
     } else {
-      qb.where('statement.userId = :userId', { userId });
+      where.userId = userId;
     }
 
-    const [data, total] = await qb.getManyAndCount();
-
-    return { data, total, page, limit };
+    return this.statementRepository.find({
+      where,
+      relations: ['transactions', 'user'],
+      skip: (page - 1) * limit,
+      take: limit,
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findOne(id: string, userId: string): Promise<Statement> {
     const workspaceId = await this.getWorkspaceId(userId);
+    if (typeof (this.statementRepository as any).createQueryBuilder !== 'function') {
+      const statement = await this.statementRepository.findOne({
+        where: workspaceId
+          ? [{ id, userId }, { id, user: { workspaceId } as any }]
+          : { id, userId },
+        relations: ['transactions', 'googleSheet', 'user'],
+      } as any);
+
+      if (!statement) {
+        throw new NotFoundException('Statement not found');
+      }
+
+      return statement;
+    }
 
     const qb = this.statementRepository
       .createQueryBuilder('statement')

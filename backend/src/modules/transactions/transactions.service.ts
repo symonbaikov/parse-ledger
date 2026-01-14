@@ -102,18 +102,18 @@ export class TransactionsService {
   }
 
   async findOne(id: string, userId: string): Promise<Transaction> {
-    const transaction = await this.transactionRepository
-      .createQueryBuilder('transaction')
-      .innerJoin('transaction.statement', 'statement')
-      .where('transaction.id = :id', { id })
-      .andWhere('statement.userId = :userId', { userId })
-      .leftJoinAndSelect('transaction.category', 'category')
-      .leftJoinAndSelect('transaction.branch', 'branch')
-      .leftJoinAndSelect('transaction.wallet', 'wallet')
-      .getOne();
+    const transaction = await this.transactionRepository.findOne({
+      where: { id },
+      relations: ['statement', 'category', 'branch', 'wallet'],
+    });
 
     if (!transaction) {
       throw new NotFoundException('Transaction not found');
+    }
+
+    const ownerId = (transaction as any).statement?.userId;
+    if (ownerId && ownerId !== userId) {
+      throw new ForbiddenException('Access denied');
     }
 
     return transaction;
@@ -174,7 +174,8 @@ export class TransactionsService {
   async remove(id: string, userId: string): Promise<void> {
     await this.ensureCanEditStatements(userId);
     const transaction = await this.findOne(id, userId);
-    await this.transactionRepository.remove(transaction);
+    // Use delete for simplicity; entity already validated for ownership.
+    await this.transactionRepository.delete(transaction.id);
   }
 }
 

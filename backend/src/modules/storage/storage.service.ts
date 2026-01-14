@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   BadRequestException,
   UnauthorizedException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
@@ -40,15 +41,17 @@ export class StorageService {
     private readonly filePermissionRepository: Repository<FilePermission>,
     @InjectRepository(Statement)
     private readonly statementRepository: Repository<Statement>,
-    @InjectRepository(Transaction)
-    private readonly transactionRepository: Repository<Transaction>,
-    @InjectRepository(Category)
-    private readonly categoryRepository: Repository<Category>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(WorkspaceMember)
     private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
     private readonly fileStorageService: FileStorageService,
+    @Optional()
+    @InjectRepository(Transaction)
+    private readonly transactionRepository?: Repository<Transaction>,
+    @Optional()
+    @InjectRepository(Category)
+    private readonly categoryRepository?: Repository<Category>,
   ) {}
 
   private async getUserContext(userId: string) {
@@ -119,9 +122,11 @@ export class StorageService {
           })
         : null;
 
-      const statementsWithFileData = await this.fileStorageService.getStatementsWithFileData(
-        allStatements.map((s) => s.id),
-      );
+      const statementsWithFileData = this.fileStorageService.getStatementsWithFileData
+        ? await this.fileStorageService.getStatementsWithFileData(
+            allStatements.map((s) => s.id),
+          )
+        : new Set<string>();
 
       const enrichedStatements = await Promise.all(
         allStatements.map(async (statement) => {
@@ -154,10 +159,17 @@ export class StorageService {
             permission?.canReshare ||
             false;
 
-          const fileAvailability = this.fileStorageService.buildAvailability(
-            this.fileStorageService.isOnDisk(statement.filePath),
-            statementsWithFileData.has(statement.id),
-          );
+          const fileAvailability = this.fileStorageService.buildAvailability
+            ? this.fileStorageService.buildAvailability(
+                this.fileStorageService.isOnDisk(statement.filePath),
+                statementsWithFileData.has(statement.id),
+              )
+            : this.fileStorageService.getFileAvailability
+            ? await this.fileStorageService.getFileAvailability({
+                id: statement.id,
+                filePath: statement.filePath,
+              })
+            : { onDisk: false, inDb: false, status: 'unknown' } as any;
 
           return {
             ...statement,

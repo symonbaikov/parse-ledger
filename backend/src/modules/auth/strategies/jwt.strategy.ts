@@ -25,9 +25,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {
-    const jwtSecret = configService.get<string>('JWT_SECRET');
+    // Prefer dedicated access token secret but fall back to legacy key
+    const jwtSecret =
+      configService.get<string>('JWT_ACCESS_SECRET') ||
+      configService.get<string>('JWT_SECRET');
     if (!jwtSecret) {
-      throw new Error('JWT_SECRET environment variable is not set');
+      throw new Error('JWT_ACCESS_SECRET environment variable is not set');
     }
     
     super({
@@ -40,27 +43,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<User> {
+    if (!payload || !payload.sub || !payload.email) {
+      throw new UnauthorizedException('Invalid token payload');
+    }
+
     const user = await this.userRepository.findOne({
-      where: { id: payload.sub, isActive: true },
-      select: [
-        'id',
-        'email',
-        'name',
-        'role',
-        'workspaceId',
-        'permissions',
-        'telegramId',
-        'telegramChatId',
-        'locale',
-        'timeZone',
-        'lastLogin',
-        'tokenVersion',
-        'isActive',
-      ],
+      where: { id: payload.sub },
     });
 
     if (!user) {
       throw new UnauthorizedException('User not found or inactive');
+    }
+
+    if (user.isActive === false) {
+      throw new UnauthorizedException('User is inactive');
     }
 
     const tokenVersion = payload.tokenVersion ?? 0;

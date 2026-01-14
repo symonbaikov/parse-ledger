@@ -21,6 +21,13 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
+backend/.env
+frontend/.env.local
+
+# Keep example files
+!.env.example
+!backend/.env.example
+!frontend/.env.local.example
 
 # IDE
 .vscode/
