@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
-import type { FileStorageService } from '../../common/services/file-storage.service';
+import { FileStorageService } from '../../common/services/file-storage.service';
 import { calculateFileHash } from '../../common/utils/file-hash.util';
 import { getFileTypeFromMime } from '../../common/utils/file-validator.util';
 import { normalizeFilename } from '../../common/utils/filename.util';
@@ -22,7 +22,7 @@ import {
 } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
-import type { StatementProcessingService } from '../parsing/services/statement-processing.service';
+import { StatementProcessingService } from '../parsing/services/statement-processing.service';
 import type { UpdateStatementDto } from './dto/update-statement.dto';
 
 @Injectable()
