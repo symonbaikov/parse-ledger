@@ -18,6 +18,7 @@ import {
   DollarSign,
   Droplets,
   Loader2,
+  PencilLine,
   Plus,
   Search,
   Table,
@@ -147,6 +148,12 @@ export default function DataEntryPage() {
   const [creatingCustomField, setCreatingCustomField] = useState(false);
   const [newCustomFieldName, setNewCustomFieldName] = useState('');
   const [newCustomFieldIcon, setNewCustomFieldIcon] = useState('mdi:tag');
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
+  const [editFieldName, setEditFieldName] = useState('');
+  const [editFieldIcon, setEditFieldIcon] = useState('mdi:tag');
+  const [editPanelOpen, setEditPanelOpen] = useState(false);
+  const [editIconOpen, setEditIconOpen] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState<{
     open: boolean;
     fieldId: string;
@@ -301,6 +308,20 @@ export default function DataEntryPage() {
       })
       .finally(() => setSaving(false));
   };
+
+  useEffect(() => {
+    if (isFieldTab(activeTab)) {
+      const fieldId = getFieldId(activeTab);
+      const field = customFields.find(f => f.id === fieldId);
+      setEditingFieldId(field?.id || null);
+      setEditFieldName(field?.name || '');
+      setEditFieldIcon(field?.icon || 'mdi:tag');
+      return;
+    }
+    setEditingFieldId(null);
+    setEditPanelOpen(false);
+    setEditIconOpen(false);
+  }, [activeTab, customFields]);
 
   const currentForm = forms[activeTab] || initialForm;
   const currentMeta = tabMeta[activeTab as BaseTabKey] || tabMeta.custom;
@@ -593,6 +614,47 @@ export default function DataEntryPage() {
         toast.error(message);
       })
       .finally(() => setCreatingCustomField(false));
+  };
+
+  const saveCustomFieldEdit = async () => {
+    if (!editingFieldId) return;
+    const name = editFieldName.trim();
+    if (!name) {
+      setStatus({ type: 'error', message: t.errors.columnNameRequired.value });
+      return;
+    }
+
+    setSavingEdit(true);
+    setStatus(null);
+    setError(null);
+    try {
+      const resp = await apiClient.patch(`/data-entry/custom-fields/${editingFieldId}`, {
+        name,
+        icon: editFieldIcon?.trim() || undefined,
+      });
+      const updatedRaw: CustomField = resp.data?.data || resp.data;
+      setCustomFields(prev =>
+        prev.map(field =>
+          field.id === editingFieldId
+            ? {
+                ...field,
+                name: updatedRaw?.name || name,
+                icon: updatedRaw?.icon ?? editFieldIcon,
+              }
+            : field,
+        ),
+      );
+      setStatus({ type: 'success', message: t.status.columnUpdated.value });
+      toast.success(t.status.columnUpdated.value);
+      setEditPanelOpen(false);
+      setEditIconOpen(false);
+    } catch (err: any) {
+      const message = err?.response?.data?.message || t.errors.updateColumnFailed.value;
+      setStatus({ type: 'error', message });
+      toast.error(message);
+    } finally {
+      setSavingEdit(false);
+    }
   };
 
   const removeCustomField = (id: string) => {
@@ -978,61 +1040,83 @@ export default function DataEntryPage() {
       )}
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 flex overflow-x-auto">
-          {(['cash', 'raw', 'debit', 'credit'] as BaseTabKey[])
-            .map(t => t as TabKey)
-            .concat(customFields.map(f => `field:${f.id}` as CustomFieldTabKey))
-            .concat(['custom' as const])
-            .map(tab => {
-              const isActive = tab === activeTab;
-              return (
-                <button
-                  key={tab}
-                  onClick={() => {
-                    setActiveTab(tab);
-                    setCalendarOpen(false);
-                    setCustomIconOpen(false);
-                    setExportMenuOpen(false);
-                    if (tab === 'custom') {
-                      setCustomFieldHighlight(true);
-                      window.setTimeout(() => setCustomFieldHighlight(false), 1200);
-                    }
-                  }}
-                  className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0 ${
-                    isActive
-                      ? 'text-primary border-b-2 border-primary bg-primary/5'
-                      : 'text-gray-600 hover:text-primary'
-                  }`}
-                >
-                  {getTabIcon(tab)}
-                  {getTabLabel(tab)}
-                  {isFieldTab(tab) && (
-                    <button
-                      type="button"
-                      onClick={e => {
-                        e.stopPropagation();
-                        const fieldId = getFieldId(tab);
-                        const field = customFields.find(f => f.id === fieldId);
-                        if (field) openDeleteDialog(field);
-                      }}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
+        <div className="border-b border-gray-100 flex items-center overflow-x-auto gap-2 pr-2">
+          <div className="flex items-center">
+            {(['cash', 'raw', 'debit', 'credit'] as BaseTabKey[])
+              .map(t => t as TabKey)
+              .concat(customFields.map(f => `field:${f.id}` as CustomFieldTabKey))
+              .concat(['custom' as const])
+              .map(tab => {
+                const isActive = tab === activeTab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      setActiveTab(tab);
+                      setCalendarOpen(false);
+                      setCustomIconOpen(false);
+                      setExportMenuOpen(false);
+                      setEditPanelOpen(false);
+                      setEditIconOpen(false);
+                      if (tab === 'custom') {
+                        setCustomFieldHighlight(true);
+                        window.setTimeout(() => setCustomFieldHighlight(false), 1200);
+                      }
+                    }}
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0 ${
+                      isActive
+                        ? 'text-primary border-b-2 border-primary bg-primary/5'
+                        : 'text-gray-600 hover:text-primary'
+                    }`}
+                  >
+                    {getTabIcon(tab)}
+                    {getTabLabel(tab)}
+                    {isFieldTab(tab) && (
+                      <button
+                        type="button"
+                        onClick={e => {
                           e.stopPropagation();
                           const fieldId = getFieldId(tab);
                           const field = customFields.find(f => f.id === fieldId);
                           if (field) openDeleteDialog(field);
-                        }
-                      }}
-                      className="ml-1 inline-flex items-center justify-center h-6 w-6 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50"
-                      title={t.labels.deleteTabTitle.value}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
-                </button>
-              );
-            })}
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const fieldId = getFieldId(tab);
+                            const field = customFields.find(f => f.id === fieldId);
+                            if (field) openDeleteDialog(field);
+                          }
+                        }}
+                        className="ml-1 inline-flex items-center justify-center h-6 w-6 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50"
+                        title={t.labels.deleteTabTitle.value}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </button>
+                );
+              })}
+          </div>
+
+          <button
+            type="button"
+            disabled={!isFieldTab(activeTab)}
+            onClick={() => {
+              if (!isFieldTab(activeTab)) return;
+              setEditPanelOpen(open => !open);
+              setEditIconOpen(false);
+              setCustomIconOpen(false);
+              setExportMenuOpen(false);
+              setCalendarOpen(false);
+            }}
+            className="ml-auto inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:text-primary flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            title={t.labels.editColumnButton.value}
+          >
+            <PencilLine className="h-4 w-4" />
+            {t.labels.editColumnButton}
+          </button>
         </div>
 
         <div className="p-4 space-y-4">
@@ -1041,6 +1125,112 @@ export default function DataEntryPage() {
               ? `${t.labels.dataEntryForTabPrefix.value}${getTabLabel(activeTab)}${t.labels.dataEntryForTabSuffix.value}`
               : currentMeta.description}
           </div>
+
+          {isFieldTab(activeTab) && editPanelOpen && (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <PencilLine className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-gray-900">
+                    {t.labels.editColumnTitle}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditPanelOpen(false);
+                      setEditIconOpen(false);
+                    }}
+                    className="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    {t.labels.cancel}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveCustomFieldEdit}
+                    disabled={savingEdit}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
+                  >
+                    {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : t.labels.saveChanges}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                <label className="block md:col-span-2">
+                  <span className="text-sm font-medium text-gray-700 block mb-1">
+                    {t.labels.columnNameLabel}
+                  </span>
+                  <input
+                    type="text"
+                    value={editFieldName}
+                    onChange={e => setEditFieldName(e.target.value)}
+                    placeholder={t.labels.columnNamePlaceholder.value}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                  />
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditIconOpen(v => !v);
+                        setCustomIconOpen(false);
+                        setExportMenuOpen(false);
+                        setCalendarOpen(false);
+                      }}
+                      className="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                      title={t.labels.chooseIconTitle.value}
+                    >
+                      {renderIconPreview(editFieldIcon || 'mdi:tag')}
+                      <span className="text-sm font-semibold">{t.labels.iconLabel}</span>
+                    </button>
+
+                    {editIconOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setEditIconOpen(false)}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              setEditIconOpen(false);
+                            }
+                          }}
+                        />
+                        <div className="absolute mt-2 z-30 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
+                          <div className="grid grid-cols-7 gap-2">
+                            {CUSTOM_FIELD_ICONS.map(icon => (
+                              <button
+                                key={icon}
+                                type="button"
+                                onClick={() => {
+                                  setEditFieldIcon(icon);
+                                  setEditIconOpen(false);
+                                }}
+                                className={`inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors ${
+                                  editFieldIcon === icon
+                                    ? 'border-primary bg-primary/10 text-primary'
+                                    : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                                }`}
+                                title={icon}
+                              >
+                                {renderIconPreview(icon)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {activeTab === 'custom' ? (
             <div className="space-y-4">

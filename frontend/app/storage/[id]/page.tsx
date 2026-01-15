@@ -2,29 +2,15 @@
 
 import { resolveBankLogo } from '@bank-logos';
 import {
-  ArrowBack as BackIcon,
-  Download as DownloadIcon,
-  Share as ShareIcon,
-} from '@mui/icons-material';
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  Container,
-  FormControl,
-  IconButton,
-  MenuItem,
-  Paper,
-  Select,
-  Tab,
-  Tabs,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+  ArrowLeft,
+  Download,
+  ExternalLink,
+  Loader2,
+  RefreshCcw,
+  Shield,
+  ShieldCheck,
+  Share2,
+} from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
@@ -71,12 +57,6 @@ interface FileDetails {
   fileAvailability?: FileAvailability;
 }
 
-interface CategoryOption {
-  id: string;
-  name: string;
-  color?: string;
-}
-
 const getBankDisplayName = (bankName: string) => {
   const resolved = resolveBankLogo(bankName);
   if (!resolved) return bankName;
@@ -97,12 +77,10 @@ export default function FileDetailsPage() {
 
   const [details, setDetails] = useState<FileDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentTab, setCurrentTab] = useState(
-    initialTab === 'share' ? 1 : initialTab === 'permissions' ? 2 : 0,
+  const [currentTab, setCurrentTab] = useState<'transactions' | 'links' | 'permissions'>(
+    initialTab === 'permissions' ? 'permissions' : initialTab === 'share' ? 'links' : 'transactions',
   );
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -121,8 +99,6 @@ export default function FileDetailsPage() {
     const run = async () => {
       const loadedDetails = await loadFileDetails();
       if (cancelled) return;
-
-      loadCategories();
 
       if (loadedDetails?.fileAvailability?.status === 'missing') {
         setPreviewError(t.preview.unavailable.value);
@@ -160,18 +136,6 @@ export default function FileDetailsPage() {
       return null;
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      setCategoriesLoading(true);
-      const response = await api.get('/categories');
-      setCategories(response.data || []);
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-    } finally {
-      setCategoriesLoading(false);
     }
   };
 
@@ -233,10 +197,6 @@ export default function FileDetailsPage() {
     } catch (error) {
       console.error('Failed to download file:', error);
     }
-  };
-
-  const handleShare = () => {
-    setShareDialogOpen(true);
   };
 
   const formatDate = (dateString: string): string => {
@@ -317,38 +277,52 @@ export default function FileDetailsPage() {
     }
   };
 
-  const renderAvailabilityChip = (availability?: FileAvailability) => {
+  const renderAvailabilityBadge = (availability?: FileAvailability) => {
     if (!availability) return null;
-
     const status = availability.status;
-    const color: 'success' | 'info' | 'error' =
-      status === 'missing' ? 'error' : status === 'both' ? 'success' : 'info';
+    const colorClasses =
+      status === 'missing'
+        ? 'bg-red-50 text-red-700 border-red-200'
+        : status === 'both'
+          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+          : 'bg-blue-50 text-blue-700 border-blue-200';
 
     return (
-      <Tooltip title={getAvailabilityTooltip(status)}>
-        <Chip
-          label={getAvailabilityLabel(status)}
-          size="small"
-          color={color}
-          variant={status === 'both' ? 'filled' : 'outlined'}
-        />
-      </Tooltip>
+      <span
+        className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${colorClasses}`}
+        title={getAvailabilityTooltip(status)}
+      >
+        {getAvailabilityLabel(status)}
+      </span>
     );
   };
 
   if (loading) {
     return (
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <Typography>{t.loading}</Typography>
-      </Container>
+      <div className="max-w-6xl mx-auto px-4 py-16">
+        <div className="flex items-center gap-3 text-gray-600">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>{t.loading}</span>
+        </div>
+      </div>
     );
   }
 
   if (!details) {
     return (
-      <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-        <Typography>{t.notFound}</Typography>
-      </Container>
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <p className="text-gray-900 font-semibold mb-2">{t.notFound}</p>
+          <button
+            type="button"
+            onClick={() => router.push('/storage')}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t.tabs.transactions.value}
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -362,239 +336,293 @@ export default function FileDetailsPage() {
     fileAvailability,
   } = details;
 
+  const tabs = [
+    { key: 'transactions' as const, label: `${t.tabs.transactions.value} (${transactions.length})` },
+    { key: 'links' as const, label: `${t.tabs.links.value} (${sharedLinks.length})` },
+    ...(isOwner ? [{ key: 'permissions' as const, label: `${t.tabs.permissions.value} (${permissions.length})` }] : []),
+  ];
+
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-        <IconButton onClick={() => router.push('/storage')}>
-          <BackIcon />
-        </IconButton>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h4" component="h1">
-            {statement.fileName}
-          </Typography>
-          <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-            <Chip
-              label={getBankDisplayName(statement.bankName)}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-            <Chip label={getStatusLabel(statement.status)} size="small" color="success" />
-            {renderAvailabilityChip(fileAvailability)}
-            <Chip
-              label={isOwner ? t.permission.owner.value : getPermissionLabel(userPermission)}
-              size="small"
-              color={isOwner ? 'success' : 'default'}
-              variant={isOwner ? 'filled' : 'outlined'}
-            />
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title={t.actions.downloadTooltip.value}>
-            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownload}>
-              {t.actions.download}
-            </Button>
-          </Tooltip>
-          {(isOwner || userPermission === 'editor') && (
-            <Tooltip title={t.actions.shareTooltip.value}>
-              <Button variant="contained" startIcon={<ShareIcon />} onClick={handleShare}>
-                {t.actions.share}
-              </Button>
-            </Tooltip>
-          )}
-        </Box>
-      </Box>
-
-      {/* File info + preview */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: {
-            xs: '1fr',
-            lg: '1.1fr 1.4fr',
-          },
-          gap: 2,
-          alignItems: 'stretch',
-          mb: 3,
-        }}
-      >
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: 'repeat(auto-fit, minmax(160px, 1fr))',
-              sm: 'repeat(auto-fit, minmax(200px, 1fr))',
-            },
-            gap: 2,
-          }}
-        >
-          <Card>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                {t.cards.size}
-              </Typography>
-              <Typography variant="h6">{formatFileSize(statement.fileSize)}</Typography>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                {t.cards.transactions}
-              </Typography>
-              <Typography variant="h6">{transactions.length}</Typography>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                {t.cards.uploadedAt}
-              </Typography>
-              <Typography variant="h6">{formatDate(statement.createdAt)}</Typography>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent>
-              <Typography variant="body2" color="text.secondary">
-                {t.cards.account}
-              </Typography>
-              <Typography variant="h6">
-                {statement.metadata?.accountNumber || t.cards.dash.value}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Box>
-
-        <Paper
-          elevation={0}
-          sx={{
-            p: 2,
-            border: '1px solid',
-            borderColor: 'divider',
-            minHeight: 320,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 1.5,
-          }}
-        >
-          <Box
-            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            onClick={() => router.push('/storage')}
+            className="rounded-full border border-gray-200 bg-white p-2 text-gray-600 shadow-sm transition hover:bg-gray-50"
+            aria-label="Back to storage"
           >
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl font-bold text-gray-900 break-all">{statement.fileName}</h1>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold">
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-primary">
+                {getBankDisplayName(statement.bankName)}
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">
+                {getStatusLabel(statement.status)}
+              </span>
+              {renderAvailabilityBadge(fileAvailability)}
+              <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-gray-700">
+                {isOwner ? <ShieldCheck className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+                {isOwner ? t.permission.owner.value : getPermissionLabel(userPermission)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50"
+            title={t.actions.downloadTooltip.value}
+          >
+            <Download className="h-4 w-4" />
+            {t.actions.download}
+          </button>
+          {(isOwner || userPermission === 'editor') && (
+            <button
+              type="button"
+              onClick={() => {
+                setCurrentTab('links');
+                setShareDialogOpen(true);
+              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-hover"
+              title={t.actions.shareTooltip.value}
+            >
+              <Share2 className="h-4 w-4" />
+              {t.actions.share}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[1.05fr_1.4fr]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-xs uppercase tracking-wide text-gray-500">{t.cards.size}</p>
+            <p className="mt-1 text-lg font-semibold text-gray-900">{formatFileSize(statement.fileSize)}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-xs uppercase tracking-wide text-gray-500">{t.cards.transactions}</p>
+            <p className="mt-1 text-lg font-semibold text-gray-900">{transactions.length}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-xs uppercase tracking-wide text-gray-500">{t.cards.uploadedAt}</p>
+            <p className="mt-1 text-lg font-semibold text-gray-900">{formatDate(statement.createdAt)}</p>
+          </div>
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-xs uppercase tracking-wide text-gray-500">{t.cards.account}</p>
+            <p className="mt-1 text-lg font-semibold text-gray-900">
+              {statement.metadata?.accountNumber || t.cards.dash.value}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-gray-900 font-semibold">
+              <RefreshCcw className="h-4 w-4 text-primary" />
               {t.preview.title}
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <Button
-                size="small"
-                variant="outlined"
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
                 onClick={() => loadPreview()}
                 disabled={previewLoading}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
+                {previewLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                {!previewLoading && <RefreshCcw className="h-4 w-4" />}
                 {t.preview.refresh}
-              </Button>
+              </button>
               {previewUrl && (
-                <Button
-                  size="small"
-                  variant="text"
+                <button
+                  type="button"
                   onClick={() => previewUrl && window.open(previewUrl, '_blank')}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
                 >
+                  <ExternalLink className="h-4 w-4" />
                   {t.preview.openNewTab}
-                </Button>
+                </button>
               )}
-            </Box>
-          </Box>
+            </div>
+          </div>
 
-          {previewLoading && (
-            <Box
-              sx={{
-                flex: 1,
-                minHeight: 260,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <CircularProgress />
-            </Box>
-          )}
+          <div className="mt-3 overflow-hidden rounded-lg border border-dashed border-gray-200 bg-gray-50/60">
+            {previewLoading && (
+              <div className="flex min-h-[360px] items-center justify-center text-gray-500">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            )}
 
-          {!previewLoading && previewError && (
-            <Alert severity="error" sx={{ flex: 1 }}>
-              {previewError}
-              <Box sx={{ mt: 1 }}>
-                <Button size="small" onClick={() => loadPreview()}>
+            {!previewLoading && previewError && (
+              <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 bg-white px-4 text-center text-sm text-gray-700">
+                <div className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-red-700">
+                  {previewError}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadPreview()}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
+                >
+                  <RefreshCcw className="h-4 w-4" />
                   {t.preview.retry}
-                </Button>
-              </Box>
-            </Alert>
-          )}
+                </button>
+              </div>
+            )}
 
-          {!previewLoading && !previewError && previewUrl && (
-            <Box
-              sx={{
-                flex: 1,
-                borderRadius: 1,
-                overflow: 'hidden',
-                border: '1px solid',
-                borderColor: 'divider',
-                minHeight: 260,
-                backgroundColor: 'background.paper',
-              }}
-            >
+            {!previewLoading && !previewError && previewUrl && (
               <iframe
                 src={previewUrl}
                 title={t.preview.iframeTitle.value}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                }}
+                className="h-[420px] w-full border-0 bg-white"
               />
-            </Box>
+            )}
+
+            {!previewLoading && !previewError && !previewUrl && (
+              <div className="flex min-h-[360px] items-center justify-center bg-white px-4 text-center text-sm text-gray-600">
+                {t.preview.empty}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-4 py-3">
+          {tabs.map(tab => {
+            const isActive = tab.key === currentTab;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setCurrentTab(tab.key)}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  isActive
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="p-4">
+          {currentTab === 'transactions' && (
+            <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+              <TransactionsView transactions={transactions} />
+            </div>
           )}
 
-          {!previewLoading && !previewError && !previewUrl && (
-            <Alert severity="info" sx={{ flex: 1 }}>
-              {t.preview.empty}
-            </Alert>
+          {currentTab === 'links' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-lg font-semibold text-gray-900">{t.tabs.links.value}</div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShareDialogOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover"
+                  >
+                    <Share2 className="h-4 w-4" />
+                    {t.actions.share}
+                  </button>
+                </div>
+              </div>
+
+              {sharedLinks.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-600">
+                  {t.tabs.links.value} — {t.preview.empty}
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {sharedLinks.map(link => (
+                    <div
+                      key={link.id}
+                      className="rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-gray-900">
+                            <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                              {link.permission}
+                            </span>
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                link.status === 'active'
+                                  ? 'bg-emerald-50 text-emerald-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              {link.status}
+                            </span>
+                            {link.expiresAt && (
+                              <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                                {formatDate(link.expiresAt)}
+                              </span>
+                            )}
+                          </div>
+                          {link.description && (
+                            <p className="text-sm text-gray-700">{link.description}</p>
+                          )}
+                          <p className="text-xs text-gray-500">
+                            {t.cards.uploadedAt}: {formatDate(link.createdAt)} • {t.cards.transactions}: {link.accessCount}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const shareUrl = `${window.location.origin}/shared/${link.token}`;
+                              navigator.clipboard.writeText(shareUrl).catch(() => undefined);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                          >
+                            {t.actions.share}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShareDialogOpen(true)}
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                          >
+                            {t.preview.refresh}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
-        </Paper>
-      </Box>
 
-      {/* Tabs */}
-      <Paper sx={{ mb: 3 }}>
-        <Tabs
-          value={currentTab}
-          onChange={(_, newValue) => setCurrentTab(newValue)}
-          indicatorColor="primary"
-          textColor="primary"
-        >
-          <Tab label={`${t.tabs.transactions.value} (${transactions.length})`} />
-          <Tab label={`${t.tabs.links.value} (${sharedLinks.length})`} />
-          {isOwner && <Tab label={`${t.tabs.permissions.value} (${permissions.length})`} />}
-        </Tabs>
-      </Paper>
+          {currentTab === 'permissions' && isOwner && (
+            <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+              <PermissionsPanel
+                fileId={fileId}
+                permissions={permissions}
+                onPermissionsUpdate={loadFileDetails}
+              />
+            </div>
+          )}
+        </div>
+      </div>
 
-      {/* Tab panels */}
-      <Box>
-        {currentTab === 0 && <TransactionsView transactions={transactions} />}
-        {currentTab === 1 && (
-          <ShareDialog
-            open={true}
-            onClose={() => {}}
-            fileId={fileId}
-            sharedLinks={sharedLinks}
-            onLinksUpdate={loadFileDetails}
-          />
-        )}
-        {currentTab === 2 && isOwner && (
-          <PermissionsPanel
-            fileId={fileId}
-            permissions={permissions}
-            onPermissionsUpdate={loadFileDetails}
-          />
-        )}
-      </Box>
-    </Container>
+      <ShareDialog
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        fileId={fileId}
+        sharedLinks={sharedLinks}
+        onLinksUpdate={loadFileDetails}
+      />
+    </div>
   );
 }

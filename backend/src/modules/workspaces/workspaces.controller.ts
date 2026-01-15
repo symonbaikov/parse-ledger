@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -31,6 +32,12 @@ export class WorkspacesController {
   @UseGuards(JwtAuthGuard)
   async inviteMember(@CurrentUser() user: User, @Body() dto: InviteMemberDto) {
     return this.workspacesService.inviteMember(user, dto);
+  }
+
+  @Delete('members/:userId')
+  @UseGuards(JwtAuthGuard)
+  async removeMember(@CurrentUser() user: User, @Param('userId') userId: string) {
+    return this.workspacesService.removeMember(user, userId);
   }
 
   @Public()

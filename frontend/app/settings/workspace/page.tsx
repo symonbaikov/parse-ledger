@@ -16,12 +16,14 @@ import {
   FormControlLabel,
   FormLabel,
   IconButton,
+  Menu,
+  MenuItem,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import type { AxiosError } from 'axios';
-import { Copy, MailPlus, Shield, Users } from 'lucide-react';
+import { Copy, MailPlus, MoreVertical, Shield, Users } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -86,6 +88,9 @@ export default function WorkspaceSettingsPage() {
     canEditDataEntry: true,
     canShareFiles: false,
   });
+  const [removeMenuAnchor, setRemoveMenuAnchor] = useState<null | HTMLElement>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const isOwnerOrAdmin = useMemo(() => {
     const member = overview?.members.find(m => m.id === user?.id);
@@ -112,6 +117,22 @@ export default function WorkspaceSettingsPage() {
       void loadOverview();
     }
   }, [loadOverview, user]);
+
+  const handleRemoveMember = async () => {
+    if (!selectedMemberId) return;
+    setRemoving(true);
+    try {
+      await apiClient.delete(`/workspaces/members/${selectedMemberId}`);
+      toast.success('Доступ отозван');
+      await loadOverview();
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Не удалось отозвать доступ'));
+    } finally {
+      setRemoving(false);
+      setRemoveMenuAnchor(null);
+      setSelectedMemberId(null);
+    }
+  };
 
   const handleInvite = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -310,40 +331,64 @@ export default function WorkspaceSettingsPage() {
                     </Typography>
                   </Stack>
                   <Stack spacing={1.5}>
-                    {overview.members.map(member => (
-                      <Box
-                        key={member.id}
-                        sx={{
-                          p: 1.5,
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 1.5,
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <Box>
-                          <Typography variant="subtitle1" fontWeight={600}>
-                            {member.name || member.email}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {member.email}
-                          </Typography>
+                    {overview.members.map(member => {
+                      const currentIsOwner = overview.workspace.ownerId === user?.id;
+                      const canRemove =
+                        isOwnerOrAdmin &&
+                        member.role !== 'owner' &&
+                        member.id !== user?.id &&
+                        (currentIsOwner || member.role === 'member');
+
+                      return (
+                        <Box
+                          key={member.id}
+                          sx={{
+                            p: 1.5,
+                            border: '1px solid',
+                            borderColor: 'divider',
+                            borderRadius: 1.5,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 1,
+                          }}
+                        >
+                          <Box sx={{ overflow: 'hidden' }}>
+                            <Typography variant="subtitle1" fontWeight={600} noWrap>
+                              {member.name || member.email}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" noWrap>
+                              {member.email}
+                            </Typography>
+                          </Box>
+                          <Stack direction="row" spacing={1} alignItems="center">
+                            <Chip
+                              label={roleLabels[member.role] || member.role}
+                              color={
+                                member.role === 'owner'
+                                  ? 'primary'
+                                  : member.role === 'admin'
+                                    ? 'secondary'
+                                    : 'default'
+                              }
+                              size="small"
+                            />
+                            {canRemove && (
+                              <IconButton
+                                size="small"
+                                aria-label="remove"
+                                onClick={event => {
+                                  setSelectedMemberId(member.id);
+                                  setRemoveMenuAnchor(event.currentTarget);
+                                }}
+                              >
+                                <MoreVertical size={16} />
+                              </IconButton>
+                            )}
+                          </Stack>
                         </Box>
-                        <Chip
-                          label={roleLabels[member.role] || member.role}
-                          color={
-                            member.role === 'owner'
-                              ? 'primary'
-                              : member.role === 'admin'
-                                ? 'secondary'
-                                : 'default'
-                          }
-                          size="small"
-                        />
-                      </Box>
-                    ))}
+                      );
+                    })}
                   </Stack>
                 </Stack>
               </CardContent>
@@ -549,6 +594,22 @@ export default function WorkspaceSettingsPage() {
           </Card>
         )}
       </Stack>
+      <Menu
+        anchorEl={removeMenuAnchor}
+        open={Boolean(removeMenuAnchor)}
+        onClose={() => {
+          setRemoveMenuAnchor(null);
+          setSelectedMemberId(null);
+        }}
+      >
+        <MenuItem
+          onClick={handleRemoveMember}
+          disabled={removing}
+          sx={{ color: 'error.main', fontWeight: 600 }}
+        >
+          {removing ? 'Удаляю…' : 'Отозвать доступ'}
+        </MenuItem>
+      </Menu>
     </Container>
   );
 }

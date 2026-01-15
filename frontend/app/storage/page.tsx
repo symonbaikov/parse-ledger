@@ -1,35 +1,18 @@
 'use client';
 
 import { resolveBankLogo } from '@bank-logos';
-import { Icon } from '@iconify/react';
 import {
-  Box,
-  Button,
-  Chip,
-  Container,
-  Divider,
-  FormControl,
-  InputAdornment,
-  Menu,
-  MenuItem,
-  Paper,
-  Popover,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  Tooltip,
-  Typography,
-} from '@mui/material';
-import { alpha } from '@mui/material/styles';
-import { Download, Eye, Filter, MoreVertical, Search, Share2 } from 'lucide-react';
+  Download,
+  Eye,
+  Filter,
+  MoreVertical,
+  Search,
+  Share2,
+  ShieldCheck,
+} from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
 import { useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { BankLogoAvatar } from '../components/BankLogoAvatar';
 import { DocumentTypeIcon } from '../components/DocumentTypeIcon';
@@ -83,6 +66,36 @@ const getBankDisplayName = (bankName: string) => {
   return resolved.key !== 'other' ? resolved.displayName : bankName;
 };
 
+const getAvailabilityColor = (status: FileAvailabilityStatus) => {
+  switch (status) {
+    case 'both':
+      return 'bg-green-100 text-green-700 border-green-200';
+    case 'missing':
+      return 'bg-red-100 text-red-700 border-red-200';
+    default:
+      return 'bg-blue-50 text-blue-700 border-blue-200';
+  }
+};
+
+const getAvailabilityDot = (status: FileAvailabilityStatus) => {
+  switch (status) {
+    case 'both':
+      return 'bg-green-500';
+    case 'missing':
+      return 'bg-red-500';
+    default:
+      return 'bg-blue-500';
+  }
+};
+
+const getStatusTone = (status: string) => {
+  const normalized = status.toLowerCase();
+  if (normalized === 'completed' || normalized === 'parsed') return 'success';
+  if (normalized === 'processing' || normalized === 'uploaded') return 'warning';
+  if (normalized === 'error') return 'error';
+  return 'default';
+};
+
 /**
  * Storage page - displays all files with sharing and permissions
  */
@@ -90,25 +103,56 @@ export default function StoragePage() {
   const router = useRouter();
   const t = useIntlayer('storagePage');
   const { locale } = useLocale();
+  const PAGE_SIZE = 20;
   const [files, setFiles] = useState<StorageFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedFile, setSelectedFile] = useState<StorageFile | null>(null);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
-  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
   const [filters, setFilters] = useState({
     status: '',
     bank: '',
     categoryId: '',
     ownership: '',
   });
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+
+  const filterPanelRef = useRef<HTMLDivElement | null>(null);
+  const filterButtonRef = useRef<HTMLButtonElement | null>(null);
+  const actionMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     loadFiles();
     loadCategories();
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filters]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        filterOpen &&
+        !filterPanelRef.current?.contains(target) &&
+        !filterButtonRef.current?.contains(target)
+      ) {
+        setFilterOpen(false);
+      }
+      if (openMenuId && !actionMenuRef.current?.contains(target)) {
+        setOpenMenuId(null);
+        setSelectedFile(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [filterOpen, openMenuId]);
 
   const loadFiles = async () => {
     try {
@@ -134,16 +178,6 @@ export default function StoragePage() {
     } finally {
       setCategoriesLoading(false);
     }
-  };
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, file: StorageFile) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedFile(file);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedFile(null);
   };
 
   const handleView = (fileId: string) => {
@@ -224,18 +258,6 @@ export default function StoragePage() {
     );
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
-      completed: 'success',
-      processing: 'warning',
-      error: 'error',
-      uploaded: 'info',
-      parsed: 'success',
-      validated: 'info',
-    };
-    return colors[status.toLowerCase()] || 'default';
-  };
-
   const getStatusLabel = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
@@ -268,8 +290,14 @@ export default function StoragePage() {
     }
   };
 
-  const bankOptions = Array.from(new Set(files.map(f => f.bankName).filter(Boolean)));
-  const statusOptions = Array.from(new Set(files.map(f => f.status).filter(Boolean)));
+  const bankOptions = useMemo(
+    () => Array.from(new Set(files.map(f => f.bankName).filter(Boolean))),
+    [files],
+  );
+  const statusOptions = useMemo(
+    () => Array.from(new Set(files.map(f => f.status).filter(Boolean))),
+    [files],
+  );
 
   const getAvailabilityLabel = (status: FileAvailabilityStatus) => {
     switch (status) {
@@ -303,29 +331,15 @@ export default function StoragePage() {
 
   const renderAvailabilityChip = (availability?: FileAvailability) => {
     if (!availability) return null;
-
     const status = availability.status;
-    const color: 'success' | 'info' | 'error' =
-      status === 'missing' ? 'error' : status === 'both' ? 'success' : 'info';
-
     return (
-      <Tooltip title={getAvailabilityTooltip(status)}>
-        <Chip
-          label={getAvailabilityLabel(status)}
-          size="small"
-          color={color}
-          variant={status === 'both' ? 'filled' : 'outlined'}
-          sx={{
-            height: 18,
-            '& .MuiChip-label': {
-              px: 0.75,
-              fontSize: '0.7rem',
-              fontWeight: 600,
-              lineHeight: 1,
-            },
-          }}
-        />
-      </Tooltip>
+      <span
+        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getAvailabilityColor(status)}`}
+        title={getAvailabilityTooltip(status)}
+      >
+        <span className={`h-2 w-2 rounded-full ${getAvailabilityDot(status)}`} />
+        {getAvailabilityLabel(status)}
+      </span>
     );
   };
 
@@ -349,777 +363,454 @@ export default function StoragePage() {
     return matchesSearch && matchesStatus && matchesBank && matchesCategory && matchesOwnership;
   });
 
+  const sortedFiles = [...filteredFiles].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
+  const totalItems = sortedFiles.length;
+  const totalPagesCount = Math.max(1, Math.ceil(totalItems / pageSize) || 1);
+  const currentPage = Math.min(page, totalPagesCount);
+  const rangeStart = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd = totalItems === 0 ? 0 : Math.min(totalItems, currentPage * pageSize);
+
+  const paginatedFiles = sortedFiles.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+
+  useEffect(() => {
+    if (page > totalPagesCount) {
+      setPage(totalPagesCount);
+    }
+  }, [page, totalPagesCount]);
+
   const handleFilterChange = (field: keyof typeof filters, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleOpenFilters = (event: React.MouseEvent<HTMLElement>) => {
-    setFilterAnchorEl(event.currentTarget);
-  };
-
-  const handleCloseFilters = () => {
-    setFilterAnchorEl(null);
-  };
-
   const handleResetFilters = () => {
-    setFilters({
-      status: '',
-      bank: '',
-      categoryId: '',
-      ownership: '',
-    });
+    setFilters({ status: '', bank: '', categoryId: '', ownership: '' });
   };
 
   const filtersApplied =
     !!filters.status || !!filters.bank || !!filters.categoryId || !!filters.ownership;
 
+  const renderStatusBadge = (status: string) => {
+    const tone = getStatusTone(status);
+    const toneClass =
+      tone === 'success'
+        ? 'bg-green-100 text-green-800 border-green-200'
+        : tone === 'warning'
+          ? 'bg-yellow-50 text-yellow-800 border-yellow-200'
+          : tone === 'error'
+            ? 'bg-red-100 text-red-800 border-red-200'
+            : 'bg-gray-100 text-gray-700 border-gray-200';
+
+    return (
+      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${toneClass}`}>
+        <span
+          className={`h-2 w-2 rounded-full ${
+            tone === 'success'
+              ? 'bg-green-500'
+              : tone === 'warning'
+                ? 'bg-yellow-500'
+                : tone === 'error'
+                  ? 'bg-red-500'
+                  : 'bg-gray-400'
+          }`}
+        />
+        {getStatusLabel(status)}
+      </span>
+    );
+  };
+
   return (
-    <Container maxWidth={false} sx={{ mt: 4, mb: 4, px: { xs: 2, md: 4, lg: 8 } }}>
-      {/* Header Section */}
-      <Box sx={{ mb: 5, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box>
-          <Typography
-            variant="h5"
-            sx={{ mb: 1, color: '#111827', fontWeight: 600, letterSpacing: '-0.01em' }}
-          >
-            {t.title}
-          </Typography>
-          <Typography variant="body2" sx={{ color: '#6B7280', maxWidth: 600 }}>
-            {t.subtitle}
-          </Typography>
-        </Box>
-        {/* Potentially add a primary action button here if needed in future */}
-      </Box>
+    <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
+          <p className="text-secondary mt-1">{t.subtitle}</p>
+        </div>
+        <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto relative">
+          <div className="relative w-full md:w-80">
+            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={t.searchPlaceholder.value}
+              aria-label="Поиск по файлам"
+              className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <div className="relative">
+            <button
+              ref={filterButtonRef}
+              onClick={() => setFilterOpen(prev => !prev)}
+              className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
+            >
+              <Filter className="-ml-1 mr-2 h-5 w-5" />
+              {t.filters.button}
+              {filtersApplied && <span className="ml-2 h-2 w-2 rounded-full bg-white" />}
+            </button>
 
-      {/* Main Content Card */}
-      <Paper
-        elevation={0}
-        sx={{
-          borderRadius: 3,
-          border: '1px solid #F3F4F6',
-          overflow: 'hidden',
-          bgcolor: 'white',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px 0 rgba(0, 0, 0, 0.01)',
-        }}
-      >
-        {/* Controls Bar */}
-        <Box
-          sx={{
-            p: 2.5,
-            display: 'flex',
-            gap: 2,
-            borderBottom: '1px solid #F3F4F6',
-            alignItems: 'center',
-          }}
-        >
-          <TextField
-            placeholder={t.searchPlaceholder.value}
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            size="small"
-            sx={{
-              width: 320,
-              '& .MuiOutlinedInput-root': {
-                bgcolor: '#F9FAFB',
-                borderRadius: 2,
-                fontSize: '0.875rem',
-                '& fieldset': { border: '1px solid transparent', transition: 'all 0.2s' },
-                '&:hover fieldset': { borderColor: '#E5E7EB' },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#E5E7EB',
-                  borderWidth: 1,
-                  boxShadow: '0 0 0 2px rgba(243, 244, 246, 0.5)',
-                },
-              },
-              '& .MuiOutlinedInput-input': { py: 1.25 },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start" sx={{ mr: 1, color: '#9CA3AF' }}>
-                  <Search size={18} />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <Button
-            variant="text"
-            startIcon={<Filter size={16} />}
-            onClick={handleOpenFilters}
-            sx={{
-              color: filtersApplied ? '#111827' : '#6B7280',
-              bgcolor: filtersApplied ? '#F3F4F6' : 'transparent',
-              borderRadius: 2,
-              px: 2,
-              py: 1,
-              textTransform: 'none',
-              fontWeight: 500,
-              fontSize: '0.875rem',
-              '&:hover': { bgcolor: '#F9FAFB', color: '#111827' },
-            }}
-          >
-            {t.filters.button}{' '}
-            {filtersApplied && (
-              <Box
-                component="span"
-                sx={{
-                  ml: 1,
-                  display: 'inline-flex',
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  bgcolor: '#3B82F6',
-                }}
-              />
-            )}
-          </Button>
-        </Box>
-
-        {/* Files Table */}
-        <TableContainer>
-          <Table sx={{ minWidth: 800 }}>
-            <TableHead>
-              <TableRow>
-                <TableCell
-                  sx={{
-                    pl: 3,
-                    py: 2,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid #F3F4F6',
-                  }}
-                >
-                  {t.table.fileName}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    py: 2,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid #F3F4F6',
-                  }}
-                >
-                  {t.table.bank}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    py: 2,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid #F3F4F6',
-                  }}
-                >
-                  {t.table.account}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    py: 2,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid #F3F4F6',
-                  }}
-                >
-                  {t.table.size}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    py: 2,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid #F3F4F6',
-                  }}
-                >
-                  {t.table.status}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    py: 2,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid #F3F4F6',
-                  }}
-                >
-                  {t.table.category}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    py: 2,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid #F3F4F6',
-                  }}
-                >
-                  {t.table.access}
-                </TableCell>
-                <TableCell
-                  sx={{
-                    py: 2,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid #F3F4F6',
-                  }}
-                >
-                  {t.table.createdAt}
-                </TableCell>
-                <TableCell
-                  align="right"
-                  sx={{
-                    pr: 3,
-                    py: 2,
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: '#6B7280',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    borderBottom: '1px solid #F3F4F6',
-                  }}
-                >
-                  {t.table.actions}
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ) : filteredFiles.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 12 }}>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 2,
-                      }}
-                    >
-                      <Box sx={{ p: 3, bgcolor: '#F9FAFB', borderRadius: '50%' }}>
-                        <Search size={32} className="text-gray-300" />
-                      </Box>
-                      <Typography variant="body1" sx={{ color: '#374151', fontWeight: 500 }}>
-                        {t.empty.title}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
-                        {t.empty.subtitle}
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredFiles.map(file => (
-                  <TableRow
-                    key={file.id}
-                    sx={{
-                      '&:hover': { bgcolor: '#F9FAFB' },
-                      borderBottom: '1px solid #F3F4F6',
-                      transition: 'background-color 0.1s',
-                    }}
+            {filterOpen && (
+              <div
+                ref={filterPanelRef}
+                className="absolute right-0 top-14 z-30 w-80 rounded-2xl border border-gray-100 bg-white shadow-2xl"
+              >
+                <div className="flex items-center justify-between px-4 pt-4 pb-3">
+                  <span className="text-sm font-semibold text-gray-900">{t.filters.title}</span>
+                  <button
+                    onClick={handleResetFilters}
+                    className="text-xs font-medium text-gray-500 hover:text-gray-800"
                   >
-                    <TableCell sx={{ pl: 3, py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                      <Box sx={{ display: 'flex', items: 'center', gap: 2 }}>
-                        <Box
-                          sx={{
-                            width: 36,
-                            height: 36,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            borderRadius: '8px',
-                            bgcolor: '#EEF2FF',
-                            color: '#4F46E5',
-                            flexShrink: 0,
-                          }}
-                        >
+                    {t.filters.reset}
+                  </button>
+                </div>
+                <div className="px-4 pb-4 flex flex-col gap-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-600">{t.filters.status}</label>
+                    <select
+                      value={filters.status}
+                      onChange={e => handleFilterChange('status', e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="">{t.filters.all}</option>
+                      {statusOptions.map(status => (
+                        <option key={status} value={status}>
+                          {getStatusLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-600">{t.filters.bank}</label>
+                    <select
+                      value={filters.bank}
+                      onChange={e => handleFilterChange('bank', e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="">{t.filters.all}</option>
+                      {bankOptions.map(bank => (
+                        <option key={bank} value={bank}>
+                          {bank}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-600">{t.filters.category}</label>
+                    <select
+                      value={filters.categoryId}
+                      onChange={e => handleFilterChange('categoryId', e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="">{t.filters.all}</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-semibold text-gray-600">{t.filters.accessType}</label>
+                    <select
+                      value={filters.ownership}
+                      onChange={e => handleFilterChange('ownership', e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    >
+                      <option value="">{t.filters.all}</option>
+                      <option value="owned">{t.filters.owned}</option>
+                      <option value="shared">{t.filters.shared}</option>
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={() => setFilterOpen(false)}
+                    className="mt-1 inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  >
+                    {t.filters.apply}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">{t.subtitle}</h2>
+          {filtersApplied && (
+            <span className="text-xs font-medium text-gray-500">
+              {t.filters.title} · {t.filters.button}
+            </span>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          </div>
+        ) : filteredFiles.length === 0 ? (
+          <div className="text-center py-16 px-6">
+            <div className="mx-auto h-16 w-16 text-gray-300 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
+              <Search className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">{t.empty.title}</h3>
+            <p className="mt-1 text-gray-500">{t.empty.subtitle}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t.table.fileName}
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t.table.bank}
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t.table.account}
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t.table.size}
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t.table.status}
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t.table.category}
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t.table.access}
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    {t.table.createdAt}
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">
+                    {t.table.actions}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-100">
+                {paginatedFiles.map(file => (
+                  <tr
+                    key={file.id}
+                    className="transition-all duration-150 hover:bg-gray-50"
+                  >
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-500">
                           <DocumentTypeIcon
                             fileType={file.fileType}
                             fileName={file.fileName}
-                            size={20}
-                            className="text-indigo-600"
+                            size={22}
+                            className="text-red-500"
                           />
-                        </Box>
-                        <Box sx={{ minWidth: 0 }}>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontWeight: 500,
-                              color: '#111827',
-                              mb: 0.5,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-base font-semibold text-gray-900 truncate">
                             {file.fileName}
-                          </Typography>
-                          {(file.sharedLinksCount > 0 || file.fileAvailability) && (
-                            <Box
-                              sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                flexWrap: 'wrap',
-                              }}
-                            >
-                              {file.sharedLinksCount > 0 && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  <Share2 size={12} className="text-blue-500" />
-                                  <Typography
-                                    variant="caption"
-                                    sx={{ color: '#3B82F6', fontWeight: 500 }}
-                                  >
-                                    {file.sharedLinksCount} {t.sharedLinksShort}
-                                  </Typography>
-                                </Box>
-                              )}
-                              {renderAvailabilityChip(file.fileAvailability)}
-                            </Box>
-                          )}
-                        </Box>
-                      </Box>
-                    </TableCell>
-                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          </div>
+                          <div className="mt-1 flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                            {file.sharedLinksCount > 0 && (
+                              <span className="inline-flex items-center gap-1 text-blue-600">
+                                <Share2 size={12} />
+                                {file.sharedLinksCount} {t.sharedLinksShort}
+                              </span>
+                            )}
+                            {renderAvailabilityChip(file.fileAvailability)}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
                         <BankLogoAvatar bankName={file.bankName} size={28} />
-                        <Typography variant="body2" sx={{ color: '#374151' }}>
+                        <span className="text-sm font-medium text-gray-800">
                           {getBankDisplayName(file.bankName)}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                      <Typography
-                        variant="body2"
-                        sx={{ color: '#6B7280', fontFamily: 'monospace', fontSize: '0.8rem' }}
-                      >
+                        </span>
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-5 whitespace-nowrap">
+                      <span className="text-sm font-mono text-gray-600">
                         {file.metadata?.accountNumber
                           ? `••••${file.metadata.accountNumber.slice(-4)}`
                           : '—'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                      <Typography variant="body2" sx={{ color: '#6B7280' }}>
-                        {formatFileSize(file.fileSize)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box
-                          sx={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            bgcolor:
-                              getStatusColor(file.status) === 'success'
-                                ? '#10B981'
-                                : getStatusColor(file.status) === 'warning'
-                                  ? '#F59E0B'
-                                  : getStatusColor(file.status) === 'error'
-                                    ? '#EF4444'
-                                    : '#6B7280',
-                          }}
-                        />
-                        <Typography variant="body2" sx={{ color: '#374151' }}>
-                          {getStatusLabel(file.status)}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                      <FormControl size="small" fullWidth variant="standard" sx={{ minWidth: 120 }}>
-                        <Select
-                          value={file.categoryId || ''}
-                          disableUnderline
-                          displayEmpty
-                          onChange={e => handleCategoryChange(file.id, e.target.value as string)}
-                          disabled={
-                            categoriesLoading || (!file.isOwner && file.permissionType !== 'editor')
-                          }
-                          sx={{
-                            fontSize: '0.875rem',
-                            color: '#374151',
-                            '& .MuiSelect-select': {
-                              py: 0.5,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1,
-                              px: 0,
-                            },
-                            '& .MuiSelect-icon': { color: '#9CA3AF' },
-                          }}
-                          renderValue={selected => {
-                            const selectedCategory =
-                              categories.find(cat => cat.id === selected) || file.category;
+                      </span>
+                    </td>
 
-                            if (!selectedCategory) {
-                              return (
-                                <Typography variant="body2" sx={{ color: '#9CA3AF' }}>
-                                  {t.categoryCell.choose}
-                                </Typography>
-                              );
-                            }
+                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700">
+                      {formatFileSize(file.fileSize)}
+                    </td>
 
-                            return (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Box
-                                  sx={{
-                                    width: 6,
-                                    height: 6,
-                                    borderRadius: '50%',
-                                    bgcolor: selectedCategory.color || '#9CA3AF',
-                                  }}
-                                />
-                                <Typography variant="body2" sx={{ color: '#374151' }}>
-                                  {selectedCategory.name}
-                                </Typography>
-                              </Box>
-                            );
-                          }}
-                        >
-                          <MenuItem value="">
-                            <Typography variant="body2" color="text.secondary">
-                              {t.categoryCell.none}
-                            </Typography>
-                          </MenuItem>
-                          {categories.map(cat => (
-                            <MenuItem key={cat.id} value={cat.id}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                <Box
-                                  sx={{
-                                    width: 8,
-                                    height: 8,
-                                    borderRadius: '50%',
-                                    bgcolor: cat.color || '#9CA3AF',
-                                  }}
-                                />
-                                {cat.name}
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </TableCell>
-                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          px: 1,
-                          py: 0.25,
-                          borderRadius: '4px',
-                          bgcolor: file.isOwner ? '#F3F4F6' : '#EEF2FF',
-                          color: file.isOwner ? '#4B5563' : '#4F46E5',
-                          fontWeight: 500,
-                          fontSize: '0.75rem',
-                        }}
+                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700">
+                      {renderStatusBadge(file.status)}
+                    </td>
+
+                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700">
+                      <select
+                        value={file.categoryId || ''}
+                        onChange={e => handleCategoryChange(file.id, e.target.value)}
+                        disabled={
+                          categoriesLoading || (!file.isOwner && file.permissionType !== 'editor')
+                        }
+                        className="min-w-[160px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-50"
+                      >
+                        <option value="">{t.categoryCell.none}</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    <td className="px-6 py-5 whitespace-nowrap text-sm">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          file.isOwner
+                            ? 'bg-gray-100 text-gray-800 border border-gray-200'
+                            : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                        }`}
                       >
                         {file.isOwner
                           ? t.permission.owner.value
                           : getPermissionLabel(file.permissionType)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ py: 2.5, borderBottom: '1px solid #F3F4F6' }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <Typography variant="body2" sx={{ color: '#374151' }}>
-                          {new Date(file.createdAt).toLocaleDateString('ru-RU')}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: '#9CA3AF' }}>
-                          {new Date(file.createdAt).toLocaleTimeString('ru-RU', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell
-                      align="right"
-                      sx={{ pr: 3, py: 2.5, borderBottom: '1px solid #F3F4F6' }}
-                    >
-                      <div className="flex items-center justify-end gap-1">
-                        <Tooltip title="View">
-                          <button
-                            onClick={() => handleView(file.id)}
-                            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors"
-                          >
-                            <Eye size={16} />
-                          </button>
-                        </Tooltip>
-                        <Tooltip title="Download">
-                          <button
-                            onClick={() => handleDownload(file.id, file.fileName)}
-                            className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors"
-                          >
-                            <Download size={16} />
-                          </button>
-                        </Tooltip>
-                        <button
-                          onClick={e => handleMenuOpen(e, file)}
-                          className="p-1.5 rounded-md hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors"
-                        >
-                          <MoreVertical size={16} />
-                        </button>
+                      </span>
+                    </td>
+
+                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700">
+                      <div className="flex flex-col leading-tight">
+                        <span>{formatDate(file.createdAt)}</span>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+                    </td>
 
-      {/* Context menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        PaperProps={{
-          elevation: 0,
-          sx: {
-            borderRadius: 2,
-            mt: 1,
-            minWidth: 160,
-            border: '1px solid #F3F4F6',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          },
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            if (selectedFile) handleView(selectedFile.id);
-            handleMenuClose();
-          }}
-          sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}
-        >
-          <Eye size={16} /> {t.actions.view}
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (selectedFile) handleDownload(selectedFile.id, selectedFile.fileName);
-            handleMenuClose();
-          }}
-          sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}
-        >
-          <Download size={16} /> {t.actions.download}
-        </MenuItem>
-        {selectedFile?.isOwner && (
-          <>
-            <MenuItem
-              onClick={() => {
-                if (selectedFile) handleShare(selectedFile.id);
-                handleMenuClose();
-              }}
-              sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}
-            >
-              <Share2 size={16} /> {t.actions.share}
-            </MenuItem>
-            <MenuItem
-              onClick={() => {
-                if (selectedFile) handleManagePermissions(selectedFile.id);
-                handleMenuClose();
-              }}
-              sx={{ gap: 1.5, fontSize: '0.875rem', py: 1, color: '#374151' }}
-            >
-              <Icon icon="mdi:shield-account-outline" width={16} /> {t.actions.permissions}
-            </MenuItem>
-          </>
+                    <td className="px-6 py-5 whitespace-nowrap text-right text-sm">
+                      <div className="relative inline-flex items-center justify-end gap-1" ref={openMenuId === file.id ? actionMenuRef : null}>
+                        <button
+                          onClick={() => handleView(file.id)}
+                          className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                          title={t.actions.tooltipView.value}
+                        >
+                          <Eye size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDownload(file.id, file.fileName)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                          title={t.actions.tooltipDownload.value}
+                        >
+                          <Download size={18} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedFile(file);
+                            setOpenMenuId(prev => (prev === file.id ? null : file.id));
+                          }}
+                          className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                          title={t.table.actions.value}
+                        >
+                          <MoreVertical size={18} />
+                        </button>
+
+                        {openMenuId === file.id && (
+                          <div
+                            className="absolute right-0 top-12 z-20 w-48 rounded-2xl border border-gray-100 bg-white shadow-xl"
+                            onClick={event => event.stopPropagation()}
+                          >
+                            <button
+                              onClick={() => {
+                                handleView(file.id);
+                                setOpenMenuId(null);
+                              }}
+                              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50"
+                            >
+                              <Eye size={16} /> {t.actions.view}
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDownload(file.id, file.fileName);
+                                setOpenMenuId(null);
+                              }}
+                              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50"
+                            >
+                              <Download size={16} /> {t.actions.download}
+                            </button>
+                            {file.isOwner && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    handleShare(file.id);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50"
+                                >
+                                  <Share2 size={16} /> {t.actions.share}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleManagePermissions(file.id);
+                                    setOpenMenuId(null);
+                                  }}
+                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50"
+                                >
+                                  <ShieldCheck size={16} /> {t.actions.permissions}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </Menu>
+      </div>
 
-      <Popover
-        open={Boolean(filterAnchorEl)}
-        anchorEl={filterAnchorEl}
-        onClose={handleCloseFilters}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{
-          paper: {
-            sx: {
-              p: 2.5,
-              width: 320,
-              borderRadius: 3,
-              marginTop: 1,
-              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-              border: '1px solid #F3F4F6',
-              elevation: 0,
-            },
-          },
-        }}
-        elevation={0}
-      >
-        <Box
-          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}
-        >
-          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#111827' }}>
-            {t.filters.title}
-          </Typography>
-          <Button
-            size="small"
-            onClick={handleResetFilters}
-            sx={{
-              minWidth: 'auto',
-              p: 0.5,
-              fontSize: '0.75rem',
-              color: '#6B7280',
-              textTransform: 'none',
-              '&:hover': { color: '#111827', bgcolor: 'transparent' },
-            }}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-2 sm:px-0 mt-4">
+        <div className="text-sm text-gray-600">
+          {totalItems === 0 ? t.empty.title : `Показано ${rangeStart}–${rangeEnd} из ${totalItems}`}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage <= 1}
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm border transition-all ${
+              currentPage <= 1
+                ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+            }`}
           >
-            {t.filters.reset}
-          </Button>
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-          <FormControl size="small" fullWidth>
-            <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
-              {t.filters.status}
-            </Typography>
-            <Select
-              value={filters.status}
-              onChange={e => handleFilterChange('status', e.target.value as string)}
-              displayEmpty
-              sx={{
-                borderRadius: 1.5,
-                bgcolor: '#F9FAFB',
-                '& fieldset': { border: '1px solid #E5E7EB' },
-                '&:hover fieldset': { border: '1px solid #D1D5DB' },
-              }}
-            >
-              <MenuItem value="">
-                <Typography variant="body2" color="text.secondary">
-                  {t.filters.all}
-                </Typography>
-              </MenuItem>
-              {statusOptions.map(status => (
-                <MenuItem key={status} value={status}>
-                  {getStatusLabel(status)}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" fullWidth>
-            <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
-              {t.filters.bank}
-            </Typography>
-            <Select
-              value={filters.bank}
-              onChange={e => handleFilterChange('bank', e.target.value as string)}
-              displayEmpty
-              sx={{
-                borderRadius: 1.5,
-                bgcolor: '#F9FAFB',
-                '& fieldset': { border: '1px solid #E5E7EB' },
-                '&:hover fieldset': { border: '1px solid #D1D5DB' },
-              }}
-            >
-              <MenuItem value="">
-                <Typography variant="body2" color="text.secondary">
-                  {t.filters.all}
-                </Typography>
-              </MenuItem>
-              {bankOptions.map(bank => (
-                <MenuItem key={bank} value={bank}>
-                  {bank}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" fullWidth>
-            <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
-              {t.filters.category}
-            </Typography>
-            <Select
-              value={filters.categoryId}
-              onChange={e => handleFilterChange('categoryId', e.target.value as string)}
-              displayEmpty
-              sx={{
-                borderRadius: 1.5,
-                bgcolor: '#F9FAFB',
-                '& fieldset': { border: '1px solid #E5E7EB' },
-                '&:hover fieldset': { border: '1px solid #D1D5DB' },
-              }}
-            >
-              <MenuItem value="">
-                <Typography variant="body2" color="text.secondary">
-                  {t.filters.all}
-                </Typography>
-              </MenuItem>
-              {categories.map(cat => (
-                <MenuItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl size="small" fullWidth>
-            <Typography variant="caption" sx={{ mb: 0.5, color: '#6B7280', fontWeight: 500 }}>
-              {t.filters.accessType}
-            </Typography>
-            <Select
-              value={filters.ownership}
-              onChange={e => handleFilterChange('ownership', e.target.value as string)}
-              displayEmpty
-              sx={{
-                borderRadius: 1.5,
-                bgcolor: '#F9FAFB',
-                '& fieldset': { border: '1px solid #E5E7EB' },
-                '&:hover fieldset': { border: '1px solid #D1D5DB' },
-              }}
-            >
-              <MenuItem value="">
-                <Typography variant="body2" color="text.secondary">
-                  {t.filters.all}
-                </Typography>
-              </MenuItem>
-              <MenuItem value="owned">{t.filters.owned}</MenuItem>
-              <MenuItem value="shared">{t.filters.shared}</MenuItem>
-            </Select>
-          </FormControl>
-
-          <Button
-            variant="contained"
-            onClick={handleCloseFilters}
-            fullWidth
-            sx={{
-              mt: 1,
-              borderRadius: 2,
-              textTransform: 'none',
-              bgcolor: '#111827',
-              color: 'white',
-              boxShadow: 'none',
-              '&:hover': { bgcolor: '#1F2937', boxShadow: 'none' },
-            }}
+            Предыдущая
+          </button>
+          <span className="text-sm text-gray-600">
+            Страница {currentPage} из {totalPagesCount}
+          </span>
+          <button
+            onClick={() => setPage(prev => Math.min(totalPagesCount, prev + 1))}
+            disabled={currentPage >= totalPagesCount}
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm border transition-all ${
+              currentPage >= totalPagesCount
+                ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+            }`}
           >
-            {t.filters.apply}
-          </Button>
-        </Box>
-      </Popover>
-    </Container>
+            Следующая
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -129,6 +129,40 @@ export class WorkspacesService {
     return membership;
   }
 
+  async removeMember(currentUser: User, targetUserId: string) {
+    const workspace = await this.ensureUserWorkspace(currentUser);
+    const currentMembership = await this.requireAdminMembership(workspace.id, currentUser.id);
+
+    if (!targetUserId || targetUserId.trim().length === 0) {
+      throw new BadRequestException('Некорректный пользователь');
+    }
+
+    const member = await this.workspaceMemberRepository.findOne({
+      where: { workspaceId: workspace.id, userId: targetUserId },
+      relations: ['user'],
+    });
+
+    if (!member) {
+      throw new NotFoundException('Участник не найден');
+    }
+
+    if (member.role === WorkspaceRole.OWNER || member.userId === workspace.ownerId) {
+      throw new ForbiddenException('Нельзя удалить владельца рабочего пространства');
+    }
+
+    if (currentMembership.role === WorkspaceRole.ADMIN && member.role === WorkspaceRole.ADMIN) {
+      throw new ForbiddenException('Только владелец может управлять администраторами');
+    }
+
+    await this.workspaceMemberRepository.delete(member.id);
+
+    if (member.user?.workspaceId === workspace.id) {
+      await this.userRepository.update(member.userId, { workspaceId: null });
+    }
+
+    return { message: 'Доступ участника отозван' };
+  }
+
   async inviteMember(currentUser: User, dto: InviteMemberDto) {
     const workspace = await this.ensureUserWorkspace(currentUser);
     await this.requireAdminMembership(workspace.id, currentUser.id);
