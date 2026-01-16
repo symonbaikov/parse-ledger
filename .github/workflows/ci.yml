@@ -193,6 +193,13 @@ jobs:
       - name: Backend tests (unit + e2e with coverage gate)
         run: npm --prefix backend run test:ci
 
+      - name: Upload coverage to Qlty
+        if: success() && secrets.QLTY_COVERAGE_TOKEN != ''
+        uses: qltysh/qlty-action/coverage@v2
+        with:
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          files: backend/coverage/lcov.info
+
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
