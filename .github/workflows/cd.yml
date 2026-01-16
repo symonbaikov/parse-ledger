@@ -34,7 +34,7 @@ jobs:
       primary_tag: ${{ steps.image.outputs.primary_tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Derive target environment
         id: env
