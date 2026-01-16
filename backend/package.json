@@ -64,7 +64,7 @@
     "resend": "^6.7.0",
     "rxjs": "^7.8.2",
     "swagger-ui-express": "^5.0.1",
-    "typeorm": "^0.3.27",
+    "typeorm": "^0.3.28",
     "uuid": "^9.0.1",
     "xlsx": "^0.18.5"
   },
