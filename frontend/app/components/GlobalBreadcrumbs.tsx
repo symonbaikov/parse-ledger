@@ -36,7 +36,7 @@ export default function GlobalBreadcrumbs() {
   if (!items.length) return null;
 
   return (
-    <div data-global-breadcrumbs className="bg-white/70 backdrop-blur-sm border-b border-gray-100">
+    <div data-global-breadcrumbs className="bg-card/70 backdrop-blur-sm border-b border-border">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <Breadcrumbs items={items} />
       </div>

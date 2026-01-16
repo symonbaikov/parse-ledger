@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { ThemeProvider } from '@/components/theme-provider';
 import { getIntlayer } from 'next-intlayer';
 import { IntlayerServerProvider, getLocale } from 'next-intlayer/server';
 import GlobalBreadcrumbs from './components/GlobalBreadcrumbs';
@@ -29,14 +30,21 @@ export default async function RootLayout({
   const direction = resolvedLocale.startsWith('ar') ? 'rtl' : 'ltr';
 
   return (
-    <html lang={resolvedLocale} dir={direction}>
-      <body>
+    <html lang={resolvedLocale} dir={direction} suppressHydrationWarning>
+      <body className="bg-background text-foreground antialiased">
         <IntlayerServerProvider>
-          <Providers>
-            <Navigation />
-            <GlobalBreadcrumbs />
-            <main>{children}</main>
-          </Providers>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <Providers>
+              <Navigation />
+              <GlobalBreadcrumbs />
+              <main>{children}</main>
+            </Providers>
+          </ThemeProvider>
         </IntlayerServerProvider>
       </body>
     </html>

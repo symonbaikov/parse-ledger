@@ -1,5 +1,6 @@
 'use client';
 
+import { Button } from '@/app/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,32 +10,40 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import { TourMenu } from '@/app/tours/components/TourMenu';
+import { ModeToggle } from '@/components/mode-toggle';
+import { type DriveStep, driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 import {
-  ArrowLeft,
   BarChart,
+  Check,
   ChevronDown,
   Database,
   Edit3,
   FileText,
   Languages,
+  Laptop,
   LogOut,
   Menu,
-  MessageCircle,
+  Moon,
+  PlayCircle,
   Plug,
   Settings,
   Shield,
+  Sun,
   Table,
   Tags,
-  UploadCloud,
   User,
   Users,
   Wallet,
   X,
 } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { usePermissions } from '../hooks/usePermissions';
@@ -46,11 +55,146 @@ export default function Navigation() {
   const { user, logout } = useAuth();
   const { isAdmin, hasPermission } = usePermissions();
   const { locale, availableLocales, setLocale } = useLocale();
-  const { nav, userMenu, languageModal, languages: languageNames } = useIntlayer('navigation');
+  const { setTheme, theme: selectedTheme } = useTheme();
+  const {
+    nav,
+    userMenu,
+    languageModal,
+    languages: languageNames,
+    tour,
+  } = useIntlayer('navigation');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [languageModalOpen, setLanguageModalOpen] = useState(false);
   const [languageDraft, setLanguageDraft] = useState<AppLanguage>('ru');
-  const [languagePickerOpen, setLanguagePickerOpen] = useState(false);
+  const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
+  const [portalReady, setPortalReady] = useState(false);
+  const languageDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  const getText = useCallback((token: unknown) => {
+    if (typeof token === 'string') return token;
+    if (token && typeof token === 'object' && 'value' in token) {
+      const value = (token as { value?: string }).value;
+      return typeof value === 'string' ? value : '';
+    }
+    return '';
+  }, []);
+
+  type PopoverType = NonNullable<DriveStep['popover']>;
+
+  const buildTourSteps = useCallback<() => DriveStep[]>(() => {
+    if (typeof document === 'undefined') {
+      return [];
+    }
+
+    const isElementVisible = (element: Element) => {
+      const rect = element.getClientRects();
+      if (!rect.length) return false;
+      const style = window.getComputedStyle(element as HTMLElement);
+      return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+    };
+
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+
+    type TourCandidate = {
+      selector: string;
+      title: string;
+      description: string;
+      side?: PopoverType['side'];
+      align?: PopoverType['align'];
+    };
+
+    const candidates: TourCandidate[] = [
+      {
+        selector: '[data-tour-id="brand"]',
+        title: getText(tour.steps.brand.title),
+        description: getText(tour.steps.brand.description),
+        side: 'bottom',
+        align: 'start',
+      },
+      {
+        selector: '[data-tour-id="primary-nav"]',
+        title: getText(tour.steps.navigation.title),
+        description: getText(tour.steps.navigation.description),
+        side: 'bottom',
+        align: 'start',
+      },
+      {
+        selector: '[data-tour-id="mode-toggle"]',
+        title: getText(tour.steps.theme.title),
+        description: getText(tour.steps.theme.description),
+        side: 'bottom',
+        align: 'end',
+      },
+      {
+        selector: '[data-tour-id="user-menu-trigger"]',
+        title: getText(tour.steps.userMenu.title),
+        description: getText(tour.steps.userMenu.description),
+        side: 'bottom',
+        align: 'end',
+      },
+    ];
+
+    if (isMobile) {
+      candidates.splice(1, 0, {
+        selector: '[data-tour-id="mobile-menu-toggle"]',
+        title: getText(tour.steps.mobileMenu.title),
+        description: getText(tour.steps.mobileMenu.description),
+        side: 'bottom',
+        align: 'end',
+      });
+    }
+
+    return candidates.flatMap<DriveStep>(candidate => {
+      const element = document.querySelector(candidate.selector);
+      if (!element || !isElementVisible(element)) {
+        return [];
+      }
+
+      return [
+        {
+          element,
+          popover: {
+            title: candidate.title,
+            description: candidate.description,
+            side: candidate.side ?? 'bottom',
+            align: candidate.align ?? 'start',
+          },
+        },
+      ];
+    });
+  }, [getText, tour]);
+
+  useEffect(() => setPortalReady(true), []);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    if (!languageDropdownOpen) return;
+    const onClickOutside = (event: MouseEvent) => {
+      if (!languageDropdownRef.current) return;
+      if (!languageDropdownRef.current.contains(event.target as Node)) {
+        setLanguageDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [languageDropdownOpen]);
 
   const languages = useMemo(
     () =>
@@ -123,17 +267,17 @@ export default function Navigation() {
   const visibleNavItems = navItems.filter(item => hasPermission(item.permission));
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+    <header className="sticky top-0 z-50 border-b border-border bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/85">
       <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-14">
           <div className="flex items-center">
-            <Link href="/" className="flex-shrink-0 flex items-center">
+            <Link href="/" className="flex-shrink-0 flex items-center" data-tour-id="brand">
               <Wallet className="h-8 w-8 text-primary mr-2" />
               <span className="text-primary text-xl font-bold tracking-tight">FinFlow</span>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:ml-8 md:flex md:space-x-2">
+            <nav className="hidden md:ml-8 md:flex md:space-x-2" data-tour-id="primary-nav">
               {visibleNavItems.map(item => {
                 const isActive = pathname === item.path;
                 return (
@@ -145,7 +289,7 @@ export default function Navigation() {
                       ${
                         isActive
                           ? 'border-primary text-primary'
-                          : 'border-transparent text-secondary hover:text-primary'
+                          : 'border-transparent text-muted-foreground hover:text-primary hover:border-border'
                       }
                     `}
                   >
@@ -159,93 +303,109 @@ export default function Navigation() {
             </nav>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* User Menu */}
-            <div className="relative ml-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex flex-col items-center max-w-xs text-xs font-medium text-secondary hover:text-primary focus:outline-none">
-                    <div className="h-7 w-7 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                      <User size={16} className="text-gray-500" />
-                    </div>
-                    <div className="flex items-center mt-1">
-                      <span className="truncate max-w-[90px] hidden sm:block">
-                        {userMenu.profile}
-                      </span>
-                      <ChevronDown size={12} className="ml-0.5" />
-                    </div>
-                  </button>
-                </DropdownMenuTrigger>
+          <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-4">
+              <TourMenu />
+              <div data-tour-id="mode-toggle">
+                <ModeToggle />
+              </div>
+              {/* User Menu */}
+              <div className="relative ml-3">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="flex flex-col items-center max-w-xs text-xs font-medium text-muted-foreground hover:text-foreground focus:outline-none"
+                      data-tour-id="user-menu-trigger"
+                    >
+                      <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center overflow-hidden text-muted-foreground">
+                        <User size={16} />
+                      </div>
+                      <div className="flex items-center mt-1">
+                        <span className="truncate max-w-[90px] hidden sm:block">
+                          {userMenu.profile}
+                        </span>
+                        <ChevronDown size={12} className="ml-0.5 text-muted-foreground" />
+                      </div>
+                    </button>
+                  </DropdownMenuTrigger>
 
-                <DropdownMenuContent align="end" className="w-[320px] p-2">
-                  <DropdownMenuLabel className="px-3 py-3">
-                    <div className="text-base font-semibold text-gray-900 truncate">
-                      {user.name}
-                    </div>
-                    <div className="text-sm font-normal text-gray-500 truncate">{user.email}</div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuContent align="end" className="w-[320px] p-2">
+                    <DropdownMenuLabel className="px-3 py-3">
+                      <div className="text-base font-semibold text-foreground truncate">
+                        {user.name}
+                      </div>
+                      <div className="text-sm font-normal text-muted-foreground truncate">
+                        {user.email}
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
 
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings/profile">
-                      <Settings size={18} className="text-gray-600" />
-                      <span className="text-base">{userMenu.settings}</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings/workspace">
-                      <Users size={18} className="text-gray-600" />
-                      <span className="text-base">{userMenu.workspace}</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/integrations">
-                      <Plug size={18} className="text-gray-600" />
-                      <span className="text-base">{userMenu.integrations}</span>
-                    </Link>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setLanguageDraft(normalizedLocale);
-                      setLanguagePickerOpen(false);
-                      setLanguageModalOpen(true);
-                    }}
-                  >
-                    <Languages size={18} className="text-gray-600" />
-                    <span className="text-base">{userMenu.language}</span>
-                    <DropdownMenuShortcut className="text-sm">{languageLabel}</DropdownMenuShortcut>
-                  </DropdownMenuItem>
-
-                  {isAdmin && (
                     <DropdownMenuItem asChild>
-                      <Link href="/admin">
-                        <Shield size={18} className="text-gray-600" />
-                        <span className="text-base">{userMenu.admin}</span>
+                      <Link href="/settings/profile">
+                        <Settings size={18} className="text-muted-foreground" />
+                        <span className="text-base">{userMenu.settings}</span>
                       </Link>
                     </DropdownMenuItem>
-                  )}
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings/workspace">
+                        <Users size={18} className="text-muted-foreground" />
+                        <span className="text-base">{userMenu.workspace}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/integrations">
+                        <Plug size={18} className="text-muted-foreground" />
+                        <span className="text-base">{userMenu.integrations}</span>
+                      </Link>
+                    </DropdownMenuItem>
 
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      logout();
-                      toast.success(userMenu.logoutSuccess.value);
-                    }}
-                    className="text-red-600 focus:text-red-700 focus:bg-red-50"
-                  >
-                    <LogOut size={18} />
-                    <span className="text-base">{userMenu.logout}</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setLanguageDraft(normalizedLocale);
+                        setLanguageModalOpen(true);
+                        setLanguageDropdownOpen(false);
+                      }}
+                    >
+                      <Languages size={18} className="text-muted-foreground" />
+                      <span className="text-base">{userMenu.language}</span>
+                      <DropdownMenuShortcut className="text-sm">
+                        {languageLabel}
+                      </DropdownMenuShortcut>
+                    </DropdownMenuItem>
+
+                    {isAdmin && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin">
+                          <Shield size={18} className="text-muted-foreground" />
+                          <span className="text-base">{userMenu.admin}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
+
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        logout();
+                        toast.success(userMenu.logoutSuccess.value);
+                      }}
+                      className="text-red-600 dark:text-red-400 focus:text-red-700 focus:bg-red-50 dark:focus:bg-red-900/40"
+                    >
+                      <LogOut size={18} />
+                      <span className="text-base">{userMenu.logout}</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
 
             {/* Mobile menu button */}
             <div className="flex items-center md:hidden">
               <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none"
+                onClick={() => setMobileMenuOpen(prev => !prev)}
+                className="inline-flex items-center justify-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-none"
+                data-tour-id="mobile-menu-toggle"
+                aria-label="Open menu"
+                aria-expanded={mobileMenuOpen}
               >
                 {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
@@ -254,161 +414,310 @@ export default function Navigation() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
-          <div className="pt-2 pb-3 space-y-1">
-            {visibleNavItems.map(item => (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`
-                  flex items-center pl-3 pr-4 py-2 border-l-4 text-base font-medium
-                  ${
-                    pathname === item.path
-                      ? 'bg-blue-50 border-primary text-primary'
-                      : 'border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
-                  }
-                `}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <span className="mr-3">{item.icon}</span>
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {languageModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      {/* Mobile Drawer (slides from right) */}
+      <div className="md:hidden">
+        <div className={`fixed inset-0 z-[70] ${mobileMenuOpen ? '' : 'pointer-events-none'}`}>
           <div
-            className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${
+              mobileMenuOpen ? 'opacity-100' : 'opacity-0'
+            }`}
             role="button"
             tabIndex={0}
-            onClick={() => {
-              setLanguageModalOpen(false);
-              setLanguagePickerOpen(false);
-            }}
+            aria-label="Close menu"
+            onClick={() => setMobileMenuOpen(false)}
             onKeyDown={event => {
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
-                setLanguageModalOpen(false);
-                setLanguagePickerOpen(false);
+                setMobileMenuOpen(false);
               }
             }}
           />
-          <div className="relative w-full max-w-md rounded-2xl bg-white shadow-2xl ring-1 ring-gray-900/5 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm text-gray-500">{languageModal.sectionLabel}</div>
-                  <div className="text-lg font-semibold text-gray-900">{languageModal.title}</div>
-                </div>
-                {languagePickerOpen && (
-                  <button
-                    onClick={() => setLanguagePickerOpen(false)}
-                    className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
-                    title={languageModal.back.value}
-                  >
-                    <ArrowLeft size={18} />
-                  </button>
-                )}
+
+          <dialog
+            className={`absolute inset-y-0 right-0 w-[88vw] max-w-sm border-l border-gray-200 shadow-2xl transition-transform duration-300 ease-out bg-white ${
+              mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+            style={{
+              backgroundColor: 'white',
+              color: 'black',
+              border: 'none',
+              padding: 0,
+              margin: 0,
+            }}
+            aria-modal="true"
+            open
+            onCancel={event => {
+              event.preventDefault();
+              setMobileMenuOpen(false);
+            }}
+          >
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 bg-white">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-900 truncate">{user.name}</div>
+                <div className="text-xs text-gray-600 truncate">{user.email}</div>
               </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                aria-label="Close menu"
+              >
+                <X size={20} />
+              </button>
             </div>
-            <div className="px-6 py-4">
-              <div className="h-[260px] flex flex-col">
-                {!languagePickerOpen ? (
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
-                      <div className="text-xs text-gray-500">
-                        {languageModal.currentLanguageLabel}
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-gray-900">
+
+            <div className="px-2 py-2 overflow-y-auto h-[calc(100vh-64px)] bg-white">
+              <div className="pt-1 pb-2">
+                {visibleNavItems.map(item => (
+                  <Link
+                    key={item.path}
+                    href={item.path}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium transition-colors bg-white ${
+                      pathname === item.path
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-gray-900 hover:bg-gray-100'
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <span className={pathname === item.path ? 'text-blue-600' : 'text-gray-600'}>
+                      {item.icon}
+                    </span>
+                    <span className="flex-1">{item.label}</span>
+                  </Link>
+                ))}
+              </div>
+
+              <div className="my-2 h-px bg-gray-200" />
+
+              <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-600 uppercase tracking-wider bg-white">
+                {userMenu.profile}
+              </div>
+
+              <Link
+                href="/settings/profile"
+                className="flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-gray-900 hover:bg-gray-100 transition-colors bg-white"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Settings size={18} className="text-gray-600" />
+                <span className="flex-1">{userMenu.settings}</span>
+              </Link>
+
+              <Link
+                href="/settings/workspace"
+                className="flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-gray-900 hover:bg-gray-100 transition-colors bg-white"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Users size={18} className="text-gray-600" />
+                <span className="flex-1">{userMenu.workspace}</span>
+              </Link>
+
+              <Link
+                href="/integrations"
+                className="flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-gray-900 hover:bg-gray-100 transition-colors bg-white"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Plug size={18} className="text-gray-600" />
+                <span className="flex-1">{userMenu.integrations}</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setLanguageDraft(normalizedLocale);
+                  setLanguageModalOpen(true);
+                  setLanguageDropdownOpen(false);
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-gray-900 hover:bg-gray-100 transition-colors bg-white"
+              >
+                <Languages size={18} className="text-gray-600" />
+                <span className="flex-1 text-left">{userMenu.language}</span>
+                <span className="text-sm text-gray-600">{languageLabel}</span>
+              </button>
+
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-gray-900 hover:bg-gray-100 transition-colors bg-white"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Shield size={18} className="text-gray-600" />
+                  <span className="flex-1">{userMenu.admin}</span>
+                </Link>
+              )}
+
+              <div className="my-2 h-px bg-gray-200" />
+
+              <div className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-600 uppercase tracking-wider bg-white">
+                Theme
+              </div>
+
+              {(
+                [
+                  { key: 'light' as const, label: 'Light', icon: <Sun size={18} /> },
+                  { key: 'dark' as const, label: 'Dark', icon: <Moon size={18} /> },
+                  { key: 'system' as const, label: 'System', icon: <Laptop size={18} /> },
+                ] as const
+              ).map(opt => {
+                const active = (selectedTheme || 'system') === opt.key;
+                return (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    className={`w-full flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium transition-colors bg-white ${
+                      active ? 'bg-blue-50 text-blue-600' : 'text-gray-900 hover:bg-gray-100'
+                    }`}
+                    onClick={() => setTheme(opt.key)}
+                  >
+                    <span className={active ? 'text-blue-600' : 'text-gray-600'}>{opt.icon}</span>
+                    <span className="flex-1 text-left">{opt.label}</span>
+                    {active && <Check size={18} />}
+                  </button>
+                );
+              })}
+
+              <div className="my-2 h-px bg-gray-200" />
+
+              <TourMenu
+                trigger={
+                  <button
+                    type="button"
+                    className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-gray-900 hover:bg-gray-100 transition-colors bg-white"
+                  >
+                    <PlayCircle size={18} className="text-gray-600" />
+                    <span className="flex-1 text-left">
+                      {((nav as any)?.tours?.value as string) ?? 'Туры'}
+                    </span>
+                  </button>
+                }
+              />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  logout();
+                  toast.success(userMenu.logoutSuccess.value);
+                }}
+                className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-red-600 dark:text-red-400 hover:bg-muted transition-colors"
+              >
+                <LogOut size={18} />
+                <span className="flex-1 text-left">{userMenu.logout}</span>
+              </button>
+            </div>
+          </dialog>
+        </div>
+      </div>
+
+      {portalReady &&
+        languageModalOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+            <div
+              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+              role="button"
+              tabIndex={0}
+              onClick={() => setLanguageModalOpen(false)}
+              onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setLanguageModalOpen(false);
+                }
+              }}
+            />
+
+            <div className="relative w-full max-w-lg rounded-2xl bg-card text-card-foreground shadow-xl ring-1 ring-border overflow-hidden">
+              <div className="px-5 py-4 border-b border-border">
+                <div className="text-xs text-muted-foreground uppercase tracking-wide">
+                  {languageModal.sectionLabel}
+                </div>
+                <div className="mt-1 text-lg font-semibold text-foreground">
+                  {languageModal.title}
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground flex items-center gap-2">
+                  {languageModal.availableLanguagesLabel}
+                </div>
+              </div>
+
+              <div className="px-5 py-4">
+                <div ref={languageDropdownRef} className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setLanguageDropdownOpen(prev => !prev)}
+                    className="w-full flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-base hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
                         {languages.find(l => l.code === languageDraft)?.label ??
                           languageNames.ru.value}
-                      </div>
-                      <div className="mt-3">
-                        <button
-                          onClick={() => setLanguagePickerOpen(true)}
-                          className="inline-flex items-center justify-center px-4 py-2 rounded-full bg-gray-900 text-white hover:bg-gray-800 transition-colors text-sm"
-                        >
-                          {languageModal.changeLanguage}
-                        </button>
-                      </div>
+                      </span>
                     </div>
+                    <ChevronDown size={16} className="text-muted-foreground" />
+                  </button>
 
-                    <div className="mt-4 text-xs text-gray-500">{languageModal.footerHint}</div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="text-xs text-gray-500 mb-2">
-                      {languageModal.availableLanguagesLabel}
-                    </div>
-                    <div className="flex-1 overflow-y-auto rounded-xl border border-gray-200 bg-white p-2">
-                      <div className="space-y-2">
-                        {languages
-                          .filter(l => l.code !== languageDraft)
-                          .map(lang => (
+                  {languageDropdownOpen && (
+                    <div className="transition-[max-height] duration-200 ease-out max-h-64 mt-3">
+                      <div className="rounded-xl border border-border bg-card shadow-lg max-h-64 overflow-y-auto">
+                        {languages.map(lang => {
+                          const selected = languageDraft === lang.code;
+                          return (
                             <button
                               key={lang.code}
                               type="button"
                               onClick={() => {
                                 setLanguageDraft(lang.code);
-                                setLanguagePickerOpen(false);
+                                setLanguageDropdownOpen(false);
                               }}
-                              className="w-full flex items-center justify-between rounded-lg px-3 py-3 hover:bg-gray-50 transition-colors"
+                              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                                selected
+                                  ? 'bg-primary/10 text-foreground'
+                                  : 'hover:bg-muted text-foreground'
+                              }`}
                             >
-                              <div className="flex flex-col items-start">
-                                <span className="text-sm font-medium text-gray-900">
-                                  {lang.label}
+                              <span className="flex-1 font-medium">{lang.label}</span>
+                              {selected && (
+                                <span className="flex items-center gap-1 text-xs text-primary">
+                                  <Check size={14} />
+                                  {languageModal.savedToastPrefix.value}
                                 </span>
-                                {lang.note && (
-                                  <span className="text-xs text-gray-500">{lang.note}</span>
-                                )}
-                              </div>
-                              <span className="text-xs text-gray-400">
-                                {languageModal.chooseAction}
-                              </span>
+                              )}
                             </button>
-                          ))}
+                          );
+                        })}
                       </div>
                     </div>
-                    <div className="mt-3 text-xs text-gray-500">{languageModal.scrollHint}</div>
-                  </>
-                )}
+                  )}
+                </div>
+              </div>
+
+              <div className="px-5 py-4 border-t border-border flex justify-end gap-2 bg-muted/50">
+                <button
+                  onClick={() => setLanguageModalOpen(false)}
+                  className="px-4 py-2 rounded-full border border-border text-foreground hover:bg-muted transition-colors text-sm"
+                >
+                  {languageModal.cancel}
+                </button>
+                <button
+                  onClick={() => {
+                    setLocale(languageDraft);
+                    setLanguageModalOpen(false);
+                    const selectedLabel =
+                      languages.find(l => l.code === languageDraft)?.label ??
+                      languageNames.ru.value;
+                    toast.success(`${languageModal.savedToastPrefix.value}: ${selectedLabel}`);
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 50);
+                  }}
+                  className="px-4 py-2 rounded-full bg-primary text-primary-foreground hover:bg-primary-hover transition-colors text-sm"
+                >
+                  {languageModal.save}
+                </button>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50/50">
-              <button
-                onClick={() => {
-                  setLanguageModalOpen(false);
-                  setLanguagePickerOpen(false);
-                }}
-                className="px-4 py-2 rounded-full border border-gray-200 text-gray-700 hover:bg-white transition-colors text-sm"
-              >
-                {languageModal.cancel}
-              </button>
-              <button
-                onClick={() => {
-                  setLocale(languageDraft);
-                  setLanguageModalOpen(false);
-                  setLanguagePickerOpen(false);
-                  const selectedLabel =
-                    languages.find(l => l.code === languageDraft)?.label ?? languageNames.ru.value;
-                  toast.success(`${languageModal.savedToastPrefix.value}: ${selectedLabel}`);
-                  setTimeout(() => {
-                    window.location.reload();
-                  }, 50);
-                }}
-                className="px-4 py-2 rounded-full bg-primary text-white hover:bg-primary-hover transition-colors text-sm"
-              >
-                {languageModal.save}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </header>
   );
 }
