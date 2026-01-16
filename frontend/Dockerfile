@@ -9,6 +9,7 @@ COPY tsconfig.json ./
 COPY next.config.* ./
 COPY tailwind.config.* ./
 COPY postcss.config.* ./
+COPY intlayer.config.* ./
 
 # Install dependencies
 RUN npm ci
