@@ -8,6 +8,7 @@ const { withIntlayerSync } = require('next-intlayer/server');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  outputFileTracingRoot: __dirname,
   async rewrites() {
     return [
       {
