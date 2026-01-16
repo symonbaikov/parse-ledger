@@ -158,9 +158,6 @@ export class TourManager {
       this.resetDriver(driverConfig);
     }
 
-    // Ждем немного чтобы DOM успел загрузиться
-    await new Promise(resolve => setTimeout(resolve, 500));
-
     // Преобразование шагов в формат Driver.js с фильтрацией
     const driveSteps = this.convertToDriverSteps(tour.steps);
 

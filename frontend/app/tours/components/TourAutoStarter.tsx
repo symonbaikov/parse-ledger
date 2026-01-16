@@ -11,55 +11,65 @@ import { getTourManager } from '../TourManager';
 export function TourAutoStarter() {
   const pathname = usePathname();
   const hasTriggeredRef = useRef<Set<string>>(new Set());
-  const [isReady, setIsReady] = useState(false);
-
-  // Ждем регистрации всех туров (они регистрируются в TourMenu)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
-    if (!isReady) return;
-
     // Предотвращаем повторный запуск для этой страницы
     if (hasTriggeredRef.current.has(pathname)) return;
 
     const tourManager = getTourManager();
-    const allTours = tourManager.getAllTours();
+    let cancelled = false;
 
-    // Если туры еще не зарегистрированы, ждем
-    if (allTours.length === 0) return;
+    const tryStart = (attemptsLeft: number) => {
+      if (cancelled) return;
+      if (hasTriggeredRef.current.has(pathname)) return;
 
-    // Находим тур для текущей страницы
-    const tourForCurrentPage = allTours.find(tour => {
-      if (!tour.page) return false;
-      return pathname.startsWith(tour.page);
-    });
+      const allTours = tourManager.getAllTours();
 
-    // Если нашли тур и он еще не пройден - запускаем
-    if (tourForCurrentPage && !tourManager.isTourCompleted(tourForCurrentPage.id)) {
-      // Проверяем, не запущен ли уже тур
-      if (tourManager.isActive()) {
-        console.log('Tour already active, skipping auto-start');
+      // Если туры еще не зарегистрированы, быстро ретраим на следующих кадрах.
+      if (allTours.length === 0) {
+        if (attemptsLeft > 0) {
+          window.requestAnimationFrame(() => tryStart(attemptsLeft - 1));
+        }
         return;
       }
 
-      hasTriggeredRef.current.add(pathname);
+      const tourForCurrentPage = allTours.find(tour => {
+        if (!tour.page) return false;
+        return pathname.startsWith(tour.page);
+      });
 
-      // Увеличенная задержка для надежной загрузки DOM элементов
-      const timer = setTimeout(() => {
-        // Еще раз проверяем перед запуском
+      if (!tourForCurrentPage) {
+        // Нет тура для текущей страницы.
+        hasTriggeredRef.current.add(pathname);
+        return;
+      }
+
+      if (tourManager.isTourCompleted(tourForCurrentPage.id)) {
+        hasTriggeredRef.current.add(pathname);
+        return;
+      }
+
+      if (tourManager.isActive()) {
+        return;
+      }
+
+      // Стартуем без искусственных задержек (на ближайшем кадре — чтобы DOM успел отрисоваться).
+      hasTriggeredRef.current.add(pathname);
+      window.requestAnimationFrame(() => {
+        if (cancelled) return;
         if (!tourManager.isActive()) {
           tourManager.startTour(tourForCurrentPage.id);
         }
-      }, 1500);
+      });
+    };
 
-      return () => clearTimeout(timer);
-    }
-  }, [pathname, isReady]);
+    // ~1 сек ретраев (60 кадров) на случай, если TourMenu еще не успел зарегистрировать туры.
+    tryStart(60);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   return null;
 }
