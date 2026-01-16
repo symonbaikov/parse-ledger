@@ -12,6 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { useTheme } from 'next-themes';
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import apiClient from '../lib/api';
@@ -152,6 +153,9 @@ const InfoCard = ({
 export default function ReportsPage() {
   const t = useIntlayer('reportsPage');
   const { locale } = useLocale();
+  const { resolvedTheme } = useTheme();
+  const echartsTheme = resolvedTheme === 'dark' ? 'dark' : 'light';
+  const chartBlue = resolvedTheme === 'dark' ? '#62b0ff' : '#2563eb';
   const [tab, setTab] = useState<'sheets' | 'statements' | 'local'>('sheets');
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(false);
@@ -282,6 +286,7 @@ export default function ReportsPage() {
   const cashflowOption = useMemo(() => {
     if (!data) return undefined;
     return {
+      backgroundColor: 'transparent',
       tooltip: { trigger: 'axis' },
       legend: { data: [t.labels.income.value, t.labels.expense.value] },
       grid: { left: 30, right: 30, bottom: 30, top: 30 },
@@ -313,6 +318,7 @@ export default function ReportsPage() {
   const localCashflowOption = useMemo(() => {
     if (!localSummary) return undefined;
     return {
+      backgroundColor: 'transparent',
       tooltip: { trigger: 'axis' },
       legend: { data: [t.labels.income.value, t.labels.expense.value] },
       grid: { left: 30, right: 30, bottom: 30, top: 30 },
@@ -344,6 +350,7 @@ export default function ReportsPage() {
   const expensePieOption = useMemo(() => {
     if (!data) return undefined;
     return {
+      backgroundColor: 'transparent',
       tooltip: { trigger: 'item' },
       legend: { top: 'bottom' },
       series: [
@@ -364,6 +371,7 @@ export default function ReportsPage() {
   const localExpensePieOption = useMemo(() => {
     if (!localSummary) return undefined;
     return {
+      backgroundColor: 'transparent',
       tooltip: { trigger: 'item' },
       legend: { top: 'bottom' },
       series: [
@@ -384,6 +392,7 @@ export default function ReportsPage() {
   const incomeBarOption = useMemo(() => {
     if (!data) return undefined;
     return {
+      backgroundColor: 'transparent',
       tooltip: { trigger: 'axis' },
       grid: { left: 80, right: 20, top: 20, bottom: 30 },
       xAxis: { type: 'value' },
@@ -407,6 +416,7 @@ export default function ReportsPage() {
   const localIncomeBarOption = useMemo(() => {
     if (!localSummary) return undefined;
     return {
+      backgroundColor: 'transparent',
       tooltip: { trigger: 'axis' },
       grid: { left: 80, right: 20, top: 20, bottom: 30 },
       xAxis: { type: 'value' },
@@ -494,6 +504,7 @@ export default function ReportsPage() {
   const statementsLineOption = useMemo(() => {
     const ts = parsedStatements.timeseries;
     return {
+      backgroundColor: 'transparent',
       tooltip: { trigger: 'axis' },
       grid: { left: 30, right: 30, bottom: 30, top: 30 },
       xAxis: { type: 'category', data: ts.map(p => p.date) },
@@ -504,16 +515,19 @@ export default function ReportsPage() {
           type: 'line',
           smooth: true,
           data: ts.map(p => p.count),
-          areaStyle: { color: 'rgba(37,99,235,0.12)' },
-          lineStyle: { color: '#2563eb' },
-          itemStyle: { color: '#2563eb' },
+          areaStyle: {
+            color: resolvedTheme === 'dark' ? 'rgba(98,176,255,0.14)' : 'rgba(37,99,235,0.12)',
+          },
+          lineStyle: { color: chartBlue },
+          itemStyle: { color: chartBlue },
         },
       ],
     };
-  }, [parsedStatements.timeseries, t]);
+  }, [chartBlue, parsedStatements.timeseries, resolvedTheme, t]);
 
   const statementsPieOption = useMemo(() => {
     return {
+      backgroundColor: 'transparent',
       tooltip: { trigger: 'item' },
       legend: { top: 'bottom' },
       series: [
@@ -529,6 +543,7 @@ export default function ReportsPage() {
 
   const statementsBarOption = useMemo(() => {
     return {
+      backgroundColor: 'transparent',
       tooltip: { trigger: 'axis' },
       grid: { left: 60, right: 20, top: 20, bottom: 30 },
       xAxis: { type: 'value' },
@@ -537,11 +552,14 @@ export default function ReportsPage() {
         {
           type: 'bar',
           data: parsedStatements.statuses.map(s => s.value),
-          itemStyle: { color: '#0f172a', borderRadius: [4, 4, 4, 4] },
+          itemStyle: {
+            color: resolvedTheme === 'dark' ? '#62b0ff' : '#0f172a',
+            borderRadius: [4, 4, 4, 4],
+          },
         },
       ],
     };
-  }, [parsedStatements.statuses]);
+  }, [parsedStatements.statuses, resolvedTheme]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
@@ -553,7 +571,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2" data-tour-id="reports-tabs">
           <button
             onClick={() => setTab('sheets')}
             className={`rounded-md border px-4 py-2 text-sm font-semibold transition-colors ${
@@ -561,6 +579,7 @@ export default function ReportsPage() {
                 ? 'border-primary bg-primary text-white shadow-sm'
                 : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
             }`}
+            data-tour-id="reports-tab-sheets"
           >
             {t.labels.tabSheets}
           </button>
@@ -571,6 +590,7 @@ export default function ReportsPage() {
                 ? 'border-primary bg-primary text-white shadow-sm'
                 : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
             }`}
+            data-tour-id="reports-tab-local"
           >
             {t.labels.tabLocal}
           </button>
@@ -581,6 +601,7 @@ export default function ReportsPage() {
                 ? 'border-primary bg-primary text-white shadow-sm'
                 : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
             }`}
+            data-tour-id="reports-tab-statements"
           >
             {t.labels.tabStatements}
           </button>
@@ -596,7 +617,7 @@ export default function ReportsPage() {
 
       {tab === 'sheets' && (
         <>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-tour-id="reports-sheets-days">
             {[7, 30, 90].map(d => (
               <button
                 key={d}
@@ -618,7 +639,10 @@ export default function ReportsPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+          <div
+            className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3"
+            data-tour-id="reports-sheets-totals"
+          >
             <InfoCard
               title={t.labels.income.value}
               value={formatCurrency(data?.totals.income || 0, locale)}
@@ -645,7 +669,10 @@ export default function ReportsPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div
+              className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              data-tour-id="reports-sheets-trend"
+            >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-gray-900">{t.labels.dailyTrend}</h3>
                 <span className="text-xs text-gray-500">
@@ -662,12 +689,15 @@ export default function ReportsPage() {
                   option={cashflowOption}
                   notMerge
                   lazyUpdate
-                  theme="light"
+                  theme={echartsTheme}
                 />
               )}
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div
+              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              data-tour-id="reports-sheets-expense-categories"
+            >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-gray-900">{t.labels.expensesCategories}</h3>
                 <span className="text-xs text-gray-500">{t.labels.topTen}</span>
@@ -682,13 +712,17 @@ export default function ReportsPage() {
                   option={expensePieOption}
                   notMerge
                   lazyUpdate
+                  theme={echartsTheme}
                 />
               )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div
+              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              data-tour-id="reports-sheets-income-counterparty"
+            >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-gray-900">{t.labels.incomeByCounterparty}</h3>
                 <span className="text-xs text-gray-500">{t.labels.topTen}</span>
@@ -703,11 +737,15 @@ export default function ReportsPage() {
                   option={incomeBarOption}
                   notMerge
                   lazyUpdate
+                  theme={echartsTheme}
                 />
               )}
             </div>
 
-            <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div
+              className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              data-tour-id="reports-sheets-last-operations"
+            >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-gray-900">{t.labels.lastOperations}</h3>
                 <span className="text-xs text-gray-500">{t.labels.twentyRows}</span>
@@ -744,7 +782,7 @@ export default function ReportsPage() {
 
       {tab === 'local' && (
         <>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" data-tour-id="reports-local-days">
             {[7, 30, 90].map(d => (
               <button
                 key={d}
@@ -769,7 +807,10 @@ export default function ReportsPage() {
             </button>
           </div>
 
-          <details className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <details
+            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            data-tour-id="reports-local-tables"
+          >
             <summary className="cursor-pointer select-none font-semibold text-gray-900">
               {t.labels.tablesForReport}{' '}
               <span className="text-sm font-normal text-gray-500">
@@ -840,7 +881,10 @@ export default function ReportsPage() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+              <div
+                className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3"
+                data-tour-id="reports-local-totals"
+              >
                 <InfoCard
                   title={t.labels.income.value}
                   value={formatCurrency(localSummary?.totals.income || 0, locale)}
@@ -867,7 +911,10 @@ export default function ReportsPage() {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div
+                  className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                  data-tour-id="reports-local-trend"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-gray-900">{t.labels.dailyTrend}</h3>
                     <span className="text-xs text-gray-500">
@@ -884,12 +931,15 @@ export default function ReportsPage() {
                       option={localCashflowOption}
                       notMerge
                       lazyUpdate
-                      theme="light"
+                      theme={echartsTheme}
                     />
                   )}
                 </div>
 
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div
+                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                  data-tour-id="reports-local-expense-categories"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-gray-900">{t.labels.expensesCategories}</h3>
                     <span className="text-xs text-gray-500">{t.labels.topTen}</span>
@@ -904,13 +954,17 @@ export default function ReportsPage() {
                       option={localExpensePieOption}
                       notMerge
                       lazyUpdate
+                      theme={echartsTheme}
                     />
                   )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div
+                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                  data-tour-id="reports-local-income-counterparty"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-gray-900">{t.labels.incomeByCounterparty}</h3>
                     <span className="text-xs text-gray-500">{t.labels.topTen}</span>
@@ -925,11 +979,15 @@ export default function ReportsPage() {
                       option={localIncomeBarOption}
                       notMerge
                       lazyUpdate
+                      theme={echartsTheme}
                     />
                   )}
                 </div>
 
-                <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div
+                  className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                  data-tour-id="reports-local-last-operations"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-gray-900">{t.labels.lastOperations}</h3>
                     <span className="text-xs text-gray-500">{t.labels.twentyRows}</span>
@@ -1002,7 +1060,7 @@ export default function ReportsPage() {
 
       {tab === 'statements' && (
         <>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" data-tour-id="reports-statements-refresh">
             <button
               onClick={() => {
                 loadStatements();
@@ -1014,7 +1072,10 @@ export default function ReportsPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+          <div
+            className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3"
+            data-tour-id="reports-statements-pipeline"
+          >
             <InfoCard
               title={t.labels.total.value}
               value={`${parsedStatements.total}`}
@@ -1040,7 +1101,10 @@ export default function ReportsPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+          <div
+            className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3"
+            data-tour-id="reports-statements-totals"
+          >
             <InfoCard
               title={t.labels.income.value}
               value={formatCurrency(statementSummary?.totals.income || 0, locale)}
@@ -1067,7 +1131,10 @@ export default function ReportsPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div
+              className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              data-tour-id="reports-statements-uploads-trend"
+            >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-gray-900">{t.labels.uploadsTrend}</h3>
                 <span className="text-xs text-gray-500">{t.labels.byUploadDates}</span>
@@ -1082,12 +1149,15 @@ export default function ReportsPage() {
                   option={statementsLineOption}
                   notMerge
                   lazyUpdate
-                  theme="light"
+                  theme={echartsTheme}
                 />
               )}
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div
+              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              data-tour-id="reports-statements-banks"
+            >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-gray-900">{t.labels.banks}</h3>
                 <span className="text-xs text-gray-500">{t.labels.top}</span>
@@ -1102,13 +1172,17 @@ export default function ReportsPage() {
                   option={statementsPieOption}
                   notMerge
                   lazyUpdate
+                  theme={echartsTheme}
                 />
               )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div
+              className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              data-tour-id="reports-statements-statuses"
+            >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-gray-900">{t.labels.statuses}</h3>
                 <span className="text-xs text-gray-500">{t.labels.distribution}</span>
@@ -1123,11 +1197,15 @@ export default function ReportsPage() {
                   option={statementsBarOption}
                   notMerge
                   lazyUpdate
+                  theme={echartsTheme}
                 />
               )}
             </div>
 
-            <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div
+              className="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+              data-tour-id="reports-statements-latest-uploads"
+            >
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-semibold text-gray-900">{t.labels.latestUploads}</h3>
                 <span className="text-xs text-gray-500">{t.labels.upToTen}</span>

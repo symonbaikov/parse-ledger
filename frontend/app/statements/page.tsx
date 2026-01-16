@@ -8,9 +8,9 @@ import apiClient from '@/app/lib/api';
 import { resolveBankLogo } from '@bank-logos';
 import {
   AlertCircle,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  CheckCircle2,
   Clock,
   Download,
   Eye,
@@ -160,8 +160,7 @@ export default function StatementsPage() {
         !Array.isArray(payload) && typeof payload.total === 'number'
           ? payload.total
           : statementsWithFileType.length;
-      const nextPage =
-        !Array.isArray(payload) && payload.page ? Number(payload.page) : targetPage;
+      const nextPage = !Array.isArray(payload) && payload.page ? Number(payload.page) : targetPage;
       const nextLimit =
         !Array.isArray(payload) && payload.limit ? Number(payload.limit) : PAGE_SIZE;
       const nextTotalPages = Math.max(1, Math.ceil(nextTotal / nextLimit) || 1);
@@ -304,7 +303,9 @@ export default function StatementsPage() {
       await loadStatements({ page: 1, search });
     } catch (err: any) {
       const message =
-        err?.response?.data?.error?.message || err?.response?.data?.message || t.uploadModal.uploadFailed.value;
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        t.uploadModal.uploadFailed.value;
       setUploadError(message);
       toast.error(message);
     } finally {
@@ -318,19 +319,28 @@ export default function StatementsPage() {
       case 'parsed':
       case 'validated':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+          <span
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200"
+            data-tour-id="status-badge"
+          >
             <CheckCircle2 size={12} className="mr-1" /> {t.status.completed}
           </span>
         );
       case 'processing':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+          <span
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200"
+            data-tour-id="status-badge"
+          >
             <Loader2 size={12} className="mr-1 animate-spin" /> {t.status.processing}
           </span>
         );
       case 'error':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
+          <span
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200"
+            data-tour-id="status-badge"
+          >
             <AlertCircle size={12} className="mr-1" /> {t.status.error}
           </span>
         );
@@ -472,7 +482,7 @@ export default function StatementsPage() {
           <p className="text-secondary mt-1">{t.subtitle}</p>
         </div>
         <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
-          <div className="relative w-full md:w-80">
+          <div className="relative w-full md:w-80" data-tour-id="search-bar">
             <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
             <input
               type="text"
@@ -485,6 +495,7 @@ export default function StatementsPage() {
           </div>
           <button
             onClick={() => setUploadModalOpen(true)}
+            data-tour-id="upload-statement-button"
             className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
           >
             <UploadCloud className="-ml-1 mr-2 h-5 w-5" />
@@ -494,7 +505,10 @@ export default function StatementsPage() {
       </div>
 
       {/* Content Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div
+        className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden"
+        data-tour-id="statements-table"
+      >
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
           <h2 className="text-lg font-semibold text-gray-900">{t.allStatements}</h2>
         </div>
@@ -603,7 +617,11 @@ export default function StatementsPage() {
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap hidden md:table-cell">
                         <div className="flex items-center">
-                          <BankLogoAvatar bankName={statement.bankName} size={32} className="mr-3" />
+                          <BankLogoAvatar
+                            bankName={statement.bankName}
+                            size={32}
+                            className="mr-3"
+                          />
                           <span className="text-sm font-medium text-gray-700 capitalize">
                             {getBankDisplayName(statement.bankName)}
                           </span>
@@ -631,7 +649,10 @@ export default function StatementsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-5 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end gap-2">
+                        <div
+                          className="flex items-center justify-end gap-2"
+                          data-tour-id="action-buttons"
+                        >
                           <button
                             onClick={() => handleViewFile(statement.id)}
                             className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all"
@@ -684,11 +705,12 @@ export default function StatementsPage() {
               </table>
             </div>
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-6 py-4 border-t border-gray-200">
+            <div
+              className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-6 py-4 border-t border-gray-200"
+              data-tour-id="pagination"
+            >
               <div className="text-sm text-gray-600">
-                {total === 0
-                  ? t.empty.title
-                  : `Показано ${rangeStart}–${rangeEnd} из ${total}`}
+                {total === 0 ? t.empty.title : `Показано ${rangeStart}–${rangeEnd} из ${total}`}
               </div>
               <div className="flex items-center gap-2">
                 <button

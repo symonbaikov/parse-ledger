@@ -3,14 +3,12 @@
 import { useAuth } from '@/app/hooks/useAuth';
 import apiClient from '@/app/lib/api';
 import { Icon } from '@iconify/react';
-import { Add, Check, Delete, Edit } from '@mui/icons-material';
+import { Add, Check, Delete, Edit, MoreVert, Search } from '@mui/icons-material';
 import {
   Box,
   Button,
   Card,
-  CardActions,
   CardContent,
-  Chip,
   Container,
   Dialog,
   DialogActions,
@@ -19,11 +17,14 @@ import {
   FormControl,
   Grid,
   IconButton,
+  InputAdornment,
   InputLabel,
+  Menu,
   MenuItem,
   Select,
   TextField,
-  Tooltip,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
   alpha,
   useTheme,
@@ -119,6 +120,14 @@ export default function CategoriesPage() {
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const iconInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+
+  // Menu state for "..." actions
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [menuTargetCategory, setMenuTargetCategory] = useState<Category | null>(null);
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -127,6 +136,36 @@ export default function CategoriesPage() {
     icon: 'mdi:tag',
     parentId: '',
   });
+
+  const filteredCategories = categories.filter(cat => {
+    const matchesSearch = cat.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = filterType === 'all' || cat.type === filterType;
+    return matchesSearch && matchesType;
+  });
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, category: Category) => {
+    setMenuAnchorEl(event.currentTarget);
+    setMenuTargetCategory(category);
+  };
+
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+    setMenuTargetCategory(null);
+  };
+
+  const onEditFromMenu = () => {
+    if (menuTargetCategory) {
+      handleOpenDialog(menuTargetCategory);
+    }
+    handleMenuClose();
+  };
+
+  const onDeleteFromMenu = () => {
+    if (menuTargetCategory) {
+      handleDelete(menuTargetCategory.id);
+    }
+    handleMenuClose();
+  };
 
   useEffect(() => {
     if (user) {
@@ -249,54 +288,100 @@ export default function CategoriesPage() {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box>
-          <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
-            {t.title}
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {t.subtitle}
-          </Typography>
+      <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
+              {t.title}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {t.subtitle}
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => handleOpenDialog()}
+            sx={{ borderRadius: 2, px: 3, py: 1 }}
+          >
+            {t.add}
+          </Button>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<Add />}
-          onClick={() => handleOpenDialog()}
-          sx={{ borderRadius: 2, px: 3, py: 1 }}
-        >
-          {t.add}
-        </Button>
+
+        {/* Search and Filter Controls */}
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <TextField
+            placeholder={t.dialog.placeholderName.value} // "Search categories..." would be better but reusing existing string or generic
+            size="small"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Search fontSize="small" color="action" />
+                  </InputAdornment>
+                ),
+              },
+            }}
+            sx={{ flexGrow: 1, maxWidth: 300 }}
+          />
+          <ToggleButtonGroup
+            value={filterType}
+            exclusive
+            onChange={(_, newValue) => newValue && setFilterType(newValue)}
+            size="small"
+            aria-label="category filter"
+          >
+            <ToggleButton value="all" sx={{ px: 2 }}>
+              {t.type.label}
+            </ToggleButton>
+            <ToggleButton value="income" sx={{ px: 2 }}>
+              {t.type.income}
+            </ToggleButton>
+            <ToggleButton value="expense" sx={{ px: 2 }}>
+              {t.type.expense}
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
       </Box>
 
       {loading ? (
         <Typography>{t.loading}</Typography>
       ) : (
-        <Grid container spacing={3}>
-          {categories.map(category => (
-            <Grid size={{ xs: 12, sm: 6, md: 4 }} key={category.id}>
+        <Grid container spacing={2}>
+          {filteredCategories.map(category => (
+            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={category.id}>
               <Card
                 variant="outlined"
                 sx={{
-                  borderRadius: 3,
+                  borderRadius: 2,
                   height: '100%',
                   display: 'flex',
                   flexDirection: 'column',
                   transition: 'all 0.2s',
                   '&:hover': {
-                    boxShadow: theme.shadows[4],
+                    boxShadow: theme.shadows[2],
                     borderColor: 'primary.main',
                     transform: 'translateY(-2px)',
                   },
                 }}
               >
                 <CardContent
-                  sx={{ flexGrow: 1, display: 'flex', alignItems: 'flex-start', gap: 2 }}
+                  sx={{
+                    flexGrow: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1.5,
+                    p: 2,
+                    '&:last-child': { pb: 2 },
+                  }}
                 >
                   <Box
                     sx={{
-                      width: 56,
-                      height: 56,
-                      borderRadius: 3,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 2,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -310,46 +395,80 @@ export default function CategoriesPage() {
                         component="img"
                         src={resolveIconUrl(category.icon) as string}
                         alt=""
-                        sx={{ width: 32, height: 32, objectFit: 'contain' }}
+                        sx={{ width: 24, height: 24, objectFit: 'contain' }}
                       />
                     ) : (
-                      <Icon icon={category.icon || 'mdi:tag'} width={32} height={32} />
+                      <Icon icon={category.icon || 'mdi:tag'} width={24} height={24} />
                     )}
                   </Box>
-                  <Box>
-                    <Typography variant="h6" component="div" fontWeight="600" noWrap>
+                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                    <Typography
+                      variant="subtitle1"
+                      fontWeight="600"
+                      lineHeight={1.2}
+                      sx={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        mb: 0.5,
+                      }}
+                      title={category.name}
+                    >
                       {category.name}
                     </Typography>
-                    <Chip
-                      label={category.type === 'income' ? t.type.income : t.type.expense}
-                      color={category.type === 'income' ? 'success' : 'error'}
-                      size="small"
-                      variant="outlined"
-                      sx={{ mt: 0.5, fontWeight: 500 }}
-                    />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        sx={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          bgcolor: category.type === 'income' ? 'success.main' : 'error.main',
+                        }}
+                      />
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ fontSize: '0.7rem' }}
+                      >
+                        {category.type === 'income' ? t.type.income : t.type.expense}
+                      </Typography>
+                    </Box>
                   </Box>
-                </CardContent>
-                <CardActions sx={{ justifyContent: 'flex-end', px: 2, pb: 2 }}>
-                  <Tooltip title={t.actions.edit.value}>
-                    <IconButton size="small" onClick={() => handleOpenDialog(category)}>
-                      <Edit fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title={t.actions.delete.value}>
+
+                  <Box sx={{ display: 'flex', gap: 0 }}>
                     <IconButton
                       size="small"
-                      color="error"
-                      onClick={() => handleDelete(category.id)}
+                      onClick={e => handleMenuOpen(e, category)}
+                      sx={{ opacity: 0.6, '&:hover': { opacity: 1 } }}
                     >
-                      <Delete fontSize="small" />
+                      <MoreVert fontSize="small" />
                     </IconButton>
-                  </Tooltip>
-                </CardActions>
+                  </Box>
+                </CardContent>
               </Card>
             </Grid>
           ))}
         </Grid>
       )}
+
+      {/* Menu for Edit/Delete actions */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={handleMenuClose}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      >
+        <MenuItem onClick={onEditFromMenu}>
+          <Edit fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+          {t.actions.edit}
+        </MenuItem>
+        <MenuItem onClick={onDeleteFromMenu} sx={{ color: 'error.main' }}>
+          <Delete fontSize="small" sx={{ mr: 1 }} />
+          {t.actions.delete}
+        </MenuItem>
+      </Menu>
 
       <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 'bold' }}>

@@ -7,9 +7,9 @@ import {
   ExternalLink,
   Loader2,
   RefreshCcw,
+  Share2,
   Shield,
   ShieldCheck,
-  Share2,
 } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -78,7 +78,11 @@ export default function FileDetailsPage() {
   const [details, setDetails] = useState<FileDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState<'transactions' | 'links' | 'permissions'>(
-    initialTab === 'permissions' ? 'permissions' : initialTab === 'share' ? 'links' : 'transactions',
+    initialTab === 'permissions'
+      ? 'permissions'
+      : initialTab === 'share'
+        ? 'links'
+        : 'transactions',
   );
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -337,9 +341,19 @@ export default function FileDetailsPage() {
   } = details;
 
   const tabs = [
-    { key: 'transactions' as const, label: `${t.tabs.transactions.value} (${transactions.length})` },
+    {
+      key: 'transactions' as const,
+      label: `${t.tabs.transactions.value} (${transactions.length})`,
+    },
     { key: 'links' as const, label: `${t.tabs.links.value} (${sharedLinks.length})` },
-    ...(isOwner ? [{ key: 'permissions' as const, label: `${t.tabs.permissions.value} (${permissions.length})` }] : []),
+    ...(isOwner
+      ? [
+          {
+            key: 'permissions' as const,
+            label: `${t.tabs.permissions.value} (${permissions.length})`,
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -405,7 +419,9 @@ export default function FileDetailsPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <p className="text-xs uppercase tracking-wide text-gray-500">{t.cards.size}</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">{formatFileSize(statement.fileSize)}</p>
+            <p className="mt-1 text-lg font-semibold text-gray-900">
+              {formatFileSize(statement.fileSize)}
+            </p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <p className="text-xs uppercase tracking-wide text-gray-500">{t.cards.transactions}</p>
@@ -413,7 +429,9 @@ export default function FileDetailsPage() {
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <p className="text-xs uppercase tracking-wide text-gray-500">{t.cards.uploadedAt}</p>
-            <p className="mt-1 text-lg font-semibold text-gray-900">{formatDate(statement.createdAt)}</p>
+            <p className="mt-1 text-lg font-semibold text-gray-900">
+              {formatDate(statement.createdAt)}
+            </p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <p className="text-xs uppercase tracking-wide text-gray-500">{t.cards.account}</p>
@@ -573,7 +591,8 @@ export default function FileDetailsPage() {
                             <p className="text-sm text-gray-700">{link.description}</p>
                           )}
                           <p className="text-xs text-gray-500">
-                            {t.cards.uploadedAt}: {formatDate(link.createdAt)} • {t.cards.transactions}: {link.accessCount}
+                            {t.cards.uploadedAt}: {formatDate(link.createdAt)} •{' '}
+                            {t.cards.transactions}: {link.accessCount}
                           </p>
                         </div>
 

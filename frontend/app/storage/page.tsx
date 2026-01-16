@@ -1,15 +1,7 @@
 'use client';
 
 import { resolveBankLogo } from '@bank-logos';
-import {
-  Download,
-  Eye,
-  Filter,
-  MoreVertical,
-  Search,
-  Share2,
-  ShieldCheck,
-} from 'lucide-react';
+import { Download, Eye, Filter, MoreVertical, Search, Share2, ShieldCheck } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -69,11 +61,11 @@ const getBankDisplayName = (bankName: string) => {
 const getAvailabilityColor = (status: FileAvailabilityStatus) => {
   switch (status) {
     case 'both':
-      return 'bg-green-100 text-green-700 border-green-200';
+      return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-100 dark:border-green-500/30';
     case 'missing':
-      return 'bg-red-100 text-red-700 border-red-200';
+      return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-100 dark:border-red-500/30';
     default:
-      return 'bg-blue-50 text-blue-700 border-blue-200';
+      return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-100 dark:border-blue-500/30';
   }
 };
 
@@ -373,10 +365,7 @@ export default function StoragePage() {
   const rangeStart = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const rangeEnd = totalItems === 0 ? 0 : Math.min(totalItems, currentPage * pageSize);
 
-  const paginatedFiles = sortedFiles.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  );
+  const paginatedFiles = sortedFiles.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   useEffect(() => {
     if (page > totalPagesCount) {
@@ -399,15 +388,17 @@ export default function StoragePage() {
     const tone = getStatusTone(status);
     const toneClass =
       tone === 'success'
-        ? 'bg-green-100 text-green-800 border-green-200'
+        ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-500/10 dark:text-green-100 dark:border-green-500/30'
         : tone === 'warning'
-          ? 'bg-yellow-50 text-yellow-800 border-yellow-200'
+          ? 'bg-yellow-50 text-yellow-800 border-yellow-200 dark:bg-amber-500/10 dark:text-amber-100 dark:border-amber-500/30'
           : tone === 'error'
-            ? 'bg-red-100 text-red-800 border-red-200'
-            : 'bg-gray-100 text-gray-700 border-gray-200';
+            ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-500/10 dark:text-red-100 dark:border-red-500/30'
+            : 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-slate-800/70 dark:text-gray-100 dark:border-slate-700/60';
 
     return (
-      <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${toneClass}`}>
+      <span
+        className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium ${toneClass}`}
+      >
         <span
           className={`h-2 w-2 rounded-full ${
             tone === 'success'
@@ -426,27 +417,28 @@ export default function StoragePage() {
 
   return (
     <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700/60 p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
-          <p className="text-secondary mt-1">{t.subtitle}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t.title}</h1>
+          <p className="text-gray-500 dark:text-gray-300 mt-1">{t.subtitle}</p>
         </div>
         <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto relative">
-          <div className="relative w-full md:w-80">
-            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
+          <div className="relative w-full md:w-80" data-tour-id="file-search">
+            <Search className="h-4 w-4 text-gray-400 dark:text-gray-500 absolute left-3 top-3" />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder={t.searchPlaceholder.value}
               aria-label="Поиск по файлам"
-              className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-full border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-800 py-2.5 pl-10 pr-4 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div className="relative">
             <button
               ref={filterButtonRef}
               onClick={() => setFilterOpen(prev => !prev)}
+              data-tour-id="filters-button"
               className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
             >
               <Filter className="-ml-1 mr-2 h-5 w-5" />
@@ -457,24 +449,32 @@ export default function StoragePage() {
             {filterOpen && (
               <div
                 ref={filterPanelRef}
-                className="absolute right-0 top-14 z-30 w-80 rounded-2xl border border-gray-100 bg-white shadow-2xl"
+                className="absolute right-0 top-14 z-30 w-80 rounded-2xl border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-800 shadow-2xl dark:shadow-[0_10px_30px_rgba(0,0,0,0.4)]"
               >
                 <div className="flex items-center justify-between px-4 pt-4 pb-3">
-                  <span className="text-sm font-semibold text-gray-900">{t.filters.title}</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    {t.filters.title}
+                  </span>
                   <button
                     onClick={handleResetFilters}
-                    className="text-xs font-medium text-gray-500 hover:text-gray-800"
+                    className="text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                   >
                     {t.filters.reset}
                   </button>
                 </div>
                 <div className="px-4 pb-4 flex flex-col gap-3">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-gray-600">{t.filters.status}</label>
+                    <label
+                      htmlFor="storage-filter-status"
+                      className="text-xs font-semibold text-gray-600 dark:text-gray-300"
+                    >
+                      {t.filters.status}
+                    </label>
                     <select
+                      id="storage-filter-status"
                       value={filters.status}
                       onChange={e => handleFilterChange('status', e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-xl border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-2 focus:ring-primary/20"
                     >
                       <option value="">{t.filters.all}</option>
                       {statusOptions.map(status => (
@@ -486,11 +486,17 @@ export default function StoragePage() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-gray-600">{t.filters.bank}</label>
+                    <label
+                      htmlFor="storage-filter-bank"
+                      className="text-xs font-semibold text-gray-600 dark:text-gray-300"
+                    >
+                      {t.filters.bank}
+                    </label>
                     <select
+                      id="storage-filter-bank"
                       value={filters.bank}
                       onChange={e => handleFilterChange('bank', e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-xl border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-2 focus:ring-primary/20"
                     >
                       <option value="">{t.filters.all}</option>
                       {bankOptions.map(bank => (
@@ -502,11 +508,17 @@ export default function StoragePage() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-gray-600">{t.filters.category}</label>
+                    <label
+                      htmlFor="storage-filter-category"
+                      className="text-xs font-semibold text-gray-600 dark:text-gray-300"
+                    >
+                      {t.filters.category}
+                    </label>
                     <select
+                      id="storage-filter-category"
                       value={filters.categoryId}
                       onChange={e => handleFilterChange('categoryId', e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-xl border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-2 focus:ring-primary/20"
                     >
                       <option value="">{t.filters.all}</option>
                       {categories.map(cat => (
@@ -518,11 +530,17 @@ export default function StoragePage() {
                   </div>
 
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold text-gray-600">{t.filters.accessType}</label>
+                    <label
+                      htmlFor="storage-filter-ownership"
+                      className="text-xs font-semibold text-gray-600 dark:text-gray-300"
+                    >
+                      {t.filters.accessType}
+                    </label>
                     <select
+                      id="storage-filter-ownership"
                       value={filters.ownership}
                       onChange={e => handleFilterChange('ownership', e.target.value)}
-                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-xl border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-2 focus:ring-primary/20"
                     >
                       <option value="">{t.filters.all}</option>
                       <option value="owned">{t.filters.owned}</option>
@@ -543,11 +561,11 @@ export default function StoragePage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">{t.subtitle}</h2>
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700/60 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700/60 bg-gray-50 dark:bg-slate-900 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t.subtitle}</h2>
           {filtersApplied && (
-            <span className="text-xs font-medium text-gray-500">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
               {t.filters.title} · {t.filters.button}
             </span>
           )}
@@ -559,69 +577,69 @@ export default function StoragePage() {
           </div>
         ) : filteredFiles.length === 0 ? (
           <div className="text-center py-16 px-6">
-            <div className="mx-auto h-16 w-16 text-gray-300 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
+            <div className="mx-auto h-16 w-16 text-gray-400 dark:text-gray-500 mb-4 bg-gray-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
               <Search className="h-8 w-8" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900">{t.empty.title}</h3>
-            <p className="mt-1 text-gray-500">{t.empty.subtitle}</p>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t.empty.title}</h3>
+            <p className="mt-1 text-gray-600 dark:text-gray-300">{t.empty.subtitle}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50/50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700/60">
+              <thead className="bg-gray-50 dark:bg-slate-800/40">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {t.table.fileName}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {t.table.bank}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {t.table.account}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {t.table.size}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {t.table.status}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {t.table.category}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {t.table.access}
                   </th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     {t.table.createdAt}
                   </th>
-                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider w-24">
+                  <th className="px-6 py-4 text-right text-xs font-semibold text-gray-500 dark:text-gray-300 uppercase tracking-wider w-24">
                     {t.table.actions}
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-100">
+              <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700/60">
                 {paginatedFiles.map(file => (
                   <tr
                     key={file.id}
-                    className="transition-all duration-150 hover:bg-gray-50"
+                    className="transition-all duration-150 hover:bg-gray-50 dark:hover:bg-slate-700/40"
                   >
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 text-red-500">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400">
                           <DocumentTypeIcon
                             fileType={file.fileType}
                             fileName={file.fileName}
                             size={22}
-                            className="text-red-500"
+                            className="text-red-500 dark:text-red-400"
                           />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-base font-semibold text-gray-900 truncate">
+                          <div className="text-base font-semibold text-gray-900 dark:text-white truncate">
                             {file.fileName}
                           </div>
-                          <div className="mt-1 flex items-center gap-2 flex-wrap text-xs text-gray-500">
+                          <div className="mt-1 flex items-center gap-2 flex-wrap text-xs text-gray-500 dark:text-gray-300">
                             {file.sharedLinksCount > 0 && (
-                              <span className="inline-flex items-center gap-1 text-blue-600">
+                              <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-300">
                                 <Share2 size={12} />
                                 {file.sharedLinksCount} {t.sharedLinksShort}
                               </span>
@@ -635,36 +653,37 @@ export default function StoragePage() {
                     <td className="px-6 py-5 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <BankLogoAvatar bankName={file.bankName} size={28} />
-                        <span className="text-sm font-medium text-gray-800">
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-100">
                           {getBankDisplayName(file.bankName)}
                         </span>
                       </div>
                     </td>
 
                     <td className="px-6 py-5 whitespace-nowrap">
-                      <span className="text-sm font-mono text-gray-600">
+                      <span className="text-sm font-mono text-gray-600 dark:text-gray-300">
                         {file.metadata?.accountNumber
                           ? `••••${file.metadata.accountNumber.slice(-4)}`
                           : '—'}
                       </span>
                     </td>
 
-                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700">
+                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">
                       {formatFileSize(file.fileSize)}
                     </td>
 
-                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700">
+                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">
                       {renderStatusBadge(file.status)}
                     </td>
 
-                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700">
+                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">
                       <select
                         value={file.categoryId || ''}
                         onChange={e => handleCategoryChange(file.id, e.target.value)}
                         disabled={
                           categoriesLoading || (!file.isOwner && file.permissionType !== 'editor')
                         }
-                        className="min-w-[160px] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-50"
+                        data-tour-id="category-select"
+                        className="min-w-[160px] rounded-lg border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-100 dark:disabled:bg-slate-800/60 disabled:text-gray-400 dark:disabled:text-gray-500"
                       >
                         <option value="">{t.categoryCell.none}</option>
                         {categories.map(cat => (
@@ -677,10 +696,11 @@ export default function StoragePage() {
 
                     <td className="px-6 py-5 whitespace-nowrap text-sm">
                       <span
+                        data-tour-id="permission-badge"
                         className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
                           file.isOwner
-                            ? 'bg-gray-100 text-gray-800 border border-gray-200'
-                            : 'bg-indigo-50 text-indigo-700 border border-indigo-100'
+                            ? 'bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-slate-600'
+                            : 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-100 border border-indigo-100 dark:border-indigo-500/30'
                         }`}
                       >
                         {file.isOwner
@@ -689,24 +709,28 @@ export default function StoragePage() {
                       </span>
                     </td>
 
-                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700">
+                    <td className="px-6 py-5 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">
                       <div className="flex flex-col leading-tight">
                         <span>{formatDate(file.createdAt)}</span>
                       </div>
                     </td>
 
                     <td className="px-6 py-5 whitespace-nowrap text-right text-sm">
-                      <div className="relative inline-flex items-center justify-end gap-1" ref={openMenuId === file.id ? actionMenuRef : null}>
+                      <div
+                        className="relative inline-flex items-center justify-end gap-1"
+                        data-tour-id="file-actions"
+                        ref={openMenuId === file.id ? actionMenuRef : null}
+                      >
                         <button
                           onClick={() => handleView(file.id)}
-                          className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                          className="p-2 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-200 transition-colors"
                           title={t.actions.tooltipView.value}
                         >
                           <Eye size={18} />
                         </button>
                         <button
                           onClick={() => handleDownload(file.id, file.fileName)}
-                          className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700/60 transition-colors"
                           title={t.actions.tooltipDownload.value}
                         >
                           <Download size={18} />
@@ -716,7 +740,7 @@ export default function StoragePage() {
                             setSelectedFile(file);
                             setOpenMenuId(prev => (prev === file.id ? null : file.id));
                           }}
-                          className="p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700/60 transition-colors"
                           title={t.table.actions.value}
                         >
                           <MoreVertical size={18} />
@@ -724,15 +748,15 @@ export default function StoragePage() {
 
                         {openMenuId === file.id && (
                           <div
-                            className="absolute right-0 top-12 z-20 w-48 rounded-2xl border border-gray-100 bg-white shadow-xl"
-                            onClick={event => event.stopPropagation()}
+                            className="absolute right-0 top-12 z-20 w-48 rounded-2xl border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-800 shadow-xl dark:shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+                            onMouseDown={event => event.stopPropagation()}
                           >
                             <button
                               onClick={() => {
                                 handleView(file.id);
                                 setOpenMenuId(null);
                               }}
-                              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50"
+                              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700/60"
                             >
                               <Eye size={16} /> {t.actions.view}
                             </button>
@@ -741,7 +765,7 @@ export default function StoragePage() {
                                 handleDownload(file.id, file.fileName);
                                 setOpenMenuId(null);
                               }}
-                              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50"
+                              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700/60"
                             >
                               <Download size={16} /> {t.actions.download}
                             </button>
@@ -752,7 +776,7 @@ export default function StoragePage() {
                                     handleShare(file.id);
                                     setOpenMenuId(null);
                                   }}
-                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50"
+                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700/60"
                                 >
                                   <Share2 size={16} /> {t.actions.share}
                                 </button>
@@ -761,7 +785,7 @@ export default function StoragePage() {
                                     handleManagePermissions(file.id);
                                     setOpenMenuId(null);
                                   }}
-                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-800 hover:bg-gray-50"
+                                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700/60"
                                 >
                                   <ShieldCheck size={16} /> {t.actions.permissions}
                                 </button>
@@ -780,7 +804,7 @@ export default function StoragePage() {
       </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-2 sm:px-0 mt-4">
-        <div className="text-sm text-gray-600">
+        <div className="text-sm text-gray-700 dark:text-gray-300">
           {totalItems === 0 ? t.empty.title : `Показано ${rangeStart}–${rangeEnd} из ${totalItems}`}
         </div>
         <div className="flex items-center gap-2">
@@ -789,13 +813,13 @@ export default function StoragePage() {
             disabled={currentPage <= 1}
             className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm border transition-all ${
               currentPage <= 1
-                ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                ? 'border-gray-200 dark:border-slate-700/60 text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                : 'border-gray-200 dark:border-slate-700/60 text-gray-700 dark:text-gray-100 hover:border-gray-300 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700/40'
             }`}
           >
             Предыдущая
           </button>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-gray-700 dark:text-gray-300">
             Страница {currentPage} из {totalPagesCount}
           </span>
           <button
@@ -803,8 +827,8 @@ export default function StoragePage() {
             disabled={currentPage >= totalPagesCount}
             className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm border transition-all ${
               currentPage >= totalPagesCount
-                ? 'border-gray-200 text-gray-300 cursor-not-allowed'
-                : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                ? 'border-gray-200 dark:border-slate-700/60 text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                : 'border-gray-200 dark:border-slate-700/60 text-gray-700 dark:text-gray-100 hover:border-gray-300 dark:hover:border-slate-500 hover:bg-gray-50 dark:hover:bg-slate-700/40'
             }`}
           >
             Следующая

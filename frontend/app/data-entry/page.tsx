@@ -955,6 +955,7 @@ export default function DataEntryPage() {
           <div className="relative">
             <button
               type="button"
+              data-tour-id="data-entry-table-actions-button"
               disabled={exportingTable || syncingTable}
               onClick={() => setExportMenuOpen(v => !v)}
               className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -981,9 +982,13 @@ export default function DataEntryPage() {
                     }
                   }}
                 />
-                <div className="absolute right-0 mt-2 z-20 w-80 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden">
+                <div
+                  className="absolute right-0 mt-2 z-20 w-80 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden"
+                  data-tour-id="data-entry-table-actions-menu"
+                >
                   <button
                     type="button"
+                    data-tour-id="data-entry-table-actions-create-for-tab"
                     onClick={() => createTableFromDataEntry('type')}
                     disabled={exportingTable || syncingTable}
                     className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -993,6 +998,7 @@ export default function DataEntryPage() {
                   </button>
                   <button
                     type="button"
+                    data-tour-id="data-entry-table-actions-create-single"
                     onClick={() => createTableFromDataEntry('all')}
                     disabled={exportingTable || syncingTable}
                     className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -1002,6 +1008,7 @@ export default function DataEntryPage() {
                   {linkedTable && (
                     <button
                       type="button"
+                      data-tour-id="data-entry-table-actions-sync-linked"
                       onClick={() => syncDataEntryTable(linkedTable.id)}
                       disabled={exportingTable || syncingTable}
                       className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
@@ -1040,7 +1047,10 @@ export default function DataEntryPage() {
       )}
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 flex items-center overflow-x-auto gap-2 pr-2">
+        <div
+          className="border-b border-gray-100 flex items-center overflow-x-auto gap-2 pr-2"
+          data-tour-id="tabs-section"
+        >
           <div className="flex items-center">
             {(['cash', 'raw', 'debit', 'credit'] as BaseTabKey[])
               .map(t => t as TabKey)
@@ -1102,6 +1112,7 @@ export default function DataEntryPage() {
 
           <button
             type="button"
+            data-tour-id="data-entry-edit-columns-button"
             disabled={!isFieldTab(activeTab)}
             onClick={() => {
               if (!isFieldTab(activeTab)) return;
@@ -1152,7 +1163,11 @@ export default function DataEntryPage() {
                     disabled={savingEdit}
                     className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
                   >
-                    {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : t.labels.saveChanges}
+                    {savingEdit ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      t.labels.saveChanges
+                    )}
                   </button>
                 </div>
               </div>
@@ -1236,6 +1251,7 @@ export default function DataEntryPage() {
             <div className="space-y-4">
               <div
                 ref={customFieldRef}
+                data-tour-id="custom-field-form"
                 className={`rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all ${
                   customFieldHighlight ? 'ring-2 ring-primary/40' : ''
                 }`}
@@ -1387,7 +1403,7 @@ export default function DataEntryPage() {
           ) : (
             <>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div className="relative">
+                <div className="relative" data-tour-id="date-field">
                   <span className="text-sm font-medium text-gray-700 block mb-1">
                     {t.labels.date}
                   </span>
@@ -1451,7 +1467,7 @@ export default function DataEntryPage() {
                   )}
                 </div>
 
-                <label className="block">
+                <label className="block" data-tour-id="amount-field">
                   <span className="text-sm font-medium text-gray-700 block mb-1">
                     {t.labels.amount}
                   </span>
@@ -1464,7 +1480,7 @@ export default function DataEntryPage() {
                   />
                 </label>
 
-                <label className="block">
+                <label className="block" data-tour-id="note-field">
                   <span className="text-sm font-medium text-gray-700 block mb-1">
                     {t.labels.comment}
                   </span>
@@ -1477,7 +1493,7 @@ export default function DataEntryPage() {
                   />
                 </label>
 
-                <label className="block">
+                <label className="block" data-tour-id="currency-field">
                   <span className="text-sm font-medium text-gray-700 block mb-1">
                     {t.labels.currency}
                   </span>
@@ -1494,7 +1510,7 @@ export default function DataEntryPage() {
                       ))}
                     </select>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="mt-2 flex flex-wrap gap-2" data-tour-id="currency-buttons">
                     {currencies.map(cur => (
                       <button
                         key={cur.code}
@@ -1517,6 +1533,7 @@ export default function DataEntryPage() {
                 <button
                   onClick={() => handleSubmit(activeTab)}
                   disabled={saving}
+                  data-tour-id="save-entry-button"
                   className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
                 >
                   {t.labels.saveEntry}
@@ -1528,8 +1545,14 @@ export default function DataEntryPage() {
       </div>
 
       {(isBaseTab(activeTab) || isFieldTab(activeTab)) && (
-        <div className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 bg-gray-50/50 rounded-t-xl sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm"
+          data-tour-id="entries-list-section"
+        >
+          <div
+            className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 bg-gray-50/50 rounded-t-xl sm:flex-row sm:items-center sm:justify-between"
+            data-tour-id="entries-header"
+          >
             <div className="flex items-center gap-2">
               <Droplets className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-gray-900">
@@ -1539,7 +1562,7 @@ export default function DataEntryPage() {
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <div className="relative w-full sm:w-72">
+                <div className="relative w-full sm:w-72" data-tour-id="search-entries">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                   <input
                     type="search"
@@ -1560,7 +1583,7 @@ export default function DataEntryPage() {
                   ) : null}
                 </div>
 
-                <div className="relative w-full sm:w-48">
+                <div className="relative w-full sm:w-48" data-tour-id="date-filter">
                   <button
                     type="button"
                     className={`w-full rounded-full border bg-white pl-9 pr-9 py-1.5 text-sm flex items-center justify-between transition-colors ${

@@ -7,6 +7,7 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Container,
   FormControl,
@@ -19,7 +20,6 @@ import {
   ListItemText,
   MenuItem,
   Paper,
-  Checkbox,
   Select,
   Typography,
 } from '@mui/material';
@@ -185,7 +185,7 @@ export default function UploadPage() {
           </Alert>
         )}
 
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: 3 }} data-tour-id="google-sheets-section">
           <FormControl fullWidth>
             <InputLabel>{t.googleSheetOptional}</InputLabel>
             <Select
@@ -226,6 +226,7 @@ export default function UploadPage() {
         <Box
           onDrop={handleDrop}
           onDragOver={e => e.preventDefault()}
+          data-tour-id="drag-drop-zone"
           sx={{
             border: '2px dashed',
             borderColor: 'primary.main',
@@ -260,6 +261,7 @@ export default function UploadPage() {
         </Box>
 
         <FormControlLabel
+          data-tour-id="allow-duplicates"
           control={
             <Checkbox
               checked={allowDuplicates}
@@ -272,7 +274,7 @@ export default function UploadPage() {
         />
 
         {files.length > 0 && (
-          <Box sx={{ mb: 3 }}>
+          <Box sx={{ mb: 3 }} data-tour-id="file-list">
             <Typography variant="subtitle1" gutterBottom>
               {t.selectedFiles} ({files.length}/2):
             </Typography>
@@ -306,6 +308,7 @@ export default function UploadPage() {
           disabled={uploading || files.length === 0}
           startIcon={uploading ? <CircularProgress size={20} /> : <CloudUpload />}
           sx={{ mt: 2 }}
+          data-tour-id="upload-button"
         >
           {uploading ? t.uploadButtonLoading : t.uploadButtonIdle}
         </Button>
