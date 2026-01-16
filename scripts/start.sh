@@ -3,6 +3,22 @@ set -e
 
 API_PORT="${API_PORT:-4000}"
 FRONTEND_PORT="${PORT:-3000}"
+DEFAULT_UPLOADS_DIR="/app/data/uploads"
+UPLOADS_DIR="${UPLOADS_DIR:-${DEFAULT_UPLOADS_DIR}}"
+
+# Ensure uploads directory exists and is writable; fall back to an internal path if needed
+if ! mkdir -p "${UPLOADS_DIR}" 2>/dev/null; then
+  echo "WARN: Cannot create uploads dir at ${UPLOADS_DIR}, falling back to ${DEFAULT_UPLOADS_DIR}"
+  UPLOADS_DIR="${DEFAULT_UPLOADS_DIR}"
+  if ! mkdir -p "${UPLOADS_DIR}"; then
+    echo "ERROR: Failed to create uploads dir at ${UPLOADS_DIR}"
+    exit 1
+  fi
+fi
+export UPLOADS_DIR
+
+# Extra subfolders used by reports and other features
+mkdir -p "${UPLOADS_DIR}/reports" "${UPLOADS_DIR}/telegram" "${UPLOADS_DIR}/custom-field-icons"
 
 echo "Running DB migrations..."
 node backend/scripts/run-migrations-with-lock.js

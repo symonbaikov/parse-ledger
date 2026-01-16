@@ -13,6 +13,67 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  sensitive-changes:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect sensitive paths
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            db:
+              - 'backend/src/migrations/**'
+              - 'backend/migrations/**'
+              - 'backend/src/entities/**'
+              - 'backend/src/modules/**/entities/**'
+              - 'backend/src/data-source.ts'
+            auth:
+              - 'backend/src/modules/auth/**'
+              - 'backend/src/common/guards/**'
+              - 'backend/src/common/decorators/**'
+              - 'backend/src/**/permissions/**'
+              - 'backend/src/**/roles/**'
+
+      - name: Require approvals for sensitive changes
+        uses: actions/github-script@v7
+        env:
+          DB_CHANGED: ${{ steps.changes.outputs.db }}
+          AUTH_CHANGED: ${{ steps.changes.outputs.auth }}
+        with:
+          script: |
+            const dbChanged = process.env.DB_CHANGED === 'true';
+            const authChanged = process.env.AUTH_CHANGED === 'true';
+
+            if (!dbChanged && !authChanged) {
+              core.info('No sensitive changes detected.');
+              return;
+            }
+
+            const labels = (context.payload.pull_request.labels || []).map(label => label.name);
+            const missing = [];
+
+            if (dbChanged && !labels.includes('db-approved')) {
+              missing.push('db-approved (schema/migrations)');
+            }
+
+            if (authChanged && !labels.includes('security-approved')) {
+              missing.push('security-approved (auth/permissions)');
+            }
+
+            if (missing.length) {
+              core.setFailed(`Sensitive changes detected. Add labels: ${missing.join(', ')}.`);
+            } else {
+              core.info('Required approvals present for sensitive changes.');
+            }
+
   lint:
     runs-on: ubuntu-latest
     steps:

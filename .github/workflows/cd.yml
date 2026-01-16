@@ -1,0 +1,203 @@
+name: CD
+
+on:
+  push:
+    branches:
+      - staging
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: staging
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-publish:
+    name: Build & publish hardened image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    outputs:
+      target_env: ${{ steps.env.outputs.target_env }}
+      primary_tag: ${{ steps.image.outputs.primary_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Derive target environment
+        id: env
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "target_env=${{ github.event.inputs.environment }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
+            echo "target_env=staging" >> "$GITHUB_OUTPUT"
+          else
+            echo "target_env=production" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Wait for CI to succeed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const workflowId = 'ci.yml';
+            const timeoutMinutes = 15;
+            const pollIntervalMs = 20000;
+            const deadline = Date.now() + timeoutMinutes * 60 * 1000;
+
+            while (true) {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                workflow_id: workflowId,
+                head_sha: context.sha,
+                per_page: 1,
+              });
+
+              const run = data.workflow_runs[0];
+
+              if (!run) {
+                core.info('No CI run found yet. Waiting...');
+              } else if (run.status === 'completed') {
+                if (run.conclusion === 'success') {
+                  core.info('CI is green for this commit.');
+                  return;
+                }
+                core.setFailed(`CI run completed with conclusion: ${run.conclusion}`);
+                return;
+              } else {
+                core.info(`CI status: ${run.status}. Waiting for completion...`);
+              }
+
+              if (Date.now() > deadline) {
+                core.setFailed('Timed out waiting for CI results for this commit.');
+                return;
+              }
+
+              await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+            }
+
+      - name: Prepare image tags
+        id: image
+        run: |
+          IMAGE_NAME=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          TAGS="${IMAGE_NAME}:sha-${GITHUB_SHA::7}"
+          PRIMARY_TAG="${IMAGE_NAME}:sha-${GITHUB_SHA::7}"
+
+          if [[ "${GITHUB_REF}" == "refs/heads/staging" ]]; then
+            TAGS="${TAGS}\n${IMAGE_NAME}:staging\n${IMAGE_NAME}:staging-${GITHUB_SHA::7}"
+            PRIMARY_TAG="${IMAGE_NAME}:staging-${GITHUB_SHA::7}"
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            REF_NAME="${GITHUB_REF#refs/tags/}"
+            TAGS="${TAGS}\n${IMAGE_NAME}:${REF_NAME}\n${IMAGE_NAME}:latest"
+            PRIMARY_TAG="${IMAGE_NAME}:${REF_NAME}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${{ github.event.inputs.environment }}" == "staging" ]]; then
+            TAGS="${TAGS}\n${IMAGE_NAME}:staging\n${IMAGE_NAME}:staging-${GITHUB_SHA::7}"
+            PRIMARY_TAG="${IMAGE_NAME}:staging-${GITHUB_SHA::7}"
+          fi
+
+          echo "image_name=${IMAGE_NAME}" >> "$GITHUB_OUTPUT"
+          echo "primary_tag=${PRIMARY_TAG}" >> "$GITHUB_OUTPUT"
+          echo "tags<<'EOF'" >> "$GITHUB_OUTPUT"
+          echo "$TAGS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.image.outputs.tags }}
+          provenance: true
+
+      - name: Scan pushed image
+        uses: aquasecurity/trivy-action@v0.24.0
+        with:
+          image-ref: ${{ steps.image.outputs.primary_tag }}
+          severity: HIGH,CRITICAL
+          vuln-type: 'os,library'
+          exit-code: 1
+
+      - name: Generate SBOM
+        id: sbom
+        uses: anchore/syft-action@v0.15.0
+        with:
+          image: ${{ steps.image.outputs.primary_tag }}
+          output: sbom-${{ steps.env.outputs.target_env }}.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ steps.env.outputs.target_env }}
+          path: sbom-${{ steps.env.outputs.target_env }}.spdx.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign container image
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: cosign sign --yes ${{ steps.image.outputs.primary_tag }}
+
+      - name: Attest SBOM
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: cosign attest --yes --predicate sbom-${{ steps.env.outputs.target_env }}.spdx.json --type spdxjson ${{ steps.image.outputs.primary_tag }}
+
+      - name: Publish GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sbom-${{ steps.env.outputs.target_env }}.spdx.json
+          generate_release_notes: true
+
+  smoke:
+    name: Post-deploy smoke check
+    runs-on: ubuntu-latest
+    needs: build-and-publish
+    if: needs.build-and-publish.outputs.target_env == 'staging' || needs.build-and-publish.outputs.target_env == 'production'
+    environment:
+      name: ${{ needs.build-and-publish.outputs.target_env == 'production' && 'production' || 'staging' }}
+    steps:
+      - name: Run smoke check
+        env:
+          SMOKE_URL: ${{ needs.build-and-publish.outputs.target_env == 'production' && secrets.PROD_HEALTHCHECK_URL || secrets.STAGING_HEALTHCHECK_URL }}
+        run: |
+          if [ -z "$SMOKE_URL" ]; then
+            echo "No smoke URL configured; skipping smoke verification."
+            exit 0
+          fi
+
+          echo "Hitting $SMOKE_URL..."
+          for attempt in $(seq 1 10); do
+            if curl -fsS "$SMOKE_URL"; then
+              echo "Smoke check passed"
+              exit 0
+            fi
+            echo "Attempt ${attempt}/10 failed, retrying..."
+            sleep 6
+          done
+
+          echo "Smoke check failed after retries"
+          exit 1
