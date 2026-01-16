@@ -6,9 +6,11 @@ import * as React from 'react';
 export type AlertVariant = 'default' | 'success' | 'error';
 
 const variantClasses: Record<AlertVariant, string> = {
-  default: 'border-gray-200 bg-white text-gray-900',
-  success: 'border-emerald-200 bg-emerald-50 text-emerald-950',
-  error: 'border-red-200 bg-red-50 text-red-950',
+  default: 'border-border bg-card text-foreground',
+  success:
+    'border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100',
+  error:
+    'border-red-300 bg-red-50 text-red-900 dark:border-red-700 dark:bg-red-900/50 dark:text-red-100',
 };
 
 const Alert = React.forwardRef<

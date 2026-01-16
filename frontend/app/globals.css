@@ -1,25 +1,78 @@
 @import "tailwindcss";
 @import "ag-grid-community/styles/ag-grid.css";
 @import "ag-grid-community/styles/ag-theme-quartz.css";
+@import "./tours/tour-theme.css";
+
+/* Use `.dark` class for Tailwind's `dark:` variant (so it follows our app theme toggle, not OS preference). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-scheme: light;
+  }
+}
 
 :root {
-  --background: #f3f2ef; /* LinkedIn light gray background */
+  --background: #f3f2ef;
   --foreground: #191919;
-  --primary: #0a66c2; /* LinkedIn Blue */
+  --primary: #0a66c2;
   --primary-hover: #004182;
+  --primary-foreground: #ffffff;
   --secondary: #666666;
+  --secondary-foreground: #ffffff;
+  --muted: #e9e9e9;
+  --muted-foreground: #515151;
   --card-bg: #ffffff;
-  --border-color: #e0e0e0; /* Subtle borders */
+  --card-foreground: #191919;
+  --border-color: #e0e0e0;
+  --input: #d7d7d7;
+  --ring: #0a66c2;
+  --destructive: #dc2626;
+  --destructive-foreground: #fef2f2;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #0b1220;
+  --foreground: #e5e7eb;
+  --primary: #62b0ff;
+  --primary-hover: #3c82d6;
+  --primary-foreground: #0b1220;
+  --secondary: #9aa6b2;
+  --secondary-foreground: #0b1220;
+  --muted: #111827;
+  --muted-foreground: #cbd5e1;
+  --card-bg: #0f172a;
+  --card-foreground: #e5e7eb;
+  --border-color: #1f2937;
+  --input: #1f2937;
+  --ring: #62b0ff;
+  --destructive: #ef4444;
+  --destructive-foreground: #0b1220;
 }
 
 @theme inline {
+  --color-scheme: class;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-card: var(--card-bg);
+  --color-card-foreground: var(--card-foreground);
   --color-border: var(--border-color);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -33,6 +86,193 @@ body {
   padding: 0;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+  Dark mode fallbacks for legacy Tailwind color utilities.
+  Many pages still use hardcoded `bg-white`, `text-gray-*`, etc without `dark:` variants.
+  In `.dark`, map the most common utilities to our design tokens unless the element already
+  has an explicit `dark:*` override.
+*/
+
+.dark .bg-white:not([class*="dark:bg-"]) {
+  background-color: var(--card-bg);
+}
+
+.dark .bg-gray-50:not([class*="dark:bg-"]),
+.dark .bg-gray-100:not([class*="dark:bg-"]),
+.dark .bg-gray-200:not([class*="dark:bg-"]) {
+  background-color: var(--muted);
+}
+
+.dark .bg-white\/70:not([class*="dark:bg-"]) {
+  background-color: color-mix(in srgb, var(--background) 70%, transparent);
+}
+
+.dark .bg-white\/95:not([class*="dark:bg-"]) {
+  background-color: color-mix(in srgb, var(--background) 95%, transparent);
+}
+
+.dark .bg-gray-50\/20:not([class*="dark:bg-"]),
+.dark .bg-gray-50\/30:not([class*="dark:bg-"]),
+.dark .bg-gray-50\/50:not([class*="dark:bg-"]),
+.dark .bg-gray-50\/60:not([class*="dark:bg-"]),
+.dark .bg-gray-50\/80:not([class*="dark:bg-"]) {
+  background-color: color-mix(in srgb, var(--muted) 78%, transparent);
+}
+
+.dark .hover\:bg-gray-50:hover:not([class*="dark:hover:bg-"]),
+.dark .hover\:bg-gray-50\/80:hover:not([class*="dark:hover:bg-"]),
+.dark .hover\:bg-gray-100:hover:not([class*="dark:hover:bg-"]),
+.dark .hover\:bg-white:hover:not([class*="dark:hover:bg-"]) {
+  background-color: var(--muted);
+}
+
+.dark .hover\:bg-white\/80:hover:not([class*="dark:hover:bg-"]) {
+  background-color: color-mix(in srgb, var(--muted) 88%, transparent);
+}
+
+.dark .text-gray-900:not([class*="dark:text-"]),
+.dark .text-gray-800:not([class*="dark:text-"]),
+.dark .text-gray-700:not([class*="dark:text-"]) {
+  color: var(--foreground);
+}
+
+.dark .text-gray-600:not([class*="dark:text-"]),
+.dark .text-gray-500:not([class*="dark:text-"]),
+.dark .text-gray-400:not([class*="dark:text-"]),
+.dark .text-gray-300:not([class*="dark:text-"]) {
+  color: var(--muted-foreground);
+}
+
+.dark .hover\:text-gray-900:hover:not([class*="dark:hover:text-"]),
+.dark .hover\:text-gray-800:hover:not([class*="dark:hover:text-"]),
+.dark .hover\:text-gray-700:hover:not([class*="dark:hover:text-"]) {
+  color: var(--foreground);
+}
+
+.dark .border-gray-100:not([class*="dark:border-"]),
+.dark .border-gray-200:not([class*="dark:border-"]),
+.dark .border-gray-300:not([class*="dark:border-"]) {
+  border-color: var(--border-color);
+}
+
+.dark .divide-gray-100:not([class*="dark:divide-"]) > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-200:not([class*="dark:divide-"]) > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border-color);
+}
+
+.dark .ring-gray-100:not([class*="dark:ring-"]),
+.dark .ring-gray-200:not([class*="dark:ring-"]) {
+  --tw-ring-color: var(--border-color);
+}
+
+.dark .focus\:ring-gray-200:focus:not([class*="dark:focus:ring-"]) {
+  --tw-ring-color: var(--border-color);
+}
+
+/* Blue "info" */
+.dark .bg-blue-50:not([class*="dark:bg-"]),
+.dark .bg-blue-100:not([class*="dark:bg-"]) {
+  background-color: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+.dark .bg-blue-50\/20:not([class*="dark:bg-"]),
+.dark .bg-blue-50\/30:not([class*="dark:bg-"]) {
+  background-color: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.dark .hover\:bg-blue-100:hover:not([class*="dark:hover:bg-"]) {
+  background-color: color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.dark .border-blue-200:not([class*="dark:border-"]) {
+  border-color: color-mix(in srgb, var(--primary) 50%, transparent);
+}
+
+.dark .text-blue-600:not([class*="dark:text-"]),
+.dark .text-blue-700:not([class*="dark:text-"]),
+.dark .text-blue-800:not([class*="dark:text-"]) {
+  color: var(--primary);
+}
+
+.dark .hover\:bg-blue-50:hover:not([class*="dark:hover:bg-"]) {
+  background-color: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+/* Red "danger" */
+.dark .bg-red-50:not([class*="dark:bg-"]),
+.dark .bg-red-100:not([class*="dark:bg-"]) {
+  background-color: color-mix(in srgb, var(--destructive) 18%, transparent);
+}
+
+.dark .hover\:bg-red-50:hover:not([class*="dark:hover:bg-"]) {
+  background-color: color-mix(in srgb, var(--destructive) 22%, transparent);
+}
+
+.dark .border-red-200:not([class*="dark:border-"]),
+.dark .border-red-300:not([class*="dark:border-"]) {
+  border-color: color-mix(in srgb, var(--destructive) 45%, transparent);
+}
+
+.dark .text-red-600:not([class*="dark:text-"]),
+.dark .text-red-700:not([class*="dark:text-"]),
+.dark .text-red-800:not([class*="dark:text-"]),
+.dark .text-red-900:not([class*="dark:text-"]) {
+  color: var(--destructive);
+}
+
+/* Success / warning chips (used in older pages without `dark:` variants). */
+.dark .bg-green-50:not([class*="dark:bg-"]),
+.dark .bg-green-100:not([class*="dark:bg-"]),
+.dark .bg-emerald-50:not([class*="dark:bg-"]),
+.dark .bg-emerald-100:not([class*="dark:bg-"]) {
+  background-color: color-mix(in srgb, #10b981 14%, transparent);
+}
+
+.dark .border-green-200:not([class*="dark:border-"]),
+.dark .border-emerald-100:not([class*="dark:border-"]),
+.dark .border-emerald-200:not([class*="dark:border-"]),
+.dark .border-emerald-300:not([class*="dark:border-"]) {
+  border-color: color-mix(in srgb, #10b981 40%, transparent);
+}
+
+.dark .text-green-700:not([class*="dark:text-"]),
+.dark .text-green-800:not([class*="dark:text-"]),
+.dark .text-emerald-700:not([class*="dark:text-"]),
+.dark .text-emerald-800:not([class*="dark:text-"]),
+.dark .text-emerald-950:not([class*="dark:text-"]) {
+  color: color-mix(in srgb, #10b981 70%, white);
+}
+
+.dark .bg-yellow-50:not([class*="dark:bg-"]),
+.dark .bg-yellow-100:not([class*="dark:bg-"]),
+.dark .bg-amber-50:not([class*="dark:bg-"]),
+.dark .bg-amber-100:not([class*="dark:bg-"]) {
+  background-color: color-mix(in srgb, #f59e0b 14%, transparent);
+}
+
+.dark .hover\:bg-orange-50:hover:not([class*="dark:hover:bg-"]) {
+  background-color: color-mix(in srgb, #fb923c 14%, transparent);
+}
+
+.dark .border-yellow-200:not([class*="dark:border-"]),
+.dark .border-amber-100:not([class*="dark:border-"]),
+.dark .border-amber-300:not([class*="dark:border-"]) {
+  border-color: color-mix(in srgb, #f59e0b 45%, transparent);
+}
+
+.dark .text-yellow-700:not([class*="dark:text-"]),
+.dark .text-yellow-800:not([class*="dark:text-"]),
+.dark .text-amber-800:not([class*="dark:text-"]),
+.dark .text-amber-900:not([class*="dark:text-"]) {
+  color: color-mix(in srgb, #f59e0b 75%, white);
+}
+
+/* React Day Picker: align default variables with dark theme tokens. */
+.dark .rdp-root {
+  --rdp-accent-color: var(--primary);
+  --rdp-accent-background-color: color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 /* Custom Tables: in-app fullscreen mode (hides global navigation/breadcrumbs). */
