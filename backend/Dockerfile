@@ -17,6 +17,9 @@ COPY . .
 # Build application
 RUN npm run build
 
+# Remove devDependencies for the runtime image
+RUN npm prune --omit=dev
+
 # Production stage
 FROM node:20-alpine
 
@@ -27,11 +30,9 @@ ENV PIP_BREAK_SYSTEM_PACKAGES=1
 RUN apk add --no-cache python3 py3-pip py3-pillow && \
   pip3 install --no-cache-dir --break-system-packages pdfplumber
 
-# Copy package files
-COPY package*.json ./
-
-# Install all dependencies
-RUN npm ci
+# Runtime dependencies from builder (already pruned)
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy built application from builder
 COPY --from=builder /app/dist ./dist

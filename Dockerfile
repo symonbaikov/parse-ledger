@@ -26,6 +26,9 @@ RUN npm run build --prefix frontend
 # Build backend
 RUN npm run build --prefix backend
 
+# Remove devDependencies from backend for the runtime image
+RUN npm --prefix backend prune --omit=dev
+
 # Runtime image
 FROM node:20-alpine AS runner
 
@@ -38,12 +41,14 @@ ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Install Python + pdfplumber for PDF parsing
 RUN apk add --no-cache python3 py3-pip py3-pillow && \
-    pip3 install --no-cache-dir --break-system-packages pdfplumber
+    pip3 install --no-cache-dir --break-system-packages pdfplumber==0.11.4
+
+# Backend runtime dependencies (already pruned)
+COPY --from=builder /app/backend/package*.json ./backend/
+COPY --from=builder /app/backend/node_modules ./backend/node_modules
 
 # Backend runtime files
 COPY --from=builder /app/backend/dist ./backend/dist
-COPY --from=builder /app/backend/node_modules ./backend/node_modules
-COPY --from=builder /app/backend/package*.json ./backend/
 COPY --from=builder /app/backend/scripts ./backend/scripts
 
 # Frontend standalone output
@@ -55,6 +60,10 @@ COPY --from=builder /app/frontend/package*.json ./frontend/
 # Startup script to run both servers
 COPY scripts/start.sh ./scripts/start.sh
 RUN chmod +x ./scripts/start.sh
+
+# Use non-root user for runtime
+RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
+USER app
 
 EXPOSE 3000
 
