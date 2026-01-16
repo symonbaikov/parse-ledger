@@ -23,6 +23,7 @@ FinFlow is a comprehensive web application designed for importing and processing
 - 🏗️ **Custom Tables** - Create custom data structures for flexible financial tracking
 - 📊 **Google Sheets Integration** - Sync data with Google Sheets in real-time
 - 👥 **Workspace Collaboration** - Invite team members with granular role-based permissions
+- 🎯 **Interactive Tours** - Guided onboarding with 10 feature tours in 3 languages
 - 🔐 **Enterprise Auth** - SSO, RBAC, and MFA support (roadmap)
 - 📱 **Telegram Bot** - Automated financial reports via Telegram
 - 📚 **API Documentation** - Interactive Swagger/OpenAPI docs
