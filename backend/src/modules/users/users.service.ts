@@ -94,10 +94,6 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    if ('passwordHash' in user) {
-      delete (user as any).passwordHash;
-    }
-
     return user;
   }
 
