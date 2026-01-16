@@ -6,8 +6,7 @@
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](CONTRIBUTING.md)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Maintainability](https://qlty.sh/gh/symonbaikov/projects/parse-ledger/maintainability.svg)](https://qlty.sh/gh/symonbaikov/projects/parse-ledger)
-[![Code Coverage](https://qlty.sh/gh/symonbaikov/projects/parse-ledger/coverage.svg)](https://qlty.sh/gh/symonbaikov/projects/parse-ledger)
+
 
 **Open-source financial data platform for importing, processing, and analyzing bank statements**
 
@@ -15,6 +14,10 @@
 
 </div>
 
+---
+
+[![Maintainability](https://qlty.sh/gh/symonbaikov/projects/parse-ledger/maintainability.svg)](https://qlty.sh/gh/symonbaikov/projects/parse-ledger)
+[![Code Coverage](https://qlty.sh/gh/symonbaikov/projects/parse-ledger/coverage.svg)](https://qlty.sh/gh/symonbaikov/projects/parse-ledger)
 ---
 
 ## ✨ Features
