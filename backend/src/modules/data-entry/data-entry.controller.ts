@@ -8,6 +8,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -19,7 +20,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import type { DataEntryType } from '../../entities/data-entry.entity';
+import { DataEntryType } from '../../entities/data-entry.entity';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { DataEntryService } from './data-entry.service';
@@ -70,8 +71,20 @@ export class DataEntryController {
 
   @Get('custom-fields')
   async listCustomFields(@CurrentUser() user: User) {
-    const items = await this.dataEntryService.listCustomFields(user.id);
-    return { items };
+    const [items, hiddenBaseTabs] = await Promise.all([
+      this.dataEntryService.listCustomFields(user.id),
+      this.dataEntryService.getHiddenBaseTabs(user.id),
+    ]);
+    return { items, hiddenBaseTabs };
+  }
+
+  @Delete('base-tabs/:type')
+  async removeBaseTab(
+    @CurrentUser() user: User,
+    @Param('type', new ParseEnumPipe(DataEntryType)) type: DataEntryType,
+  ) {
+    await this.dataEntryService.removeBaseTab(user.id, type);
+    return { ok: true };
   }
 
   @Post('custom-fields')

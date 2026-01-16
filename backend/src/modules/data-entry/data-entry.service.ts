@@ -169,6 +169,36 @@ export class DataEntryService {
     }));
   }
 
+  async getHiddenBaseTabs(userId: string): Promise<DataEntryType[]> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'dataEntryHiddenBaseTabs'],
+    });
+    const hidden = (user as any)?.dataEntryHiddenBaseTabs;
+    return Array.isArray(hidden) ? (hidden as DataEntryType[]) : [];
+  }
+
+  async removeBaseTab(userId: string, type: DataEntryType): Promise<void> {
+    await this.ensureCanEditDataEntry(userId);
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'dataEntryHiddenBaseTabs'],
+    });
+    if (!user) throw new NotFoundException('Пользователь не найден');
+
+    const current = Array.isArray((user as any).dataEntryHiddenBaseTabs)
+      ? ((user as any).dataEntryHiddenBaseTabs as DataEntryType[])
+      : [];
+
+    if (!current.includes(type)) {
+      (user as any).dataEntryHiddenBaseTabs = [...current, type];
+      await this.userRepository.save(user);
+    }
+
+    await this.dataEntryRepository.delete({ userId, type, customTabId: IsNull() });
+  }
+
   async createCustomField(
     userId: string,
     dto: CreateDataEntryCustomFieldDto,

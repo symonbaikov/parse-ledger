@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import type { DataEntryType } from './data-entry.entity';
 import { Branch } from './branch.entity';
 import { Category } from './category.entity';
 import { GoogleSheet } from './google-sheet.entity';
@@ -90,6 +91,14 @@ export class User {
     default: null,
   })
   permissions: string[] | null;
+
+  @Column({
+    name: 'data_entry_hidden_base_tabs',
+    type: 'jsonb',
+    nullable: false,
+    default: () => "'[]'::jsonb",
+  })
+  dataEntryHiddenBaseTabs: DataEntryType[];
 
   // Relations
   @OneToMany(

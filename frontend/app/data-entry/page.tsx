@@ -143,6 +143,7 @@ export default function DataEntryPage() {
   >({});
   const listRequestSeq = useRef(0);
   const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [hiddenBaseTabs, setHiddenBaseTabs] = useState<BaseTabKey[]>([]);
   const [dataEntryTables, setDataEntryTables] = useState<DataEntryTableLink[]>([]);
   const [loadingCustomFields, setLoadingCustomFields] = useState(false);
   const [creatingCustomField, setCreatingCustomField] = useState(false);
@@ -154,12 +155,23 @@ export default function DataEntryPage() {
   const [editPanelOpen, setEditPanelOpen] = useState(false);
   const [editIconOpen, setEditIconOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState<{
-    open: boolean;
-    fieldId: string;
-    fieldName: string;
-    entriesCount: number;
-  }>({ open: false, fieldId: '', fieldName: '', entriesCount: 0 });
+  const [deleteDialog, setDeleteDialog] = useState<
+    | { open: false }
+    | {
+        open: true;
+        kind: 'custom';
+        id: string;
+        name: string;
+        entriesCount: number;
+      }
+    | {
+        open: true;
+        kind: 'base';
+        id: BaseTabKey;
+        name: string;
+        entriesCount: number;
+      }
+  >({ open: false });
   const [deletingTab, setDeletingTab] = useState(false);
   const [exportingTabToTable, setExportingTabToTable] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
@@ -355,6 +367,20 @@ export default function DataEntryPage() {
     tab === 'cash' || tab === 'raw' || tab === 'debit' || tab === 'credit';
   const isFieldTab = (tab: TabKey): tab is CustomFieldTabKey => tab.startsWith('field:');
   const getFieldId = (tab: CustomFieldTabKey) => tab.slice('field:'.length);
+
+  const visibleBaseTabs = useMemo(
+    () =>
+      (['cash', 'raw', 'debit', 'credit'] as BaseTabKey[]).filter(
+        tab => !hiddenBaseTabs.includes(tab),
+      ),
+    [hiddenBaseTabs],
+  );
+
+  const resolveFallbackTab = useMemo((): TabKey => {
+    if (visibleBaseTabs.length > 0) return visibleBaseTabs[0];
+    if (customFields.length > 0) return `field:${customFields[0].id}` as CustomFieldTabKey;
+    return 'custom';
+  }, [customFields, visibleBaseTabs]);
 
   const setQueryForTab = (tab: TabKey, query: string) => {
     setListQueryByTab(prev => ({ ...prev, [tab]: query }));
@@ -554,6 +580,11 @@ export default function DataEntryPage() {
         const payload = resp.data?.data || resp.data;
         const items = (payload?.items || []) as CustomField[];
         setCustomFields(items);
+
+        const hidden = payload?.hiddenBaseTabs;
+        if (Array.isArray(hidden)) {
+          setHiddenBaseTabs(hidden as BaseTabKey[]);
+        }
       })
       .catch(err => {
         const message = err?.response?.data?.message || t.errors.loadCustomColumnsFailed.value;
@@ -562,6 +593,12 @@ export default function DataEntryPage() {
       })
       .finally(() => setLoadingCustomFields(false));
   };
+
+  useEffect(() => {
+    if (isBaseTab(activeTab) && hiddenBaseTabs.includes(activeTab)) {
+      setActiveTab(resolveFallbackTab);
+    }
+  }, [activeTab, hiddenBaseTabs, resolveFallbackTab]);
 
   const loadDataEntryTables = () => {
     apiClient
@@ -684,41 +721,97 @@ export default function DataEntryPage() {
   const openDeleteDialog = (field: CustomField) => {
     setDeleteDialog({
       open: true,
-      fieldId: field.id,
-      fieldName: field.name,
+      kind: 'custom',
+      id: field.id,
+      name: field.name,
       entriesCount: Number(field.entriesCount || 0),
     });
   };
 
+  const openDeleteDialogForBaseTab = async (tab: BaseTabKey) => {
+    setStatus(null);
+    setError(null);
+
+    // Fast-path: if we already have meta for this tab, use it.
+    const cachedTotal = listMetaByTab[tab]?.total;
+    if (typeof cachedTotal === 'number') {
+      setDeleteDialog({
+        open: true,
+        kind: 'base',
+        id: tab,
+        name: getTabLabel(tab),
+        entriesCount: cachedTotal,
+      });
+      return;
+    }
+
+    // Otherwise query total count from API.
+    setDeleteDialog({ open: true, kind: 'base', id: tab, name: getTabLabel(tab), entriesCount: 0 });
+    try {
+      const resp = await apiClient.get('/data-entry', {
+        params: { type: tab, limit: 1, page: 1 },
+      });
+      const payload = resp.data?.data || resp.data;
+      const totalRaw = payload?.total ?? payload?.data?.total;
+      const total = typeof totalRaw === 'number' ? totalRaw : 0;
+      setDeleteDialog(prev => {
+        if (!prev.open || prev.kind !== 'base' || prev.id !== tab) return prev;
+        return { ...prev, entriesCount: total };
+      });
+    } catch {
+      // Ignore count fetch errors; dialog still works.
+    }
+  };
+
   const closeDeleteDialog = () => {
-    setDeleteDialog({ open: false, fieldId: '', fieldName: '', entriesCount: 0 });
+    setDeleteDialog({ open: false });
     setDeletingTab(false);
     setExportingTabToTable(false);
   };
 
   const exportTabToCustomTableAndDelete = async () => {
-    if (!deleteDialog.fieldId) return;
+    if (!deleteDialog.open) return;
     setExportingTabToTable(true);
     setStatus(null);
     setError(null);
     try {
-      const resp = await apiClient.post('/custom-tables/from-data-entry-custom-tab', {
-        customTabId: deleteDialog.fieldId,
-        name: deleteDialog.fieldName,
-      });
-      const payload = resp.data?.data || resp.data;
-      const tableId = payload?.tableId;
-      if (!tableId) throw new Error('tableId missing');
-      await apiClient.delete(`/data-entry/custom-fields/${deleteDialog.fieldId}`);
-      setCustomFields(prev => prev.filter(f => f.id !== deleteDialog.fieldId));
-      setEntries(prev => {
-        const next = { ...prev };
-        delete next[`field:${deleteDialog.fieldId}`];
-        return next;
-      });
-      if (activeTab === `field:${deleteDialog.fieldId}`) setActiveTab('cash');
-      closeDeleteDialog();
-      router.push(`/custom-tables/${tableId}`);
+      if (deleteDialog.kind === 'custom') {
+        const resp = await apiClient.post('/custom-tables/from-data-entry-custom-tab', {
+          customTabId: deleteDialog.id,
+          name: deleteDialog.name,
+        });
+        const payload = resp.data?.data || resp.data;
+        const tableId = payload?.tableId;
+        if (!tableId) throw new Error('tableId missing');
+        await apiClient.delete(`/data-entry/custom-fields/${deleteDialog.id}`);
+        setCustomFields(prev => prev.filter(f => f.id !== deleteDialog.id));
+        setEntries(prev => {
+          const next = { ...prev };
+          delete next[`field:${deleteDialog.id}`];
+          return next;
+        });
+        if (activeTab === (`field:${deleteDialog.id}` as TabKey)) setActiveTab(resolveFallbackTab);
+        closeDeleteDialog();
+        router.push(`/custom-tables/${tableId}`);
+      } else {
+        const resp = await apiClient.post('/custom-tables/from-data-entry', {
+          scope: 'type',
+          type: deleteDialog.id,
+        });
+        const payload = resp.data?.data || resp.data;
+        const tableId = payload?.tableId;
+        if (!tableId) throw new Error('tableId missing');
+        await apiClient.delete(`/data-entry/base-tabs/${deleteDialog.id}`);
+        setHiddenBaseTabs(prev => (prev.includes(deleteDialog.id) ? prev : [...prev, deleteDialog.id]));
+        setEntries(prev => {
+          const next = { ...prev };
+          delete next[deleteDialog.id];
+          return next;
+        });
+        if (activeTab === deleteDialog.id) setActiveTab(resolveFallbackTab);
+        closeDeleteDialog();
+        router.push(`/custom-tables/${tableId}`);
+      }
     } catch (err: any) {
       const message = err?.response?.data?.message || t.errors.copyToTableFailed.value;
       setStatus({ type: 'error', message });
@@ -728,19 +821,30 @@ export default function DataEntryPage() {
   };
 
   const deleteTabOnly = async () => {
-    if (!deleteDialog.fieldId) return;
+    if (!deleteDialog.open) return;
     setDeletingTab(true);
     setStatus(null);
     setError(null);
     try {
-      await apiClient.delete(`/data-entry/custom-fields/${deleteDialog.fieldId}`);
-      setCustomFields(prev => prev.filter(f => f.id !== deleteDialog.fieldId));
-      setEntries(prev => {
-        const next = { ...prev };
-        delete next[`field:${deleteDialog.fieldId}`];
-        return next;
-      });
-      if (activeTab === `field:${deleteDialog.fieldId}`) setActiveTab('cash');
+      if (deleteDialog.kind === 'custom') {
+        await apiClient.delete(`/data-entry/custom-fields/${deleteDialog.id}`);
+        setCustomFields(prev => prev.filter(f => f.id !== deleteDialog.id));
+        setEntries(prev => {
+          const next = { ...prev };
+          delete next[`field:${deleteDialog.id}`];
+          return next;
+        });
+        if (activeTab === (`field:${deleteDialog.id}` as TabKey)) setActiveTab(resolveFallbackTab);
+      } else {
+        await apiClient.delete(`/data-entry/base-tabs/${deleteDialog.id}`);
+        setHiddenBaseTabs(prev => (prev.includes(deleteDialog.id) ? prev : [...prev, deleteDialog.id]));
+        setEntries(prev => {
+          const next = { ...prev };
+          delete next[deleteDialog.id];
+          return next;
+        });
+        if (activeTab === deleteDialog.id) setActiveTab(resolveFallbackTab);
+      }
       closeDeleteDialog();
       setStatus({ type: 'success', message: t.status.tabDeleted.value });
     } catch (err: any) {
@@ -1052,7 +1156,7 @@ export default function DataEntryPage() {
           data-tour-id="tabs-section"
         >
           <div className="flex items-center">
-            {(['cash', 'raw', 'debit', 'credit'] as BaseTabKey[])
+            {visibleBaseTabs
               .map(t => t as TabKey)
               .concat(customFields.map(f => `field:${f.id}` as CustomFieldTabKey))
               .concat(['custom' as const])
@@ -1081,22 +1185,30 @@ export default function DataEntryPage() {
                   >
                     {getTabIcon(tab)}
                     {getTabLabel(tab)}
-                    {isFieldTab(tab) && (
+                    {(isFieldTab(tab) || isBaseTab(tab)) && (
                       <button
                         type="button"
                         onClick={e => {
                           e.stopPropagation();
-                          const fieldId = getFieldId(tab);
-                          const field = customFields.find(f => f.id === fieldId);
-                          if (field) openDeleteDialog(field);
+                          if (isFieldTab(tab)) {
+                            const fieldId = getFieldId(tab);
+                            const field = customFields.find(f => f.id === fieldId);
+                            if (field) openDeleteDialog(field);
+                          } else if (isBaseTab(tab)) {
+                            void openDeleteDialogForBaseTab(tab);
+                          }
                         }}
                         onKeyDown={e => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             e.stopPropagation();
-                            const fieldId = getFieldId(tab);
-                            const field = customFields.find(f => f.id === fieldId);
-                            if (field) openDeleteDialog(field);
+                            if (isFieldTab(tab)) {
+                              const fieldId = getFieldId(tab);
+                              const field = customFields.find(f => f.id === fieldId);
+                              if (field) openDeleteDialog(field);
+                            } else if (isBaseTab(tab)) {
+                              void openDeleteDialogForBaseTab(tab);
+                            }
                           }
                         }}
                         className="ml-1 inline-flex items-center justify-center h-6 w-6 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50"
@@ -1797,7 +1909,7 @@ export default function DataEntryPage() {
                 <h3 className="text-lg font-bold text-gray-900">{t.labels.deleteTabTitle}</h3>
                 <p className="mt-2 text-sm text-gray-600">
                   {t.labels.tabLabel}{' '}
-                  <span className="font-semibold text-gray-900">{deleteDialog.fieldName}</span>
+                  <span className="font-semibold text-gray-900">{deleteDialog.name}</span>
                 </p>
                 {deleteDialog.entriesCount > 0 ? (
                   <p className="mt-2 text-sm text-gray-600">
