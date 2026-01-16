@@ -28,6 +28,16 @@ import { useIntlayer, useLocale } from 'next-intlayer';
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 
+const isLocalhostUrl = (value: string) => {
+  try {
+    const hasScheme = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(value);
+    const url = new URL(hasScheme ? value : `https://${value}`);
+    return url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '::1';
+  } catch {
+    return false;
+  }
+};
+
 type WorkspaceOverview = {
   workspace: { id: string; name: string; ownerId?: string | null; createdAt?: string };
   members: Array<{
@@ -96,6 +106,14 @@ export default function WorkspaceSettingsPage() {
     const member = overview?.members.find(m => m.id === user?.id);
     return member?.role === 'owner' || member?.role === 'admin';
   }, [overview?.members, user?.id]);
+
+  const appBaseUrl = useMemo(() => {
+    const configured = process.env.NEXT_PUBLIC_APP_URL;
+    if (configured && configured.trim().length > 0 && !isLocalhostUrl(configured)) {
+      return configured.replace(/\/$/, '');
+    }
+    return window.location.origin;
+  }, []);
 
   const getApiErrorMessage = useCallback((error: unknown, fallback: string) => {
     const axiosError = error as AxiosError<{ message?: string }>;
@@ -561,7 +579,7 @@ export default function WorkspaceSettingsPage() {
                   {overview.invitations.map(invite => {
                     const link =
                       invite.link ||
-                      `${(process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '')}/invite/${invite.token}`;
+                      `${appBaseUrl}/invite/${invite.token}`;
                     return (
                       <Box
                         key={invite.id}

@@ -324,6 +324,33 @@ describe('WorkspacesService', () => {
         }),
       );
     });
+
+    it('should prefer request origin when env is localhost', async () => {
+      const prevAppUrl = process.env.APP_URL;
+      const prevFrontendUrl = process.env.FRONTEND_URL;
+      process.env.APP_URL = 'http://localhost:3000';
+      process.env.FRONTEND_URL = 'http://localhost:3000';
+
+      try {
+        jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+        jest.spyOn(invitationRepository, 'findOne').mockResolvedValue(null);
+        jest.spyOn(invitationRepository, 'create').mockReturnValue({} as WorkspaceInvitation);
+        jest
+          .spyOn(invitationRepository, 'save')
+          .mockResolvedValue({ token: 'tok-1' } as WorkspaceInvitation);
+
+        const result = await service.inviteMember(
+          mockUser as User,
+          inviteDto,
+          'https://app.megarich.kz',
+        );
+
+        expect(result.invitationLink).toBe('https://app.megarich.kz/invite/tok-1');
+      } finally {
+        process.env.APP_URL = prevAppUrl;
+        process.env.FRONTEND_URL = prevFrontendUrl;
+      }
+    });
   });
 
   describe('acceptInvitation', () => {

@@ -335,6 +335,13 @@ export default function StoragePage() {
     );
   };
 
+  const truncateFileNameForDisplay = (name: string, maxLength = 15) => {
+    if (!name) return '';
+    if (name.length <= maxLength) return name;
+    const truncated = name.slice(0, Math.max(0, maxLength - 1));
+    return `${truncated}…`;
+  };
+
   const filteredFiles = files.filter(file => {
     const normalizedBank = (file.bankName || '').toLowerCase();
     const normalizedCategoryName = (file.category?.name || '').toLowerCase();
@@ -634,8 +641,11 @@ export default function StoragePage() {
                           />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="text-base font-semibold text-gray-900 dark:text-white truncate">
-                            {file.fileName}
+                          <div
+                            className="text-base font-semibold text-gray-900 dark:text-white truncate"
+                            title={file.fileName}
+                          >
+                            {truncateFileNameForDisplay(file.fileName)}
                           </div>
                           <div className="mt-1 flex items-center gap-2 flex-wrap text-xs text-gray-500 dark:text-gray-300">
                             {file.sharedLinksCount > 0 && (

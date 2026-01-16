@@ -7,9 +7,11 @@ import {
   HttpStatus,
   Param,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { User } from '../../entities';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -22,16 +24,44 @@ import { WorkspacesService } from './workspaces.service';
 export class WorkspacesController {
   constructor(private readonly workspacesService: WorkspacesService) {}
 
+  private getRequestAppOrigin(req: Request): string | undefined {
+    const originHeader = req.headers.origin;
+    if (typeof originHeader === 'string' && originHeader.trim().length > 0) {
+      return originHeader;
+    }
+
+    const refererHeader = req.headers.referer;
+    if (typeof refererHeader === 'string' && refererHeader.trim().length > 0) {
+      try {
+        return new URL(refererHeader).origin;
+      } catch {
+        // ignore
+      }
+    }
+
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const host =
+      (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost) ?? req.headers.host;
+    if (typeof host === 'string' && host.trim().length > 0) {
+      const forwardedProto = req.headers['x-forwarded-proto'];
+      const protoRaw = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+      const proto = typeof protoRaw === 'string' && protoRaw.length > 0 ? protoRaw : 'https';
+      return `${proto}://${host}`;
+    }
+
+    return undefined;
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getMyWorkspace(@CurrentUser() user: User) {
-    return this.workspacesService.getWorkspaceOverview(user);
+  async getMyWorkspace(@CurrentUser() user: User, @Req() req: Request) {
+    return this.workspacesService.getWorkspaceOverview(user, this.getRequestAppOrigin(req));
   }
 
   @Post('invitations')
   @UseGuards(JwtAuthGuard)
-  async inviteMember(@CurrentUser() user: User, @Body() dto: InviteMemberDto) {
-    return this.workspacesService.inviteMember(user, dto);
+  async inviteMember(@CurrentUser() user: User, @Body() dto: InviteMemberDto, @Req() req: Request) {
+    return this.workspacesService.inviteMember(user, dto, this.getRequestAppOrigin(req));
   }
 
   @Delete('members/:userId')

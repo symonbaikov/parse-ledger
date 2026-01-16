@@ -13,10 +13,6 @@ import type { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { TimeoutError, retry, withTimeout } from '../../common/utils/async.util';
 import {
-  WorkspaceInvitationEmail,
-  workspaceInvitationEmailText,
-} from '../../emails/workspace-invitation.email';
-import {
   User,
   Workspace,
   WorkspaceInvitation,
@@ -70,7 +66,7 @@ export class WorkspacesService {
     return savedWorkspace;
   }
 
-  async getWorkspaceOverview(currentUser: User) {
+  async getWorkspaceOverview(currentUser: User, requestAppOrigin?: string) {
     const workspace = await this.ensureUserWorkspace(currentUser);
 
     const members = await this.workspaceMemberRepository.find({
@@ -108,7 +104,7 @@ export class WorkspacesService {
         token: invite.token,
         expiresAt: invite.expiresAt,
         createdAt: invite.createdAt,
-        link: this.buildInvitationLink(invite.token),
+        link: this.buildInvitationLink(invite.token, requestAppOrigin),
       })),
     };
   }
@@ -163,7 +159,7 @@ export class WorkspacesService {
     return { message: 'Доступ участника отозван' };
   }
 
-  async inviteMember(currentUser: User, dto: InviteMemberDto) {
+  async inviteMember(currentUser: User, dto: InviteMemberDto, requestAppOrigin?: string) {
     const workspace = await this.ensureUserWorkspace(currentUser);
     await this.requireAdminMembership(workspace.id, currentUser.id);
 
@@ -200,7 +196,7 @@ export class WorkspacesService {
       existingInvitation.invitedById = currentUser.id;
       existingInvitation.token = uuidv4();
       const updated = await this.invitationRepository.save(existingInvitation);
-      const invitationLink = this.buildInvitationLink(updated.token);
+      const invitationLink = this.buildInvitationLink(updated.token, requestAppOrigin);
       await this.sendInvitationEmail({
         email,
         workspaceName: workspace.name,
@@ -223,7 +219,7 @@ export class WorkspacesService {
     });
 
     const savedInvitation = await this.invitationRepository.save(invitation);
-    const invitationLink = this.buildInvitationLink(savedInvitation.token);
+    const invitationLink = this.buildInvitationLink(savedInvitation.token, requestAppOrigin);
     await this.sendInvitationEmail({
       email,
       workspaceName: workspace.name,
@@ -235,9 +231,40 @@ export class WorkspacesService {
     return { invitation: savedInvitation, invitationLink };
   }
 
-  private buildInvitationLink(token: string) {
-    const baseUrl = process.env.APP_URL || process.env.FRONTEND_URL || 'http://localhost:3000';
-    return `${baseUrl.replace(/\/$/, '')}/invite/${token}`;
+  private buildInvitationLink(token: string, requestAppOrigin?: string) {
+    const envOrigin = this.normalizeToOrigin(process.env.APP_URL || process.env.FRONTEND_URL);
+    const requestOrigin = this.normalizeToOrigin(requestAppOrigin);
+
+    const baseOrigin =
+      (envOrigin && !this.isLocalhostOrigin(envOrigin)
+        ? envOrigin
+        : requestOrigin && !this.isLocalhostOrigin(requestOrigin)
+          ? requestOrigin
+          : envOrigin || requestOrigin) || 'http://localhost:3000';
+
+    return `${baseOrigin.replace(/\/$/, '')}/invite/${token}`;
+  }
+
+  private normalizeToOrigin(value?: string | null): string | null {
+    const trimmed = value?.trim();
+    if (!trimmed) return null;
+
+    try {
+      const hasScheme = /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(trimmed);
+      const url = new URL(hasScheme ? trimmed : `https://${trimmed}`);
+      return url.origin;
+    } catch {
+      return null;
+    }
+  }
+
+  private isLocalhostOrigin(origin: string): boolean {
+    try {
+      const { hostname } = new URL(origin);
+      return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+    } catch {
+      return false;
+    }
   }
 
   async getInvitationInfo(token: string) {
@@ -379,6 +406,10 @@ export class WorkspacesService {
       );
       return;
     }
+
+    const { WorkspaceInvitationEmail, workspaceInvitationEmailText } = await import(
+      '../../emails/workspace-invitation.email'
+    );
 
     const roleLabels: Record<string, string> = {
       owner: 'Владелец',
