@@ -91,12 +91,13 @@ const content = {
     },
     auditTab: {
       empty: t({
-        ru: 'Аудит-лог будет доступен после реализации соответствующего endpoint',
-        en: 'Audit log will be available after implementing the endpoint.',
-        kk: 'Аудит журналы тиісті endpoint іске асырылғаннан кейін қолжетімді болады.',
+        ru: 'Пока записей нет',
+        en: 'No entries yet',
+        kk: 'Әзірге жазбалар жоқ',
       }),
       action: t({ ru: 'Действие', en: 'Action', kk: 'Әрекет' }),
       description: t({ ru: 'Описание', en: 'Description', kk: 'Сипаттама' }),
+      user: t({ ru: 'Пользователь', en: 'User', kk: 'Пайдаланушы' }),
       date: t({ ru: 'Дата', en: 'Date', kk: 'Күні' }),
     },
     errorDialog: {

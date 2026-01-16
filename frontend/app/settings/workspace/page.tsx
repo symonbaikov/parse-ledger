@@ -321,7 +321,7 @@ export default function WorkspaceSettingsPage() {
               gap: 3,
             }}
           >
-            <Card variant="outlined">
+            <Card variant="outlined" data-tour-id="members-card">
               <CardContent>
                 <Stack spacing={2}>
                   <Stack direction="row" spacing={1} alignItems="center">
@@ -342,6 +342,7 @@ export default function WorkspaceSettingsPage() {
                       return (
                         <Box
                           key={member.id}
+                          data-tour-id="member-card"
                           sx={{
                             p: 1.5,
                             border: '1px solid',
@@ -394,7 +395,7 @@ export default function WorkspaceSettingsPage() {
               </CardContent>
             </Card>
 
-            <Card variant="outlined">
+            <Card variant="outlined" data-tour-id="invite-card">
               <CardContent>
                 <Stack spacing={2} component="form" onSubmit={handleInvite}>
                   <Stack direction="row" spacing={1} alignItems="center">
@@ -412,8 +413,13 @@ export default function WorkspaceSettingsPage() {
                     fullWidth
                     required
                     disabled={!isOwnerOrAdmin}
+                    data-tour-id="invite-email-field"
                   />
-                  <FormControl component="fieldset" disabled={!isOwnerOrAdmin}>
+                  <FormControl
+                    component="fieldset"
+                    disabled={!isOwnerOrAdmin}
+                    data-tour-id="role-selection"
+                  >
                     <FormLabel component="legend">{t.roles.roleLabel}</FormLabel>
                     <Stack spacing={1} sx={{ mt: 0.5 }}>
                       <FormControlLabel
@@ -461,7 +467,11 @@ export default function WorkspaceSettingsPage() {
                     </Stack>
                   </FormControl>
                   {inviteRole === 'member' && (
-                    <FormControl component="fieldset" disabled={!isOwnerOrAdmin}>
+                    <FormControl
+                      component="fieldset"
+                      disabled={!isOwnerOrAdmin}
+                      data-tour-id="permissions-section"
+                    >
                       <FormLabel component="legend">{invitePermissionCopy.title}</FormLabel>
                       <Typography variant="caption" color="text.secondary" sx={{ mt: 0.25 }}>
                         {invitePermissionCopy.hint}
@@ -503,6 +513,7 @@ export default function WorkspaceSettingsPage() {
                       variant="contained"
                       startIcon={<Shield size={16} />}
                       disabled={!isOwnerOrAdmin || inviteLoading}
+                      data-tour-id="send-invite-button"
                     >
                       {inviteLoading ? (
                         <CircularProgress size={20} color="inherit" />
@@ -514,6 +525,7 @@ export default function WorkspaceSettingsPage() {
                   {inviteLink && (
                     <Alert
                       severity="success"
+                      data-tour-id="invite-link-alert"
                       action={
                         <IconButton
                           color="inherit"
@@ -534,7 +546,7 @@ export default function WorkspaceSettingsPage() {
         )}
 
         {overview && (
-          <Card variant="outlined">
+          <Card variant="outlined" data-tour-id="pending-invitations-card">
             <CardContent>
               <Stack spacing={2}>
                 <Typography variant="h6" fontWeight={600}>

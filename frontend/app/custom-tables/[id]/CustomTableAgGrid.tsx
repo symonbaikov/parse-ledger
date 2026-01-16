@@ -16,6 +16,7 @@ import type {
 import { AgGridReact } from 'ag-grid-react';
 import { Trash2 } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { useTheme } from 'next-themes';
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
@@ -419,6 +420,7 @@ export function CustomTableAgGrid(props: {
 }) {
   const t = useIntlayer('customTableAgGrid');
   const { locale } = useLocale();
+  const { resolvedTheme } = useTheme();
   const gridApiRef = useRef<any>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const columnsByKey = useMemo(() => new Map(props.columns.map(c => [c.key, c])), [props.columns]);
@@ -426,6 +428,8 @@ export function CustomTableAgGrid(props: {
     () => new Set(props.selectedColumnKeys),
     [props.selectedColumnKeys],
   );
+  const agGridThemeClass =
+    resolvedTheme === 'dark' ? 'ag-theme-quartz ag-theme-quartz-dark' : 'ag-theme-quartz';
 
   const selectionDragRef = useRef<{
     active: boolean;
@@ -988,7 +992,7 @@ export function CustomTableAgGrid(props: {
         minHeight: props.isFullscreen ? undefined : 520,
       }}
     >
-      <div className="ag-theme-quartz" style={{ width: '100%', height: '100%' }}>
+      <div className={agGridThemeClass} style={{ width: '100%', height: '100%' }}>
         {headerCssRules ? <style>{headerCssRules}</style> : null}
         <AgGridReact<CustomTableGridRow>
           rowData={props.rows}

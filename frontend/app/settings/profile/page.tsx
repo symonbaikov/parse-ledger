@@ -109,7 +109,6 @@ export default function ProfileSettingsPage() {
 
       if (normalizeLocale(locale) !== profileLocale) {
         setLocale(profileLocale);
-        setTimeout(() => window.location.reload(), 50);
       }
     } catch (error: unknown) {
       setProfileError(getApiErrorMessage(error, t.profileCard.errorFallback.value));

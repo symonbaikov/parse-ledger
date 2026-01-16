@@ -1,5 +1,6 @@
 'use client';
 
+import { AuthLanguageSwitcher } from '@/app/components/AuthLanguageSwitcher';
 import apiClient from '@/app/lib/api';
 import {
   Alert,
@@ -13,10 +14,10 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { motion } from 'framer-motion';
-import { useIntlayer } from 'next-intlayer';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useIntlayer, useLocale } from 'next-intlayer';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 function safeInternalPath(nextPath: string | null) {
   if (!nextPath) return null;
@@ -47,11 +48,31 @@ function LoginPageContent() {
   const inviteToken = searchParams.get('invite') || inviteTokenFromNext;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { locale } = useLocale();
   const t = useIntlayer('loginPage');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [helloIndex, setHelloIndex] = useState(0);
+
+  const GREETINGS = [
+    { text: 'Добро пожаловать', lang: 'ru' },
+    { text: 'Қош келдіңіз', lang: 'kk' },
+    { text: 'Welcome', lang: 'en' },
+  ];
+
+  /*
+   * Cycle the greeting every 4 seconds.
+   * Runs only once on mount to set up interval.
+   */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHelloIndex(prev => (prev + 1) % GREETINGS.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +114,7 @@ function LoginPageContent() {
   };
 
   return (
-    <Grid container sx={{ minHeight: '100vh' }}>
+    <Grid key={locale} container sx={{ minHeight: '100vh' }}>
       {/* Left Side - Form */}
       <Grid
         size={{ xs: 12, md: 6 }}
@@ -108,6 +129,10 @@ function LoginPageContent() {
           zIndex: 1,
         }}
       >
+        <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+          <AuthLanguageSwitcher />
+        </Box>
+
         <Box
           component={motion.div}
           variants={containerVariants}
@@ -139,15 +164,36 @@ function LoginPageContent() {
             </Typography>
           </Box>
 
-          <Typography
-            component="h1"
-            variant="h4"
-            gutterBottom
-            fontWeight="bold"
-            color="text.primary"
+          <Box
+            sx={{
+              height: 60,
+              mb: 1,
+              display: 'flex',
+              alignItems: 'center',
+              flexDirection: 'column',
+            }}
           >
-            {t.title}
-          </Typography>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={helloIndex}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5 }}
+                style={{ position: 'absolute' }}
+              >
+                <Typography
+                  component="h1"
+                  variant="h4"
+                  fontWeight="bold"
+                  color="text.primary"
+                  align="center"
+                >
+                  {GREETINGS[helloIndex].text}
+                </Typography>
+              </motion.div>
+            </AnimatePresence>
+          </Box>
           <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
             {t.subtitle}
           </Typography>

@@ -270,7 +270,7 @@ export default function GoogleSheetsImportPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-start gap-3 mb-6">
+      <div className="flex items-start gap-3 mb-6" data-tour-id="gs-import-header">
         <div className="p-2 rounded-full bg-primary/10 text-primary">
           <FileSpreadsheet className="h-6 w-6" />
         </div>
@@ -278,14 +278,21 @@ export default function GoogleSheetsImportPage() {
           <h1 className="text-2xl font-bold text-gray-900">{t.header.title}</h1>
           <p className="text-secondary mt-1">{t.header.subtitle}</p>
         </div>
-        <Link href="/custom-tables" className="text-sm text-gray-600 hover:text-gray-900">
+        <Link
+          href="/custom-tables"
+          className="text-sm text-gray-600 hover:text-gray-900"
+          data-tour-id="gs-import-back"
+        >
           {t.header.back}
         </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1 space-y-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div
+            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            data-tour-id="gs-import-source-card"
+          >
             <div className="text-sm font-semibold text-gray-900 mb-3">{t.source.title}</div>
             <label className="block mb-3">
               <span className="text-sm font-medium text-gray-700">{t.source.connectionLabel}</span>
@@ -296,6 +303,7 @@ export default function GoogleSheetsImportPage() {
                   setPreview(null);
                   setColumns([]);
                 }}
+                data-tour-id="gs-import-connection"
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
               >
                 <option value="">{t.source.selectPlaceholder}</option>
@@ -313,6 +321,7 @@ export default function GoogleSheetsImportPage() {
               <input
                 value={worksheetName}
                 onChange={e => setWorksheetName(e.target.value)}
+                data-tour-id="gs-import-worksheet"
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 placeholder={t.source.worksheetPlaceholder.value}
               />
@@ -324,6 +333,7 @@ export default function GoogleSheetsImportPage() {
               <input
                 value={range}
                 onChange={e => setRange(e.target.value)}
+                data-tour-id="gs-import-range"
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 placeholder={t.source.rangePlaceholder.value}
               />
@@ -339,6 +349,7 @@ export default function GoogleSheetsImportPage() {
                   min={0}
                   value={headerRowIndex}
                   onChange={e => setHeaderRowIndex(Number(e.target.value))}
+                  data-tour-id="gs-import-header-offset"
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 />
                 <div className="mt-1 text-xs text-gray-500">{t.source.headerOffsetHelp}</div>
@@ -349,6 +360,7 @@ export default function GoogleSheetsImportPage() {
                 <select
                   value={layoutType}
                   onChange={e => setLayoutType(e.target.value as LayoutType)}
+                  data-tour-id="gs-import-layout"
                   className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 >
                   <option value="auto">{t.source.layoutAuto}</option>
@@ -361,6 +373,7 @@ export default function GoogleSheetsImportPage() {
             <button
               onClick={handlePreview}
               disabled={!canPreview || loadingPreview || loadingConnections}
+              data-tour-id="gs-import-preview-button"
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {(loadingPreview || loadingConnections) && (
@@ -373,13 +386,17 @@ export default function GoogleSheetsImportPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div
+            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            data-tour-id="gs-import-result-card"
+          >
             <div className="text-sm font-semibold text-gray-900 mb-3">{t.result.title}</div>
             <label className="block mb-3">
               <span className="text-sm font-medium text-gray-700">{t.result.tableNameLabel}</span>
               <input
                 value={tableName}
                 onChange={e => setTableName(e.target.value)}
+                data-tour-id="gs-import-table-name"
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 placeholder={t.result.tableNamePlaceholder.value}
               />
@@ -398,6 +415,7 @@ export default function GoogleSheetsImportPage() {
               <select
                 value={categoryId}
                 onChange={e => setCategoryId(e.target.value)}
+                data-tour-id="gs-import-category"
                 className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
               >
                 <option value="">{t.result.noCategory}</option>
@@ -430,7 +448,10 @@ export default function GoogleSheetsImportPage() {
               )}
             </label>
 
-            <label className="flex items-center gap-2 text-sm text-gray-700 mb-4">
+            <label
+              className="flex items-center gap-2 text-sm text-gray-700 mb-4"
+              data-tour-id="gs-import-import-data"
+            >
               <input
                 type="checkbox"
                 checked={importData}
@@ -443,6 +464,7 @@ export default function GoogleSheetsImportPage() {
             <button
               onClick={handleCommit}
               disabled={!canCommit || committing || Boolean(jobId)}
+              data-tour-id="gs-import-commit-button"
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {committing ? (
@@ -485,7 +507,10 @@ export default function GoogleSheetsImportPage() {
         </div>
 
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div
+            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            data-tour-id="gs-import-preview-panel"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-gray-900">{t.preview.title}</div>
@@ -555,7 +580,10 @@ export default function GoogleSheetsImportPage() {
             )}
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <div
+            className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+            data-tour-id="gs-import-columns-panel"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-gray-900">{t.columns.title}</div>
@@ -564,6 +592,7 @@ export default function GoogleSheetsImportPage() {
               {preview && (
                 <button
                   onClick={() => setColumns(prev => prev.map(c => ({ ...c, include: true })))}
+                  data-tour-id="gs-import-enable-all"
                   className="text-xs text-primary hover:text-primary-hover"
                 >
                   {t.columns.enableAll}

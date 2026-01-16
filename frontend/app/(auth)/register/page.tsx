@@ -1,5 +1,6 @@
 'use client';
 
+import { AuthLanguageSwitcher } from '@/app/components/AuthLanguageSwitcher';
 import apiClient from '@/app/lib/api';
 import {
   Alert,
@@ -13,7 +14,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import { useIntlayer } from 'next-intlayer';
+import { useIntlayer, useLocale } from 'next-intlayer';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 
@@ -30,6 +31,7 @@ function RegisterPageContent() {
   const inviteToken = searchParams.get('invite');
   const presetEmail = searchParams.get('email');
   const theme = useTheme();
+  const { locale } = useLocale();
   const t = useIntlayer('registerPage');
   const [formData, setFormData] = useState({
     email: presetEmail || '',
@@ -111,7 +113,7 @@ function RegisterPageContent() {
   };
 
   return (
-    <Grid container sx={{ minHeight: '100vh' }}>
+    <Grid key={locale} container sx={{ minHeight: '100vh' }}>
       {/* Left Side - Form */}
       <Grid
         size={{ xs: 12, md: 6 }}
@@ -126,6 +128,10 @@ function RegisterPageContent() {
           zIndex: 1,
         }}
       >
+        <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+          <AuthLanguageSwitcher />
+        </Box>
+
         <Box
           component={motion.div}
           variants={containerVariants}

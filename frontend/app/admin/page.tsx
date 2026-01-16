@@ -46,6 +46,7 @@ interface AuditLog {
   description: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;
+  userEmail?: string | null;
 }
 
 export default function AdminPage() {
@@ -86,10 +87,8 @@ export default function AdminPage() {
     setStatementsLoading(true);
     setError(null);
     try {
-      // TODO: Implement audit logs endpoint
-      // const response = await apiClient.get<AuditLog[]>('/audit-logs');
-      // setAuditLogs(response.data);
-      setAuditLogs([]);
+      const response = await apiClient.get<{ data: AuditLog[] }>('/audit-logs');
+      setAuditLogs(response.data.data || []);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || t.errors.loadAudit.value);
@@ -289,6 +288,7 @@ export default function AdminPage() {
                       <TableRow>
                         <TableCell>{t.auditTab.action}</TableCell>
                         <TableCell>{t.auditTab.description}</TableCell>
+                        <TableCell>{t.auditTab.user}</TableCell>
                         <TableCell>{t.auditTab.date}</TableCell>
                       </TableRow>
                     </TableHead>
@@ -297,6 +297,7 @@ export default function AdminPage() {
                         <TableRow key={log.id}>
                           <TableCell>{log.action}</TableCell>
                           <TableCell>{log.description || '-'}</TableCell>
+                          <TableCell>{log.userEmail || '—'}</TableCell>
                           <TableCell>{new Date(log.createdAt).toLocaleString(locale)}</TableCell>
                         </TableRow>
                       ))}
