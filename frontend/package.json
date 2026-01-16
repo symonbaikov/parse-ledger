@@ -28,7 +28,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "driver.js": "^1.4.0",
-    "echarts": "^5.5.0",
+    "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.2",
     "framer-motion": "^12.23.25",
     "intlayer": "^7.5.11",
