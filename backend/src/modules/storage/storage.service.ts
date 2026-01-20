@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import * as fs from 'fs';
 import {
   BadRequestException,
   ForbiddenException,
@@ -9,25 +10,36 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
-import { MoreThan, type Repository } from 'typeorm';
+import { In, MoreThan, type Repository } from 'typeorm';
 import { FileStorageService } from '../../common/services/file-storage.service';
 import {
   Category,
   FilePermission,
   FilePermissionType,
+  FileVersion,
+  Folder,
   ShareLinkStatus,
   SharePermissionLevel,
   SharedLink,
   Statement,
+  StorageView,
+  Tag,
   Transaction,
   User,
   WorkspaceMember,
   WorkspaceRole,
 } from '../../entities';
+import { MetricsService } from '../observability/metrics.service';
+import { StatementsService } from '../statements/statements.service';
+import type { CreateFolderDto } from './dto/create-folder.dto';
 import type { CreateSharedLinkDto } from './dto/create-shared-link.dto';
+import type { CreateTagDto } from './dto/create-tag.dto';
 import type { GrantPermissionDto } from './dto/grant-permission.dto';
+import type { StorageViewDto } from './dto/storage-view.dto';
+import type { UpdateFolderDto } from './dto/update-folder.dto';
 import type { UpdatePermissionDto } from './dto/update-permission.dto';
 import type { UpdateSharedLinkDto } from './dto/update-shared-link.dto';
+import type { UpdateTagDto } from './dto/update-tag.dto';
 
 /**
  * Storage service for managing file storage, sharing, and permissions
@@ -41,17 +53,28 @@ export class StorageService {
     private readonly filePermissionRepository: Repository<FilePermission>,
     @InjectRepository(Statement)
     private readonly statementRepository: Repository<Statement>,
+    @InjectRepository(FileVersion)
+    private readonly fileVersionRepository: Repository<FileVersion>,
+    @InjectRepository(StorageView)
+    private readonly storageViewRepository: Repository<StorageView>,
+    @InjectRepository(Folder)
+    private readonly folderRepository: Repository<Folder>,
+    @InjectRepository(Tag)
+    private readonly tagRepository: Repository<Tag>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(WorkspaceMember)
     private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
     private readonly fileStorageService: FileStorageService,
+    private readonly statementsService: StatementsService,
     @Optional()
     @InjectRepository(Transaction)
     private readonly transactionRepository?: Repository<Transaction>,
     @Optional()
     @InjectRepository(Category)
     private readonly categoryRepository?: Repository<Category>,
+    @Optional()
+    private readonly metricsService?: MetricsService,
   ) {}
 
   private async getUserContext(userId: string) {
@@ -67,7 +90,18 @@ export class StorageService {
   /**
    * Get all files (statements) in storage for a user
    */
-  async getStorageFiles(userId: string) {
+  async getStorageFiles(
+    userId: string,
+    filters?: {
+      search?: string;
+      bankName?: string;
+      availability?: 'disk' | 'db' | 'both' | 'missing';
+      scope?: 'mine' | 'shared' | 'all';
+      folderId?: string | null;
+      tagIds?: string[];
+      deleted?: 'only' | 'include';
+    },
+  ) {
     try {
       const { workspaceId } = await this.getUserContext(userId);
 
@@ -76,11 +110,14 @@ export class StorageService {
         .createQueryBuilder('statement')
         .leftJoinAndSelect('statement.category', 'category')
         .leftJoinAndSelect('statement.user', 'owner')
+        .leftJoinAndSelect('statement.folder', 'folder')
+        .leftJoinAndSelect('statement.tags', 'tags')
         .where(
           workspaceId ? 'owner.workspaceId = :workspaceId' : 'statement.userId = :userId',
           workspaceId ? { workspaceId } : { userId },
         )
         .orderBy('statement.createdAt', 'DESC')
+        .distinct(true)
         .getMany();
 
       // Get all statements shared with user (if permissions table exists)
@@ -91,7 +128,13 @@ export class StorageService {
             userId,
             isActive: true,
           },
-          relations: ['statement', 'statement.category', 'statement.user'],
+          relations: [
+            'statement',
+            'statement.category',
+            'statement.user',
+            'statement.folder',
+            'statement.tags',
+          ],
         });
       } catch (error) {
         // If permissions table doesn't exist yet, just use empty array
@@ -174,11 +217,63 @@ export class StorageService {
             canReshare,
             sharedLinksCount: sharedLinks,
             fileAvailability,
+            hasFileOnDisk: fileAvailability.onDisk,
+            hasFileInDb: fileAvailability.inDb,
           };
         }),
       );
 
-      return enrichedStatements;
+      let filtered = enrichedStatements;
+      const deletedFilter = filters?.deleted ?? 'exclude';
+      if (deletedFilter === 'only') {
+        filtered = filtered.filter((s: any) => s.deletedAt);
+      } else if (deletedFilter !== 'include') {
+        filtered = filtered.filter((s: any) => !s.deletedAt);
+      }
+
+      if (filters?.scope === 'mine') {
+        filtered = filtered.filter(s => s.userId === userId);
+      } else if (filters?.scope === 'shared') {
+        filtered = filtered.filter(s => s.userId !== userId);
+      }
+
+      if (filters?.bankName) {
+        filtered = filtered.filter(s => s.bankName && s.bankName === filters.bankName);
+      }
+
+      if (filters?.folderId !== undefined) {
+        filtered = filtered.filter(
+          s => ((s as any).folderId || null) === (filters.folderId || null),
+        );
+      }
+
+      if (filters?.availability) {
+        filtered = filtered.filter((s: any) => {
+          const status = s.fileAvailability?.status || s.fileAvailability;
+          if (filters.availability === 'both') {
+            return status === 'both';
+          }
+          return status === filters.availability;
+        });
+      }
+
+      if (filters?.search) {
+        const q = filters.search.toLowerCase();
+        filtered = filtered.filter(
+          s =>
+            (s.fileName || '').toLowerCase().includes(q) ||
+            (s.accountNumber || '').toLowerCase().includes(q),
+        );
+      }
+
+      if (filters?.tagIds && filters.tagIds.length) {
+        const tagSet = new Set(filters.tagIds);
+        filtered = filtered.filter(
+          (s: any) => Array.isArray(s.tags) && s.tags.some((t: Tag) => t && tagSet.has(t.id)),
+        );
+      }
+
+      return filtered;
     } catch (error) {
       console.error('Error in getStorageFiles:', error);
       throw error;
@@ -191,7 +286,7 @@ export class StorageService {
   async getFileDetails(statementId: string, userId: string) {
     const statement = await this.statementRepository.findOne({
       where: { id: statementId },
-      relations: ['category', 'user'],
+      relations: ['category', 'user', 'folder', 'tags'],
     });
 
     if (!statement) {
@@ -237,6 +332,7 @@ export class StorageService {
         password: link.password ? '******' : null,
       })),
       permissions,
+      tags: statement.tags || [],
       isOwner,
       userPermission: isOwner
         ? FilePermissionType.OWNER
@@ -244,6 +340,8 @@ export class StorageService {
           ? FilePermissionType.VIEWER
           : userPermission?.permissionType,
       fileAvailability,
+      hasFileOnDisk: fileAvailability.onDisk,
+      hasFileInDb: fileAvailability.inDb,
     };
   }
 
@@ -287,6 +385,357 @@ export class StorageService {
     };
   }
 
+  async updateFileTags(statementId: string, userId: string, tagIds: string[]) {
+    await this.checkFileAccess(userId, statementId, 'edit');
+    const statement = await this.statementRepository.findOne({
+      where: { id: statementId },
+      relations: ['tags'],
+    });
+    if (!statement) {
+      throw new NotFoundException('File not found');
+    }
+
+    const tags = await this.tagRepository.findByIds(tagIds || []);
+    statement.tags = tags;
+    const saved = await this.statementRepository.save(statement);
+    return { ...saved, tags };
+  }
+
+  async createTag(dto: CreateTagDto, userId: string) {
+    const tag = this.tagRepository.create({
+      name: dto.name,
+      color: dto.color ?? null,
+      userId,
+    });
+    return await this.tagRepository.save(tag);
+  }
+
+  async listTags(userId: string) {
+    return await this.tagRepository.find({
+      where: [{ userId }, { userId: null }],
+      order: { name: 'ASC' },
+    });
+  }
+
+  async updateTag(tagId: string, dto: UpdateTagDto, userId: string) {
+    const tag = await this.tagRepository.findOne({
+      where: { id: tagId, userId },
+    });
+    if (!tag) {
+      throw new NotFoundException('Tag not found');
+    }
+
+    if (dto.name !== undefined) {
+      tag.name = dto.name.trim();
+    }
+    if (dto.color !== undefined) {
+      tag.color = dto.color ?? null;
+    }
+
+    return await this.tagRepository.save(tag);
+  }
+
+  async deleteTag(tagId: string, userId: string) {
+    const tag = await this.tagRepository.findOne({
+      where: { id: tagId, userId },
+    });
+    if (!tag) {
+      throw new NotFoundException('Tag not found');
+    }
+
+    // Remove tag from folders
+    await this.folderRepository.update({ tagId }, { tagId: null, tag: null });
+
+    return await this.tagRepository.remove(tag);
+  }
+
+  async createFolder(dto: CreateFolderDto, userId: string) {
+    let tag = null;
+    const tagId = dto.tagId === '' ? null : dto.tagId;
+    if (tagId) {
+      tag = await this.tagRepository.findOne({
+        where: [
+          { id: tagId, userId },
+          { id: tagId, userId: null },
+        ],
+      });
+      if (!tag) {
+        throw new NotFoundException('Tag not found');
+      }
+    }
+    const folder = this.folderRepository.create({
+      name: dto.name,
+      userId,
+      tagId: tag?.id ?? null,
+      tag,
+    });
+    return await this.folderRepository.save(folder);
+  }
+
+  async listFolders(userId: string) {
+    return await this.folderRepository.find({
+      where: [{ userId }, { userId: null }],
+      order: { name: 'ASC' },
+      relations: ['tag'],
+    });
+  }
+
+  async updateFolder(folderId: string, dto: UpdateFolderDto, userId: string) {
+    const folder = await this.folderRepository.findOne({
+      where: { id: folderId, userId },
+    });
+    if (!folder) {
+      throw new NotFoundException('Folder not found');
+    }
+
+    if (dto.name !== undefined) {
+      folder.name = dto.name.trim();
+    }
+    if (dto.tagId !== undefined) {
+      const tagId = dto.tagId === '' ? null : dto.tagId;
+      if (tagId) {
+        const tag = await this.tagRepository.findOne({
+          where: [
+            { id: tagId, userId },
+            { id: tagId, userId: null },
+          ],
+        });
+        if (!tag) {
+          throw new NotFoundException('Tag not found');
+        }
+        folder.tagId = tag.id;
+        folder.tag = tag;
+      } else {
+        folder.tagId = null;
+        folder.tag = null;
+      }
+    }
+
+    return await this.folderRepository.save(folder);
+  }
+
+  async deleteFolder(folderId: string, userId: string, deleteFiles: boolean) {
+    const folder = await this.folderRepository.findOne({
+      where: { id: folderId, userId },
+    });
+    if (!folder) {
+      throw new NotFoundException('Folder not found');
+    }
+
+    const statements = await this.statementRepository.find({
+      where: { folderId: folder.id },
+    });
+
+    for (const statement of statements) {
+      await this.checkFileAccess(userId, statement.id, 'edit');
+    }
+
+    if (deleteFiles) {
+      for (const statement of statements) {
+        await this.statementsService.remove(statement.id, userId);
+      }
+    } else if (statements.length > 0) {
+      await this.statementRepository.update({ folderId: folder.id }, { folderId: null });
+    }
+
+    await this.folderRepository.remove(folder);
+    return {
+      deleted: true,
+      filesDeleted: deleteFiles ? statements.length : 0,
+    };
+  }
+
+  async moveFileToFolder(statementId: string, userId: string, folderId: string | null) {
+    await this.checkFileAccess(userId, statementId, 'edit');
+    const statement = await this.statementRepository.findOne({
+      where: { id: statementId },
+    });
+    if (!statement) {
+      throw new NotFoundException('File not found');
+    }
+
+    let folder: Folder | null = null;
+    if (folderId) {
+      folder = await this.folderRepository.findOne({ where: { id: folderId } });
+      if (!folder) {
+        throw new NotFoundException('Folder not found');
+      }
+    }
+
+    statement.folderId = folder ? folder.id : null;
+    statement.folder = folder;
+    await this.statementRepository.save(statement);
+    return { folderId: statement.folderId };
+  }
+
+  async moveFileToTrash(statementId: string, userId: string) {
+    await this.checkFileAccess(userId, statementId, 'edit');
+    const statement = await this.statementRepository.findOne({
+      where: { id: statementId },
+    });
+    if (!statement) {
+      throw new NotFoundException('File not found');
+    }
+    if (statement.deletedAt) {
+      return { status: 'already_trashed', deletedAt: statement.deletedAt };
+    }
+    statement.deletedAt = new Date();
+    await this.statementRepository.save(statement);
+    return { status: 'trashed', deletedAt: statement.deletedAt };
+  }
+
+  async restoreFileFromTrash(statementId: string, userId: string) {
+    await this.checkFileAccess(userId, statementId, 'edit');
+    const statement = await this.statementRepository.findOne({
+      where: { id: statementId },
+    });
+    if (!statement) {
+      throw new NotFoundException('File not found');
+    }
+    if (!statement.deletedAt) {
+      return { status: 'active' };
+    }
+    statement.deletedAt = null;
+    await this.statementRepository.save(statement);
+    return { status: 'restored' };
+  }
+
+  async deleteFilePermanently(statementId: string, userId: string) {
+    await this.checkFileAccess(userId, statementId, 'edit');
+    const statement = await this.statementRepository.findOne({
+      where: { id: statementId },
+    });
+    if (!statement) {
+      throw new NotFoundException('File not found');
+    }
+    if (!statement.deletedAt) {
+      throw new BadRequestException('File is not in trash');
+    }
+    await this.statementsService.remove(statementId, userId);
+    return { status: 'deleted' };
+  }
+
+  async createView(dto: StorageViewDto, userId: string) {
+    const view = this.storageViewRepository.create({
+      name: dto.name,
+      userId,
+      filters: dto.filters || {},
+    });
+    return await this.storageViewRepository.save(view);
+  }
+
+  async listViews(userId: string) {
+    return await this.storageViewRepository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async deleteView(id: string, userId: string) {
+    const view = await this.storageViewRepository.findOne({
+      where: { id, userId },
+    });
+    if (!view) {
+      throw new NotFoundException('View not found');
+    }
+    await this.storageViewRepository.remove(view);
+    return { deleted: true };
+  }
+
+  async createFileVersion(statementId: string, userId: string) {
+    await this.checkFileAccess(userId, statementId, 'edit');
+
+    const statement = await this.statementRepository
+      .createQueryBuilder('statement')
+      .addSelect('statement.fileData')
+      .where('statement.id = :id', { id: statementId })
+      .getOne();
+
+    if (!statement) {
+      throw new NotFoundException('File not found');
+    }
+
+    let fileData = ((statement as any)?.fileData as Buffer | null) ?? null;
+
+    if (!fileData) {
+      const resolved = this.fileStorageService.resolveFilePath(statement.filePath);
+      if (resolved) {
+        try {
+          fileData = await fs.promises.readFile(resolved);
+        } catch {
+          fileData = null;
+        }
+      }
+    }
+
+    if (!fileData && statement.fileHash && statement.userId) {
+      const other = await this.statementRepository
+        .createQueryBuilder('statement')
+        .addSelect('statement.fileData')
+        .where('statement.userId = :userId', { userId: statement.userId })
+        .andWhere('statement.fileHash = :fileHash', {
+          fileHash: statement.fileHash,
+        })
+        .andWhere('statement.fileData IS NOT NULL')
+        .andWhere('statement.id <> :id', { id: statement.id })
+        .orderBy('statement.createdAt', 'DESC')
+        .getOne();
+
+      fileData = ((other as any)?.fileData as Buffer | null | undefined) ?? null;
+    }
+
+    if (!fileData) {
+      throw new NotFoundException('File data is unavailable for versioning');
+    }
+
+    const actualHash = crypto.createHash('sha256').update(fileData).digest('hex');
+    if (actualHash !== statement.fileHash) {
+      throw new BadRequestException('File hash mismatch');
+    }
+
+    const version = this.fileVersionRepository.create({
+      statementId: statement.id,
+      createdBy: userId,
+      fileHash: statement.fileHash,
+      fileName: statement.fileName,
+      fileType: statement.fileType,
+      fileSize: statement.fileSize,
+      fileData,
+    });
+
+    const saved = await this.fileVersionRepository.save(version);
+
+    return {
+      id: saved.id,
+      statementId: saved.statementId,
+      createdBy: saved.createdBy,
+      fileHash: saved.fileHash,
+      fileName: saved.fileName,
+      fileType: saved.fileType,
+      fileSize: saved.fileSize,
+      createdAt: saved.createdAt,
+    };
+  }
+
+  async listFileVersions(statementId: string, userId: string) {
+    await this.checkFileAccess(userId, statementId, 'view');
+
+    return await this.fileVersionRepository.find({
+      where: { statementId },
+      order: { createdAt: 'DESC' },
+      select: [
+        'id',
+        'statementId',
+        'createdBy',
+        'fileHash',
+        'fileName',
+        'fileType',
+        'fileSize',
+        'createdAt',
+      ],
+    });
+  }
+
   /**
    * Download file
    */
@@ -303,6 +752,155 @@ export class StorageService {
     return { stream, fileName, mimeType };
   }
 
+  async restoreFile(statementId: string, userId: string) {
+    await this.checkFileAccess(userId, statementId, 'edit');
+    const statement = await this.statementRepository.findOne({
+      where: { id: statementId },
+    });
+    if (!statement) {
+      throw new NotFoundException('File not found');
+    }
+    const restored = await this.fileStorageService.restoreFile(statement);
+    if (!restored) {
+      throw new NotFoundException('File data is unavailable for restore');
+    }
+    return { status: 'restored', source: restored.source };
+  }
+
+  async exportTransactionsCsv(statementId: string, userId: string) {
+    await this.checkFileAccess(userId, statementId, 'view');
+    const transactions = await this.transactionRepository.find({
+      where: { statementId },
+      order: { transactionDate: 'DESC' },
+    });
+
+    const header = [
+      'date',
+      'documentNumber',
+      'counterpartyName',
+      'counterpartyBin',
+      'debit',
+      'credit',
+      'currency',
+      'paymentPurpose',
+    ];
+    const rows = transactions.map(t => [
+      t.transactionDate ? t.transactionDate.toISOString().split('T')[0] : '',
+      t.documentNumber ?? '',
+      t.counterpartyName ?? '',
+      t.counterpartyBin ?? '',
+      t.debit ?? '',
+      t.credit ?? '',
+      t.currency ?? '',
+      (t.paymentPurpose || '').replace(/\n/g, ' '),
+    ]);
+    const csv = [header, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const fileName = `transactions-${statementId}.csv`;
+    return { csv, fileName };
+  }
+
+  async bulkDelete(statementIds: string[], userId: string) {
+    const uniqueIds = Array.from(new Set(statementIds));
+    const statements = await this.statementRepository.findBy({
+      id: In(uniqueIds),
+    });
+
+    if (!statements.length) {
+      return { deleted: 0, missing: uniqueIds.length };
+    }
+
+    for (const st of statements) {
+      await this.checkFileAccess(userId, st.id, 'edit');
+    }
+
+    await this.statementRepository.delete(uniqueIds);
+    return {
+      deleted: statements.length,
+      missing: uniqueIds.length - statements.length,
+    };
+  }
+
+  async bulkRestoreFromTrash(statementIds: string[], userId: string) {
+    const uniqueIds = Array.from(new Set(statementIds));
+    const statements = await this.statementRepository.findBy({
+      id: In(uniqueIds),
+    });
+
+    if (!statements.length) {
+      return { restored: 0, missing: uniqueIds.length };
+    }
+
+    for (const st of statements) {
+      await this.checkFileAccess(userId, st.id, 'edit');
+    }
+
+    const restoreIds = statements.filter(st => st.deletedAt).map(st => st.id);
+
+    if (restoreIds.length) {
+      await this.statementRepository.update({ id: In(restoreIds) }, { deletedAt: null });
+    }
+
+    return {
+      restored: restoreIds.length,
+      missing: uniqueIds.length - statements.length,
+      skipped: statements.length - restoreIds.length,
+    };
+  }
+
+  async bulkDeleteFromTrash(statementIds: string[], userId: string) {
+    const uniqueIds = Array.from(new Set(statementIds));
+    const statements = await this.statementRepository.findBy({
+      id: In(uniqueIds),
+    });
+
+    if (!statements.length) {
+      return { deleted: 0, missing: uniqueIds.length };
+    }
+
+    for (const st of statements) {
+      await this.checkFileAccess(userId, st.id, 'edit');
+    }
+
+    const deletable = statements.filter(st => st.deletedAt);
+    for (const st of deletable) {
+      await this.statementsService.remove(st.id, userId);
+    }
+
+    return {
+      deleted: deletable.length,
+      missing: uniqueIds.length - statements.length,
+      skipped: statements.length - deletable.length,
+    };
+  }
+
+  async bulkDownload(statementIds: string[], userId: string) {
+    const uniqueIds = Array.from(new Set(statementIds));
+    const statements = await this.statementRepository.findBy({
+      id: In(uniqueIds),
+    });
+    const allowed: { id: string; downloadUrl: string }[] = [];
+    for (const st of statements) {
+      try {
+        await this.checkFileAccess(userId, st.id, 'download');
+        const base =
+          process.env.API_BASE_URL || process.env.BACKEND_URL || 'http://localhost:3001/api/v1';
+        allowed.push({
+          id: st.id,
+          downloadUrl: `${base}/storage/files/${st.id}/download`,
+        });
+      } catch {
+        // skip not allowed
+      }
+    }
+    return {
+      files: allowed,
+      requested: uniqueIds.length,
+      allowed: allowed.length,
+    };
+  }
+
   /**
    * Get file info for inline preview
    */
@@ -315,8 +913,14 @@ export class StorageService {
       throw new NotFoundException('File not found');
     }
 
-    const { stream, fileName, mimeType } = await this.getFileStream(statement, userId, 'view');
-    return { stream, fileName, mimeType };
+    const started = Date.now();
+    try {
+      const { stream, fileName, mimeType } = await this.getFileStream(statement, userId, 'view');
+      return { stream, fileName, mimeType };
+    } catch (error) {
+      this.observeFileAccess('view', 'error', started);
+      throw error;
+    }
   }
 
   async getSharedDownloadStream(statementId: string): Promise<{
@@ -332,21 +936,59 @@ export class StorageService {
       throw new NotFoundException('File not found');
     }
 
-    const { stream, fileName, mimeType } =
-      await this.fileStorageService.getStatementFileStream(statement);
-    return { stream, fileName, mimeType };
+    const started = Date.now();
+    try {
+      const { stream, fileName, mimeType, source } =
+        await this.fileStorageService.getStatementFileStream(statement);
+      this.observeFileAccess('shared-download', 'ok', started, source);
+      return { stream, fileName, mimeType };
+    } catch (error) {
+      this.observeFileAccess('shared-download', 'error', started);
+      throw error;
+    }
   }
 
   private async getFileStream(
     statement: Statement,
     userId: string,
     action: 'view' | 'download',
-  ): Promise<{ stream: NodeJS.ReadableStream; fileName: string; mimeType: string }> {
+  ): Promise<{
+    stream: NodeJS.ReadableStream;
+    fileName: string;
+    mimeType: string;
+  }> {
     await this.checkFileAccess(userId, statement.id, action);
 
-    const { stream, fileName, mimeType } =
-      await this.fileStorageService.getStatementFileStream(statement);
-    return { stream, fileName, mimeType };
+    const started = Date.now();
+    try {
+      const { stream, fileName, mimeType, source } =
+        await this.fileStorageService.getStatementFileStream(statement);
+      this.observeFileAccess(action, 'ok', started, source);
+      return { stream, fileName, mimeType };
+    } catch (error) {
+      this.observeFileAccess(action, 'error', started);
+      throw error;
+    }
+  }
+
+  private observeFileAccess(
+    action: 'view' | 'download' | 'shared-download',
+    result: 'ok' | 'error',
+    startedAt: number,
+    source: 'disk' | 'db' | 'restored' | 'unknown' = 'unknown',
+  ) {
+    if (!this.metricsService?.storageFileAccessDurationSeconds) return;
+    const duration = (Date.now() - startedAt) / 1000;
+    this.metricsService.storageFileAccessDurationSeconds.observe(
+      { action, source, result },
+      duration,
+    );
+    if (result === 'error' && this.metricsService.storageFileAccessErrorsTotal) {
+      this.metricsService.storageFileAccessErrorsTotal.inc({
+        action,
+        reason: 'access_failed',
+      });
+    }
   }
 
   /**
@@ -359,6 +1001,16 @@ export class StorageService {
   ): Promise<SharedLink> {
     // Check if user has permission to share
     await this.checkFileAccess(userId, statementId, 'share');
+    const statement = await this.statementRepository.findOne({
+      where: { id: statementId },
+      select: ['id', 'deletedAt'],
+    });
+    if (!statement) {
+      throw new NotFoundException('File not found');
+    }
+    if (statement.deletedAt) {
+      throw new BadRequestException('File is in trash');
+    }
 
     // Generate unique token
     const token = this.generateShareToken();

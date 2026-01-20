@@ -18,11 +18,20 @@ import { buildContentDisposition } from '../../common/utils/http-file.util';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { AccessSharedLinkDto } from './dto/access-shared-link.dto';
+import { BulkFileActionDto } from './dto/bulk-file-action.dto';
+import { CreateFileVersionDto } from './dto/create-file-version.dto';
+import { CreateFolderDto } from './dto/create-folder.dto';
 import { CreateSharedLinkDto } from './dto/create-shared-link.dto';
+import { CreateTagDto } from './dto/create-tag.dto';
 import { GrantPermissionDto } from './dto/grant-permission.dto';
+import { MoveFileDto } from './dto/move-file.dto';
+import { StorageViewDto } from './dto/storage-view.dto';
 import { UpdateFileCategoryDto } from './dto/update-file-category.dto';
+import { UpdateFileTagsDto } from './dto/update-file-tags.dto';
+import { UpdateFolderDto } from './dto/update-folder.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { UpdateSharedLinkDto } from './dto/update-shared-link.dto';
+import { UpdateTagDto } from './dto/update-tag.dto';
 import { StorageService } from './storage.service';
 
 /**
@@ -38,8 +47,33 @@ export class StorageController {
    * GET /api/v1/storage/files
    */
   @Get('files')
-  async getStorageFiles(@CurrentUser() user: any) {
-    return await this.storageService.getStorageFiles(user.id);
+  async getStorageFiles(
+    @CurrentUser() user: any,
+    @Query('search') search?: string,
+    @Query('bank') bankName?: string,
+    @Query('availability') availability?: 'disk' | 'db' | 'both' | 'missing',
+    @Query('scope') scope?: 'mine' | 'shared' | 'all',
+    @Query('folderId') folderId?: string,
+    @Query('tagIds') tagIds?: string | string[],
+    @Query('deleted') deleted?: 'only' | 'include',
+  ) {
+    const parsedTagIds = Array.isArray(tagIds)
+      ? tagIds
+      : tagIds
+        ? tagIds
+            .split(',')
+            .map(value => value.trim())
+            .filter(Boolean)
+        : undefined;
+    return await this.storageService.getStorageFiles(user.id, {
+      search,
+      bankName,
+      availability,
+      scope,
+      folderId,
+      tagIds: parsedTagIds,
+      deleted,
+    });
   }
 
   /**
@@ -66,6 +100,189 @@ export class StorageController {
       user.id,
       dto.categoryId ?? null,
     );
+  }
+
+  /**
+   * Update tags for a file
+   * PATCH /api/v1/storage/files/:id/tags
+   */
+  @Patch('files/:id/tags')
+  async updateFileTags(
+    @Param('id') statementId: string,
+    @CurrentUser() user: any,
+    @Body() dto: UpdateFileTagsDto,
+  ) {
+    return await this.storageService.updateFileTags(statementId, user.id, dto.tagIds || []);
+  }
+
+  /**
+   * Move file to folder (or root if null)
+   * PATCH /api/v1/storage/files/:id/folder
+   */
+  @Patch('files/:id/folder')
+  async moveFile(
+    @Param('id') statementId: string,
+    @CurrentUser() user: any,
+    @Body() dto: MoveFileDto,
+  ) {
+    return await this.storageService.moveFileToFolder(statementId, user.id, dto.folderId);
+  }
+
+  /**
+   * Move file to trash (soft delete)
+   * POST /api/v1/storage/files/:id/trash
+   */
+  @Post('files/:id/trash')
+  async moveFileToTrash(@Param('id') statementId: string, @CurrentUser() user: any) {
+    return await this.storageService.moveFileToTrash(statementId, user.id);
+  }
+
+  /**
+   * Restore file from trash
+   * POST /api/v1/storage/files/:id/trash/restore
+   */
+  @Post('files/:id/trash/restore')
+  async restoreFileFromTrash(@Param('id') statementId: string, @CurrentUser() user: any) {
+    return await this.storageService.restoreFileFromTrash(statementId, user.id);
+  }
+
+  /**
+   * Permanently delete file from trash
+   * DELETE /api/v1/storage/files/:id/trash
+   */
+  @Delete('files/:id/trash')
+  async deleteFilePermanently(@Param('id') statementId: string, @CurrentUser() user: any) {
+    return await this.storageService.deleteFilePermanently(statementId, user.id);
+  }
+
+  /**
+   * Create tag
+   * POST /api/v1/storage/tags
+   */
+  @Post('tags')
+  async createTag(@Body() dto: CreateTagDto, @CurrentUser() user: any) {
+    return await this.storageService.createTag(dto, user.id);
+  }
+
+  /**
+   * List tags
+   * GET /api/v1/storage/tags
+   */
+  @Get('tags')
+  async listTags(@CurrentUser() user: any) {
+    return await this.storageService.listTags(user.id);
+  }
+
+  /**
+   * Update tag
+   * PATCH /api/v1/storage/tags/:id
+   */
+  @Patch('tags/:id')
+  async updateTag(@Param('id') tagId: string, @Body() dto: UpdateTagDto, @CurrentUser() user: any) {
+    return await this.storageService.updateTag(tagId, dto, user.id);
+  }
+
+  /**
+   * Delete tag
+   * DELETE /api/v1/storage/tags/:id
+   */
+  @Delete('tags/:id')
+  async deleteTag(@Param('id') tagId: string, @CurrentUser() user: any) {
+    await this.storageService.deleteTag(tagId, user.id);
+    return { message: 'Tag deleted successfully' };
+  }
+
+  /**
+   * Create folder
+   * POST /api/v1/storage/folders
+   */
+  @Post('folders')
+  async createFolder(@Body() dto: CreateFolderDto, @CurrentUser() user: any) {
+    return await this.storageService.createFolder(dto, user.id);
+  }
+
+  /**
+   * List folders
+   * GET /api/v1/storage/folders
+   */
+  @Get('folders')
+  async listFolders(@CurrentUser() user: any) {
+    return await this.storageService.listFolders(user.id);
+  }
+
+  /**
+   * Update folder
+   * PATCH /api/v1/storage/folders/:id
+   */
+  @Patch('folders/:id')
+  async updateFolder(
+    @Param('id') folderId: string,
+    @Body() dto: UpdateFolderDto,
+    @CurrentUser() user: any,
+  ) {
+    return await this.storageService.updateFolder(folderId, dto, user.id);
+  }
+
+  /**
+   * Delete folder (optionally with contents)
+   * DELETE /api/v1/storage/folders/:id
+   */
+  @Delete('folders/:id')
+  async deleteFolder(
+    @Param('id') folderId: string,
+    @Query('deleteFiles') deleteFiles: string | undefined,
+    @CurrentUser() user: any,
+  ) {
+    return await this.storageService.deleteFolder(folderId, user.id, deleteFiles === 'true');
+  }
+
+  /**
+   * Create new file version (snapshot current file)
+   * POST /api/v1/storage/files/:id/versions
+   */
+  @Post('files/:id/versions')
+  async createFileVersion(
+    @Param('id') statementId: string,
+    @CurrentUser() user: any,
+    @Body() _dto: CreateFileVersionDto,
+  ) {
+    return await this.storageService.createFileVersion(statementId, user.id);
+  }
+
+  /**
+   * List file versions
+   * GET /api/v1/storage/files/:id/versions
+   */
+  @Get('files/:id/versions')
+  async listFileVersions(@Param('id') statementId: string, @CurrentUser() user: any) {
+    return await this.storageService.listFileVersions(statementId, user.id);
+  }
+
+  /**
+   * Create saved view
+   * POST /api/v1/storage/views
+   */
+  @Post('views')
+  async createView(@Body() dto: StorageViewDto, @CurrentUser() user: any) {
+    return await this.storageService.createView(dto, user.id);
+  }
+
+  /**
+   * List saved views
+   * GET /api/v1/storage/views
+   */
+  @Get('views')
+  async listViews(@CurrentUser() user: any) {
+    return await this.storageService.listViews(user.id);
+  }
+
+  /**
+   * Delete saved view
+   * DELETE /api/v1/storage/views/:id
+   */
+  @Delete('views/:id')
+  async deleteView(@Param('id') id: string, @CurrentUser() user: any) {
+    return await this.storageService.deleteView(id, user.id);
   }
 
   /**
@@ -195,6 +412,67 @@ export class StorageController {
   async deleteSharedLink(@Param('id') linkId: string, @CurrentUser() user: any) {
     await this.storageService.deleteSharedLink(linkId, user.id);
     return { message: 'Shared link deleted successfully' };
+  }
+
+  /**
+   * Restore file from DB (or duplicates) to disk
+   * POST /api/v1/storage/files/:id/restore
+   */
+  @Post('files/:id/restore')
+  async restoreFile(@Param('id') statementId: string, @CurrentUser() user: any) {
+    return await this.storageService.restoreFile(statementId, user.id);
+  }
+
+  /**
+   * Export transactions to CSV
+   * GET /api/v1/storage/files/:id/transactions/export
+   */
+  @Get('files/:id/transactions/export')
+  async exportTransactions(
+    @Param('id') statementId: string,
+    @CurrentUser() user: any,
+    @Res() res: Response,
+  ) {
+    const { csv, fileName } = await this.storageService.exportTransactionsCsv(statementId, user.id);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', buildContentDisposition('attachment', fileName));
+    res.send(csv);
+  }
+
+  /**
+   * Bulk delete files (with permissions check)
+   * POST /api/v1/storage/files/bulk/delete
+   */
+  @Post('files/bulk/delete')
+  async bulkDelete(@Body() dto: BulkFileActionDto, @CurrentUser() user: any) {
+    return await this.storageService.bulkDelete(dto.statementIds, user.id);
+  }
+
+  /**
+   * Bulk restore files from trash
+   * POST /api/v1/storage/files/trash/bulk/restore
+   */
+  @Post('files/trash/bulk/restore')
+  async bulkRestore(@Body() dto: BulkFileActionDto, @CurrentUser() user: any) {
+    return await this.storageService.bulkRestoreFromTrash(dto.statementIds, user.id);
+  }
+
+  /**
+   * Bulk delete files permanently from trash
+   * POST /api/v1/storage/files/bulk/trash/delete
+   */
+  @Post('files/bulk/trash/delete')
+  async bulkDeleteFromTrash(@Body() dto: BulkFileActionDto, @CurrentUser() user: any) {
+    return await this.storageService.bulkDeleteFromTrash(dto.statementIds, user.id);
+  }
+
+  /**
+   * Bulk download helper (returns download URLs for permitted files)
+   * POST /api/v1/storage/files/bulk/download
+   */
+  @Post('files/bulk/download')
+  async bulkDownload(@Body() dto: BulkFileActionDto, @CurrentUser() user: any) {
+    return await this.storageService.bulkDownload(dto.statementIds, user.id);
   }
 
   /**
