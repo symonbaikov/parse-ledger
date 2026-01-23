@@ -25,7 +25,7 @@
     "concurrently": "^8.2.2"
   },
   "dependencies": {
-    "@react-email/components": "^1.0.4",
+    "@react-email/components": "^1.0.6",
     "driver.js": "^1.4.0",
     "echarts": "^6.0.0",
     "react-day-picker": "^9.12.0",
