@@ -19,7 +19,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@iconify/react": "^6.0.2",
-    "@mui/icons-material": "^7.3.5",
+    "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.5",
     "@radix-ui/react-dropdown-menu": "^2.1.6",
     "ag-grid-community": "^32.3.4",
