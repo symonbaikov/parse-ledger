@@ -5,12 +5,33 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { getTourManager } from '../TourManager';
 
 export function TourAutoStarter() {
   const pathname = usePathname();
   const hasTriggeredRef = useRef<Set<string>>(new Set());
+  const COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
+  const isOnCooldown = (tourId: string) => {
+    try {
+      const raw = localStorage.getItem(`finflow_tour_last_shown:${tourId}`);
+      if (!raw) return false;
+      const timestamp = Number(raw);
+      if (Number.isNaN(timestamp)) return false;
+      return Date.now() - timestamp < COOLDOWN_MS;
+    } catch {
+      return false;
+    }
+  };
+
+  const markShown = (tourId: string) => {
+    try {
+      localStorage.setItem(`finflow_tour_last_shown:${tourId}`, Date.now().toString());
+    } catch {
+      // ignore
+    }
+  };
 
   useEffect(() => {
     // Предотвращаем повторный запуск для этой страницы
@@ -44,7 +65,10 @@ export function TourAutoStarter() {
         return;
       }
 
-      if (tourManager.isTourCompleted(tourForCurrentPage.id)) {
+      if (
+        tourManager.isTourCompleted(tourForCurrentPage.id) ||
+        isOnCooldown(tourForCurrentPage.id)
+      ) {
         hasTriggeredRef.current.add(pathname);
         return;
       }
@@ -58,6 +82,7 @@ export function TourAutoStarter() {
       window.requestAnimationFrame(() => {
         if (cancelled) return;
         if (!tourManager.isActive()) {
+          markShown(tourForCurrentPage.id);
           tourManager.startTour(tourForCurrentPage.id);
         }
       });

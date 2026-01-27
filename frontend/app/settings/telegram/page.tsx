@@ -129,7 +129,7 @@ export default function TelegramSettingsPage() {
 
   if (authLoading) {
     return (
-      <Container maxWidth="md" sx={{ mt: 8, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} className="container-shared" sx={{ mt: 8, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -137,7 +137,7 @@ export default function TelegramSettingsPage() {
 
   if (!user) {
     return (
-      <Container maxWidth="md" sx={{ mt: 6 }}>
+      <Container maxWidth={false} className="container-shared" sx={{ mt: 6 }}>
         <Alert severity="warning">{t.authRequired}</Alert>
       </Container>
     );
@@ -145,14 +145,14 @@ export default function TelegramSettingsPage() {
 
   if (!canView) {
     return (
-      <Container maxWidth="md" sx={{ mt: 6 }}>
+      <Container maxWidth={false} className="container-shared" sx={{ mt: 6 }}>
         <Alert severity="warning">{t.permissionRequired}</Alert>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} className="container-shared" sx={{ py: 4 }}>
       <Stack spacing={3}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 1 }}>

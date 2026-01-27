@@ -303,7 +303,7 @@ export default function WorkspaceSettingsPage() {
 
   if (loading) {
     return (
-      <Container maxWidth="md" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
+      <Container maxWidth={false} className="container-shared" sx={{ py: 8, display: 'flex', justifyContent: 'center' }}>
         <CircularProgress />
       </Container>
     );
@@ -311,14 +311,14 @@ export default function WorkspaceSettingsPage() {
 
   if (!user) {
     return (
-      <Container maxWidth="md" sx={{ py: 6 }}>
+      <Container maxWidth={false} className="container-shared" sx={{ py: 6 }}>
         <Alert severity="warning">{t.authRequired}</Alert>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth={false} className="container-shared" sx={{ py: 4 }}>
       <Stack spacing={3}>
         <Box>
           <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mb: 1 }}>
@@ -577,9 +577,7 @@ export default function WorkspaceSettingsPage() {
                 )}
                 <Stack spacing={1.5}>
                   {overview.invitations.map(invite => {
-                    const link =
-                      invite.link ||
-                      `${appBaseUrl}/invite/${invite.token}`;
+                    const link = invite.link || `${appBaseUrl}/invite/${invite.token}`;
                     return (
                       <Box
                         key={invite.id}

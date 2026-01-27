@@ -65,10 +65,10 @@ export class TourManager {
   private isDestroying = false;
   private lastStepIndex = -1;
   private actualStepsCount = 0;
+  private dismissOnClick?: (event: MouseEvent) => void;
+  private dismissOnVisibilityChange?: () => void;
 
-  constructor(options?: {
-    onNavigate?: (url: string) => Promise<void>;
-  }) {
+  constructor(options?: { onNavigate?: (url: string) => Promise<void> }) {
     this.onNavigate = options?.onNavigate;
 
     // Инициализация Driver.js с базовыми настройками
@@ -184,6 +184,7 @@ export class TourManager {
       // Запуск тура
       this.driverInstance.setSteps(driveSteps);
       this.driverInstance.drive(startFromStep);
+      this.attachDismissListeners();
 
       // Аналитика
       this.trackEvent('tour_started', { tourId: tour.id });
@@ -223,6 +224,7 @@ export class TourManager {
 
     try {
       if (this.driverInstance.isActive()) {
+        this.detachDismissListeners();
         this.driverInstance.destroy();
       }
     } catch (error) {
@@ -349,7 +351,9 @@ export class TourManager {
             }
           };
 
-          target.addEventListener('click', onClick, { once: true } as AddEventListenerOptions);
+          target.addEventListener('click', onClick, {
+            once: true,
+          } as AddEventListenerOptions);
           detachAdvanceListener = () => {
             try {
               target.removeEventListener('click', onClick as any);
@@ -416,6 +420,7 @@ export class TourManager {
 
     this.isDestroying = true;
     const tourId = this.currentTour.id;
+    this.detachDismissListeners();
     const state = this.loadState();
     const progressIndex =
       state?.currentProgress?.tourId === tourId ? state.currentProgress.currentStep : undefined;
@@ -446,6 +451,34 @@ export class TourManager {
     this.isDestroying = false;
     this.lastStepIndex = -1;
     this.actualStepsCount = 0;
+  }
+
+  private attachDismissListeners(): void {
+    if (this.dismissOnClick || this.dismissOnVisibilityChange) return;
+    this.dismissOnClick = event => {
+      if (!this.driverInstance.isActive()) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.driver-popover')) return;
+      this.stopTour();
+    };
+    this.dismissOnVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && this.driverInstance.isActive()) {
+        this.stopTour();
+      }
+    };
+    document.addEventListener('click', this.dismissOnClick, true);
+    document.addEventListener('visibilitychange', this.dismissOnVisibilityChange);
+  }
+
+  private detachDismissListeners(): void {
+    if (this.dismissOnClick) {
+      document.removeEventListener('click', this.dismissOnClick, true);
+      this.dismissOnClick = undefined;
+    }
+    if (this.dismissOnVisibilityChange) {
+      document.removeEventListener('visibilitychange', this.dismissOnVisibilityChange);
+      this.dismissOnVisibilityChange = undefined;
+    }
   }
 
   /**

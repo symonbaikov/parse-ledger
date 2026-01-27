@@ -1,5 +1,6 @@
 'use client';
 
+import { useLockBodyScroll } from '@/app/hooks/useLockBodyScroll';
 import { Cancel, Edit, Save } from '@mui/icons-material';
 import {
   Alert,
@@ -54,8 +55,14 @@ export default function UsersManagementPage() {
     { value: 'statement.edit', label: t.permissions.statementEdit.value },
     { value: 'transaction.view', label: t.permissions.transactionView.value },
     { value: 'transaction.edit', label: t.permissions.transactionEdit.value },
-    { value: 'transaction.delete', label: t.permissions.transactionDelete.value },
-    { value: 'transaction.bulk_update', label: t.permissions.transactionBulkUpdate.value },
+    {
+      value: 'transaction.delete',
+      label: t.permissions.transactionDelete.value,
+    },
+    {
+      value: 'transaction.bulk_update',
+      label: t.permissions.transactionBulkUpdate.value,
+    },
     { value: 'category.view', label: t.permissions.categoryView.value },
     { value: 'category.create', label: t.permissions.categoryCreate.value },
     { value: 'category.edit', label: t.permissions.categoryEdit.value },
@@ -71,7 +78,10 @@ export default function UsersManagementPage() {
     { value: 'report.view', label: t.permissions.reportView.value },
     { value: 'report.export', label: t.permissions.reportExport.value },
     { value: 'google_sheet.view', label: t.permissions.googleSheetView.value },
-    { value: 'google_sheet.connect', label: t.permissions.googleSheetConnect.value },
+    {
+      value: 'google_sheet.connect',
+      label: t.permissions.googleSheetConnect.value,
+    },
     { value: 'google_sheet.sync', label: t.permissions.googleSheetSync.value },
   ];
 
@@ -83,6 +93,8 @@ export default function UsersManagementPage() {
   const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // useLockBodyScroll(permissionsDialogOpen);
 
   useEffect(() => {
     loadUsers();
