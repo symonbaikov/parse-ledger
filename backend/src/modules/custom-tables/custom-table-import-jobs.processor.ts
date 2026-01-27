@@ -121,14 +121,23 @@ export class CustomTableImportJobsProcessor {
 
     const id = this.extractJobId(rows);
     if (!id) {
-      const preview = (() => {
-        try {
-          return JSON.stringify(rows);
-        } catch {
-          return String(rows);
-        }
-      })();
-      this.logger.warn(`Claimed job row without id (raw=${preview})`);
+      // Only log warning if we actually got data back but couldn't extract ID
+      // Empty arrays like [[],[]] mean no jobs were found, which is normal
+      const hasData =
+        Array.isArray(rows) &&
+        rows.length > 0 &&
+        rows.some(row => (Array.isArray(row) ? row.length > 0 : row));
+
+      if (hasData) {
+        const preview = (() => {
+          try {
+            return JSON.stringify(rows);
+          } catch {
+            return String(rows);
+          }
+        })();
+        this.logger.warn(`Claimed job row without id (raw=${preview})`);
+      }
       return null;
     }
 
