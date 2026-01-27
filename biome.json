@@ -13,7 +13,10 @@
       ".intlayer/**",
       "frontend/.next/**",
       "frontend/out/**",
-      "backend/uploads/**"
+      "backend/uploads/**",
+      "**/stories/**",
+      "**/storybook-static/**",
+      "**/*.stories.*"
     ]
   },
   "formatter": {

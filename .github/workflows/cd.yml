@@ -1,6 +1,6 @@
 name: CD
 
-on:
+"on":
   push:
     branches:
       - staging
@@ -21,20 +21,74 @@ concurrency:
   group: cd-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
+  policy-as-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden runner (audit egress)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Conftest (docker-compose)
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE":/project \
+            -w /project \
+            openpolicyagent/conftest:v0.56.0 \
+            test -p policy/docker-compose \
+            docker-compose.yml docker-compose.dev.yml docker-compose.observability.yml
+
+      - name: Conftest (GitHub workflows)
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE":/project \
+            -w /project \
+            openpolicyagent/conftest:v0.56.0 \
+            test -p policy/github-actions \
+            .github/workflows/*.yml
+
+      - name: Conftest (Railway)
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE":/project \
+            -w /project \
+            openpolicyagent/conftest:v0.56.0 \
+            test -p policy/railway \
+            railway.json
+
   build-and-publish:
     name: Build & publish hardened image
     runs-on: ubuntu-latest
+    needs: policy-as-code
+    environment:
+      name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || (github.ref == 'refs/heads/staging' && 'staging' || 'production') }}
     permissions:
       contents: write
       packages: write
       id-token: write
+      attestations: write
     outputs:
       target_env: ${{ steps.env.outputs.target_env }}
       primary_tag: ${{ steps.image.outputs.primary_tag }}
     steps:
+      - name: Harden runner (audit egress)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Derive target environment
         id: env
@@ -113,6 +167,11 @@ jobs:
           echo "$TAGS" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
+      - name: Set up QEMU (multi-arch)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -124,20 +183,30 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ${{ steps.image.outputs.tags }}
+          platforms: linux/amd64,linux/arm64
           provenance: true
 
+      - name: SLSA provenance attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ steps.image.outputs.image_name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
       - name: Scan pushed image
-        uses: aquasecurity/trivy-action@v0.24.0
+        uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: ${{ steps.image.outputs.primary_tag }}
           severity: HIGH,CRITICAL
-          vuln-type: 'os,library'
+          vuln-type: "os,library"
           exit-code: 1
+          hide-progress: true
 
       - name: Generate SBOM
         id: sbom
@@ -145,6 +214,14 @@ jobs:
         with:
           image: ${{ steps.image.outputs.primary_tag }}
           output: sbom-${{ steps.env.outputs.target_env }}.spdx.json
+
+      - name: SLSA SBOM attestation
+        uses: actions/attest-sbom@v1
+        with:
+          subject-name: ${{ steps.image.outputs.image_name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: sbom-${{ steps.env.outputs.target_env }}.spdx.json
+          push-to-registry: true
 
       - name: Upload SBOM artifact
         uses: actions/upload-artifact@v4
@@ -158,7 +235,7 @@ jobs:
       - name: Sign container image
         env:
           COSIGN_EXPERIMENTAL: "true"
-        run: cosign sign --yes ${{ steps.image.outputs.primary_tag }}
+        run: cosign sign --yes --recursive ${{ steps.image.outputs.primary_tag }}
 
       - name: Attest SBOM
         env:
@@ -177,12 +254,33 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-and-publish
     if: needs.build-and-publish.outputs.target_env == 'staging' || needs.build-and-publish.outputs.target_env == 'production'
+    permissions:
+      id-token: write
     environment:
       name: ${{ needs.build-and-publish.outputs.target_env == 'production' && 'production' || 'staging' }}
     steps:
+      - name: Harden runner (audit egress)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
+      - name: Import smoke URL from Vault (OIDC, optional)
+        if: ${{ secrets.VAULT_URL != '' && secrets.VAULT_JWT_ROLE != '' }}
+        uses: hashicorp/vault-action@v3.0.0
+        with:
+          url: ${{ secrets.VAULT_URL }}
+          caCertificate: ${{ secrets.VAULT_CA_CERT }}
+          method: jwt
+          role: ${{ secrets.VAULT_JWT_ROLE }}
+          jwtGithubAudience: sigstore
+          secrets: |
+            secret/data/finflow/${{ needs.build-and-publish.outputs.target_env }} healthcheck_url | SMOKE_URL ;
+
       - name: Run smoke check
         env:
-          SMOKE_URL: ${{ needs.build-and-publish.outputs.target_env == 'production' && secrets.PROD_HEALTHCHECK_URL || secrets.STAGING_HEALTHCHECK_URL }}
+          SMOKE_URL: >-
+            ${{ env.SMOKE_URL != '' && env.SMOKE_URL ||
+            (needs.build-and-publish.outputs.target_env == 'production' && secrets.PROD_HEALTHCHECK_URL || secrets.STAGING_HEALTHCHECK_URL) }}
         run: |
           if [ -z "$SMOKE_URL" ]; then
             echo "No smoke URL configured; skipping smoke verification."

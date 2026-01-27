@@ -19,10 +19,7 @@ CHECK="✅"
 WARN="⚠️ "
 ERROR="❌"
 CLOCK="⏱️ "
-PACKAGE="📦"
 KEY="🔑"
-DATABASE="🐘"
-REDIS_ICON="🔴"
 GEAR="⚙️ "
 SPARKLES="✨"
 TADA="🎉"
@@ -140,7 +137,7 @@ echo -e "${BLUE}${CLOCK} Waiting for services to be ready...${NC}"
 
 # Wait for PostgreSQL
 echo -n "Waiting for PostgreSQL..."
-for i in {1..30}; do
+for _ in {1..30}; do
     if docker exec finflow-postgres pg_isready -U finflow &> /dev/null; then
         echo -e " ${GREEN}${CHECK}${NC}"
         break
@@ -151,7 +148,7 @@ done
 
 # Wait for Redis
 echo -n "Waiting for Redis..."
-for i in {1..20}; do
+for _ in {1..20}; do
     if docker exec finflow-redis redis-cli ping &> /dev/null 2>&1; then
         echo -e " ${GREEN}${CHECK}${NC}"
         break
@@ -162,7 +159,7 @@ done
 
 # Wait for Backend
 echo -n "Waiting for Backend API..."
-for i in {1..40}; do
+for _ in {1..40}; do
     if curl -s http://localhost:3001/api/v1/health &> /dev/null; then
         echo -e " ${GREEN}${CHECK}${NC}"
         break
@@ -173,7 +170,7 @@ done
 
 # Wait for Frontend
 echo -n "Waiting for Frontend..."
-for i in {1..30}; do
+for _ in {1..30}; do
     if curl -s -o /dev/null http://localhost:3000; then
         echo -e " ${GREEN}${CHECK}${NC}"
         break
@@ -191,24 +188,24 @@ echo -e "${BLUE}${GEAR} Admin User Setup${NC}"
 echo -e "${CYAN}Create your first admin user to access FinFlow${NC}"
 echo ""
 
-read -p "Enter admin email: " ADMIN_EMAIL
+read -r -p "Enter admin email: " ADMIN_EMAIL
 while [[ ! "$ADMIN_EMAIL" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]]; do
     echo -e "${RED}${ERROR} Invalid email format${NC}"
-    read -p "Enter admin email: " ADMIN_EMAIL
+    read -r -p "Enter admin email: " ADMIN_EMAIL
 done
 
-read -sp "Enter admin password: " ADMIN_PASSWORD
+read -r -sp "Enter admin password: " ADMIN_PASSWORD
 echo ""
 while [ ${#ADMIN_PASSWORD} -lt 6 ]; do
     echo -e "${RED}${ERROR} Password must be at least 6 characters${NC}"
-    read -sp "Enter admin password: " ADMIN_PASSWORD
+    read -r -sp "Enter admin password: " ADMIN_PASSWORD
     echo ""
 done
 
-read -p "Enter admin name: " ADMIN_NAME
+read -r -p "Enter admin name: " ADMIN_NAME
 while [ -z "$ADMIN_NAME" ]; do
     echo -e "${RED}${ERROR} Name cannot be empty${NC}"
-    read -p "Enter admin name: " ADMIN_NAME
+    read -r -p "Enter admin name: " ADMIN_NAME
 done
 
 echo ""

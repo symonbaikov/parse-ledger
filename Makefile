@@ -89,6 +89,17 @@ frontend-dev: ## Start frontend in development mode (local)
 	@echo "🚀 Starting frontend in dev mode..."
 	@cd frontend && npm run dev
 
+storybook: ## Start Storybook development server
+	@echo "📚 Starting Storybook..."
+	@cd frontend && npm run storybook
+	@echo "✅ Storybook is running at http://localhost:6006"
+
+storybook-build: ## Build Storybook for production
+	@echo "🏗️  Building Storybook..."
+	@cd frontend && npm run storybook:build
+	@echo "✅ Storybook built successfully!"
+	@echo "📁 Output: frontend/storybook-static/"
+
 db-start: ## Start only PostgreSQL and Redis
 	@echo "🐘 Starting database services..."
 	@$(DOCKER_COMPOSE) up -d postgres redis
@@ -261,6 +272,14 @@ stats: ## Show container resource usage
 docs: ## Open API documentation
 	@echo "📚 Opening Swagger documentation..."
 	@open http://localhost:3001/api/docs || xdg-open http://localhost:3001/api/docs || echo "Open http://localhost:3001/api/docs"
+
+storybook-serve: ## Serve Storybook from CI artifacts
+	@echo "📚 Serving Storybook from CI artifacts..."
+	@./scripts/storybook-serve.sh
+
+storybook-download: ## Download Storybook from CI
+	@echo "📥 Downloading Storybook from CI..."
+	@./scripts/storybook-download.sh
 
 ##@ Quick Actions
 
