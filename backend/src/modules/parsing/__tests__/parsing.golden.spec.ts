@@ -1,0 +1,105 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import { FileType } from '../../../entities/statement.entity';
+import type { ParsedStatement } from '../interfaces/parsed-statement.interface';
+import { ParserFactoryService } from '../services/parser-factory.service';
+
+function guessFileType(filePath: string): FileType {
+  const ext = path.extname(filePath).toLowerCase();
+  if (ext === '.pdf') return FileType.PDF;
+  if (ext === '.xlsx' || ext === '.xls') return FileType.XLSX;
+  if (ext === '.csv') return FileType.CSV;
+  return FileType.PDF;
+}
+
+function loadExpected(filePath: string): ParsedStatement {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const parsed = JSON.parse(raw);
+  const tx = Array.isArray(parsed.transactions) ? parsed.transactions : [];
+  const metadata = parsed.metadata || {};
+  return {
+    metadata: {
+      accountNumber: metadata.accountNumber || '',
+      currency: metadata.currency || 'KZT',
+      dateFrom: new Date(metadata.dateFrom || metadata.date_from || Date.now()),
+      dateTo: new Date(metadata.dateTo || metadata.date_to || metadata.dateFrom || Date.now()),
+      balanceStart: metadata.balanceStart ?? metadata.balance_start,
+      balanceEnd: metadata.balanceEnd ?? metadata.balance_end,
+    },
+    transactions: tx.map((t: any) => ({
+      ...t,
+      transactionDate: new Date(t.transactionDate || t.date),
+    })),
+  };
+}
+
+function listGoldenCases(root: string) {
+  const cases: { input: string; expected: string }[] = [];
+  const entries = fs.readdirSync(root, { withFileTypes: true });
+  entries.forEach(entry => {
+    const full = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      listGoldenCases(full).forEach(c => cases.push(c));
+    } else if (entry.isFile() && entry.name.endsWith('.expected.json')) {
+      const inputCandidate = full.replace(/\.expected\.json$/, '');
+      if (fs.existsSync(inputCandidate)) {
+        cases.push({ input: inputCandidate, expected: full });
+      }
+    }
+  });
+  return cases;
+}
+
+describe('golden parsing (optional)', () => {
+  const goldenRoot = path.resolve(__dirname, '../../../../golden');
+  const goldenEnabled = process.env.GOLDEN_ENABLED === '1' || process.env.GOLDEN_ENABLED === 'true';
+
+  if (!goldenEnabled) {
+    it.skip('set GOLDEN_ENABLED=1 to run golden parsing checks', () => {});
+    return;
+  }
+
+  if (!fs.existsSync(goldenRoot)) {
+    it.skip(`golden dir not found at ${goldenRoot}`, () => {});
+    return;
+  }
+
+  const cases = listGoldenCases(goldenRoot);
+  if (cases.length === 0) {
+    it.skip('no golden samples found', () => {});
+    return;
+  }
+
+  const factory = new ParserFactoryService();
+  process.env.AI_PARSING_ENABLED = '0'; // deterministic golden runs
+
+  cases.forEach(({ input, expected }) => {
+    const caseName = path.relative(goldenRoot, input);
+    it(caseName, async () => {
+      const fileType = guessFileType(input);
+      const detected = await factory.detectBankAndFormat(input, fileType);
+      const parser = await factory.getParser(detected.bankName, fileType, input);
+      if (!parser) {
+        throw new Error(`No parser for ${caseName}`);
+      }
+
+      const actual = await parser.parse(input);
+      const expectedData = loadExpected(expected);
+
+      expect(actual.metadata.currency).toBe(expectedData.metadata.currency);
+      expect(actual.transactions.length).toBe(expectedData.transactions.length);
+
+      const sum = (list: any[], key: 'debit' | 'credit') =>
+        list.reduce((acc, t) => acc + (Number(t[key]) || 0), 0);
+
+      expect(sum(actual.transactions, 'debit')).toBeCloseTo(
+        sum(expectedData.transactions, 'debit'),
+        2,
+      );
+      expect(sum(actual.transactions, 'credit')).toBeCloseTo(
+        sum(expectedData.transactions, 'credit'),
+        2,
+      );
+    });
+  });
+});

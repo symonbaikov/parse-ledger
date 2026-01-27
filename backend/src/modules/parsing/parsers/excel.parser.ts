@@ -53,42 +53,74 @@ export class ExcelParser extends BaseParser {
 
     headers.forEach((header, index) => {
       const lowerHeader = header.toLowerCase();
-      if (lowerHeader.includes('дата') || lowerHeader.includes('date')) {
+      if (
+        lowerHeader.includes('дата') ||
+        lowerHeader.includes('date') ||
+        lowerHeader.includes('fecha') ||
+        lowerHeader.includes('data')
+      ) {
         mapping.date = index;
       }
       if (
         lowerHeader.includes('номер') ||
         lowerHeader.includes('документ') ||
-        lowerHeader.includes('document')
+        lowerHeader.includes('document') ||
+        lowerHeader.includes('номерок') ||
+        lowerHeader.includes('doc')
       ) {
         mapping.document = index;
       }
-      if (lowerHeader.includes('контрагент') || lowerHeader.includes('counterparty')) {
+      if (
+        lowerHeader.includes('контрагент') ||
+        lowerHeader.includes('counterparty') ||
+        lowerHeader.includes('beneficiary') ||
+        lowerHeader.includes('cliente') ||
+        lowerHeader.includes('payer') ||
+        lowerHeader.includes('payee')
+      ) {
         mapping.counterparty = index;
       }
-      if (lowerHeader.includes('бин') || lowerHeader.includes('bin')) {
+      if (
+        lowerHeader.includes('бин') ||
+        lowerHeader.includes('bin') ||
+        lowerHeader.includes('inn') ||
+        lowerHeader.includes('tax')
+      ) {
         mapping.bin = index;
       }
       if (
         lowerHeader.includes('счёт') ||
         lowerHeader.includes('счет') ||
-        lowerHeader.includes('account')
+        lowerHeader.includes('account') ||
+        lowerHeader.includes('iban')
       ) {
         mapping.account = index;
       }
       if (lowerHeader.includes('банк') || lowerHeader.includes('bank')) {
         mapping.bank = index;
       }
-      if (lowerHeader.includes('дебет') || lowerHeader.includes('debit')) {
+      if (
+        lowerHeader.includes('дебет') ||
+        lowerHeader.includes('debit') ||
+        lowerHeader.includes('debe')
+      ) {
         mapping.debit = index;
       }
-      if (lowerHeader.includes('кредит') || lowerHeader.includes('credit')) {
+      if (
+        lowerHeader.includes('кредит') ||
+        lowerHeader.includes('credit') ||
+        lowerHeader.includes('haber')
+      ) {
         mapping.credit = index;
       }
       if (
         lowerHeader.includes('назначение') ||
         lowerHeader.includes('цель') ||
-        lowerHeader.includes('purpose')
+        lowerHeader.includes('purpose') ||
+        lowerHeader.includes('описание') ||
+        lowerHeader.includes('description') ||
+        lowerHeader.includes('descr') ||
+        lowerHeader.includes('concepto')
       ) {
         mapping.purpose = index;
       }
@@ -101,12 +133,21 @@ export class ExcelParser extends BaseParser {
     // Try to extract from first rows or use defaults
     const accountNumber = this.extractAccountNumberFromData(data) || 'Unknown';
     const dateRange = this.extractDateRangeFromData(data);
+    const headerInfo = this.extractHeaderFromRows(data as Array<string[] | undefined>);
+    const localeInfo = this.detectLocale(
+      [headerInfo.rawHeader, ...data.slice(0, 3).map(row => (row || []).join(' '))]
+        .filter(Boolean)
+        .join(' '),
+    );
 
     return {
       accountNumber,
       dateFrom: dateRange.from || new Date(),
       dateTo: dateRange.to || new Date(),
       currency: 'KZT',
+      rawHeader: headerInfo.rawHeader,
+      normalizedHeader: headerInfo.normalizedHeader,
+      locale: localeInfo.locale !== 'unknown' ? localeInfo.locale : undefined,
     };
   }
 
@@ -125,7 +166,10 @@ export class ExcelParser extends BaseParser {
     return null;
   }
 
-  private extractDateRangeFromData(data: any[][]): { from: Date | null; to: Date | null } {
+  private extractDateRangeFromData(data: any[][]): {
+    from: Date | null;
+    to: Date | null;
+  } {
     // Look for date range in first few rows
     for (let i = 0; i < Math.min(5, data.length); i++) {
       const row = data[i];

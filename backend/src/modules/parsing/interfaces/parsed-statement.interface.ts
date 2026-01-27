@@ -20,6 +20,21 @@ export interface ParsedStatementMetadata {
   balanceStart?: number;
   balanceEnd?: number;
   currency: string;
+  rawHeader?: string;
+  normalizedHeader?: string;
+  periodLabel?: string;
+  institution?: string;
+  locale?: string;
+
+  // Enhanced header information for display
+  headerDisplay?: {
+    title?: string;
+    subtitle?: string;
+    periodDisplay?: string;
+    accountDisplay?: string;
+    institutionDisplay?: string;
+    currencyDisplay?: string;
+  };
 }
 
 export interface ParsedStatement {

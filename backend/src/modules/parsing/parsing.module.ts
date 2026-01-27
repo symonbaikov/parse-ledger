@@ -1,21 +1,81 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataQualityFramework } from '../../common/utils/data-quality-framework.util';
 import { ParsingRule } from '../../entities/parsing-rule.entity';
 import { Statement } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { ClassificationModule } from '../classification/classification.module';
 import { GoogleSheetsModule } from '../google-sheets/google-sheets.module';
+import { ObservabilityModule } from '../observability/observability.module';
+import { BankProfileService } from './services/bank-profile.service';
+import { ChecksumAutoFixService } from './services/checksum-auto-fix.service';
+import { ChecksumValidationService } from './services/checksum-validation.service';
+import { ColumnAutoFixService } from './services/column-auto-fix.service';
+import { ColumnValidationService } from './services/column-validation.service';
+import { FeatureFlagService } from './services/feature-flag.service';
+import { IntelligentDeduplicationService } from './services/intelligent-deduplication.service';
+import { MetadataExtractionService } from './services/metadata-extraction.service';
 import { ParserFactoryService } from './services/parser-factory.service';
 import { ParsingRulesService } from './services/parsing-rules.service';
+import { ProfileConfigService } from './services/profile-config.service';
+import { QualityLoggingService } from './services/quality-logging.service';
+import { QualityMetricsService } from './services/quality-metrics.service';
+import { StatementNormalizationService } from './services/statement-normalization.service';
 import { StatementProcessingService } from './services/statement-processing.service';
+import { TextCleaningService } from './services/text-cleaning.service';
+import { TransactionNormalizer } from './services/transaction-normalizer.service';
+import { UniversalAmountParser } from './services/universal-amount-parser.service';
+import { UniversalDateParser } from './services/universal-date-parser.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Statement, Transaction, ParsingRule]),
     ClassificationModule,
     forwardRef(() => GoogleSheetsModule),
+    ObservabilityModule,
   ],
-  providers: [ParserFactoryService, StatementProcessingService, ParsingRulesService],
-  exports: [ParserFactoryService, StatementProcessingService, ParsingRulesService],
+  providers: [
+    ParserFactoryService,
+    StatementProcessingService,
+    ParsingRulesService,
+    StatementNormalizationService,
+    TransactionNormalizer,
+    UniversalDateParser,
+    UniversalAmountParser,
+    TextCleaningService,
+    ColumnValidationService,
+    ChecksumValidationService,
+    QualityLoggingService,
+    MetadataExtractionService,
+    ColumnAutoFixService,
+    ChecksumAutoFixService,
+    BankProfileService,
+    FeatureFlagService,
+    IntelligentDeduplicationService,
+    QualityMetricsService,
+    ProfileConfigService,
+    DataQualityFramework,
+  ],
+  exports: [
+    ParserFactoryService,
+    StatementProcessingService,
+    ParsingRulesService,
+    StatementNormalizationService,
+    TransactionNormalizer,
+    UniversalDateParser,
+    UniversalAmountParser,
+    TextCleaningService,
+    ColumnValidationService,
+    ChecksumValidationService,
+    QualityLoggingService,
+    MetadataExtractionService,
+    ColumnAutoFixService,
+    ChecksumAutoFixService,
+    BankProfileService,
+    FeatureFlagService,
+    IntelligentDeduplicationService,
+    QualityMetricsService,
+    DataQualityFramework,
+  ],
 })
 export class ParsingModule {}

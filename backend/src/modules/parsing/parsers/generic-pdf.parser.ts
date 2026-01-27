@@ -29,6 +29,8 @@ export class GenericPdfParser extends BaseParser {
       console.warn('[GenericPdfParser] Failed to extract PDF tables:', (error as Error)?.message);
     }
 
+    const headerInfo = this.extractHeaderFromText(text);
+    const localeInfo = this.detectLocale(text);
     const detectedCurrency = detectCurrency(text) || 'KZT';
     const tableTransactions = mapPdfTableRowsToTransactions(tableRows, {
       defaultCurrency: detectedCurrency,
@@ -75,6 +77,9 @@ export class GenericPdfParser extends BaseParser {
         dateTo,
         balanceStart,
         balanceEnd,
+        rawHeader: headerInfo.rawHeader,
+        normalizedHeader: headerInfo.normalizedHeader,
+        locale: localeInfo.locale !== 'unknown' ? localeInfo.locale : undefined,
       },
       transactions,
     };

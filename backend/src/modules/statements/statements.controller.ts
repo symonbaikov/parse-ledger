@@ -151,6 +151,40 @@ export class StatementsController {
     stream.pipe(res);
   }
 
+  @Get(':id/thumbnail')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.STATEMENT_VIEW)
+  async getThumbnail(@Param('id') id: string, @CurrentUser() user: User, @Res() res: Response) {
+    try {
+      const thumbnail = await this.statementsService.getThumbnail(id, user.id);
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=604800');
+      res.send(thumbnail);
+    } catch (error) {
+      res.status(HttpStatus.NOT_FOUND).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Thumbnail not available',
+        },
+      });
+    }
+  }
+
+  @Post(':id/trash')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.STATEMENT_DELETE)
+  async moveToTrash(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.statementsService.moveToTrash(id, user.id);
+  }
+
+  @Post(':id/restore')
+  @UseGuards(PermissionsGuard)
+  @RequirePermission(Permission.STATEMENT_EDIT)
+  async restoreFile(@Param('id') id: string, @CurrentUser() user: User) {
+    return this.statementsService.restoreFile(id, user.id);
+  }
+
   @Get(':id')
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.STATEMENT_VIEW)
@@ -173,8 +207,17 @@ export class StatementsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(PermissionsGuard)
   @RequirePermission(Permission.STATEMENT_DELETE)
-  async remove(@Param('id') id: string, @CurrentUser() user: User) {
-    await this.statementsService.remove(id, user.id);
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Query('permanent') permanent?: string,
+  ) {
+    const isPermanent = permanent === 'true';
+    if (isPermanent) {
+      await this.statementsService.permanentDelete(id, user.id);
+    } else {
+      await this.statementsService.moveToTrash(id, user.id);
+    }
   }
 
   @Post(':id/reprocess')

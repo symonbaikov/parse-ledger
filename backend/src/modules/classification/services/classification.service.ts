@@ -1,7 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Cache } from 'cache-manager';
 import type { Repository } from 'typeorm';
 import { Branch } from '../../../entities/branch.entity';
+import { CategoryLearning } from '../../../entities/category-learning.entity';
 import { Category, CategoryType } from '../../../entities/category.entity';
 import { type Transaction, TransactionType } from '../../../entities/transaction.entity';
 import { Wallet } from '../../../entities/wallet.entity';
@@ -16,10 +19,13 @@ export class ClassificationService {
   constructor(
     @InjectRepository(Category)
     private categoryRepository: Repository<Category>,
+    @InjectRepository(CategoryLearning)
+    private categoryLearningRepository: Repository<CategoryLearning>,
     @InjectRepository(Branch)
     private branchRepository: Repository<Branch>,
     @InjectRepository(Wallet)
     private walletRepository: Repository<Wallet>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async classifyTransaction(
@@ -33,6 +39,13 @@ export class ClassificationService {
       classification.transactionType = TransactionType.EXPENSE;
     } else if (transaction.credit && transaction.credit > 0) {
       classification.transactionType = TransactionType.INCOME;
+    }
+
+    // Check cache first
+    const cacheKey = `classification:${transaction.id}`;
+    const cached = await this.cacheManager.get<Partial<Transaction>>(cacheKey);
+    if (cached) {
+      return cached;
     }
 
     // Get classification rules for user
@@ -81,6 +94,9 @@ export class ClassificationService {
     if (!classification.branchId) {
       classification.branchId = await this.autoDetermineBranch(transaction, userId);
     }
+
+    // Cache result for 5 minutes
+    await this.cacheManager.set(cacheKey, classification, 300000); // 5 minutes in ms
 
     return classification;
   }
@@ -161,12 +177,30 @@ export class ClassificationService {
       { pattern: /kaspi red/i, categoryName: 'Платежи Kaspi Red' },
       { pattern: /продажи\s+с\s+kaspi/i, categoryName: 'Продажи Kaspi' },
       { pattern: /бонусы?\s+за\s+отзыв/i, categoryName: 'Маркетинг и реклама' },
-      { pattern: /kaspi\s+доставка|доставк.*kaspi/i, categoryName: 'Логистика и доставка' },
-      { pattern: /рекламн.*услуг|услуг.*рекламн/i, categoryName: 'Маркетинг и реклама' },
-      { pattern: /информационно.*технолог|IT.*услуг/i, categoryName: 'IT услуги' },
-      { pattern: /комисси.*kaspi|kaspi.*комисси/i, categoryName: 'Комиссии банка' },
-      { pattern: /перевод\s+собственных\s+средств/i, categoryName: 'Внутренние переводы' },
-      { pattern: /резервирование.*кредит|погашение.*кредит/i, categoryName: 'Кредиты и займы' },
+      {
+        pattern: /kaspi\s+доставка|доставк.*kaspi/i,
+        categoryName: 'Логистика и доставка',
+      },
+      {
+        pattern: /рекламн.*услуг|услуг.*рекламн/i,
+        categoryName: 'Маркетинг и реклама',
+      },
+      {
+        pattern: /информационно.*технолог|IT.*услуг/i,
+        categoryName: 'IT услуги',
+      },
+      {
+        pattern: /комисси.*kaspi|kaspi.*комисси/i,
+        categoryName: 'Комиссии банка',
+      },
+      {
+        pattern: /перевод\s+собственных\s+средств/i,
+        categoryName: 'Внутренние переводы',
+      },
+      {
+        pattern: /резервирование.*кредит|погашение.*кредит/i,
+        categoryName: 'Кредиты и займы',
+      },
       { pattern: /kaspi\s+gold|gold.*карт/i, categoryName: 'Комиссии банка' },
       { pattern: /kaspi\s+магазин/i, categoryName: 'Комиссии Kaspi' },
       { pattern: /kaspi\s*pay/i, categoryName: 'Комиссии Kaspi' },
@@ -199,13 +233,24 @@ export class ClassificationService {
       }
     }
 
+    // Try ML-based learned patterns
+    const learnedMatch = await this.matchByLearnedPatterns(transaction, userId, transactionType);
+    if (learnedMatch) {
+      return learnedMatch;
+    }
+
     // Try to find category by historical data
     const historicalCategory = await this.findCategoryByHistory(transaction, userId);
     if (historicalCategory) {
       return historicalCategory.id;
     }
 
-    return undefined;
+    // FALLBACK: Create "Без категории" to ensure transaction is categorized
+    return await this.ensureCategory(
+      userId,
+      'Без категории',
+      transactionType === TransactionType.INCOME ? CategoryType.INCOME : CategoryType.EXPENSE,
+    );
   }
 
   private async findCategoryByHistory(
@@ -541,6 +586,9 @@ export class ClassificationService {
       'период',
       'месяц',
       'год',
+      'указано',
+      'указан',
+      'указана',
     ]);
 
     const words = text.split(/\s+/).filter(w => w.length >= 4 && !stopWords.has(w));
@@ -570,5 +618,112 @@ export class ClassificationService {
       hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
     }
     return palette[hash % palette.length];
+  }
+
+  /**
+   * Record a user correction for ML learning
+   */
+  async learnFromCorrection(
+    transaction: Transaction,
+    newCategoryId: string,
+    userId: string,
+  ): Promise<void> {
+    // Check if similar pattern already exists
+    const existing = await this.categoryLearningRepository.findOne({
+      where: {
+        userId,
+        categoryId: newCategoryId,
+        paymentPurpose: transaction.paymentPurpose || '',
+      },
+    });
+
+    if (existing) {
+      // Increment occurrences for confidence boost
+      existing.occurrences += 1;
+      existing.confidence = Math.min(1.0, Number(existing.confidence) + 0.05);
+      await this.categoryLearningRepository.save(existing);
+    } else {
+      // Create new learning entry
+      await this.categoryLearningRepository.save({
+        userId,
+        categoryId: newCategoryId,
+        paymentPurpose: transaction.paymentPurpose || '',
+        counterpartyName: transaction.counterpartyName || null,
+        learnedFrom: 'manual_correction',
+        confidence: 1.0,
+        occurrences: 1,
+      } as any);
+    }
+
+    // Invalidate learned patterns cache for this user
+    await this.cacheManager.del(`learned-patterns:${userId}`);
+  }
+
+  /**
+   * Match transaction against learned patterns using similarity
+   */
+  private async matchByLearnedPatterns(
+    transaction: Transaction,
+    userId: string,
+    transactionType: TransactionType,
+  ): Promise<string | undefined> {
+    const cacheKey = `learned-patterns:${userId}`;
+
+    // Try to get from cache
+    let learnedPatterns = await this.cacheManager.get<CategoryLearning[]>(cacheKey);
+
+    if (!learnedPatterns) {
+      // Get learned patterns for this user from DB
+      learnedPatterns = await this.categoryLearningRepository.find({
+        where: { userId },
+        order: { confidence: 'DESC', createdAt: 'DESC' },
+        take: 100, // Limit for performance
+      });
+
+      // Cache for 10 minutes
+      await this.cacheManager.set(cacheKey, learnedPatterns, 600000); // 10 minutes in ms
+    }
+
+    if (!learnedPatterns || learnedPatterns.length === 0) return undefined;
+
+    // Calculate similarity scores
+    const searchText =
+      `${transaction.paymentPurpose} ${transaction.counterpartyName}`.toLowerCase();
+
+    let bestMatch: { categoryId: string; score: number } | null = null;
+
+    for (const pattern of learnedPatterns) {
+      const patternText =
+        `${pattern.paymentPurpose} ${pattern.counterpartyName || ''}`.toLowerCase();
+
+      const score = this.calculateTextSimilarity(searchText, patternText);
+
+      // Consider confidence in scoring (boost high-confidence patterns)
+      const weightedScore = score * Number(pattern.confidence);
+
+      // Threshold: 0.7 weighted score to accept match
+      if (weightedScore > 0.7 && (!bestMatch || weightedScore > bestMatch.score)) {
+        bestMatch = { categoryId: pattern.categoryId, score: weightedScore };
+      }
+    }
+
+    return bestMatch?.categoryId;
+  }
+
+  /**
+   * Calculate text similarity using Jaccard index
+   * Returns 0.0 - 1.0 (higher = more similar)
+   */
+  private calculateTextSimilarity(text1: string, text2: string): number {
+    // Simple word-based similarity (Jaccard index)
+    const words1 = new Set(text1.split(/\s+/).filter(w => w.length > 2));
+    const words2 = new Set(text2.split(/\s+/).filter(w => w.length > 2));
+
+    if (words1.size === 0 || words2.size === 0) return 0;
+
+    const intersection = new Set([...words1].filter(x => words2.has(x)));
+    const union = new Set([...words1, ...words2]);
+
+    return union.size === 0 ? 0 : intersection.size / union.size;
   }
 }

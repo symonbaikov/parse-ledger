@@ -4,8 +4,10 @@ import { normalizeDate, normalizeNumber } from '../../../common/utils/number-nor
 import type { ParsedTransaction } from '../interfaces/parsed-statement.interface';
 import {
   isAiCircuitOpen,
+  isAiEnabled,
   recordAiFailure,
   recordAiSuccess,
+  redactSensitive,
   withAiConcurrency,
 } from './ai-runtime.util';
 
@@ -13,14 +15,16 @@ export class AiTransactionExtractor {
   private geminiModel: GenerativeModel | null = null;
 
   constructor(apiKey: string | undefined = process.env.GEMINI_API_KEY) {
-    if (apiKey) {
+    if (apiKey && isAiEnabled()) {
       const genAI = new GoogleGenerativeAI(apiKey);
-      this.geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      this.geminiModel = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+      });
     }
   }
 
   isAvailable(): boolean {
-    return !!this.geminiModel;
+    return !!this.geminiModel && isAiEnabled();
   }
 
   async extractTransactions(text: string): Promise<ParsedTransaction[]> {
@@ -33,6 +37,7 @@ export class AiTransactionExtractor {
     }
 
     const statementText = text.length > 20000 ? text.substring(0, 20000) : text;
+    const redactedText = redactSensitive(statementText);
 
     try {
       const timeoutMs = Number.parseInt(process.env.AI_TIMEOUT_MS || '20000', 10);
@@ -47,7 +52,7 @@ export class AiTransactionExtractor {
                     role: 'user',
                     parts: [
                       {
-                        text: `Extract ALL transactions from this bank statement text (could be Kaspi Bank, Bereke Bank, or other Kazakhstan banks). Each transaction typically has: document number, date, debit amount, credit amount, counterparty name, account numbers, payment purpose. Return ONLY JSON with the shape {"transactions":[{date,document_number,counterparty_name,counterparty_bin,counterparty_account,counterparty_bank,debit,credit,purpose,currency}]}. Use ISO dates (YYYY-MM-DD). Numbers must be decimal (dot). Default currency KZT. Preserve full payment purpose. Extract ALL transactions you can find.\n\n${statementText}`,
+                        text: `Extract ALL transactions from this bank statement text (could be Kaspi Bank, Bereke Bank, or other Kazakhstan banks). Each transaction typically has: document number, date, debit amount, credit amount, counterparty name, account numbers, payment purpose. Return ONLY JSON with the shape {"transactions":[{date,document_number,counterparty_name,counterparty_bin,counterparty_account,counterparty_bank,debit,credit,purpose,currency}]}. Use ISO dates (YYYY-MM-DD). Numbers must be decimal (dot). Default currency KZT. Preserve full payment purpose. Extract ALL transactions you can find.\n\n${redactedText}`,
                       },
                     ],
                   },

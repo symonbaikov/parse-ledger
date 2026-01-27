@@ -1,10 +1,13 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Cache } from 'cache-manager';
 import type { Repository } from 'typeorm';
 import { User, WorkspaceMember, WorkspaceRole } from '../../entities';
 import { Category, CategoryType } from '../../entities/category.entity';
@@ -20,6 +23,7 @@ export class CategoriesService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(WorkspaceMember)
     private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   private async ensureCanEditCategories(userId: string): Promise<void> {
@@ -59,7 +63,9 @@ export class CategoriesService {
       isSystem: false,
     });
 
-    return this.categoryRepository.save(category);
+    const saved = await this.categoryRepository.save(category);
+    await this.invalidateCache(userId);
+    return saved;
   }
 
   async findAll(userId: string, type?: CategoryType): Promise<Category[]> {
@@ -68,11 +74,20 @@ export class CategoriesService {
       where.type = type;
     }
 
-    return this.categoryRepository.find({
+    const cacheKey = `categories:${userId}:${type || 'all'}`;
+    const cached = await this.cacheManager.get<Category[]>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const categories = await this.categoryRepository.find({
       where,
       relations: ['children', 'parent'],
       order: { name: 'ASC' },
     });
+
+    await this.cacheManager.set(cacheKey, categories, 3600000); // 1 hour
+    return categories;
   }
 
   async findOne(id: string, userId: string): Promise<Category> {
@@ -108,7 +123,9 @@ export class CategoriesService {
     }
 
     Object.assign(category, updateDto);
-    return this.categoryRepository.save(category);
+    const saved = await this.categoryRepository.save(category);
+    await this.invalidateCache(userId);
+    return saved;
   }
 
   async remove(id: string, userId: string): Promise<void> {
@@ -120,6 +137,7 @@ export class CategoriesService {
     }
 
     await this.categoryRepository.remove(category);
+    await this.invalidateCache(userId);
   }
 
   async createSystemCategories(userId: string): Promise<void> {
@@ -158,5 +176,12 @@ export class CategoriesService {
         await this.categoryRepository.save(category);
       }
     }
+    await this.invalidateCache(userId);
+  }
+
+  private async invalidateCache(userId: string): Promise<void> {
+    await this.cacheManager.del(`categories:${userId}:all`);
+    await this.cacheManager.del(`categories:${userId}:${CategoryType.INCOME}`);
+    await this.cacheManager.del(`categories:${userId}:${CategoryType.EXPENSE}`);
   }
 }

@@ -5,8 +5,10 @@ import { extractTextFromPdf } from '../../../common/utils/pdf-parser.util';
 import type { ParsedStatement, ParsedTransaction } from '../interfaces/parsed-statement.interface';
 import {
   isAiCircuitOpen,
+  isAiEnabled,
   recordAiFailure,
   recordAiSuccess,
+  redactSensitive,
   withAiConcurrency,
 } from './ai-runtime.util';
 
@@ -14,14 +16,16 @@ export class AiParseValidator {
   private geminiModel: GenerativeModel | null = null;
 
   constructor(apiKey: string | undefined = process.env.GEMINI_API_KEY) {
-    if (apiKey) {
+    if (apiKey && isAiEnabled()) {
       const genAI = new GoogleGenerativeAI(apiKey);
-      this.geminiModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+      this.geminiModel = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+      });
     }
   }
 
   isAvailable(): boolean {
-    return !!this.geminiModel;
+    return !!this.geminiModel && isAiEnabled();
   }
 
   async reconcileFromPdf(
@@ -33,12 +37,17 @@ export class AiParseValidator {
     }
 
     if (isAiCircuitOpen()) {
-      return { corrected: parsed, notes: ['AI temporarily disabled (circuit breaker)'] };
+      return {
+        corrected: parsed,
+        notes: ['AI temporarily disabled (circuit breaker)'],
+      };
     }
 
     const pdfTextRaw = await extractTextFromPdf(filePath);
     const pdfText = pdfTextRaw.length > 18000 ? pdfTextRaw.substring(0, 18000) : pdfTextRaw;
     const parsedPreview = JSON.stringify(parsed.transactions.slice(0, 20));
+    const redactedPdf = redactSensitive(pdfText);
+    const redactedPreview = redactSensitive(parsedPreview);
 
     try {
       const timeoutMs = Number.parseInt(process.env.AI_TIMEOUT_MS || '20000', 10);
@@ -53,7 +62,7 @@ export class AiParseValidator {
                     role: 'user',
                     parts: [
                       {
-                        text: `You are an auditor for Bereke Bank statements. Compare PDF text with parsed transactions and correct mistakes or missing rows. Return ONLY JSON with shape {"transactions":[...],"notes":[...],"metadata":{...}}. Dates must be ISO (YYYY-MM-DD). Numbers should be decimal (dot). Use KZT currency.\n\nPDF text snippet:\n${pdfText}\n\nParsed transactions preview:\n${parsedPreview}`,
+                        text: `You are an auditor for Bereke Bank statements. Compare PDF text with parsed transactions and correct mistakes or missing rows. Return ONLY JSON with shape {"transactions":[...],"notes":[...],"metadata":{...}}. Dates must be ISO (YYYY-MM-DD). Numbers should be decimal (dot). Use KZT currency.\n\nPDF text snippet (redacted):\n${redactedPdf}\n\nParsed transactions preview (redacted):\n${redactedPreview}`,
                       },
                     ],
                   },

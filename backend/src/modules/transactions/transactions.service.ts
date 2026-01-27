@@ -1,5 +1,7 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Cache } from 'cache-manager';
 import type { Repository } from 'typeorm';
 import { Statement } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
@@ -19,7 +21,13 @@ export class TransactionsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(WorkspaceMember)
     private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
+  private async invalidateReports(userId: string): Promise<void> {
+    const key = `reports:version:${userId}`;
+    await this.cacheManager.set(key, Date.now().toString(), 0);
+  }
 
   private async ensureCanEditStatements(userId: string): Promise<void> {
     const user = await this.userRepository.findOne({
@@ -145,7 +153,10 @@ export class TransactionsService {
     }
 
     Object.assign(transaction, updateDto);
-    return this.transactionRepository.save(transaction);
+
+    const saved = await this.transactionRepository.save(transaction);
+    await this.invalidateReports(userId);
+    return saved;
   }
 
   async bulkUpdate(userId: string, items: BulkUpdateItemDto[]): Promise<Transaction[]> {
@@ -161,6 +172,10 @@ export class TransactionsService {
       }
     }
 
+    if (updatedTransactions.length > 0) {
+      await this.invalidateReports(userId);
+    }
+
     return updatedTransactions;
   }
 
@@ -168,6 +183,8 @@ export class TransactionsService {
     await this.ensureCanEditStatements(userId);
     const transaction = await this.findOne(id, userId);
     // Use delete for simplicity; entity already validated for ownership.
+
     await this.transactionRepository.delete(transaction.id);
+    await this.invalidateReports(userId);
   }
 }
