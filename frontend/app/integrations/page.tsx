@@ -1,190 +1,301 @@
 'use client';
 
-import { CheckCircle2, ExternalLink, Plug } from 'lucide-react';
+import { CheckCircle2, ExternalLink, Plug, Search } from 'lucide-react';
 import { useIntlayer } from 'next-intlayer';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useMemo, useState } from 'react';
 
 export default function IntegrationsPage() {
   const t = useIntlayer('integrationsPage');
-  const integrations = [
-    {
-      key: 'google-sheets',
-      active: true,
-      name: 'Google Sheets',
-      description: t.cards.googleSheets.description,
-      badge: t.cards.googleSheets.badge,
-      icon: (
-        <Image
-          src="/icons/icons8-google-sheets-48.png"
-          alt="Google Sheets"
-          width={32}
-          height={32}
-          className="rounded"
-        />
-      ),
-      actions: [
-        { label: t.cards.googleSheets.actions.connect, href: '/integrations/google-sheets' },
-        {
-          label: t.cards.googleSheets.actions.docs,
-          href: 'https://support.google.com/docs',
-          external: true,
-        },
-      ],
-    },
-    {
-      key: 'telegram',
-      active: false,
-      name: 'Telegram',
-      description: t.cards.telegram.description,
-      badge: t.cards.telegram.badge,
-      icon: (
-        <Image
-          src="/icons/icons8-telegram-48.png"
-          alt="Telegram"
-          width={32}
-          height={32}
-          className="rounded"
-        />
-      ),
-      actions: [
-        { label: t.cards.telegram.actions.setup, href: '/settings/telegram' },
-        {
-          label: t.cards.telegram.actions.guide,
-          href: 'https://core.telegram.org/bots',
-          external: true,
-        },
-      ],
-    },
-  ];
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const active = integrations.filter(item => item.active);
-  const available = integrations.filter(item => !item.active);
+  const integrations = useMemo(
+    () => [
+      {
+        key: 'dropbox',
+        active: true,
+        name: 'Dropbox',
+        description: t.cards.dropbox.description,
+        badge: t.cards.dropbox.badge,
+        icon: (
+          <Image
+            src="/icons/dropbox-icon.png"
+            alt="Dropbox"
+            width={32}
+            height={32}
+            className="rounded"
+          />
+        ),
+        actions: [
+          {
+            label: t.cards.dropbox.actions.connect,
+            href: '/integrations/dropbox',
+          },
+          {
+            label: t.cards.dropbox.actions.docs,
+            href: 'https://www.dropbox.com/developers/documentation',
+            external: true,
+          },
+        ],
+      },
+      {
+        key: 'google-drive',
+        active: true,
+        name: 'Google Drive',
+        description: t.cards.googleDrive.description,
+        badge: t.cards.googleDrive.badge,
+        icon: (
+          <Image
+            src="/icons/google-drive-icon.png"
+            alt="Google Drive"
+            width={32}
+            height={32}
+            className="rounded"
+          />
+        ),
+        actions: [
+          {
+            label: t.cards.googleDrive.actions.connect,
+            href: '/integrations/google-drive',
+          },
+          {
+            label: t.cards.googleDrive.actions.docs,
+            href: 'https://developers.google.com/drive/api/guides/about-sdk',
+            external: true,
+          },
+        ],
+      },
+      {
+        key: 'google-sheets',
+        active: true,
+        name: 'Google Sheets',
+        description: t.cards.googleSheets.description,
+        badge: t.cards.googleSheets.badge,
+        icon: (
+          <Image
+            src="/icons/icons8-google-sheets-48.png"
+            alt="Google Sheets"
+            width={32}
+            height={32}
+            className="rounded"
+          />
+        ),
+        actions: [
+          {
+            label: t.cards.googleSheets.actions.connect,
+            href: '/integrations/google-sheets',
+          },
+          {
+            label: t.cards.googleSheets.actions.docs,
+            href: 'https://support.google.com/docs',
+            external: true,
+          },
+        ],
+      },
+      {
+        key: 'telegram',
+        active: false,
+        name: 'Telegram',
+        description: t.cards.telegram.description,
+        badge: t.cards.telegram.badge,
+        icon: (
+          <Image
+            src="/icons/icons8-telegram-48.png"
+            alt="Telegram"
+            width={32}
+            height={32}
+            className="rounded"
+          />
+        ),
+        actions: [
+          { label: t.cards.telegram.actions.setup, href: '/settings/telegram' },
+          {
+            label: t.cards.telegram.actions.guide,
+            href: 'https://core.telegram.org/bots',
+            external: true,
+          },
+        ],
+      },
+    ],
+    [t],
+  );
+
+  const filteredIntegrations = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return integrations;
+
+    return integrations.filter(
+      item =>
+        item.name.toLowerCase().includes(query) ||
+        String(item.description).toLowerCase().includes(query),
+    );
+  }, [integrations, searchQuery]);
+
+  const active = filteredIntegrations.filter(item => item.active);
+  const available = filteredIntegrations.filter(item => !item.active);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 rounded-full bg-primary/10 text-primary">
-          <Plug className="h-6 w-6" />
+    <div className="container-shared px-4 sm:px-6 lg:px-8 py-10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-full bg-primary/10 text-primary">
+            <Plug className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
+            <p className="text-secondary mt-1">{t.subtitle}</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
-          <p className="text-secondary mt-1">{t.subtitle}</p>
+
+        <div className="relative w-full max-w-md">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            <Search className="h-4 w-4 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            className="block w-full rounded-full border border-gray-200 bg-white py-2 pl-10 pr-4 text-sm placeholder-gray-500 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            placeholder="Поиск интеграций..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
         </div>
       </div>
 
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.sections.connected}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {active.length === 0 && (
-              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                {t.empty.connected}
-              </div>
-            )}
-            {active.map(item => (
-              <div
-                key={item.key}
-                className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
-                    {item.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-semibold text-gray-900">{item.name}</h2>
-                      <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> {item.badge}
-                      </span>
+      <div className="space-y-8">
+        {active.length > 0 || !searchQuery ? (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.sections.connected}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {active.length === 0 && !searchQuery && (
+                <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                  {t.empty.connected}
+                </div>
+              )}
+              {active.map(item => (
+                <div
+                  key={item.key}
+                  className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
+                      {item.icon}
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{item.description}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {item.actions.map(action =>
-                        action.external ? (
-                          <a
-                            key={action.href}
-                            href={action.href}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50"
-                          >
-                            {action.label}
-                            <ExternalLink className="h-4 w-4 ml-1" />
-                          </a>
-                        ) : (
-                          <Link
-                            key={action.href}
-                            href={action.href}
-                            className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-full border border-primary text-primary hover:bg-primary/10"
-                          >
-                            {action.label}
-                          </Link>
-                        ),
-                      )}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-semibold text-gray-900">{item.name}</h2>
+                        <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> {item.badge}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{item.description}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.actions.map(action =>
+                          action.external ? (
+                            <a
+                              key={action.href}
+                              href={action.href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              {action.label}
+                              <ExternalLink className="h-3 w-3 ml-1 text-gray-400" />
+                            </a>
+                          ) : (
+                            <Link
+                              key={action.href}
+                              href={action.href}
+                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border border-primary text-primary hover:bg-primary/10 transition-colors"
+                            >
+                              {action.label}
+                            </Link>
+                          ),
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        <div>
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.sections.available}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {available.length === 0 && (
-              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                {t.empty.available}
-              </div>
-            )}
-            {available.map(item => (
-              <div
-                key={item.key}
-                className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
-                    {item.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-semibold text-gray-900">{item.name}</h2>
-                      <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
-                        <CheckCircle2 className="h-3 w-3 mr-1" /> {item.badge}
-                      </span>
+        {available.length > 0 || !searchQuery ? (
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">{t.sections.available}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {available.length === 0 && !searchQuery && (
+                <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                  {t.empty.available}
+                </div>
+              )}
+              {available.map(item => (
+                <div
+                  key={item.key}
+                  className="border border-gray-200 rounded-xl p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-gray-50 border border-gray-100">
+                      {item.icon}
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{item.description}</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {item.actions.map(action =>
-                        action.external ? (
-                          <a
-                            key={action.href}
-                            href={action.href}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50"
-                          >
-                            {action.label}
-                            <ExternalLink className="h-4 w-4 ml-1" />
-                          </a>
-                        ) : (
-                          <Link
-                            key={action.href}
-                            href={action.href}
-                            className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-full border border-primary text-primary hover:bg-primary/10"
-                          >
-                            {action.label}
-                          </Link>
-                        ),
-                      )}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-semibold text-gray-900">{item.name}</h2>
+                        <span className="inline-flex items-center text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> {item.badge}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{item.description}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {item.actions.map(action =>
+                          action.external ? (
+                            <a
+                              key={action.href}
+                              href={action.href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              {action.label}
+                              <ExternalLink className="h-3 w-3 ml-1 text-gray-400" />
+                            </a>
+                          ) : (
+                            <Link
+                              key={action.href}
+                              href={action.href}
+                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border border-primary text-primary hover:bg-primary/10 transition-colors"
+                            >
+                              {action.label}
+                            </Link>
+                          ),
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
+
+        {searchQuery && filteredIntegrations.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="mb-4 rounded-full bg-gray-100 p-4">
+              <Search className="h-8 w-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">Ничего не найдено</h3>
+            <p className="text-gray-500 mt-1">
+              По запросу «{searchQuery}» нет подходящих интеграций.
+            </p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="mt-4 text-sm font-semibold text-primary hover:underline"
+            >
+              Сбросить поиск
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,12 +4,31 @@ const content = {
   key: 'storageDetailsPage',
   content: {
     loading: t({ ru: 'Загрузка...', en: 'Loading...', kk: 'Жүктелуде...' }),
-    notFound: t({ ru: 'Файл не найден', en: 'File not found', kk: 'Файл табылмады' }),
+    notFound: t({
+      ru: 'Файл не найден',
+      en: 'File not found',
+      kk: 'Файл табылмады',
+    }),
     toasts: {
       previewFailed: t({
         ru: 'Не удалось загрузить превью файла',
         en: 'Failed to load file preview',
         kk: 'Файл превьюін жүктеу мүмкін болмады',
+      }),
+      restoreSuccess: t({
+        ru: 'Файл восстановлен',
+        en: 'File restored',
+        kk: 'Файл қалпына келтірілді',
+      }),
+      restoreFailed: t({
+        ru: 'Не удалось восстановить файл',
+        en: 'Failed to restore file',
+        kk: 'Файлды қалпына келтіру мүмкін болмады',
+      }),
+      loadCategoriesFailed: t({
+        ru: 'Не удалось загрузить категории',
+        en: 'Failed to load categories',
+        kk: 'Санаттарды жүктеу мүмкін болмады',
       }),
     },
     availability: {
@@ -56,28 +75,59 @@ const content = {
       uploaded: t({ ru: 'Загружено', en: 'Uploaded', kk: 'Жүктелді' }),
     },
     actions: {
-      downloadTooltip: t({ ru: 'Скачать файл', en: 'Download file', kk: 'Файлды жүктеу' }),
+      downloadTooltip: t({
+        ru: 'Скачать файл',
+        en: 'Download file',
+        kk: 'Файлды жүктеу',
+      }),
       download: t({ ru: 'Скачать', en: 'Download', kk: 'Жүктеу' }),
-      shareTooltip: t({ ru: 'Поделиться файлом', en: 'Share file', kk: 'Файлмен бөлісу' }),
+      restoreTooltip: t({
+        ru: 'Восстановить файл на диск из базы данных',
+        en: 'Restore file to disk from DB',
+        kk: 'Файлды дерекқордан дискіге қалпына келтіру',
+      }),
+      restore: t({ ru: 'Восстановить', en: 'Restore', kk: 'Қалпына келтіру' }),
+      shareTooltip: t({
+        ru: 'Поделиться файлом',
+        en: 'Share file',
+        kk: 'Файлмен бөлісу',
+      }),
       share: t({ ru: 'Поделиться', en: 'Share', kk: 'Бөлісу' }),
+      back: t({ ru: 'Назад', en: 'Back', kk: 'Артқа' }),
     },
     cards: {
       size: t({ ru: 'Размер файла', en: 'File size', kk: 'Файл өлшемі' }),
-      transactions: t({ ru: 'Транзакций', en: 'Transactions', kk: 'Транзакциялар' }),
+      transactions: t({
+        ru: 'Транзакций',
+        en: 'Transactions',
+        kk: 'Транзакциялар',
+      }),
       uploadedAt: t({ ru: 'Загружено', en: 'Uploaded', kk: 'Жүктелді' }),
       account: t({ ru: 'Счет', en: 'Account', kk: 'Шот' }),
       dash: t({ ru: '—', en: '—', kk: '—' }),
     },
     preview: {
-      title: t({ ru: 'Предпросмотр файла', en: 'File preview', kk: 'Файл превьюі' }),
+      title: t({
+        ru: 'Предпросмотр файла',
+        en: 'File preview',
+        kk: 'Файл превьюі',
+      }),
       refresh: t({ ru: 'Обновить', en: 'Refresh', kk: 'Жаңарту' }),
       openNewTab: t({
         ru: 'Открыть в новой вкладке',
         en: 'Open in new tab',
         kk: 'Жаңа қойындыда ашу',
       }),
-      iframeTitle: t({ ru: 'Предпросмотр файла', en: 'File preview', kk: 'Файл превьюі' }),
-      retry: t({ ru: 'Попробовать снова', en: 'Try again', kk: 'Қайтадан көру' }),
+      iframeTitle: t({
+        ru: 'Предпросмотр файла',
+        en: 'File preview',
+        kk: 'Файл превьюі',
+      }),
+      retry: t({
+        ru: 'Попробовать снова',
+        en: 'Try again',
+        kk: 'Қайтадан көру',
+      }),
       unavailable: t({
         ru: 'Файл недоступен. Похоже, он был удалён с сервера. Попросите владельца загрузить файл заново.',
         en: 'File is unavailable. It may have been removed from the server. Ask the owner to upload it again.',
@@ -90,9 +140,17 @@ const content = {
       }),
     },
     tabs: {
-      transactions: t({ ru: 'Транзакции', en: 'Transactions', kk: 'Транзакциялар' }),
+      transactions: t({
+        ru: 'Транзакции',
+        en: 'Transactions',
+        kk: 'Транзакциялар',
+      }),
       links: t({ ru: 'Ссылки', en: 'Links', kk: 'Сілтемелер' }),
-      permissions: t({ ru: 'Права доступа', en: 'Permissions', kk: 'Құқықтар' }),
+      permissions: t({
+        ru: 'Права доступа',
+        en: 'Permissions',
+        kk: 'Құқықтар',
+      }),
     },
   },
 } satisfies Dictionary;
