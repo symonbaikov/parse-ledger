@@ -11,8 +11,8 @@ describe('StatementsService', () => {
     create: jest.fn(data => data),
     save: jest.fn(),
     findOne: jest.fn(),
-    find: jest.fn(),
     update: jest.fn(),
+    createQueryBuilder: jest.fn(),
   };
 
   const auditLogRepository = { save: jest.fn().mockResolvedValue(undefined) };
@@ -22,16 +22,31 @@ describe('StatementsService', () => {
   const workspaceMemberRepository = {
     findOne: jest.fn(),
   };
-  const statementProcessingService = { processStatement: jest.fn().mockResolvedValue(undefined) };
+  const statementProcessingService = {
+    processStatement: jest.fn().mockResolvedValue(undefined),
+  };
   const fileStorageService = {};
   const transactionRepository = {};
 
   let service: StatementsService;
+  let qb: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
     jest.spyOn(fs.promises, 'readFile').mockResolvedValue(Buffer.from('test'));
     jest.spyOn(fs.promises, 'unlink').mockResolvedValue(undefined);
+
+    qb = {
+      leftJoinAndSelect: jest.fn(() => qb),
+      orderBy: jest.fn(() => qb),
+      skip: jest.fn(() => qb),
+      take: jest.fn(() => qb),
+      where: jest.fn(() => qb),
+      andWhere: jest.fn(() => qb),
+      getManyAndCount: jest.fn(async () => [[], 0]),
+    };
+    statementRepository.createQueryBuilder = jest.fn(() => qb);
+
     service = new StatementsService(
       statementRepository as any,
       transactionRepository as any,
@@ -45,37 +60,46 @@ describe('StatementsService', () => {
   });
 
   it('orders by createdAt when listing statements', async () => {
-    userRepository.findOne.mockResolvedValue({ id: 'user-1', workspaceId: null });
-    statementRepository.find.mockResolvedValue([]);
+    userRepository.findOne.mockResolvedValue({
+      id: 'user-1',
+      workspaceId: null,
+    });
+    qb.getManyAndCount = jest.fn(async () => [[], 0]);
 
-    await service.findAll('user-1', 1, 20);
+    const result = await service.findAll('user-1', 1, 20);
 
-    expect(statementRepository.find).toHaveBeenCalledWith(
-      expect.objectContaining({
-        order: { createdAt: 'DESC' },
-        where: expect.objectContaining({ userId: 'user-1' }),
-      }),
-    );
+    expect(statementRepository.createQueryBuilder).toHaveBeenCalledWith('statement');
+    expect(qb.orderBy).toHaveBeenCalledWith('statement.createdAt', 'DESC');
+    expect(qb.where).toHaveBeenCalledWith('statement.userId = :userId', {
+      userId: 'user-1',
+    });
+    expect(result).toEqual({ data: [], total: 0, page: 1, limit: 20 });
   });
 
   it('filters by workspace when user is in workspace', async () => {
-    userRepository.findOne.mockResolvedValue({ id: 'user-1', workspaceId: 'ws-1' });
-    statementRepository.find.mockResolvedValue([]);
+    userRepository.findOne.mockResolvedValue({
+      id: 'user-1',
+      workspaceId: 'ws-1',
+    });
+    qb.getManyAndCount = jest.fn(async () => [[], 0]);
 
     await service.findAll('user-1', 1, 20);
 
-    expect(statementRepository.find).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          user: { workspaceId: 'ws-1' },
-        }),
-      }),
+    expect(qb.where).toHaveBeenCalledWith(
+      'user.workspaceId = :workspaceId OR statement.userId = :userId',
+      {
+        workspaceId: 'ws-1',
+        userId: 'user-1',
+      },
     );
   });
 
   it('creates a new statement even when file hash is duplicated', async () => {
     (calculateFileHash as jest.Mock).mockResolvedValue('same-hash');
-    userRepository.findOne.mockResolvedValue({ id: 'user-1', workspaceId: null });
+    userRepository.findOne.mockResolvedValue({
+      id: 'user-1',
+      workspaceId: null,
+    });
     statementRepository.save
       .mockImplementationOnce(async entity => ({ ...entity, id: 'stmt-1' }))
       .mockImplementationOnce(async entity => ({ ...entity, id: 'stmt-2' }));

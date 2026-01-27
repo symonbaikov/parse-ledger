@@ -289,9 +289,10 @@ describe('AuthService', () => {
 
       await service.login(loginDto);
 
-      expect(userRepository.save).toHaveBeenCalled();
-      const savedUser = (userRepository.save as jest.Mock).mock.calls[0][0];
-      expect(savedUser).toHaveProperty('lastLogin');
+      expect(userRepository.update).toHaveBeenCalledWith(
+        mockUser.id,
+        expect.objectContaining({ lastLogin: expect.any(Date) }),
+      );
     });
   });
 

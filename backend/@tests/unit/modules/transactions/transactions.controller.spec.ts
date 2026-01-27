@@ -1,0 +1,55 @@
+import { TransactionsController } from '@/modules/transactions/transactions.controller';
+
+describe('TransactionsController', () => {
+  it('parses query params in findAll', async () => {
+    const transactionsService = {
+      findAll: jest.fn(async () => ({ data: [], total: 0, page: 2, limit: 10 })),
+      findOne: jest.fn(),
+      update: jest.fn(),
+      bulkUpdate: jest.fn(),
+      remove: jest.fn(),
+    };
+    const controller = new TransactionsController(transactionsService as any);
+
+    const res = await controller.findAll(
+      { id: 'u1' } as any,
+      's1',
+      '2025-01-01',
+      '2025-01-31',
+      'income',
+      'cat1',
+      '2',
+      '10',
+    );
+
+    expect(res).toEqual({ data: [], total: 0, page: 2, limit: 10 });
+    expect(transactionsService.findAll).toHaveBeenCalledWith('u1', {
+      statementId: 's1',
+      dateFrom: new Date('2025-01-01'),
+      dateTo: new Date('2025-01-31'),
+      type: 'income',
+      categoryId: 'cat1',
+      page: 2,
+      limit: 10,
+    });
+  });
+
+  it('bulkUpdate forwards items', async () => {
+    const transactionsService = {
+      findAll: jest.fn(),
+      findOne: jest.fn(),
+      update: jest.fn(),
+      bulkUpdate: jest.fn(async () => [{ id: 't1' }]),
+      remove: jest.fn(),
+    };
+    const controller = new TransactionsController(transactionsService as any);
+    const result = await controller.bulkUpdate(
+      { items: [{ id: 't1', updates: { amount: 1 } }] } as any,
+      { id: 'u1' } as any,
+    );
+    expect(result).toEqual([{ id: 't1' }]);
+    expect(transactionsService.bulkUpdate).toHaveBeenCalledWith('u1', [
+      { id: 't1', updates: { amount: 1 } },
+    ]);
+  });
+});

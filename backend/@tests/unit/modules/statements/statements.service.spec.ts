@@ -144,6 +144,7 @@ describe('StatementsService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (statementRepository as any).createQueryBuilder = undefined;
   });
 
   afterAll(async () => {
@@ -271,71 +272,73 @@ describe('StatementsService', () => {
   });
 
   describe('findAll', () => {
+    const createQueryBuilderMock = <TData extends object>(
+      data: TData[],
+      total: number,
+      qbOverrides?: Partial<Record<string, jest.Mock>>,
+    ) => {
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        take: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getManyAndCount: jest.fn().mockResolvedValue([data, total] as const),
+        ...qbOverrides,
+      };
+
+      (statementRepository as any).createQueryBuilder = jest.fn(() => qb);
+
+      return qb;
+    };
+
     it('should return all statements for user workspace', async () => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
-      const statements = [mockStatement, { ...mockStatement, id: '2' }];
-      jest.spyOn(statementRepository, 'find').mockResolvedValue(statements as Statement[]);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: '1', workspaceId: 'ws-1' } as User);
+      const statements = [mockStatement, { ...mockStatement, id: '2' }] as Statement[];
+      const qb = createQueryBuilderMock(statements, 2);
 
       const result = await service.findAll('1', 1, 20);
 
-      expect(result).toHaveLength(2);
-      expect(statementRepository.find).toHaveBeenCalled();
-    });
-
-    it('should filter by status', async () => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
-      const findSpy = jest
-        .spyOn(statementRepository, 'find')
-        .mockResolvedValue([mockStatement] as Statement[]);
-
-      await service.findAll('1', 1, 20);
-
-      expect(findSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            status: StatementStatus.PARSED,
-          }),
-        }),
+      expect(result).toEqual({
+        data: statements,
+        total: 2,
+        page: 1,
+        limit: 20,
+      });
+      expect(qb.orderBy).toHaveBeenCalledWith('statement.createdAt', 'DESC');
+      expect(qb.where).toHaveBeenCalledWith(
+        'user.workspaceId = :workspaceId OR statement.userId = :userId',
+        { workspaceId: 'ws-1', userId: '1' },
       );
     });
 
-    it('should filter by bank name', async () => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
-      const findSpy = jest
-        .spyOn(statementRepository, 'find')
-        .mockResolvedValue([mockStatement] as Statement[]);
+    it('should scope to user only when workspace is missing', async () => {
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+      const qb = createQueryBuilderMock([mockStatement as Statement], 1);
 
       await service.findAll('1', 1, 20);
 
-      expect(findSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            bankName: BankName.KASPI,
-          }),
-        }),
-      );
+      expect(qb.where).toHaveBeenCalledWith('statement.userId = :userId', {
+        userId: '1',
+      });
     });
 
-    it('should include related transactions', async () => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
-      const findSpy = jest
-        .spyOn(statementRepository, 'find')
-        .mockResolvedValue([mockStatement] as Statement[]);
+    it('should apply search filter', async () => {
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValue({ id: '1', workspaceId: 'ws-1' } as User);
+      const qb = createQueryBuilderMock([mockStatement as Statement], 1);
 
-      await service.findAll('1', 1, 20);
+      await service.findAll('1', 2, 10, 'abc');
 
-      expect(findSpy).toHaveBeenCalled();
-    });
-
-    it('should scope to user workspace', async () => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
-      const findSpy = jest
-        .spyOn(statementRepository, 'find')
-        .mockResolvedValue([mockStatement] as Statement[]);
-
-      await service.findAll('1', 1, 20);
-
-      expect(findSpy).toHaveBeenCalled();
+      expect(qb.skip).toHaveBeenCalledWith(10);
+      expect(qb.take).toHaveBeenCalledWith(10);
+      expect(qb.andWhere).toHaveBeenCalledWith('statement.fileName ILIKE :search', {
+        search: '%abc%',
+      });
     });
   });
 

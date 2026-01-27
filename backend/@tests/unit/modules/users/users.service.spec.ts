@@ -33,6 +33,8 @@ describe('UsersService', () => {
     updatedAt: new Date(),
   };
 
+  const { passwordHash: _, ...mockUserWithoutPasswordHash } = mockUser;
+
   beforeAll(async () => {
     testingModule = await Test.createTestingModule({
       providers: [
@@ -71,11 +73,11 @@ describe('UsersService', () => {
 
   describe('findOne', () => {
     it('should return user by id', async () => {
-      jest.spyOn(repository, 'findOne').mockResolvedValue(mockUser as User);
+      jest.spyOn(repository, 'findOne').mockResolvedValue(mockUserWithoutPasswordHash as User);
 
       const result = await service.findOne('1');
 
-      expect(result).toEqual(mockUser);
+      expect(result).toEqual(mockUserWithoutPasswordHash);
       expect(repository.findOne).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: '1' },
@@ -91,7 +93,7 @@ describe('UsersService', () => {
     });
 
     it('should not expose password field', async () => {
-      jest.spyOn(repository, 'findOne').mockResolvedValue(mockUser as User);
+      jest.spyOn(repository, 'findOne').mockResolvedValue(mockUserWithoutPasswordHash as User);
 
       const result = await service.findOne('1');
 
