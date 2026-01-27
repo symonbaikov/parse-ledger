@@ -21,7 +21,16 @@ const content = {
     },
     actions: {
       create: t({ ru: 'Создать', en: 'Create', kk: 'Құру' }),
-      fromStatement: t({ ru: 'Из выписки', en: 'From statement', kk: 'Үзіндіден' }),
+      importTable: t({
+        ru: 'Импорт таблицы',
+        en: 'Import table',
+        kk: 'Кестені импорттау',
+      }),
+      fromStatement: t({
+        ru: 'Из выписки',
+        en: 'From statement',
+        kk: 'Үзіндіден',
+      }),
       importGoogleSheets: t({
         ru: 'Импорт из Google Sheets',
         en: 'Import from Google Sheets',
@@ -30,11 +39,23 @@ const content = {
       close: t({ ru: 'Закрыть', en: 'Close', kk: 'Жабу' }),
       cancel: t({ ru: 'Отмена', en: 'Cancel', kk: 'Болдырмау' }),
       delete: t({ ru: 'Удалить', en: 'Delete', kk: 'Жою' }),
+      previous: t({ ru: 'Предыдущая', en: 'Previous', kk: 'Алдыңғы' }),
+      next: t({ ru: 'Следующая', en: 'Next', kk: 'Келесі' }),
     },
     sources: {
       label: t({ ru: 'Источник', en: 'Source', kk: 'Дереккөз' }),
-      googleSheets: t({ ru: 'Google Sheets', en: 'Google Sheets', kk: 'Google Sheets' }),
+      googleSheets: t({
+        ru: 'Google Sheets',
+        en: 'Google Sheets',
+        kk: 'Google Sheets',
+      }),
       manual: t({ ru: 'Вручную', en: 'Manual', kk: 'Қолмен' }),
+    },
+    columns: {
+      name: t({ ru: 'Название таблицы', en: 'Table name', kk: 'Кесте атауы' }),
+      source: t({ ru: 'Источник', en: 'Source', kk: 'Дереккөз' }),
+      updatedAt: t({ ru: 'Обновлено', en: 'Updated', kk: 'Жаңартылды' }),
+      actions: t({ ru: 'Действия', en: 'Actions', kk: 'Әрекеттер' }),
     },
     empty: t({
       ru: 'Таблиц пока нет. Создайте первую таблицу или импортируйте из Google Sheets.',
@@ -53,7 +74,11 @@ const content = {
         en: 'Failed to load statements',
         kk: 'Үзінділерді жүктеу мүмкін болмады',
       }),
-      created: t({ ru: 'Таблица создана', en: 'Table created', kk: 'Кесте құрылды' }),
+      created: t({
+        ru: 'Таблица создана',
+        en: 'Table created',
+        kk: 'Кесте құрылды',
+      }),
       createFailed: t({
         ru: 'Не удалось создать таблицу',
         en: 'Failed to create table',
@@ -75,7 +100,11 @@ const content = {
         kk: 'Үзіндіден кесте құру мүмкін болмады',
       }),
       deleting: t({ ru: 'Удаление...', en: 'Deleting...', kk: 'Жойылуда...' }),
-      deleted: t({ ru: 'Таблица удалена', en: 'Table deleted', kk: 'Кесте жойылды' }),
+      deleted: t({
+        ru: 'Таблица удалена',
+        en: 'Table deleted',
+        kk: 'Кесте жойылды',
+      }),
       deleteFailed: t({
         ru: 'Не удалось удалить таблицу',
         en: 'Failed to delete table',
@@ -91,7 +120,11 @@ const content = {
         kk: 'Мысалы: Төлемдер тізілімі',
       }),
       description: t({ ru: 'Описание', en: 'Description', kk: 'Сипаттама' }),
-      descriptionPlaceholder: t({ ru: 'Опционально', en: 'Optional', kk: 'Міндетті емес' }),
+      descriptionPlaceholder: t({
+        ru: 'Опционально',
+        en: 'Optional',
+        kk: 'Міндетті емес',
+      }),
       category: t({
         ru: 'Категория (иконка/цвет)',
         en: 'Category (icon/color)',
@@ -126,10 +159,22 @@ const content = {
         en: 'Description (optional)',
         kk: 'Сипаттама (міндетті емес)',
       }),
-      descriptionPlaceholder: t({ ru: 'Опционально', en: 'Optional', kk: 'Міндетті емес' }),
+      descriptionPlaceholder: t({
+        ru: 'Опционально',
+        en: 'Optional',
+        kk: 'Міндетті емес',
+      }),
       statements: t({ ru: 'Выписки', en: 'Statements', kk: 'Үзінділер' }),
-      statementsLoading: t({ ru: 'Загрузка...', en: 'Loading...', kk: 'Жүктелуде...' }),
-      statementsEmpty: t({ ru: 'Нет выписок', en: 'No statements', kk: 'Үзінділер жоқ' }),
+      statementsLoading: t({
+        ru: 'Загрузка...',
+        en: 'Loading...',
+        kk: 'Жүктелуде...',
+      }),
+      statementsEmpty: t({
+        ru: 'Нет выписок',
+        en: 'No statements',
+        kk: 'Үзінділер жоқ',
+      }),
       hint: t({
         ru: 'Доступны только обработанные выписки с транзакциями',
         en: 'Only processed statements with transactions are available',
@@ -138,7 +183,11 @@ const content = {
       creating: t({ ru: 'Создание...', en: 'Creating...', kk: 'Құрылуда...' }),
     },
     confirmDelete: {
-      title: t({ ru: 'Удалить таблицу?', en: 'Delete table?', kk: 'Кестені жою керек пе?' }),
+      title: t({
+        ru: 'Удалить таблицу?',
+        en: 'Delete table?',
+        kk: 'Кестені жою керек пе?',
+      }),
       messageWithNamePrefix: t({
         ru: 'Таблица “',
         en: 'Table “',
