@@ -41,6 +41,43 @@ export function normalizeNumber(value: string | number | null | undefined): numb
   return parsed;
 }
 
+export function normalizeNumberAdvanced(
+  value: string | number | null | undefined,
+  locale = 'en',
+): { value: number | null; normalized: string } {
+  if (value === null || value === undefined) {
+    return { value: null, normalized: '' };
+  }
+
+  if (typeof value === 'number') {
+    return { value, normalized: String(value) };
+  }
+
+  if (typeof value !== 'string') {
+    return { value: null, normalized: '' };
+  }
+
+  let sanitized = value.replace(/[^\d.,-]/g, '').replace(/\s+/g, '');
+
+  if (locale === 'de' || locale === 'ru') {
+    sanitized = sanitized.replace(/\./g, '').replace(/,/g, '.');
+  } else {
+    if (sanitized.includes(',') && !sanitized.includes('.')) {
+      sanitized = sanitized.replace(/,/g, '.');
+    } else {
+      sanitized = sanitized.replace(/,/g, '');
+    }
+  }
+
+  const parts = sanitized.split('.');
+  if (parts.length > 2) {
+    sanitized = `${parts.slice(0, -1).join('')}.${parts[parts.length - 1]}`;
+  }
+
+  const num = Number.parseFloat(sanitized);
+  return { value: Number.isFinite(num) ? num : null, normalized: sanitized };
+}
+
 /**
  * Normalizes date strings to Date objects
  */
