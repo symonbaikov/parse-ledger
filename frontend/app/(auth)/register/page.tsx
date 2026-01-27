@@ -1,51 +1,54 @@
-'use client';
+"use client";
 
-import { AuthLanguageSwitcher } from '@/app/components/AuthLanguageSwitcher';
-import apiClient from '@/app/lib/api';
+import { AuthLanguageSwitcher } from "@/app/components/AuthLanguageSwitcher";
+import { GoogleAuthButton } from "@/app/components/GoogleAuthButton";
+import apiClient from "@/app/lib/api";
 import {
   Alert,
   Box,
   Button,
   CircularProgress,
+  Divider,
   Grid,
   Link,
   TextField,
   Typography,
   useTheme,
-} from '@mui/material';
-import { motion } from 'framer-motion';
-import { useIntlayer, useLocale } from 'next-intlayer';
-import { useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useState } from 'react';
+} from "@mui/material";
+import { motion } from "framer-motion";
+import { useIntlayer, useLocale } from "next-intlayer";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 function safeInternalPath(nextPath: string | null) {
   if (!nextPath) return null;
-  if (!nextPath.startsWith('/')) return null;
-  if (nextPath.startsWith('//')) return null;
+  if (!nextPath.startsWith("/")) return null;
+  if (nextPath.startsWith("//")) return null;
   return nextPath;
 }
 
 function RegisterPageContent() {
   const searchParams = useSearchParams();
-  const nextPath = safeInternalPath(searchParams.get('next'));
-  const inviteToken = searchParams.get('invite');
-  const presetEmail = searchParams.get('email');
+  const nextPath = safeInternalPath(searchParams.get("next"));
+  const inviteToken = searchParams.get("invite");
+  const presetEmail = searchParams.get("email");
   const theme = useTheme();
   const { locale } = useLocale();
-  const t = useIntlayer('registerPage');
+  const t = useIntlayer("registerPage");
   const [formData, setFormData] = useState({
-    email: presetEmail || '',
-    password: '',
-    name: '',
-    company: '',
+    email: presetEmail || "",
+    password: "",
+    name: "",
+    company: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const googleEnabled = Boolean(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
   const [emailLocked, setEmailLocked] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.name === 'email' && emailLocked) return;
+    if (e.target.name === "email" && emailLocked) return;
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -58,10 +61,10 @@ function RegisterPageContent() {
     setInviteLoading(true);
     apiClient
       .get(`/workspaces/invitations/${inviteToken}`)
-      .then(response => {
+      .then((response) => {
         const email = response.data?.email;
-        if (typeof email === 'string' && email.trim()) {
-          setFormData(prev => ({ ...prev, email }));
+        if (typeof email === "string" && email.trim()) {
+          setFormData((prev) => ({ ...prev, email }));
           setEmailLocked(true);
         }
       })
@@ -75,25 +78,27 @@ function RegisterPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
 
     try {
-      const response = await apiClient.post('/auth/register', {
+      const response = await apiClient.post("/auth/register", {
         ...formData,
         invitationToken: inviteToken || undefined,
       });
 
       const { access_token, refresh_token, user } = response.data;
 
-      localStorage.setItem('access_token', access_token);
-      localStorage.setItem('refresh_token', refresh_token);
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem("access_token", access_token);
+      localStorage.setItem("refresh_token", refresh_token);
+      localStorage.setItem("user", JSON.stringify(user));
 
-      window.location.href = nextPath || '/';
+      window.location.href = nextPath || "/";
     } catch (err: any) {
       setError(
-        err.response?.data?.message || err.response?.data?.error?.message || t.registerFailed.value,
+        err.response?.data?.message ||
+          err.response?.data?.error?.message ||
+          t.registerFailed.value,
       );
     } finally {
       setLoading(false);
@@ -107,28 +112,28 @@ function RegisterPageContent() {
       x: 0,
       transition: {
         duration: 0.6,
-        ease: 'easeOut' as const,
+        ease: "easeOut" as const,
       },
     },
   };
 
   return (
-    <Grid key={locale} container sx={{ minHeight: '100vh' }}>
+    <Grid key={locale} container sx={{ minHeight: "100vh" }}>
       {/* Left Side - Form */}
       <Grid
         size={{ xs: 12, md: 6 }}
         sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          bgcolor: 'background.paper',
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          bgcolor: "background.paper",
           p: 4,
-          position: 'relative',
+          position: "relative",
           zIndex: 1,
         }}
       >
-        <Box sx={{ position: 'absolute', top: 16, right: 16 }}>
+        <Box sx={{ position: "absolute", top: 16, right: 16 }}>
           <AuthLanguageSwitcher />
         </Box>
 
@@ -138,28 +143,28 @@ function RegisterPageContent() {
           initial="hidden"
           animate="visible"
           sx={{
-            width: '100%',
+            width: "100%",
             maxWidth: 400,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
           <Box
             sx={{
               width: 60,
               height: 60,
-              borderRadius: '50%',
-              bgcolor: 'secondary.main',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              borderRadius: "50%",
+              bgcolor: "secondary.main",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               mb: 3,
-              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+              boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
             }}
           >
             <Typography variant="h4" color="white" fontWeight="bold">
-              F
+              📝
             </Typography>
           </Box>
 
@@ -177,12 +182,27 @@ function RegisterPageContent() {
           </Typography>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3, width: '100%', borderRadius: 2 }}>
+            <Alert
+              severity="error"
+              sx={{ mb: 3, width: "100%", borderRadius: 2 }}
+            >
               {error}
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+          {googleEnabled && (
+            <>
+              <GoogleAuthButton
+                inviteToken={inviteToken}
+                nextPath={nextPath}
+                onError={setError}
+                errorFallback={t.googleRegisterFailed.value}
+              />
+              <Divider sx={{ my: 2, width: "100%" }}>{t.orLabel}</Divider>
+            </>
+          )}
+
+          <Box component="form" onSubmit={handleSubmit} sx={{ width: "100%" }}>
             <TextField
               margin="normal"
               required
@@ -195,7 +215,7 @@ function RegisterPageContent() {
               value={formData.name}
               onChange={handleChange}
               InputProps={{
-                sx: { borderRadius: 2, bgcolor: 'background.default' },
+                sx: { borderRadius: 2, bgcolor: "background.default" },
               }}
             />
             <TextField
@@ -210,7 +230,7 @@ function RegisterPageContent() {
               onChange={handleChange}
               disabled={emailLocked || inviteLoading}
               InputProps={{
-                sx: { borderRadius: 2, bgcolor: 'background.default' },
+                sx: { borderRadius: 2, bgcolor: "background.default" },
               }}
             />
             <TextField
@@ -226,7 +246,7 @@ function RegisterPageContent() {
               onChange={handleChange}
               helperText={t.passwordHelper.value}
               InputProps={{
-                sx: { borderRadius: 2, bgcolor: 'background.default' },
+                sx: { borderRadius: 2, bgcolor: "background.default" },
               }}
             />
             <TextField
@@ -238,7 +258,7 @@ function RegisterPageContent() {
               value={formData.company}
               onChange={handleChange}
               InputProps={{
-                sx: { borderRadius: 2, bgcolor: 'background.default' },
+                sx: { borderRadius: 2, bgcolor: "background.default" },
               }}
               sx={{ mb: 3 }}
             />
@@ -250,19 +270,27 @@ function RegisterPageContent() {
               sx={{
                 py: 1.5,
                 borderRadius: 2,
-                fontSize: '1rem',
-                textTransform: 'none',
-                boxShadow: 'none',
+                fontSize: "1rem",
+                textTransform: "none",
+                boxShadow: "none",
               }}
               disabled={loading || inviteLoading}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : t.submit}
+              {loading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                t.submit
+              )}
             </Button>
             <Box textAlign="center" sx={{ mt: 3 }}>
               <Link
-                href={nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login'}
+                href={
+                  nextPath
+                    ? `/login?next=${encodeURIComponent(nextPath)}`
+                    : "/login"
+                }
                 variant="body2"
-                sx={{ textDecoration: 'none', fontWeight: 500 }}
+                sx={{ textDecoration: "none", fontWeight: 500 }}
               >
                 {t.haveAccount}
               </Link>
@@ -275,14 +303,14 @@ function RegisterPageContent() {
       <Grid
         size={{ xs: 12, md: 6 }}
         sx={{
-          display: { xs: 'none', md: 'flex' },
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
+          display: { xs: "none", md: "flex" },
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
           background: `linear-gradient(135deg, ${theme.palette.secondary.dark} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: 'white',
-          position: 'relative',
-          overflow: 'hidden',
+          color: "white",
+          position: "relative",
+          overflow: "hidden",
         }}
       >
         {/* Abstract Shapes */}
@@ -294,17 +322,17 @@ function RegisterPageContent() {
           transition={{
             duration: 12,
             repeat: Number.POSITIVE_INFINITY,
-            ease: 'easeInOut' as const,
+            ease: "easeInOut" as const,
           }}
           style={{
-            position: 'absolute',
-            top: '15%',
-            left: '15%',
+            position: "absolute",
+            top: "15%",
+            left: "15%",
             width: 350,
             height: 350,
-            borderRadius: '40%',
-            background: 'rgba(255, 255, 255, 0.05)',
-            filter: 'blur(40px)',
+            borderRadius: "40%",
+            background: "rgba(255, 255, 255, 0.05)",
+            filter: "blur(40px)",
           }}
         />
         <motion.div
@@ -315,21 +343,23 @@ function RegisterPageContent() {
           transition={{
             duration: 18,
             repeat: Number.POSITIVE_INFINITY,
-            ease: 'easeInOut' as const,
+            ease: "easeInOut" as const,
           }}
           style={{
-            position: 'absolute',
-            bottom: '20%',
-            right: '10%',
+            position: "absolute",
+            bottom: "20%",
+            right: "10%",
             width: 250,
             height: 250,
-            borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.05)',
-            filter: 'blur(40px)',
+            borderRadius: "50%",
+            background: "rgba(255, 255, 255, 0.05)",
+            filter: "blur(40px)",
           }}
         />
 
-        <Box sx={{ position: 'relative', zIndex: 1, textAlign: 'center', p: 4 }}>
+        <Box
+          sx={{ position: "relative", zIndex: 1, textAlign: "center", p: 4 }}
+        >
           <Typography variant="h2" fontWeight="bold" gutterBottom>
             {t.rightTitle}
           </Typography>
