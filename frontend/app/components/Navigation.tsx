@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { Button } from '@/app/components/ui/button';
+import { Button } from "@/app/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,11 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
-import { TourMenu } from '@/app/tours/components/TourMenu';
-import { ModeToggle } from '@/components/mode-toggle';
-import { type DriveStep, driver } from 'driver.js';
-import 'driver.js/dist/driver.css';
+} from "@/app/components/ui/dropdown-menu";
+import {
+  useIsAnyModalOpen,
+  useLockBodyScroll,
+} from "@/app/hooks/useLockBodyScroll";
+import { TourMenu } from "@/app/tours/components/TourMenu";
+import { ModeToggle } from "@/components/mode-toggle";
+import { type DriveStep, driver } from "driver.js";
+import "driver.js/dist/driver.css";
 import {
   BarChart,
   Check,
@@ -37,18 +41,24 @@ import {
   Users,
   Wallet,
   X,
-} from 'lucide-react';
-import { useIntlayer, useLocale } from 'next-intlayer';
-import { useTheme } from 'next-themes';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import toast from 'react-hot-toast';
-import { useAuth } from '../hooks/useAuth';
-import { usePermissions } from '../hooks/usePermissions';
+} from "lucide-react";
+import { useIntlayer, useLocale } from "next-intlayer";
+import { useTheme } from "next-themes";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+import toast from "react-hot-toast";
+import { useAuth } from "../hooks/useAuth";
+import { usePermissions } from "../hooks/usePermissions";
 
-type AppLanguage = 'ru' | 'en' | 'kk';
+type AppLanguage = "ru" | "en" | "kk";
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -62,27 +72,31 @@ export default function Navigation() {
     languageModal,
     languages: languageNames,
     tour,
-  } = useIntlayer('navigation');
+  } = useIntlayer("navigation");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [languageModalOpen, setLanguageModalOpen] = useState(false);
-  const [languageDraft, setLanguageDraft] = useState<AppLanguage>('ru');
+  const [languageDraft, setLanguageDraft] = useState<AppLanguage>("ru");
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
   const languageDropdownRef = useRef<HTMLDivElement | null>(null);
 
+  useLockBodyScroll(languageModalOpen || mobileMenuOpen);
+  const isAnyModalOpen = useIsAnyModalOpen();
+
   const getText = useCallback((token: unknown) => {
-    if (typeof token === 'string') return token;
-    if (token && typeof token === 'object' && 'value' in token) {
+    if (typeof token === "string") return token;
+    if (token && typeof token === "object" && "value" in token) {
       const value = (token as { value?: string }).value;
-      return typeof value === 'string' ? value : '';
+      return typeof value === "string" ? value : "";
     }
-    return '';
+    return "";
   }, []);
 
-  type PopoverType = NonNullable<DriveStep['popover']>;
+  type PopoverType = NonNullable<DriveStep["popover"]>;
 
   const buildTourSteps = useCallback<() => DriveStep[]>(() => {
-    if (typeof document === 'undefined') {
+    if (typeof document === "undefined") {
       return [];
     }
 
@@ -90,17 +104,21 @@ export default function Navigation() {
       const rect = element.getClientRects();
       if (!rect.length) return false;
       const style = window.getComputedStyle(element as HTMLElement);
-      return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+      return (
+        style.display !== "none" &&
+        style.visibility !== "hidden" &&
+        style.opacity !== "0"
+      );
     };
 
-    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
 
     type TourCandidate = {
       selector: string;
       title: string;
       description: string;
-      side?: PopoverType['side'];
-      align?: PopoverType['align'];
+      side?: PopoverType["side"];
+      align?: PopoverType["align"];
     };
 
     const candidates: TourCandidate[] = [
@@ -108,29 +126,29 @@ export default function Navigation() {
         selector: '[data-tour-id="brand"]',
         title: getText(tour.steps.brand.title),
         description: getText(tour.steps.brand.description),
-        side: 'bottom',
-        align: 'start',
+        side: "bottom",
+        align: "start",
       },
       {
         selector: '[data-tour-id="primary-nav"]',
         title: getText(tour.steps.navigation.title),
         description: getText(tour.steps.navigation.description),
-        side: 'bottom',
-        align: 'start',
+        side: "bottom",
+        align: "start",
       },
       {
         selector: '[data-tour-id="mode-toggle"]',
         title: getText(tour.steps.theme.title),
         description: getText(tour.steps.theme.description),
-        side: 'bottom',
-        align: 'end',
+        side: "bottom",
+        align: "end",
       },
       {
         selector: '[data-tour-id="user-menu-trigger"]',
         title: getText(tour.steps.userMenu.title),
         description: getText(tour.steps.userMenu.description),
-        side: 'bottom',
-        align: 'end',
+        side: "bottom",
+        align: "end",
       },
     ];
 
@@ -139,12 +157,12 @@ export default function Navigation() {
         selector: '[data-tour-id="mobile-menu-toggle"]',
         title: getText(tour.steps.mobileMenu.title),
         description: getText(tour.steps.mobileMenu.description),
-        side: 'bottom',
-        align: 'end',
+        side: "bottom",
+        align: "end",
       });
     }
 
-    return candidates.flatMap<DriveStep>(candidate => {
+    return candidates.flatMap<DriveStep>((candidate) => {
       const element = document.querySelector(candidate.selector);
       if (!element || !isElementVisible(element)) {
         return [];
@@ -156,8 +174,8 @@ export default function Navigation() {
           popover: {
             title: candidate.title,
             description: candidate.description,
-            side: candidate.side ?? 'bottom',
-            align: candidate.align ?? 'start',
+            side: candidate.side ?? "bottom",
+            align: candidate.align ?? "start",
           },
         },
       ];
@@ -173,13 +191,13 @@ export default function Navigation() {
   useEffect(() => {
     if (!mobileMenuOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileMenuOpen(false);
+      if (event.key === "Escape") setMobileMenuOpen(false);
     };
-    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
     const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = prevOverflow;
     };
   }, [mobileMenuOpen]);
@@ -192,21 +210,27 @@ export default function Navigation() {
         setLanguageDropdownOpen(false);
       }
     };
-    document.addEventListener('mousedown', onClickOutside);
-    return () => document.removeEventListener('mousedown', onClickOutside);
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
   }, [languageDropdownOpen]);
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [user?.avatarUrl]);
 
   const languages = useMemo(
     () =>
       [
         {
-          code: 'ru' as const,
+          code: "ru" as const,
           label: languageNames.ru.value,
           note: languageModal.defaultLanguageNote.value,
         },
-        { code: 'en' as const, label: languageNames.en.value },
-        { code: 'kk' as const, label: languageNames.kk.value },
-      ].filter(l => availableLocales.map(String).includes(l.code)) satisfies Array<{
+        { code: "en" as const, label: languageNames.en.value },
+        { code: "kk" as const, label: languageNames.kk.value },
+      ].filter((l) =>
+        availableLocales.map(String).includes(l.code),
+      ) satisfies Array<{
         code: AppLanguage;
         label: string;
         note?: string;
@@ -215,11 +239,14 @@ export default function Navigation() {
   );
 
   const languageLabel = useMemo(() => {
-    const normalizedLocale = (locale as AppLanguage) || 'ru';
-    return languages.find(l => l.code === normalizedLocale)?.label ?? languageNames.ru.value;
+    const normalizedLocale = (locale as AppLanguage) || "ru";
+    return (
+      languages.find((l) => l.code === normalizedLocale)?.label ??
+      languageNames.ru.value
+    );
   }, [locale, languages, languageNames.ru.value]);
 
-  const normalizedLocale = (locale as AppLanguage) || 'ru';
+  const normalizedLocale = (locale as AppLanguage) || "ru";
 
   if (!user) {
     return null;
@@ -228,68 +255,77 @@ export default function Navigation() {
   const navItems = [
     {
       label: nav.statements,
-      path: '/statements',
+      path: "/statements",
       icon: <FileText size={20} />,
-      permission: 'statement.view',
+      permission: "statement.view",
     },
     {
       label: nav.storage,
-      path: '/storage',
+      path: "/storage",
       icon: <Database size={20} />,
-      permission: 'statement.view',
+      permission: "statement.view",
     },
     {
       label: nav.dataEntry,
-      path: '/data-entry',
+      path: "/data-entry",
       icon: <Edit3 size={20} />,
-      permission: 'statement.upload',
+      permission: "statement.upload",
     },
     {
       label: nav.tables,
-      path: '/custom-tables',
+      path: "/custom-tables",
       icon: <Table size={20} />,
-      permission: 'statement.view',
+      permission: "statement.view",
     },
     {
       label: nav.reports,
-      path: '/reports',
+      path: "/reports",
       icon: <BarChart size={20} />,
-      permission: 'report.view',
-    },
-    {
-      label: nav.categories,
-      path: '/categories',
-      icon: <Tags size={20} />,
-      permission: 'category.view',
+      permission: "report.view",
     },
   ];
 
-  const visibleNavItems = navItems.filter(item => hasPermission(item.permission));
+  const visibleNavItems = navItems.filter((item) =>
+    hasPermission(item.permission),
+  );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-card/90 backdrop-blur supports-[backdrop-filter]:bg-card/85">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+    <header
+      className={`sticky top-0 z-50 border-b border-border bg-card/90 backdrop-blur supports-backdrop-filter:bg-card/85 transition-all duration-300 ${
+        isAnyModalOpen ? "backdrop-blur-md" : ""
+      }`}
+    >
+      <div className="container-shared px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-14">
           <div className="flex items-center">
-            <Link href="/" className="flex-shrink-0 flex items-center" data-tour-id="brand">
+            <Link
+              href="/"
+              className="shrink-0 flex items-center"
+              data-tour-id="brand"
+            >
               <Wallet className="h-8 w-8 text-primary mr-2" />
-              <span className="text-primary text-xl font-bold tracking-tight">FinFlow</span>
+              <span className="text-primary text-xl font-bold tracking-tight">
+                FinFlow
+              </span>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:ml-8 md:flex md:space-x-2" data-tour-id="primary-nav">
-              {visibleNavItems.map(item => {
+            <nav
+              className="hidden md:ml-8 md:flex md:space-x-2"
+              data-tour-id="primary-nav"
+            >
+              {visibleNavItems.map((item) => {
                 const isActive = pathname === item.path;
                 return (
                   <Link
                     key={item.path}
                     href={item.path}
                     className={`
-                      group inline-flex flex-col items-center justify-center px-3 pt-1 border-b-2 text-xs font-medium min-w-[64px] transition-colors duration-200
+                      group inline-flex flex-col items-center justify-center px-3 pt-1 border-b-2 text-xs font-medium min-w-16 transition-colors duration-200
                       ${
                         isActive
-                          ? 'border-primary text-primary'
-                          : 'border-transparent text-muted-foreground hover:text-primary hover:border-border'
+                          ? "border-primary text-primary"
+                          : "border-transparent text-muted-foreground hover:text-primary hover:border-border"
                       }
                     `}
                   >
@@ -318,13 +354,25 @@ export default function Navigation() {
                       data-tour-id="user-menu-trigger"
                     >
                       <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center overflow-hidden text-muted-foreground">
-                        <User size={16} />
+                        {user?.avatarUrl && !avatarError ? (
+                          <img
+                            src={user.avatarUrl}
+                            alt={user?.name || "User avatar"}
+                            className="h-full w-full object-cover"
+                            onError={() => setAvatarError(true)}
+                          />
+                        ) : (
+                          <User size={16} />
+                        )}
                       </div>
                       <div className="flex items-center mt-1">
                         <span className="truncate max-w-[90px] hidden sm:block">
                           {userMenu.profile}
                         </span>
-                        <ChevronDown size={12} className="ml-0.5 text-muted-foreground" />
+                        <ChevronDown
+                          size={12}
+                          className="ml-0.5 text-muted-foreground"
+                        />
                       </div>
                     </button>
                   </DropdownMenuTrigger>
@@ -355,9 +403,21 @@ export default function Navigation() {
                     <DropdownMenuItem asChild>
                       <Link href="/integrations">
                         <Plug size={18} className="text-muted-foreground" />
-                        <span className="text-base">{userMenu.integrations}</span>
+                        <span className="text-base">
+                          {userMenu.integrations}
+                        </span>
                       </Link>
                     </DropdownMenuItem>
+                    {hasPermission("category.view") && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/categories">
+                          <Tags size={18} className="text-muted-foreground" />
+                          <span className="text-base">
+                            {userMenu.categories}
+                          </span>
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
 
                     <DropdownMenuItem
                       onSelect={() => {
@@ -401,7 +461,7 @@ export default function Navigation() {
             {/* Mobile menu button */}
             <div className="flex items-center md:hidden">
               <button
-                onClick={() => setMobileMenuOpen(prev => !prev)}
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted focus:outline-none"
                 data-tour-id="mobile-menu-toggle"
                 aria-label="Open menu"
@@ -416,17 +476,19 @@ export default function Navigation() {
 
       {/* Mobile Drawer (slides from right) */}
       <div className="md:hidden">
-        <div className={`fixed inset-0 z-[70] ${mobileMenuOpen ? '' : 'pointer-events-none'}`}>
+        <div
+          className={`fixed inset-0 z-70 ${mobileMenuOpen ? "" : "pointer-events-none"}`}
+        >
           <div
-            className={`absolute inset-0 bg-black/40 transition-opacity duration-200 ${
-              mobileMenuOpen ? 'opacity-100' : 'opacity-0'
+            className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-200 ${
+              mobileMenuOpen ? "opacity-100" : "opacity-0"
             }`}
             role="button"
             tabIndex={0}
             aria-label="Close menu"
             onClick={() => setMobileMenuOpen(false)}
-            onKeyDown={event => {
-              if (event.key === 'Enter' || event.key === ' ') {
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
                 setMobileMenuOpen(false);
               }
@@ -435,26 +497,30 @@ export default function Navigation() {
 
           <dialog
             className={`absolute inset-y-0 right-0 w-[88vw] max-w-sm border-l border-gray-200 shadow-2xl transition-transform duration-300 ease-out bg-white ${
-              mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
+              mobileMenuOpen ? "translate-x-0" : "translate-x-full"
             }`}
             style={{
-              backgroundColor: 'white',
-              color: 'black',
-              border: 'none',
+              backgroundColor: "white",
+              color: "black",
+              border: "none",
               padding: 0,
               margin: 0,
             }}
             aria-modal="true"
             open
-            onCancel={event => {
+            onCancel={(event) => {
               event.preventDefault();
               setMobileMenuOpen(false);
             }}
           >
             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 bg-white">
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-gray-900 truncate">{user.name}</div>
-                <div className="text-xs text-gray-600 truncate">{user.email}</div>
+                <div className="text-sm font-semibold text-gray-900 truncate">
+                  {user.name}
+                </div>
+                <div className="text-xs text-gray-600 truncate">
+                  {user.email}
+                </div>
               </div>
               <button
                 type="button"
@@ -468,18 +534,24 @@ export default function Navigation() {
 
             <div className="px-2 py-2 overflow-y-auto h-[calc(100vh-64px)] bg-white">
               <div className="pt-1 pb-2">
-                {visibleNavItems.map(item => (
+                {visibleNavItems.map((item) => (
                   <Link
                     key={item.path}
                     href={item.path}
                     className={`flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium transition-colors bg-white ${
                       pathname === item.path
-                        ? 'bg-blue-50 text-blue-600'
-                        : 'text-gray-900 hover:bg-gray-100'
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-gray-900 hover:bg-gray-100"
                     }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
-                    <span className={pathname === item.path ? 'text-blue-600' : 'text-gray-600'}>
+                    <span
+                      className={
+                        pathname === item.path
+                          ? "text-blue-600"
+                          : "text-gray-600"
+                      }
+                    >
                       {item.icon}
                     </span>
                     <span className="flex-1">{item.label}</span>
@@ -519,6 +591,16 @@ export default function Navigation() {
                 <Plug size={18} className="text-gray-600" />
                 <span className="flex-1">{userMenu.integrations}</span>
               </Link>
+              {hasPermission("category.view") && (
+                <Link
+                  href="/categories"
+                  className="flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium text-gray-900 hover:bg-gray-100 transition-colors bg-white"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <Tags size={18} className="text-gray-600" />
+                  <span className="flex-1">{userMenu.categories}</span>
+                </Link>
+              )}
 
               <button
                 type="button"
@@ -554,22 +636,40 @@ export default function Navigation() {
 
               {(
                 [
-                  { key: 'light' as const, label: 'Light', icon: <Sun size={18} /> },
-                  { key: 'dark' as const, label: 'Dark', icon: <Moon size={18} /> },
-                  { key: 'system' as const, label: 'System', icon: <Laptop size={18} /> },
+                  {
+                    key: "light" as const,
+                    label: "Light",
+                    icon: <Sun size={18} />,
+                  },
+                  {
+                    key: "dark" as const,
+                    label: "Dark",
+                    icon: <Moon size={18} />,
+                  },
+                  {
+                    key: "system" as const,
+                    label: "System",
+                    icon: <Laptop size={18} />,
+                  },
                 ] as const
-              ).map(opt => {
-                const active = (selectedTheme || 'system') === opt.key;
+              ).map((opt) => {
+                const active = (selectedTheme || "system") === opt.key;
                 return (
                   <button
                     key={opt.key}
                     type="button"
                     className={`w-full flex items-center gap-3 rounded-xl px-3 py-3 text-base font-medium transition-colors bg-white ${
-                      active ? 'bg-blue-50 text-blue-600' : 'text-gray-900 hover:bg-gray-100'
+                      active
+                        ? "bg-blue-50 text-blue-600"
+                        : "text-gray-900 hover:bg-gray-100"
                     }`}
                     onClick={() => setTheme(opt.key)}
                   >
-                    <span className={active ? 'text-blue-600' : 'text-gray-600'}>{opt.icon}</span>
+                    <span
+                      className={active ? "text-blue-600" : "text-gray-600"}
+                    >
+                      {opt.icon}
+                    </span>
                     <span className="flex-1 text-left">{opt.label}</span>
                     {active && <Check size={18} />}
                   </button>
@@ -586,7 +686,7 @@ export default function Navigation() {
                   >
                     <PlayCircle size={18} className="text-gray-600" />
                     <span className="flex-1 text-left">
-                      {((nav as any)?.tours?.value as string) ?? 'Туры'}
+                      {((nav as any)?.tours?.value as string) ?? "Туры"}
                     </span>
                   </button>
                 }
@@ -612,14 +712,14 @@ export default function Navigation() {
       {portalReady &&
         languageModalOpen &&
         createPortal(
-          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-80 flex items-center justify-center p-4">
             <div
               className="absolute inset-0 bg-black/30 backdrop-blur-sm"
               role="button"
               tabIndex={0}
               onClick={() => setLanguageModalOpen(false)}
-              onKeyDown={event => {
-                if (event.key === 'Enter' || event.key === ' ') {
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   setLanguageModalOpen(false);
                 }
@@ -643,13 +743,13 @@ export default function Navigation() {
                 <div ref={languageDropdownRef} className="relative">
                   <button
                     type="button"
-                    onClick={() => setLanguageDropdownOpen(prev => !prev)}
+                    onClick={() => setLanguageDropdownOpen((prev) => !prev)}
                     className="w-full flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 text-base hover:border-primary/50 hover:bg-primary/5 transition-colors"
                   >
                     <div className="flex items-center gap-2">
                       <span className="font-medium">
-                        {languages.find(l => l.code === languageDraft)?.label ??
-                          languageNames.ru.value}
+                        {languages.find((l) => l.code === languageDraft)
+                          ?.label ?? languageNames.ru.value}
                       </span>
                     </div>
                     <ChevronDown size={16} className="text-muted-foreground" />
@@ -658,7 +758,7 @@ export default function Navigation() {
                   {languageDropdownOpen && (
                     <div className="transition-[max-height] duration-200 ease-out max-h-64 mt-3">
                       <div className="rounded-xl border border-border bg-card shadow-lg max-h-64 overflow-y-auto">
-                        {languages.map(lang => {
+                        {languages.map((lang) => {
                           const selected = languageDraft === lang.code;
                           return (
                             <button
@@ -670,11 +770,13 @@ export default function Navigation() {
                               }}
                               className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
                                 selected
-                                  ? 'bg-primary/10 text-foreground'
-                                  : 'hover:bg-muted text-foreground'
+                                  ? "bg-primary/10 text-foreground"
+                                  : "hover:bg-muted text-foreground"
                               }`}
                             >
-                              <span className="flex-1 font-medium">{lang.label}</span>
+                              <span className="flex-1 font-medium">
+                                {lang.label}
+                              </span>
                               {selected && (
                                 <span className="flex items-center gap-1 text-xs text-primary">
                                   <Check size={14} />
@@ -702,9 +804,11 @@ export default function Navigation() {
                     setLocale(languageDraft);
                     setLanguageModalOpen(false);
                     const selectedLabel =
-                      languages.find(l => l.code === languageDraft)?.label ??
+                      languages.find((l) => l.code === languageDraft)?.label ??
                       languageNames.ru.value;
-                    toast.success(`${languageModal.savedToastPrefix.value}: ${selectedLabel}`);
+                    toast.success(
+                      `${languageModal.savedToastPrefix.value}: ${selectedLabel}`,
+                    );
                     setTimeout(() => {
                       window.location.reload();
                     }, 50);

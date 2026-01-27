@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Image from "next/image";
-import pdfIcon from "../../public/images/pdf.png";
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
+import pdfIcon from '../../public/images/pdf.png';
 
 interface PDFThumbnailProps {
   fileId: string;
@@ -11,17 +11,11 @@ interface PDFThumbnailProps {
   className?: string;
 }
 
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? "/api/v1").replace(
-  /\/$/,
-  "",
-);
+const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '/api/v1').replace(/\/$/, '');
 
-export function PDFThumbnail({
-  fileId,
-  fileName,
-  size = 40,
-  className = "",
-}: PDFThumbnailProps) {
+const thumbnailCache = new Map<string, string>();
+
+export function PDFThumbnail({ fileId, fileName, size = 40, className = '' }: PDFThumbnailProps) {
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [thumbnailDataUrl, setThumbnailDataUrl] = useState<string | null>(null);
@@ -30,8 +24,22 @@ export function PDFThumbnail({
     let isMounted = true;
 
     const fetchThumbnail = async () => {
+      // Check in-memory cache first
+      if (thumbnailCache.has(fileId)) {
+        const cached = thumbnailCache.get(fileId);
+        if (isMounted) {
+          if (cached) {
+            setThumbnailDataUrl(cached);
+          } else {
+            setError(true);
+          }
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
-        const token = localStorage.getItem("access_token");
+        const token = localStorage.getItem('access_token');
 
         if (!token) {
           setError(true);
@@ -42,11 +50,12 @@ export function PDFThumbnail({
         const thumbnailUrl = `${apiBaseUrl}/statements/${fileId}/thumbnail`;
 
         const response = await fetch(thumbnailUrl, {
-          method: "GET",
+          method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          credentials: "include",
+          credentials: 'include',
+          cache: 'default',
         });
 
         if (!response.ok) {
@@ -58,12 +67,18 @@ export function PDFThumbnail({
         }
 
         const blob = await response.blob();
-        const dataUrl = URL.createObjectURL(blob);
 
-        if (isMounted) {
-          setThumbnailDataUrl(dataUrl);
-          setLoading(false);
-        }
+        // Convert Blob to Base64 Data URL for safe caching
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          thumbnailCache.set(fileId, base64data);
+          if (isMounted) {
+            setThumbnailDataUrl(base64data);
+            setLoading(false);
+          }
+        };
+        reader.readAsDataURL(blob);
       } catch (err) {
         if (isMounted) {
           setError(true);
@@ -76,19 +91,13 @@ export function PDFThumbnail({
 
     return () => {
       isMounted = false;
-      if (thumbnailDataUrl) {
-        URL.revokeObjectURL(thumbnailDataUrl);
-      }
     };
-  }, [fileId, thumbnailDataUrl]);
+  }, [fileId]);
 
   // If error occurred, show default PDF icon
   if (error) {
     return (
-      <div
-        className="flex items-center justify-center"
-        style={{ width: size, height: size }}
-      >
+      <div className="flex items-center justify-center" style={{ width: size, height: size }}>
         <Image
           src={pdfIcon}
           alt="PDF"
@@ -114,9 +123,9 @@ export function PDFThumbnail({
       {thumbnailDataUrl && (
         <img
           src={thumbnailDataUrl}
-          alt={fileName || "PDF thumbnail"}
+          alt={fileName || 'PDF thumbnail'}
           className={`w-full h-full object-contain ${className}`}
-          style={{ transition: "opacity 0.2s" }}
+          style={{ transition: 'opacity 0.2s' }}
         />
       )}
     </div>

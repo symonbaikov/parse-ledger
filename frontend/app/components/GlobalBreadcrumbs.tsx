@@ -1,43 +1,58 @@
-'use client';
+"use client";
 
-import { useIntlayer } from 'next-intlayer';
-import { usePathname } from 'next/navigation';
-import { useMemo } from 'react';
-import Breadcrumbs from './Breadcrumbs';
+import { useIntlayer } from "next-intlayer";
+import { usePathname } from "next/navigation";
+import { useMemo } from "react";
+import Breadcrumbs from "./Breadcrumbs";
 
-const HIDDEN_PATHS = new Set<string>(['/login', '/register', '/auth', '/auth/callback']);
+const HIDDEN_PATHS = new Set<string>([
+  "/login",
+  "/register",
+  "/auth",
+  "/auth/callback",
+]);
 
-const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+const capitalize = (value: string) =>
+  value.charAt(0).toUpperCase() + value.slice(1);
 
 const resolveBreadcrumbHref = (slug: string) => {
-  if (slug === 'settings') return '/settings/profile';
+  if (slug === "settings") return "/settings/profile";
+  if (slug === "custom-tables/import") return "/custom-tables?import=1";
   return `/${slug}`;
 };
 
 export default function GlobalBreadcrumbs() {
-  const pathname = usePathname() || '/';
-  const { labels } = useIntlayer('breadcrumbs') as { labels: Record<string, string> };
+  const pathname = usePathname() || "/";
+  const { labels } = useIntlayer("breadcrumbs") as {
+    labels: Record<string, string>;
+  };
 
   const items = useMemo(() => {
     if (HIDDEN_PATHS.has(pathname)) return [];
-    if (pathname === '/') return [];
+    if (pathname === "/") return [];
 
-    const segments = pathname.split('/').filter(Boolean);
+    const segments = pathname.split("/").filter(Boolean);
     const crumbs = segments.map((_, idx) => {
-      const slug = segments.slice(0, idx + 1).join('/');
-      const label = labels?.[slug] || capitalize(segments[idx]);
-      const href = idx === segments.length - 1 ? undefined : resolveBreadcrumbHref(slug);
+      const slug = segments.slice(0, idx + 1).join("/");
+      const label =
+        labels?.[slug] ||
+        (segments[idx].length > 20 ? "Details" : capitalize(segments[idx]));
+      const href =
+        idx === segments.length - 1 ? undefined : resolveBreadcrumbHref(slug);
       return { label, href };
     });
 
-    return [{ label: labels?.[''] || 'Home', href: '/' }, ...crumbs];
+    return [{ label: labels?.[""] || "Home", href: "/" }, ...crumbs];
   }, [labels, pathname]);
 
   if (!items.length) return null;
 
   return (
-    <div data-global-breadcrumbs className="bg-card/70 backdrop-blur-sm border-b border-border">
-      <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-3">
+    <div
+      data-global-breadcrumbs
+      className="bg-card/70 backdrop-blur-sm border-b border-border"
+    >
+      <div className="container-shared px-4 sm:px-6 lg:px-8 py-3">
         <Breadcrumbs items={items} />
       </div>
     </div>

@@ -34,6 +34,7 @@ import {
 } from '@mui/material';
 import { useIntlayer, useLocale } from 'next-intlayer';
 import React, { useState } from 'react';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import api from '../lib/api';
 
 interface Permission {
@@ -71,6 +72,8 @@ export default function PermissionsPanel({
   const { locale } = useLocale();
   const [grantDialogOpen, setGrantDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  // useLockBodyScroll(grantDialogOpen || editDialogOpen);
   const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null);
 
   // Grant form state
@@ -192,7 +195,14 @@ export default function PermissionsPanel({
   return (
     <Box>
       <Paper sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 3,
+          }}
+        >
           <Typography variant="h6">
             {t.title.value} ({permissions.length})
           </Typography>

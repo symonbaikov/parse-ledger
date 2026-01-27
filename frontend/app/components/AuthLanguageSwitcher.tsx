@@ -6,6 +6,7 @@ import { useIntlayer, useLocale } from 'next-intlayer';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
+import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 
 type AppLanguage = 'ru' | 'en' | 'kk';
 
@@ -17,6 +18,8 @@ export function AuthLanguageSwitcher() {
   const [languageDropdownOpen, setLanguageDropdownOpen] = useState(false);
   const [portalReady, setPortalReady] = useState(false);
   const languageDropdownRef = useRef<HTMLDivElement>(null);
+
+  useLockBodyScroll(languageModalOpen);
 
   useEffect(() => setPortalReady(true), []);
 
@@ -69,7 +72,7 @@ export function AuthLanguageSwitcher() {
       {portalReady &&
         languageModalOpen &&
         createPortal(
-          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-80 flex items-center justify-center p-4">
             <div
               className="absolute inset-0 bg-black/30 backdrop-blur-sm"
               role="button"

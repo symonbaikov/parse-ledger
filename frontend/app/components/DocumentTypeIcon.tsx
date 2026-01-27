@@ -3,6 +3,7 @@
 import { FileImage, FileSpreadsheet, FileText } from 'lucide-react';
 import Image from 'next/image';
 import pdfIcon from '../../public/images/pdf.png';
+import { PDFThumbnail } from './PDFThumbnail';
 
 const normalizeType = (fileType?: string, fileName?: string): string => {
   const type = (fileType || '').trim().toLowerCase();
@@ -18,6 +19,7 @@ const normalizeType = (fileType?: string, fileName?: string): string => {
 export function DocumentTypeIcon(props: {
   fileType?: string;
   fileName?: string;
+  fileId?: string;
   size?: number;
   className?: string;
 }) {
@@ -27,6 +29,17 @@ export function DocumentTypeIcon(props: {
   const isPdf =
     type === 'pdf' || type.includes('pdf') || type.endsWith('/pdf') || type === 'application/pdf';
   if (isPdf) {
+    // If fileId is provided, show thumbnail; otherwise show static icon
+    if (props.fileId) {
+      return (
+        <PDFThumbnail
+          fileId={props.fileId}
+          fileName={props.fileName}
+          size={size}
+          className={props.className}
+        />
+      );
+    }
     const pdfSize = Math.round((size || 20) * 2);
     return (
       <Image
