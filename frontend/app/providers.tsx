@@ -27,7 +27,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <ThemeProvider theme={muiTheme}>
         <CssBaseline />
         <Toaster
-          position="top-right"
+          position="top-center"
           toastOptions={{
             duration: 3000,
             style: {

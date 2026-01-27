@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import "ag-grid-community/styles/ag-grid.css";
-@import "ag-grid-community/styles/ag-theme-quartz.css";
 @import "./tours/tour-theme.css";
 
 /* Use `.dark` class for Tailwind's `dark:` variant (so it follows our app theme toggle, not OS preference). */
@@ -81,11 +79,19 @@ body {
   background-color: var(--background);
   color: var(--foreground);
   font-family:
-    -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Fira Sans", Ubuntu, Oxygen, "Oxygen Sans", Cantarell, "Droid Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Lucida Grande", Helvetica, Arial, sans-serif;
+    -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", "Fira Sans", Ubuntu, Oxygen, "Oxygen Sans", Cantarell,
+    "Droid Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Lucida Grande", Helvetica, Arial, sans-serif;
   margin: 0;
   padding: 0;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Container for shared layout alignment (Full Width) */
+.container-shared {
+  width: 100%;
 }
 
 /*
@@ -157,8 +163,14 @@ body {
   border-color: var(--border-color);
 }
 
-.dark .divide-gray-100:not([class*="dark:divide-"]) > :not([hidden]) ~ :not([hidden]),
-.dark .divide-gray-200:not([class*="dark:divide-"]) > :not([hidden]) ~ :not([hidden]) {
+.dark
+  .divide-gray-100:not([class*="dark:divide-"])
+  > :not([hidden])
+  ~ :not([hidden]),
+.dark
+  .divide-gray-200:not([class*="dark:divide-"])
+  > :not([hidden])
+  ~ :not([hidden]) {
   border-color: var(--border-color);
 }
 
@@ -272,7 +284,11 @@ body {
 /* React Day Picker: align default variables with dark theme tokens. */
 .dark .rdp-root {
   --rdp-accent-color: var(--primary);
-  --rdp-accent-background-color: color-mix(in srgb, var(--primary) 18%, transparent);
+  --rdp-accent-background-color: color-mix(
+    in srgb,
+    var(--primary) 18%,
+    transparent
+  );
 }
 
 /* Custom Tables: in-app fullscreen mode (hides global navigation/breadcrumbs). */
@@ -285,6 +301,26 @@ body.ff-table-fullscreen > [data-global-breadcrumbs] {
   display: none;
 }
 
+body.ff-table-fullscreen.ff-table-columns-scroll {
+  overflow: auto;
+}
+
+body.ff-table-fullscreen.ff-table-columns-scroll > main {
+  height: auto;
+  overflow: visible;
+}
+
+/* Custom Tables row fill styling */
+.custom-table-container tr.row-fill td {
+  background-color: inherit;
+}
+
+.custom-table-container tr.row-fill td input,
+.custom-table-container tr.row-fill td select,
+.custom-table-container tr.row-fill td textarea {
+  background-color: transparent;
+}
+
 body.ff-table-fullscreen > main {
   height: 100vh;
   overflow: hidden;
@@ -293,130 +329,4 @@ body.ff-table-fullscreen > main {
 /* Custom Tables: disable selection while resizing columns. */
 body.ff-col-resizing {
   user-select: none;
-}
-
-.ag-theme-quartz .ff-cell-range-selected {
-  background-color: rgba(26, 115, 232, 0.16) !important;
-  color: inherit;
-}
-
-.ag-theme-quartz .ff-cell-range-selected .ag-cell-wrapper {
-  background-color: transparent !important;
-}
-
-/* Custom Tables: column selection styling with blue highlight */
-.ag-theme-quartz .ag-header-row .ag-header-cell.ff-col-selected {
-  background-color: rgba(59, 130, 246, 0.2) !important;
-  position: relative;
-  transition: background-color 0.15s ease;
-}
-
-.ag-theme-quartz .ag-header-row .ag-header-cell.ff-col-selected::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border: 2px solid rgb(59, 130, 246);
-  border-bottom: none;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.ag-theme-quartz .ag-header-row .ag-header-cell.ff-col-selected:hover {
-  background-color: rgba(59, 130, 246, 0.25) !important;
-}
-
-.ag-theme-quartz .ag-row .ag-cell.ff-col-selected-cell {
-  background-color: rgba(59, 130, 246, 0.1) !important;
-  position: relative;
-  transition: background-color 0.15s ease;
-  border-left: 2px solid rgb(59, 130, 246) !important;
-  border-right: 2px solid rgb(59, 130, 246) !important;
-}
-
-/* Top border for first row cells */
-.ag-theme-quartz .ag-row:first-child .ag-cell.ff-col-selected-cell {
-  border-top: 2px solid rgb(59, 130, 246) !important;
-}
-
-/* Bottom border for last row cells */
-.ag-theme-quartz .ag-row:last-child .ag-cell.ff-col-selected-cell {
-  border-bottom: 2px solid rgb(59, 130, 246) !important;
-}
-
-/* Override AG Grid's default range selection colors to match our blue theme */
-.ag-theme-quartz {
-  --ag-range-selection-background-color: rgba(59, 130, 246, 0.15);
-  --ag-range-selection-background-color-2: rgba(59, 130, 246, 0.15);
-  --ag-range-selection-background-color-3: rgba(59, 130, 246, 0.15);
-  --ag-range-selection-background-color-4: rgba(59, 130, 246, 0.15);
-  --ag-range-selection-border-color: rgb(59, 130, 246);
-  --ag-range-selection-border-style: solid;
-  --ag-range-selection-highlight-color: rgb(59, 130, 246);
-  --ag-range-selection-chart-background-color: rgba(59, 130, 246, 0.2);
-  --ag-range-selection-chart-category-background-color: rgba(59, 130, 246, 0.25);
-}
-
-/* Cell range selection styling */
-.ag-theme-quartz .ag-cell-range-selected:not(.ag-cell-inline-editing) {
-  background-color: rgba(59, 130, 246, 0.15) !important;
-}
-
-.ag-theme-quartz .ag-cell-range-selected-1:not(.ag-cell-inline-editing) {
-  background-color: rgba(59, 130, 246, 0.15) !important;
-}
-
-/* Range border styling for better visibility */
-.ag-theme-quartz .ag-cell.ag-cell-range-selected:not(.ag-cell-range-single-cell).ag-cell-range-top {
-  border-top: 2px solid rgb(59, 130, 246) !important;
-}
-
-.ag-theme-quartz
-  .ag-cell.ag-cell-range-selected:not(.ag-cell-range-single-cell).ag-cell-range-right {
-  border-right: 2px solid rgb(59, 130, 246) !important;
-}
-
-.ag-theme-quartz
-  .ag-cell.ag-cell-range-selected:not(.ag-cell-range-single-cell).ag-cell-range-bottom {
-  border-bottom: 2px solid rgb(59, 130, 246) !important;
-}
-
-.ag-theme-quartz
-  .ag-cell.ag-cell-range-selected:not(.ag-cell-range-single-cell).ag-cell-range-left {
-  border-left: 2px solid rgb(59, 130, 246) !important;
-}
-
-/* Single cell selection */
-.ag-theme-quartz .ag-cell.ag-cell-range-single-cell {
-  border: 2px solid rgb(59, 130, 246) !important;
-  background-color: rgba(59, 130, 246, 0.15) !important;
-}
-
-/* Range handle (fill handle) styling */
-.ag-theme-quartz .ag-fill-handle {
-  background-color: rgb(59, 130, 246) !important;
-  border: 1px solid rgb(59, 130, 246) !important;
-  width: 8px !important;
-  height: 8px !important;
-}
-
-.ag-theme-quartz .ag-range-handle {
-  background-color: rgb(59, 130, 246) !important;
-  border: 1px solid white !important;
-  width: 8px !important;
-  height: 8px !important;
-}
-
-/* Enhance the header cell selection cursor */
-.ag-theme-quartz .ag-header-cell .ag-header-cell-label {
-  cursor: pointer;
-  user-select: none;
-}
-
-/* Make header cells more responsive to hover */
-.ag-theme-quartz .ag-header-cell:hover:not(.ff-col-selected) {
-  background-color: rgba(0, 0, 0, 0.03);
-  transition: background-color 0.15s ease;
 }
