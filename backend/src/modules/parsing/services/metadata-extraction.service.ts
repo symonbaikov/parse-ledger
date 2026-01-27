@@ -1,6 +1,6 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { ExtractedMetadata as EnhancedExtractedMetadata } from "../interfaces/enhanced-parsed-statement.interface";
-import { ParsedStatementMetadata } from "../interfaces/parsed-statement.interface";
+import { Injectable, Logger } from '@nestjs/common';
+import { ExtractedMetadata as EnhancedExtractedMetadata } from '../interfaces/enhanced-parsed-statement.interface';
+import { ParsedStatementMetadata } from '../interfaces/parsed-statement.interface';
 
 export interface ExtractedMetadata extends EnhancedExtractedMetadata {
   period: {
@@ -30,7 +30,7 @@ export interface ExtractedMetadata extends EnhancedExtractedMetadata {
 }
 
 export interface HeaderPattern {
-  type: "statement_type" | "period" | "account" | "currency" | "institution";
+  type: 'statement_type' | 'period' | 'account' | 'currency' | 'institution';
   patterns: RegExp[];
   languages: string[];
   priority: number;
@@ -53,20 +53,20 @@ export class MetadataExtractionService {
   private readonly headerPatterns: HeaderPattern[] = [
     // Statement type patterns
     {
-      type: "statement_type",
+      type: 'statement_type',
       patterns: [
         /\b(?:выписка|statement|распечатка|extract|отчет|report)\b/gi,
         /\b(?:по счету|for account|счет|account)\b/gi,
         /\b(?:движение средств|transaction history|операции|operations)\b/gi,
       ],
-      languages: ["ru", "en", "kk"],
+      languages: ['ru', 'en', 'kk'],
       priority: 1,
-      extractor: (match) => ({ type: "statement", source: match[0] }),
+      extractor: match => ({ type: 'statement', source: match[0] }),
     },
 
     // Period patterns - comprehensive date range detection
     {
-      type: "period",
+      type: 'period',
       patterns: [
         // Russian patterns
         /\b(?:за период|период|c|с|по|от)\s+(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4})\s*(?:по|до|по)\s+(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4})\b/gi,
@@ -85,9 +85,9 @@ export class MetadataExtractionService {
         // Month-year range
         /\b(?:январь|февраль|март|апрель|май|июнь|июль|август|сентябрь|октябрь|ноябрь|декабрь|january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})\b/gi,
       ],
-      languages: ["ru", "en", "kk"],
+      languages: ['ru', 'en', 'kk'],
       priority: 2,
-      extractor: (match) => {
+      extractor: match => {
         const dateStr1 = match[1] || match[0];
         const dateStr2 = match[2] || null;
 
@@ -105,7 +105,7 @@ export class MetadataExtractionService {
 
     // Account number patterns
     {
-      type: "account",
+      type: 'account',
       patterns: [
         // Russian account patterns
         /\b(?:счет|номер счета|аккаунт|account №?|р\/с|расчетный счет)\s*[:#]?\s*(\w[\w\s\d-]{10,30})\b/gi,
@@ -116,12 +116,12 @@ export class MetadataExtractionService {
         /\b(?:шот|нөмірі|іік)\s*[:#]?\s*(\w[\w\s\d-]{10,30})\b/gi,
         /\b(KZ\d{3}[A-Z0-9]{13})\b/g, // Kazakh IBAN
       ],
-      languages: ["ru", "en", "kk"],
+      languages: ['ru', 'en', 'kk'],
       priority: 3,
-      extractor: (match) => {
+      extractor: match => {
         const accountNumber = match[1] || match[0];
         return {
-          number: accountNumber.replace(/\s+/g, "").trim(),
+          number: accountNumber.replace(/\s+/g, '').trim(),
           type: this.detectAccountType(accountNumber),
         };
       },
@@ -129,7 +129,7 @@ export class MetadataExtractionService {
 
     // Currency patterns
     {
-      type: "currency",
+      type: 'currency',
       patterns: [
         // ISO currency codes
         /\b(KZT|USD|EUR|RUB|GBP|CNY|JPY|CHF|CAD|AUD|NZD|SGD|HKD|SEK|NOK|DKK|PLN|CZK|HUF|RON|BGN|HRK|TRY|ILS|INR|KRW|THB|MYR|PHP|IDR|VND|MXN|BRL|ARS|CLP|COP|PEN|UYU|ZAR|EGP|SAR|AED)\b/g,
@@ -140,23 +140,9 @@ export class MetadataExtractionService {
         // Currency names in different languages
         /\b(?:тенге|доллар|евро|рубль|фунт|юань|иена|франк|манат|дирхам|рупия|вона|бат|песо|реал|лари|манат|ларі|сомони|лэк|злотый|крона|крона|крона|форинт|лей|лев|динар|драм|тугрик|сум)\b/gi,
       ],
-      languages: [
-        "ru",
-        "en",
-        "kk",
-        "de",
-        "fr",
-        "es",
-        "it",
-        "pt",
-        "tr",
-        "ar",
-        "zh",
-        "ja",
-        "ko",
-      ],
+      languages: ['ru', 'en', 'kk', 'de', 'fr', 'es', 'it', 'pt', 'tr', 'ar', 'zh', 'ja', 'ko'],
       priority: 4,
-      extractor: (match) => {
+      extractor: match => {
         const code = match[1] || match[0];
         const currency = this.mapCurrencyCode(code);
         return {
@@ -168,7 +154,7 @@ export class MetadataExtractionService {
 
     // Institution patterns
     {
-      type: "institution",
+      type: 'institution',
       patterns: [
         // Bank names with common variations
         /\b(?:АО|ТОО|АКБ|НБ|ЦБ)\s+["«]?([^"»\n]{3,50})["»]?\b/gi,
@@ -181,9 +167,9 @@ export class MetadataExtractionService {
         /\b(?:филиал|branch|отделение|office)\s*[:#]?\s*([^,\n]{3,50})\b/gi,
         /\b(?:БИК|BIC|SWIFT|BIC)\s*[:#]?\s*([A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?)\b/gi,
       ],
-      languages: ["ru", "en", "kk"],
+      languages: ['ru', 'en', 'kk'],
       priority: 5,
-      extractor: (match) => {
+      extractor: match => {
         const name = match[1] || match[0];
         return {
           name: name.trim(),
@@ -196,82 +182,79 @@ export class MetadataExtractionService {
   // Institution profiles for better recognition
   private readonly institutionProfiles: InstitutionProfile[] = [
     {
-      name: "Kazkommertsbank",
-      patterns: ["казкоммерцбанк", "kazkomertsbank", "kkb"],
-      defaultCurrency: "KZT",
-      country: "KZ",
-      locale: "ru",
+      name: 'Kazkommertsbank',
+      patterns: ['казкоммерцбанк', 'kazkomertsbank', 'kkb'],
+      defaultCurrency: 'KZT',
+      country: 'KZ',
+      locale: 'ru',
     },
     {
-      name: "Halyk Bank",
-      patterns: ["народный банк", "halyk bank", "halyk", "народный"],
-      defaultCurrency: "KZT",
-      country: "KZ",
-      locale: "ru",
+      name: 'Halyk Bank',
+      patterns: ['народный банк', 'halyk bank', 'halyk', 'народный'],
+      defaultCurrency: 'KZT',
+      country: 'KZ',
+      locale: 'ru',
     },
     {
-      name: "Bank CenterCredit",
-      patterns: ["банк центркредит", "bank centercredit", "центркредит", "bcc"],
-      defaultCurrency: "KZT",
-      country: "KZ",
-      locale: "ru",
+      name: 'Bank CenterCredit',
+      patterns: ['банк центркредит', 'bank centercredit', 'центркредит', 'bcc'],
+      defaultCurrency: 'KZT',
+      country: 'KZ',
+      locale: 'ru',
     },
     {
-      name: "ATFBank",
-      patterns: ["атфбанк", "atfbank", "а т ф"],
-      defaultCurrency: "KZT",
-      country: "KZ",
-      locale: "ru",
+      name: 'ATFBank',
+      patterns: ['атфбанк', 'atfbank', 'а т ф'],
+      defaultCurrency: 'KZT',
+      country: 'KZ',
+      locale: 'ru',
     },
     {
-      name: "Eurasian Bank",
-      patterns: ["евразийский банк", "eurasian bank", "евразийский"],
-      defaultCurrency: "KZT",
-      country: "KZ",
-      locale: "ru",
+      name: 'Eurasian Bank',
+      patterns: ['евразийский банк', 'eurasian bank', 'евразийский'],
+      defaultCurrency: 'KZT',
+      country: 'KZ',
+      locale: 'ru',
     },
     {
-      name: "Kaspi Bank",
-      patterns: ["каспи банк", "kaspi bank", "каспи"],
-      defaultCurrency: "KZT",
-      country: "KZ",
-      locale: "ru",
+      name: 'Kaspi Bank',
+      patterns: ['каспи банк', 'kaspi bank', 'каспи'],
+      defaultCurrency: 'KZT',
+      country: 'KZ',
+      locale: 'ru',
     },
     {
-      name: "Bereke Bank",
-      patterns: ["береке банк", "bereke bank", "береке"],
-      defaultCurrency: "KZT",
-      country: "KZ",
-      locale: "ru",
+      name: 'Bereke Bank',
+      patterns: ['береке банк', 'bereke bank', 'береке'],
+      defaultCurrency: 'KZT',
+      country: 'KZ',
+      locale: 'ru',
     },
     {
-      name: "Alfa-Bank",
-      patterns: ["альфа-банк", "alfa-bank", "альфа"],
-      defaultCurrency: "RUB",
-      country: "RU",
-      locale: "ru",
+      name: 'Alfa-Bank',
+      patterns: ['альфа-банк', 'alfa-bank', 'альфа'],
+      defaultCurrency: 'RUB',
+      country: 'RU',
+      locale: 'ru',
     },
     {
-      name: "Tinkoff",
-      patterns: ["тинькофф", "tinkoff", "тинькофф банк"],
-      defaultCurrency: "RUB",
-      country: "RU",
-      locale: "ru",
+      name: 'Tinkoff',
+      patterns: ['тинькофф', 'tinkoff', 'тинькофф банк'],
+      defaultCurrency: 'RUB',
+      country: 'RU',
+      locale: 'ru',
     },
   ];
 
-  async extractMetadata(
-    rawText: string,
-    locale?: string,
-  ): Promise<ExtractedMetadata> {
-    this.logger.log("Starting metadata extraction");
+  async extractMetadata(rawText: string, locale?: string): Promise<ExtractedMetadata> {
+    this.logger.log('Starting metadata extraction');
 
     const cleanedText = this.preprocessText(rawText);
     const metadata: Partial<ExtractedMetadata> = {
       rawHeader: this.extractHeaderSection(cleanedText),
       additionalInfo: {},
       confidence: 0,
-      extractionMethod: "hybrid",
+      extractionMethod: 'hybrid',
     };
 
     // Extract different types of metadata
@@ -284,10 +267,7 @@ export class MetadataExtractionService {
         const result = this.extractByPattern(cleanedText, pattern);
         if (result) {
           this.mergeExtractionResult(metadata, pattern.type, result);
-          metadata.confidence = Math.min(
-            1,
-            (metadata.confidence || 0) + pattern.priority * 0.1,
-          );
+          metadata.confidence = Math.min(1, (metadata.confidence || 0) + pattern.priority * 0.1);
         }
       } catch (error) {
         this.logger.warn(`Failed to extract ${pattern.type}: ${error.message}`);
@@ -295,18 +275,18 @@ export class MetadataExtractionService {
     }
 
     // Post-processing and normalization
-    metadata.normalizedHeader = this.normalizeHeader(metadata.rawHeader || "");
+    metadata.normalizedHeader = this.normalizeHeader(metadata.rawHeader || '');
 
     // Extract enhanced header information
     metadata.headerInfo = this.extractHeaderInfo(metadata, locale);
 
     // Determine extraction method based on confidence
     if (metadata.confidence > 0.8) {
-      metadata.extractionMethod = "regex";
+      metadata.extractionMethod = 'regex';
     } else if (metadata.confidence > 0.5) {
-      metadata.extractionMethod = "heuristic";
+      metadata.extractionMethod = 'heuristic';
     } else {
-      metadata.extractionMethod = "ml"; // Would use ML in production
+      metadata.extractionMethod = 'ml'; // Would use ML in production
     }
 
     // Fill in missing information with defaults
@@ -320,16 +300,12 @@ export class MetadataExtractionService {
   }
 
   private preprocessText(text: string): string {
-    return text
-      .replace(/\r\n/g, "\n")
-      .replace(/\t/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+    return text.replace(/\r\n/g, '\n').replace(/\t/g, ' ').replace(/\s+/g, ' ').trim();
   }
 
   private extractHeaderSection(text: string): string {
     // Extract first few lines that typically contain header information
-    const lines = text.split("\n").filter((line) => line.trim().length > 0);
+    const lines = text.split('\n').filter(line => line.trim().length > 0);
     const headerLines: string[] = [];
 
     for (let i = 0; i < Math.min(lines.length, 15); i++) {
@@ -343,7 +319,7 @@ export class MetadataExtractionService {
       headerLines.push(line);
     }
 
-    return headerLines.join("\n");
+    return headerLines.join('\n');
   }
 
   private looksLikeTransaction(line: string): boolean {
@@ -372,21 +348,21 @@ export class MetadataExtractionService {
     result: any,
   ): void {
     switch (type) {
-      case "statement_type":
+      case 'statement_type':
         metadata.statementType = result.type;
         break;
-      case "period":
+      case 'period':
         if (result) {
           metadata.period = result;
         }
         break;
-      case "account":
+      case 'account':
         metadata.account = { ...metadata.account, ...result };
         break;
-      case "currency":
+      case 'currency':
         metadata.currency = { ...metadata.currency, ...result };
         break;
-      case "institution":
+      case 'institution':
         metadata.institution = { ...metadata.institution, ...result };
         break;
     }
@@ -394,15 +370,12 @@ export class MetadataExtractionService {
 
   private normalizeHeader(rawHeader: string): string {
     return rawHeader
-      .replace(/\s+/g, " ")
-      .replace(/[^\w\sа-яёәғқңөұүіһӌў.,-]/gi, "")
+      .replace(/\s+/g, ' ')
+      .replace(/[^\w\sа-яёәғқңөұүіһӌў.,-]/gi, '')
       .trim();
   }
 
-  private fillMissingMetadata(
-    metadata: Partial<ExtractedMetadata>,
-    locale?: string,
-  ): void {
+  private fillMissingMetadata(metadata: Partial<ExtractedMetadata>, locale?: string): void {
     // Set defaults if not extracted
     if (!metadata.currency && metadata.institution) {
       const profile = this.findInstitutionProfile(metadata.institution.name);
@@ -421,7 +394,7 @@ export class MetadataExtractionService {
     // Default currency
     if (!metadata.currency) {
       metadata.currency = {
-        code: locale === "ru" ? "RUB" : "KZT",
+        code: locale === 'ru' ? 'RUB' : 'KZT',
       };
     }
 
@@ -432,13 +405,13 @@ export class MetadataExtractionService {
       metadata.period = {
         dateFrom: firstDay,
         dateTo: now,
-        label: `${firstDay.toISOString().split("T")[0]} - ${now.toISOString().split("T")[0]}`,
+        label: `${firstDay.toISOString().split('T')[0]} - ${now.toISOString().split('T')[0]}`,
       };
     }
 
     // Default statement type
     if (!metadata.statementType) {
-      metadata.statementType = "statement";
+      metadata.statementType = 'statement';
     }
 
     // Ensure minimum confidence
@@ -448,20 +421,15 @@ export class MetadataExtractionService {
   private findInstitutionProfile(name: string): InstitutionProfile | undefined {
     const normalizedName = name.toLowerCase().trim();
 
-    return this.institutionProfiles.find((profile) =>
-      profile.patterns.some((pattern) =>
-        normalizedName.includes(pattern.toLowerCase()),
-      ),
+    return this.institutionProfiles.find(profile =>
+      profile.patterns.some(pattern => normalizedName.includes(pattern.toLowerCase())),
     );
   }
 
-  private extractBranchInfo(
-    text: string,
-    bankName: string,
-  ): string | undefined {
+  private extractBranchInfo(text: string, bankName: string): string | undefined {
     // Try to extract branch information from the context
     const branchPatterns = [
-      new RegExp(`${bankName}[^,\\n]*,\\s*([^,\\n]{3,50})\\b`, "i"),
+      new RegExp(`${bankName}[^,\\n]*,\\s*([^,\\n]{3,50})\\b`, 'i'),
       /\b(?:филиал|branch|отделение|office)\s*[:#]?\s*([^,\n]{3,50})\b/gi,
     ];
 
@@ -476,19 +444,19 @@ export class MetadataExtractionService {
   }
 
   private detectAccountType(accountNumber: string): string {
-    const normalized = accountNumber.replace(/\s/g, "").toUpperCase();
+    const normalized = accountNumber.replace(/\s/g, '').toUpperCase();
 
-    if (normalized.startsWith("KZ") || normalized.length === 20) {
-      return "IBAN";
+    if (normalized.startsWith('KZ') || normalized.length === 20) {
+      return 'IBAN';
     }
     if (normalized.match(/^\d{16,20}$/)) {
-      return "ACCOUNT";
+      return 'ACCOUNT';
     }
     if (normalized.match(/^\d{12}$/)) {
-      return "BIN";
+      return 'BIN';
     }
 
-    return "UNKNOWN";
+    return 'UNKNOWN';
   }
 
   private parseDate(dateStr: string): Date {
@@ -510,16 +478,12 @@ export class MetadataExtractionService {
         let year: string;
         let month: string;
         let day: string;
-        if (format.source.includes("^\\d{4}")) {
+        if (format.source.includes('^\\d{4}')) {
           [, year, month, day] = match;
         } else {
           [, day, month, year] = match;
         }
-        return new Date(
-          Number.parseInt(year),
-          Number.parseInt(month) - 1,
-          Number.parseInt(day),
-        );
+        return new Date(Number.parseInt(year), Number.parseInt(month) - 1, Number.parseInt(day));
       }
     }
 
@@ -530,29 +494,29 @@ export class MetadataExtractionService {
   private mapCurrencyCode(code: string): { code: string; symbol?: string } {
     const currencyMap: { [key: string]: { code: string; symbol?: string } } = {
       // ISO codes
-      KZT: { code: "KZT", symbol: "₽" },
-      USD: { code: "USD", symbol: "$" },
-      EUR: { code: "EUR", symbol: "€" },
-      RUB: { code: "RUB", symbol: "₽" },
-      GBP: { code: "GBP", symbol: "£" },
-      CNY: { code: "CNY", symbol: "¥" },
+      KZT: { code: 'KZT', symbol: '₽' },
+      USD: { code: 'USD', symbol: '$' },
+      EUR: { code: 'EUR', symbol: '€' },
+      RUB: { code: 'RUB', symbol: '₽' },
+      GBP: { code: 'GBP', symbol: '£' },
+      CNY: { code: 'CNY', symbol: '¥' },
 
       // Symbols
-      "₽": { code: "RUB", symbol: "₽" },
-      $: { code: "USD", symbol: "$" },
-      "€": { code: "EUR", symbol: "€" },
-      "£": { code: "GBP", symbol: "£" },
-      "¥": { code: "CNY", symbol: "¥" },
-      "₸": { code: "KZT", symbol: "₸" },
+      '₽': { code: 'RUB', symbol: '₽' },
+      $: { code: 'USD', symbol: '$' },
+      '€': { code: 'EUR', symbol: '€' },
+      '£': { code: 'GBP', symbol: '£' },
+      '¥': { code: 'CNY', symbol: '¥' },
+      '₸': { code: 'KZT', symbol: '₸' },
 
       // Names (Russian)
-      тенге: { code: "KZT", symbol: "₸" },
-      доллар: { code: "USD", symbol: "$" },
-      евро: { code: "EUR", symbol: "€" },
-      рубль: { code: "RUB", symbol: "₽" },
+      тенге: { code: 'KZT', symbol: '₸' },
+      доллар: { code: 'USD', symbol: '$' },
+      евро: { code: 'EUR', symbol: '€' },
+      рубль: { code: 'RUB', symbol: '₽' },
     };
 
-    return currencyMap[code.toUpperCase()] || { code: "USD" };
+    return currencyMap[code.toUpperCase()] || { code: 'USD' };
   }
 
   // Method to add custom patterns
@@ -579,33 +543,26 @@ export class MetadataExtractionService {
     };
 
     // Look for header rows
-    const headerRow = data.find((row) =>
-      row.some((cell) =>
-        /(?:дата|date|сумма|amount|назначение|purpose)/i.test(String(cell)),
-      ),
+    const headerRow = data.find(row =>
+      row.some(cell => /(?:дата|date|сумма|amount|назначение|purpose)/i.test(String(cell))),
     );
 
     if (headerRow) {
-      metadata.rawHeader = headerRow.join(" ");
+      metadata.rawHeader = headerRow.join(' ');
     }
 
     return metadata;
   }
 
-  private extractHeaderInfo(
-    metadata: Partial<ExtractedMetadata>,
-    locale?: string,
-  ): any {
+  private extractHeaderInfo(metadata: Partial<ExtractedMetadata>, locale?: string): any {
     const headerInfo: any = {
-      language: locale || this.detectLanguage(metadata.rawHeader || ""),
+      language: locale || this.detectLanguage(metadata.rawHeader || ''),
       locale: locale || this.getDefaultLocale(metadata),
     };
 
     // Extract title and subtitle from raw header
     if (metadata.rawHeader) {
-      const headerLines = metadata.rawHeader
-        .split("\n")
-        .filter((line) => line.trim().length > 0);
+      const headerLines = metadata.rawHeader.split('\n').filter(line => line.trim().length > 0);
 
       // First non-empty line is usually the title
       if (headerLines.length > 0) {
@@ -622,8 +579,7 @@ export class MetadataExtractionService {
     }
 
     // Determine document type
-    headerInfo.documentType =
-      metadata.statementType || this.determineDocumentType(metadata);
+    headerInfo.documentType = metadata.statementType || this.determineDocumentType(metadata);
 
     return headerInfo;
   }
@@ -633,49 +589,45 @@ export class MetadataExtractionService {
     const russianChars = (text.match(/[а-яё]/gi) || []).length;
     const kazakhChars = (text.match(/[әғқңөұүіһ]/gi) || []).length;
     const englishChars = (text.match(/[a-z]/gi) || []).length;
-    const totalChars = text.replace(/\s/g, "").length;
+    const totalChars = text.replace(/\s/g, '').length;
 
-    if (totalChars === 0) return "en";
+    if (totalChars === 0) return 'en';
 
     const russianRatio = russianChars / totalChars;
     const kazakhRatio = kazakhChars / totalChars;
     const englishRatio = englishChars / totalChars;
 
-    if (kazakhRatio > 0.1) return "kk";
-    if (russianRatio > 0.3) return "ru";
-    if (englishRatio > 0.5) return "en";
+    if (kazakhRatio > 0.1) return 'kk';
+    if (russianRatio > 0.3) return 'ru';
+    if (englishRatio > 0.5) return 'en';
 
-    return "en"; // fallback
+    return 'en'; // fallback
   }
 
   private getDefaultLocale(metadata: Partial<ExtractedMetadata>): string {
     if (metadata.institution?.locale) return metadata.institution.locale;
-    if (metadata.institution?.country === "KZ") return "ru";
-    if (metadata.institution?.country === "RU") return "ru";
-    return "en";
+    if (metadata.institution?.country === 'KZ') return 'ru';
+    if (metadata.institution?.country === 'RU') return 'ru';
+    return 'en';
   }
 
   private cleanTitle(title: string): string {
     return title
-      .replace(/^\s*[-•*]\s*/, "") // Remove bullet points
-      .replace(/\s+/g, " ")
-      .replace(/[^\w\sа-яёәғқңөұүіһ.,-]/gi, "")
+      .replace(/^\s*[-•*]\s*/, '') // Remove bullet points
+      .replace(/\s+/g, ' ')
+      .replace(/[^\w\sа-яёәғқңөұүіһ.,-]/gi, '')
       .trim();
   }
 
   private determineDocumentType(metadata: Partial<ExtractedMetadata>): string {
-    const rawHeader = (metadata.rawHeader || "").toLowerCase();
+    const rawHeader = (metadata.rawHeader || '').toLowerCase();
 
-    if (rawHeader.includes("выписка") || rawHeader.includes("statement"))
-      return "statement";
-    if (rawHeader.includes("отчет") || rawHeader.includes("report"))
-      return "report";
-    if (rawHeader.includes("справка") || rawHeader.includes("certificate"))
-      return "certificate";
-    if (rawHeader.includes("движение") || rawHeader.includes("history"))
-      return "history";
+    if (rawHeader.includes('выписка') || rawHeader.includes('statement')) return 'statement';
+    if (rawHeader.includes('отчет') || rawHeader.includes('report')) return 'report';
+    if (rawHeader.includes('справка') || rawHeader.includes('certificate')) return 'certificate';
+    if (rawHeader.includes('движение') || rawHeader.includes('history')) return 'history';
 
-    return "statement"; // default
+    return 'statement'; // default
   }
 
   // Method to create display information for UI
@@ -683,13 +635,10 @@ export class MetadataExtractionService {
     const display: any = {};
 
     // Title display
-    display.title =
-      metadata.headerInfo?.title ||
-      metadata.normalizedHeader ||
-      "Выписка по счету";
+    display.title = metadata.headerInfo?.title || metadata.normalizedHeader || 'Выписка по счету';
 
     // Subtitle display
-    display.subtitle = metadata.headerInfo?.subtitle || "";
+    display.subtitle = metadata.headerInfo?.subtitle || '';
 
     // Period display
     if (metadata.period) {
@@ -707,22 +656,21 @@ export class MetadataExtractionService {
     }
 
     // Institution display
-    display.institutionDisplay = metadata.institution?.name || "";
+    display.institutionDisplay = metadata.institution?.name || '';
     if (metadata.institution?.branch) {
       display.institutionDisplay += `, ${metadata.institution.branch}`;
     }
 
     // Currency display
     if (metadata.currency) {
-      display.currencyDisplay =
-        metadata.currency.symbol || metadata.currency.code;
+      display.currencyDisplay = metadata.currency.symbol || metadata.currency.code;
     }
 
     return display;
   }
 
   private maskAccountNumber(accountNumber: string): string {
-    const normalized = accountNumber.replace(/\s/g, "");
+    const normalized = accountNumber.replace(/\s/g, '');
     if (normalized.length > 8) {
       return `****${normalized.slice(-4)}`;
     }
@@ -730,24 +678,22 @@ export class MetadataExtractionService {
   }
 
   private formatDate(date: Date): string {
-    return date.toLocaleDateString("ru-RU", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
+    return date.toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
     });
   }
 
   // Method to convert ExtractedMetadata to ParsedStatementMetadata
-  convertToParsedStatementMetadata(
-    extracted: ExtractedMetadata,
-  ): ParsedStatementMetadata {
+  convertToParsedStatementMetadata(extracted: ExtractedMetadata): ParsedStatementMetadata {
     const displayInfo = this.createDisplayInfo(extracted);
 
     return {
-      accountNumber: extracted.account?.number || "",
+      accountNumber: extracted.account?.number || '',
       dateFrom: extracted.period?.dateFrom || new Date(),
       dateTo: extracted.period?.dateTo || new Date(),
-      currency: extracted.currency?.code || "KZT",
+      currency: extracted.currency?.code || 'KZT',
       rawHeader: extracted.rawHeader,
       normalizedHeader: extracted.normalizedHeader,
       periodLabel: extracted.period?.label,

@@ -1,5 +1,5 @@
-import { type GenerativeModel, GoogleGenerativeAI } from "@google/generative-ai";
-import { TimeoutError, retry, withTimeout } from "../../../common/utils/async.util";
+import { type GenerativeModel, GoogleGenerativeAI } from '@google/generative-ai';
+import { TimeoutError, retry, withTimeout } from '../../../common/utils/async.util';
 import {
   isAiCircuitOpen,
   isAiEnabled,
@@ -7,7 +7,7 @@ import {
   recordAiSuccess,
   redactSensitive,
   withAiConcurrency,
-} from "../../parsing/helpers/ai-runtime.util";
+} from '../../parsing/helpers/ai-runtime.util';
 
 export type PaidStatusInput = {
   id: string;
@@ -48,7 +48,7 @@ const UNPAID_PATTERNS = [
 ];
 
 export const heuristicPaidStatus = (input: PaidStatusInput): boolean | null => {
-  const combined = `${input.counterparty || ""} ${input.comment || ""}`.trim();
+  const combined = `${input.counterparty || ''} ${input.comment || ''}`.trim();
   if (!combined) return null;
   const normalized = combined.toLowerCase();
   if (UNPAID_PATTERNS.some(re => re.test(normalized))) return false;
@@ -63,7 +63,7 @@ export class AiPaidStatusClassifier {
     if (apiKey && isAiEnabled()) {
       const genAI = new GoogleGenerativeAI(apiKey);
       this.geminiModel = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: 'gemini-2.5-flash',
       });
     }
   }
@@ -75,7 +75,8 @@ export class AiPaidStatusClassifier {
   async classify(inputs: PaidStatusInput[]): Promise<PaidStatusResult[]> {
     if (!inputs.length) return [];
 
-    const fallback = () => inputs.map(input => ({ id: input.id, paid: heuristicPaidStatus(input) }));
+    const fallback = () =>
+      inputs.map(input => ({ id: input.id, paid: heuristicPaidStatus(input) }));
 
     if (!this.geminiModel || isAiCircuitOpen()) {
       return fallback();
@@ -83,12 +84,12 @@ export class AiPaidStatusClassifier {
 
     const sanitized = inputs.map(input => ({
       id: input.id,
-      counterparty: redactSensitive(String(input.counterparty || "")).slice(0, 300),
-      comment: redactSensitive(String(input.comment || "")).slice(0, 600),
+      counterparty: redactSensitive(String(input.counterparty || '')).slice(0, 300),
+      comment: redactSensitive(String(input.comment || '')).slice(0, 600),
     }));
 
     try {
-      const timeoutMs = Number.parseInt(process.env.AI_TIMEOUT_MS || "20000", 10);
+      const timeoutMs = Number.parseInt(process.env.AI_TIMEOUT_MS || '20000', 10);
       const completion = await retry(
         () =>
           withTimeout(
@@ -96,7 +97,7 @@ export class AiPaidStatusClassifier {
               this.geminiModel?.generateContent({
                 contents: [
                   {
-                    role: "user",
+                    role: 'user',
                     parts: [
                       {
                         text: `You classify whether a transaction is paid (settled) or unpaid (pending).
@@ -113,12 +114,12 @@ ${JSON.stringify({ items: sanitized })}`,
                 ],
                 generationConfig: {
                   temperature: 0,
-                  responseMimeType: "application/json",
+                  responseMimeType: 'application/json',
                 },
               }),
             ),
             Number.isFinite(timeoutMs) ? timeoutMs : 20000,
-            "AI request timed out",
+            'AI request timed out',
           ),
         {
           retries: 1,
@@ -143,17 +144,17 @@ ${JSON.stringify({ items: sanitized })}`,
 
       const byId = new Map<string, boolean | null>();
       for (const item of rawResults) {
-        const id = String(item?.id ?? item?.rowId ?? "").trim();
+        const id = String(item?.id ?? item?.rowId ?? '').trim();
         if (!id) continue;
         let paid: boolean | null = null;
-        if (typeof item?.paid === "boolean") {
+        if (typeof item?.paid === 'boolean') {
           paid = item.paid;
         } else if (item?.paid === null || item?.paid === undefined) {
           paid = null;
-        } else if (typeof item?.paid === "string") {
+        } else if (typeof item?.paid === 'string') {
           const normalized = item.paid.trim().toLowerCase();
-          if (["true", "paid", "yes", "1"].includes(normalized)) paid = true;
-          if (["false", "unpaid", "no", "0"].includes(normalized)) paid = false;
+          if (['true', 'paid', 'yes', '1'].includes(normalized)) paid = true;
+          if (['false', 'unpaid', 'no', '0'].includes(normalized)) paid = false;
         }
         byId.set(id, paid);
       }
@@ -161,11 +162,13 @@ ${JSON.stringify({ items: sanitized })}`,
       recordAiSuccess();
       return inputs.map(input => ({
         id: input.id,
-        paid: byId.has(input.id) ? (byId.get(input.id) as boolean | null) : heuristicPaidStatus(input),
+        paid: byId.has(input.id)
+          ? (byId.get(input.id) as boolean | null)
+          : heuristicPaidStatus(input),
       }));
     } catch (error) {
       recordAiFailure();
-      console.error("[AiPaidStatusClassifier] Failed to classify paid status:", error);
+      console.error('[AiPaidStatusClassifier] Failed to classify paid status:', error);
       return fallback();
     }
   }

@@ -1,36 +1,28 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { QueryFailedError, type Repository } from "typeorm";
-import { v4 as uuidv4 } from "uuid";
-import { AuditAction, AuditLog } from "../../entities/audit-log.entity";
-import { Category } from "../../entities/category.entity";
-import { CustomTableCellStyle } from "../../entities/custom-table-cell-style.entity";
-import { CustomTableColumnStyle } from "../../entities/custom-table-column-style.entity";
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { QueryFailedError, type Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
+import { AuditAction, AuditLog } from '../../entities/audit-log.entity';
+import { Category } from '../../entities/category.entity';
+import { CustomTableCellStyle } from '../../entities/custom-table-cell-style.entity';
+import { CustomTableColumnStyle } from '../../entities/custom-table-column-style.entity';
 import {
   CustomTableColumn,
   CustomTableColumnType,
-} from "../../entities/custom-table-column.entity";
-import { CustomTableRow } from "../../entities/custom-table-row.entity";
-import {
-  CustomTable,
-  CustomTableSource,
-} from "../../entities/custom-table.entity";
-import { GoogleSheet } from "../../entities/google-sheet.entity";
-import { GoogleSheetsApiService } from "../google-sheets/services/google-sheets-api.service";
+} from '../../entities/custom-table-column.entity';
+import { CustomTableRow } from '../../entities/custom-table-row.entity';
+import { CustomTable, CustomTableSource } from '../../entities/custom-table.entity';
+import { GoogleSheet } from '../../entities/google-sheet.entity';
+import { GoogleSheetsApiService } from '../google-sheets/services/google-sheets-api.service';
 import type {
   GoogleSheetsImportColumnDto,
   GoogleSheetsImportCommitDto,
   GoogleSheetsImportManualRowTag,
-} from "./dto/google-sheets-import-commit.dto";
+} from './dto/google-sheets-import-commit.dto';
 import {
   GoogleSheetsImportLayoutType,
   type GoogleSheetsImportPreviewDto,
-} from "./dto/google-sheets-import-preview.dto";
+} from './dto/google-sheets-import-preview.dto';
 
 interface A1RangeBounds {
   sheetName: string;
@@ -53,8 +45,8 @@ const columnLettersToNumber = (lettersRaw: string): number => {
 
 const numberToColumnLetters = (numRaw: number): string => {
   let num = numRaw;
-  if (num <= 0) return "A";
-  let letters = "";
+  if (num <= 0) return 'A';
+  let letters = '';
   while (num > 0) {
     const rem = (num - 1) % 26;
     letters = String.fromCharCode(65 + rem) + letters;
@@ -77,22 +69,16 @@ const quoteSheetName = (value: string): string => {
 };
 
 const parseA1Range = (rangeRaw: string): A1RangeBounds => {
-  const match = rangeRaw.match(
-    /^(.*?)!(\$?[A-Z]+)(\$?\d+)(?::(\$?[A-Z]+)(\$?\d+))?$/,
-  );
+  const match = rangeRaw.match(/^(.*?)!(\$?[A-Z]+)(\$?\d+)(?::(\$?[A-Z]+)(\$?\d+))?$/);
   if (!match) {
-    throw new BadRequestException(
-      "Не удалось распарсить A1 range Google Sheets",
-    );
+    throw new BadRequestException('Не удалось распарсить A1 range Google Sheets');
   }
 
   const sheetName = unquoteSheetName(match[1]);
-  const startCol = columnLettersToNumber(match[2].replace(/\$/g, ""));
-  const startRow = Number(match[3].replace(/\$/g, ""));
-  const endCol = columnLettersToNumber(
-    (match[4] || match[2]).replace(/\$/g, ""),
-  );
-  const endRow = Number((match[5] || match[3]).replace(/\$/g, ""));
+  const startCol = columnLettersToNumber(match[2].replace(/\$/g, ''));
+  const startRow = Number(match[3].replace(/\$/g, ''));
+  const endCol = columnLettersToNumber((match[4] || match[2]).replace(/\$/g, ''));
+  const endRow = Number((match[5] || match[3]).replace(/\$/g, ''));
 
   return { sheetName, startRow, startCol, endRow, endCol };
 };
@@ -105,11 +91,11 @@ const normalizeCellValue = (value: unknown): string | null => {
 
 const isBooleanLike = (value: string): boolean => {
   const v = value.trim().toLowerCase();
-  return ["true", "false", "yes", "no", "да", "нет"].includes(v);
+  return ['true', 'false', 'yes', 'no', 'да', 'нет'].includes(v);
 };
 
 const isNumberLike = (value: string): boolean => {
-  const normalized = value.replace(/\s+/g, "").replace(/,/g, ".");
+  const normalized = value.replace(/\s+/g, '').replace(/,/g, '.');
   return /^-?\d+(\.\d+)?$/.test(normalized);
 };
 
@@ -121,11 +107,9 @@ const isDateLike = (value: string): boolean => {
   return false;
 };
 
-const inferColumnType = (
-  values: Array<string | null>,
-): CustomTableColumnType => {
+const inferColumnType = (values: Array<string | null>): CustomTableColumnType => {
   const cleaned = values
-    .map((v) => (v === null ? null : v.trim()))
+    .map(v => (v === null ? null : v.trim()))
     .filter((v): v is string => Boolean(v?.length));
 
   if (!cleaned.length) return CustomTableColumnType.TEXT;
@@ -134,7 +118,7 @@ const inferColumnType = (
   if (cleaned.every(isNumberLike)) return CustomTableColumnType.NUMBER;
   if (cleaned.every(isDateLike)) return CustomTableColumnType.DATE;
 
-  const distinct = new Set(cleaned.map((v) => v.toLowerCase()));
+  const distinct = new Set(cleaned.map(v => v.toLowerCase()));
   if (cleaned.length >= 10 && distinct.size > 1 && distinct.size <= 12) {
     return CustomTableColumnType.SELECT;
   }
@@ -150,16 +134,13 @@ type SheetCellStylePatch = {
 };
 
 const clamp01 = (value: unknown): number | null => {
-  const n = typeof value === "number" ? value : Number(value);
+  const n = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(n)) return null;
   return Math.max(0, Math.min(1, n));
 };
 
-const toCssColorWithOpacity = (
-  color: any,
-  opacity: number,
-): string | undefined => {
-  if (!color || typeof color !== "object") return undefined;
+const toCssColorWithOpacity = (color: any, opacity: number): string | undefined => {
+  if (!color || typeof color !== 'object') return undefined;
   const r = clamp01(color.red);
   const g = clamp01(color.green);
   const b = clamp01(color.blue);
@@ -172,7 +153,7 @@ const toCssColorWithOpacity = (
 };
 
 const extractSheetStyle = (format: any): SheetCellStyle => {
-  if (!format || typeof format !== "object") return {};
+  if (!format || typeof format !== 'object') return {};
   const style: SheetCellStyle = {};
 
   const bg = toCssColorWithOpacity(format.backgroundColor, 0.05);
@@ -181,10 +162,8 @@ const extractSheetStyle = (format: any): SheetCellStyle => {
   return style;
 };
 
-const isEmptyStyle = (
-  style: Record<string, any> | null | undefined,
-): boolean => {
-  if (!style || typeof style !== "object") return true;
+const isEmptyStyle = (style: Record<string, any> | null | undefined): boolean => {
+  if (!style || typeof style !== 'object') return true;
   return Object.keys(style).length === 0;
 };
 
@@ -196,12 +175,9 @@ const styleSignature = (style: SheetCellStyle): string => {
   return JSON.stringify(signature);
 };
 
-const diffStyle = (
-  base: SheetCellStyle,
-  actual: SheetCellStyle,
-): SheetCellStylePatch => {
+const diffStyle = (base: SheetCellStyle, actual: SheetCellStyle): SheetCellStylePatch => {
   const patch: SheetCellStylePatch = {};
-  const keys: Array<keyof SheetCellStyle> = ["backgroundColor"];
+  const keys: Array<keyof SheetCellStyle> = ['backgroundColor'];
 
   for (const key of keys) {
     const baseVal = base[key];
@@ -227,7 +203,7 @@ const diffStyle = (
   return patch;
 };
 
-export type HighlightedRowTag = "heading" | "total";
+export type HighlightedRowTag = 'heading' | 'total';
 
 export interface HighlightedRowInfo {
   rowNumber: number;
@@ -240,7 +216,7 @@ export interface HighlightedRowInfo {
 type NormalizedRgbColor = { r: number; g: number; b: number; alpha: number };
 
 const normalizeRgbColor = (value: any): NormalizedRgbColor | null => {
-  if (!value || typeof value !== "object") return null;
+  if (!value || typeof value !== 'object') return null;
   const r = clamp01(value.red);
   const g = clamp01(value.green);
   const b = clamp01(value.blue);
@@ -253,12 +229,11 @@ const normalizedColorKey = (color: NormalizedRgbColor): string =>
   `${color.r.toFixed(4)}-${color.g.toFixed(4)}-${color.b.toFixed(4)}-${color.alpha.toFixed(4)}`;
 
 const normalizedColorToCss = (color: NormalizedRgbColor): string => {
-  const toByte = (val: number) =>
-    Math.round(Math.max(0, Math.min(1, val)) * 255);
+  const toByte = (val: number) => Math.round(Math.max(0, Math.min(1, val)) * 255);
   const rr = toByte(color.r);
   const gg = toByte(color.g);
   const bb = toByte(color.b);
-  const hex = (n: number) => n.toString(16).padStart(2, "0");
+  const hex = (n: number) => n.toString(16).padStart(2, '0');
   if (color.alpha < 1) {
     const alpha = Math.max(0, Math.min(1, color.alpha));
     return `rgba(${rr}, ${gg}, ${bb}, ${alpha})`;
@@ -271,11 +246,7 @@ const colorLuminance = (color: NormalizedRgbColor): number => {
     const v = Math.max(0, Math.min(1, value));
     return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
   };
-  return (
-    0.2126 * toLinear(color.r) +
-    0.7152 * toLinear(color.g) +
-    0.0722 * toLinear(color.b)
-  );
+  return 0.2126 * toLinear(color.r) + 0.7152 * toLinear(color.g) + 0.0722 * toLinear(color.b);
 };
 
 const contrastRatio = (lumA: number, lumB: number): number => {
@@ -298,22 +269,12 @@ const detectHighContrastRows = (
 
   const results: HighlightedRowInfo[] = [];
 
-  for (
-    let rowIdx = headerRowIndex + 1;
-    rowIdx < limit && results.length < maxRows;
-    rowIdx += 1
-  ) {
+  for (let rowIdx = headerRowIndex + 1; rowIdx < limit && results.length < maxRows; rowIdx += 1) {
     const row = gridRowData[rowIdx];
     if (!row || !Array.isArray(row.values)) continue;
 
-    const backgroundMap = new Map<
-      string,
-      { color: NormalizedRgbColor; count: number }
-    >();
-    const textMap = new Map<
-      string,
-      { color: NormalizedRgbColor; count: number }
-    >();
+    const backgroundMap = new Map<string, { color: NormalizedRgbColor; count: number }>();
+    const textMap = new Map<string, { color: NormalizedRgbColor; count: number }>();
 
     for (const cell of row.values) {
       const format = cell?.userEnteredFormat;
@@ -345,9 +306,7 @@ const detectHighContrastRows = (
       }
     }
 
-    const pickBestColor = (
-      map: Map<string, { color: NormalizedRgbColor; count: number }>,
-    ) => {
+    const pickBestColor = (map: Map<string, { color: NormalizedRgbColor; count: number }>) => {
       let best: NormalizedRgbColor | null = null;
       let bestCount = -1;
       for (const entry of map.values()) {
@@ -365,17 +324,14 @@ const detectHighContrastRows = (
 
     const bgLum = colorLuminance(dominantBg);
     const fallbackText =
-      bgLum < 0.5
-        ? { r: 1, g: 1, b: 1, alpha: 1 }
-        : { r: 0, g: 0, b: 0, alpha: 1 };
+      bgLum < 0.5 ? { r: 1, g: 1, b: 1, alpha: 1 } : { r: 0, g: 0, b: 0, alpha: 1 };
     const chosenText = dominantText || fallbackText;
     const textLum = colorLuminance(chosenText);
 
     const ratio = contrastRatio(bgLum, textLum);
     if (ratio < threshold) continue;
 
-    const suggestedTag: HighlightedRowTag =
-      bgLum < textLum ? "heading" : "total";
+    const suggestedTag: HighlightedRowTag = bgLum < textLum ? 'heading' : 'total';
     results.push({
       rowNumber: startRowNumber + rowIdx,
       suggestedTag,
@@ -413,15 +369,11 @@ export class CustomTablesImportService {
   ) {}
 
   private generateColumnKey(): string {
-    const raw = uuidv4().replace(/-/g, "");
+    const raw = uuidv4().replace(/-/g, '');
     return `col_${raw.slice(0, 12)}`;
   }
 
-  private async log(
-    userId: string,
-    action: AuditAction,
-    metadata?: Record<string, any>,
-  ) {
+  private async log(userId: string, action: AuditAction, metadata?: Record<string, any>) {
     try {
       await this.auditLogRepository.save(
         this.auditLogRepository.create({
@@ -438,19 +390,16 @@ export class CustomTablesImportService {
   private throwHelpfulSchemaError(error: unknown): never {
     if (error instanceof QueryFailedError) {
       const code = (error as any)?.driverError?.code;
-      if (code === "42P01" || code === "42703") {
+      if (code === '42P01' || code === '42703') {
         throw new BadRequestException(
-          "Схема БД не обновлена для Custom Tables. Запустите миграции (`npm -C backend run migration:run`) или включите автозапуск миграций (переменная окружения `RUN_MIGRATIONS=true`) и перезапустите backend.",
+          'Схема БД не обновлена для Custom Tables. Запустите миграции (`npm -C backend run migration:run`) или включите автозапуск миграций (переменная окружения `RUN_MIGRATIONS=true`) и перезапустите backend.',
         );
       }
     }
     throw error;
   }
 
-  private async resolveCategoryId(
-    userId: string,
-    categoryId: string,
-  ): Promise<string> {
+  private async resolveCategoryId(userId: string, categoryId: string): Promise<string> {
     let category: Category | null = null;
     try {
       category = await this.categoryRepository.findOne({
@@ -460,33 +409,27 @@ export class CustomTablesImportService {
       this.throwHelpfulSchemaError(error);
     }
     if (!category) {
-      throw new BadRequestException("Категория не найдена");
+      throw new BadRequestException('Категория не найдена');
     }
     return category.id;
   }
 
-  private async requireGoogleSheet(
-    userId: string,
-    googleSheetId: string,
-  ): Promise<GoogleSheet> {
+  private async requireGoogleSheet(userId: string, googleSheetId: string): Promise<GoogleSheet> {
     const sheet = await this.googleSheetRepository.findOne({
       where: { id: googleSheetId, userId, isActive: true },
     });
     if (!sheet) {
-      throw new NotFoundException("Google Sheet не найден или недоступен");
+      throw new NotFoundException('Google Sheet не найден или недоступен');
     }
-    if (!sheet.refreshToken || sheet.refreshToken.includes("placeholder")) {
+    if (!sheet.refreshToken || sheet.refreshToken.includes('placeholder')) {
       throw new BadRequestException(
-        "Отсутствует refresh token Google. Подключите таблицу через OAuth.",
+        'Отсутствует refresh token Google. Подключите таблицу через OAuth.',
       );
     }
     return sheet;
   }
 
-  private async resolveWorksheetName(
-    sheet: GoogleSheet,
-    preferred?: string,
-  ): Promise<string> {
+  private async resolveWorksheetName(sheet: GoogleSheet, preferred?: string): Promise<string> {
     if (preferred?.trim()) return preferred.trim();
     if (sheet.worksheetName?.trim()) return sheet.worksheetName.trim();
 
@@ -495,13 +438,13 @@ export class CustomTablesImportService {
       sheet.sheetId,
     );
     if (!info.firstWorksheet) {
-      throw new BadRequestException("Не удалось определить лист Google Sheets");
+      throw new BadRequestException('Не удалось определить лист Google Sheets');
     }
     return info.firstWorksheet;
   }
 
   private buildRange(worksheetName: string, range?: string): string {
-    if (range?.includes("!")) {
+    if (range?.includes('!')) {
       return range;
     }
 
@@ -513,16 +456,13 @@ export class CustomTablesImportService {
     return `${sheetRef}!${range}`;
   }
 
-  private detectLayout(
-    values: unknown[][],
-    headerRowIndex: number,
-  ): GoogleSheetsImportLayoutType {
+  private detectLayout(values: unknown[][], headerRowIndex: number): GoogleSheetsImportLayoutType {
     const header = (values[headerRowIndex] || [])
-      .map((v) => normalizeCellValue(v))
+      .map(v => normalizeCellValue(v))
       .filter(Boolean) as string[];
     const data = values.slice(headerRowIndex + 1, headerRowIndex + 1 + 20);
 
-    const headerDateLikeCount = header.filter((v) => isDateLike(v)).length;
+    const headerDateLikeCount = header.filter(v => isDateLike(v)).length;
     const wide = header.length >= 12;
 
     let firstColNonEmpty = 0;
@@ -544,10 +484,7 @@ export class CustomTablesImportService {
 
   async previewGoogleSheets(userId: string, dto: GoogleSheetsImportPreviewDto) {
     const sheet = await this.requireGoogleSheet(userId, dto.googleSheetId);
-    const worksheetName = await this.resolveWorksheetName(
-      sheet,
-      dto.worksheetName,
-    );
+    const worksheetName = await this.resolveWorksheetName(sheet, dto.worksheetName);
     const range = this.buildRange(worksheetName, dto.range);
 
     const {
@@ -560,8 +497,8 @@ export class CustomTablesImportService {
       sheet.sheetId,
       range,
       {
-        valueRenderOption: "FORMATTED_VALUE",
-        dateTimeRenderOption: "FORMATTED_STRING",
+        valueRenderOption: 'FORMATTED_VALUE',
+        dateTimeRenderOption: 'FORMATTED_STRING',
       },
     );
 
@@ -575,27 +512,21 @@ export class CustomTablesImportService {
     const colsCount = Math.max(bounds.endCol - bounds.startCol + 1, 0);
 
     const headerRowIndex = dto.headerRowIndex ?? 0;
-    const safeHeaderIndex = Math.min(
-      Math.max(headerRowIndex, 0),
-      Math.max(values.length - 1, 0),
-    );
+    const safeHeaderIndex = Math.min(Math.max(headerRowIndex, 0), Math.max(values.length - 1, 0));
     const layout =
       dto.layoutType && dto.layoutType !== GoogleSheetsImportLayoutType.AUTO
         ? dto.layoutType
         : this.detectLayout(values, safeHeaderIndex);
 
     const sampleRowCount = 10;
-    const sample = values.slice(
-      safeHeaderIndex + 1,
-      safeHeaderIndex + 1 + sampleRowCount,
-    );
+    const sample = values.slice(safeHeaderIndex + 1, safeHeaderIndex + 1 + sampleRowCount);
 
     const columns = Array.from({ length: colsCount }).map((_, idx) => {
       const colLetter = numberToColumnLetters(bounds.startCol + idx);
       const headerValue = normalizeCellValue(values?.[safeHeaderIndex]?.[idx]);
       const title = headerValue || colLetter;
 
-      const sampleValues = sample.map((row) => normalizeCellValue(row?.[idx]));
+      const sampleValues = sample.map(row => normalizeCellValue(row?.[idx]));
       const suggestedType = inferColumnType(sampleValues);
 
       return {
@@ -617,8 +548,7 @@ export class CustomTablesImportService {
         sheet.sheetId,
         effectiveRange,
         {
-          fields:
-            "sheets(properties/title,data/rowData/values/userEnteredFormat)",
+          fields: 'sheets(properties/title,data/rowData/values/userEnteredFormat)',
         },
       );
 
@@ -629,13 +559,10 @@ export class CustomTablesImportService {
 
       const spreadsheet = grid.spreadsheet;
       const sheetEntry =
-        spreadsheet?.sheets?.find(
-          (s: any) => s?.properties?.title === worksheetName,
-        ) || spreadsheet?.sheets?.[0];
+        spreadsheet?.sheets?.find((s: any) => s?.properties?.title === worksheetName) ||
+        spreadsheet?.sheets?.[0];
       const dataEntry = sheetEntry?.data?.[0];
-      const gridRowData = Array.isArray(dataEntry?.rowData)
-        ? dataEntry.rowData
-        : null;
+      const gridRowData = Array.isArray(dataEntry?.rowData) ? dataEntry.rowData : null;
       highlightedRows = detectHighContrastRows(
         gridRowData,
         bounds.startRow,
@@ -644,7 +571,7 @@ export class CustomTablesImportService {
       );
 
       if (gridRowData?.length) {
-        sampleRowStyles = sampleRowIndices.map((rowIdx) => {
+        sampleRowStyles = sampleRowIndices.map(rowIdx => {
           const row = gridRowData?.[rowIdx];
           if (!row || !Array.isArray(row.values)) return [];
           return Array.from({ length: colsCount }).map((_, colIdx) => {
@@ -656,7 +583,7 @@ export class CustomTablesImportService {
     } catch (error) {
       this.logger.warn(
         `High contrast detection skipped during preview for googleSheetId=${dto.googleSheetId}: ${
-          error instanceof Error ? error.message : "unknown error"
+          error instanceof Error ? error.message : 'unknown error'
         }`,
       );
     }
@@ -696,7 +623,7 @@ export class CustomTablesImportService {
     override?: GoogleSheetsImportColumnDto[],
   ) {
     if (!override || !override.length) {
-      return previewColumns.map((c) => ({ ...c, include: true }));
+      return previewColumns.map(c => ({ ...c, include: true }));
     }
 
     const byIndex = new Map<number, GoogleSheetsImportColumnDto>();
@@ -704,7 +631,7 @@ export class CustomTablesImportService {
       byIndex.set(item.index, item);
     }
 
-    return previewColumns.map((base) => {
+    return previewColumns.map(base => {
       const ovr = byIndex.get(base.index);
       return {
         index: base.index,
@@ -724,21 +651,15 @@ export class CustomTablesImportService {
   ) {
     const report = async (progress: number, stage?: string) => {
       try {
-        await opts?.onProgress?.(
-          Math.max(0, Math.min(100, Math.floor(progress))),
-          stage,
-        );
+        await opts?.onProgress?.(Math.max(0, Math.min(100, Math.floor(progress))), stage);
       } catch {
         // ignore
       }
     };
 
-    await report(1, "reading_values");
+    await report(1, 'reading_values');
     const sheet = await this.requireGoogleSheet(userId, dto.googleSheetId);
-    const worksheetName = await this.resolveWorksheetName(
-      sheet,
-      dto.worksheetName,
-    );
+    const worksheetName = await this.resolveWorksheetName(sheet, dto.worksheetName);
     const range = this.buildRange(worksheetName, dto.range);
 
     const {
@@ -751,8 +672,8 @@ export class CustomTablesImportService {
       sheet.sheetId,
       range,
       {
-        valueRenderOption: "FORMATTED_VALUE",
-        dateTimeRenderOption: "FORMATTED_STRING",
+        valueRenderOption: 'FORMATTED_VALUE',
+        dateTimeRenderOption: 'FORMATTED_STRING',
       },
     );
 
@@ -766,41 +687,33 @@ export class CustomTablesImportService {
     const colsCount = Math.max(bounds.endCol - bounds.startCol + 1, 0);
 
     const headerRowIndex = dto.headerRowIndex ?? 0;
-    const safeHeaderIndex = Math.min(
-      Math.max(headerRowIndex, 0),
-      Math.max(values.length - 1, 0),
-    );
+    const safeHeaderIndex = Math.min(Math.max(headerRowIndex, 0), Math.max(values.length - 1, 0));
 
-    const sampleForInference = values.slice(
-      safeHeaderIndex + 1,
-      safeHeaderIndex + 1 + 50,
-    );
+    const sampleForInference = values.slice(safeHeaderIndex + 1, safeHeaderIndex + 1 + 50);
     const previewColumns = Array.from({ length: colsCount }).map((_, idx) => {
       const colLetter = numberToColumnLetters(bounds.startCol + idx);
       const headerValue = normalizeCellValue(values?.[safeHeaderIndex]?.[idx]);
       const title = headerValue || colLetter;
       const inferred = inferColumnType(
-        sampleForInference.map((row) => normalizeCellValue(row?.[idx])),
+        sampleForInference.map(row => normalizeCellValue(row?.[idx])),
       );
       return { index: idx, title, suggestedType: inferred, a1: colLetter };
     });
 
     const finalColumns = this.buildFinalColumns(
-      previewColumns.map((c) => ({
+      previewColumns.map(c => ({
         index: c.index,
         title: c.title,
         suggestedType: c.suggestedType,
       })),
       dto.columns,
-    ).filter((c) => c.include);
+    ).filter(c => c.include);
 
     if (!finalColumns.length) {
-      throw new BadRequestException(
-        "Нужно выбрать хотя бы одну колонку для импорта",
-      );
+      throw new BadRequestException('Нужно выбрать хотя бы одну колонку для импорта');
     }
 
-    await report(5, "creating_table");
+    await report(5, 'creating_table');
     const categoryId =
       dto.categoryId === null || dto.categoryId === undefined
         ? null
@@ -823,7 +736,7 @@ export class CustomTablesImportService {
 
     await this.log(userId, AuditAction.CUSTOM_TABLE_CREATE, {
       tableId: table.id,
-      source: "google_sheets_import",
+      source: 'google_sheets_import',
       spreadsheetId: sheet.sheetId,
       worksheetName,
       usedRange: effectiveRange,
@@ -834,8 +747,7 @@ export class CustomTablesImportService {
       createdColumns = await this.customTableColumnRepository.save(
         finalColumns.map((col, position) => {
           const colLetter =
-            previewColumns[col.index]?.a1 ||
-            numberToColumnLetters(bounds.startCol + col.index);
+            previewColumns[col.index]?.a1 || numberToColumnLetters(bounds.startCol + col.index);
           return this.customTableColumnRepository.create({
             tableId: table.id,
             key: this.generateColumnKey(),
@@ -846,7 +758,7 @@ export class CustomTablesImportService {
             position,
             config: {
               source: {
-                kind: "google_sheets",
+                kind: 'google_sheets',
                 googleSheetId: sheet.id,
                 spreadsheetId: sheet.sheetId,
                 worksheetName,
@@ -863,9 +775,9 @@ export class CustomTablesImportService {
     }
 
     const keyByIndex = new Map<number, string>();
-    createdColumns.forEach((col) => {
+    createdColumns.forEach(col => {
       const source = (col.config as any)?.source;
-      if (source && typeof source.colIndex === "number") {
+      if (source && typeof source.colIndex === 'number') {
         keyByIndex.set(source.colIndex, col.key);
       }
     });
@@ -889,13 +801,10 @@ export class CustomTablesImportService {
 
       const spreadsheet = grid.spreadsheet;
       const sheetEntry =
-        spreadsheet?.sheets?.find(
-          (s: any) => s?.properties?.title === worksheetName,
-        ) || spreadsheet?.sheets?.[0];
+        spreadsheet?.sheets?.find((s: any) => s?.properties?.title === worksheetName) ||
+        spreadsheet?.sheets?.[0];
       const dataEntry = sheetEntry?.data?.[0];
-      gridRowData = Array.isArray(dataEntry?.rowData)
-        ? dataEntry.rowData
-        : null;
+      gridRowData = Array.isArray(dataEntry?.rowData) ? dataEntry.rowData : null;
       const columnMetadata = Array.isArray(dataEntry?.columnMetadata)
         ? dataEntry.columnMetadata
         : null;
@@ -909,12 +818,10 @@ export class CustomTablesImportService {
       if (columnMetadata?.length) {
         try {
           const current =
-            table.viewSettings && typeof table.viewSettings === "object"
-              ? table.viewSettings
-              : {};
+            table.viewSettings && typeof table.viewSettings === 'object' ? table.viewSettings : {};
           const viewSettings: Record<string, any> = { ...(current || {}) };
           const columnsSettings: Record<string, any> = {
-            ...(viewSettings.columns && typeof viewSettings.columns === "object"
+            ...(viewSettings.columns && typeof viewSettings.columns === 'object'
               ? viewSettings.columns
               : {}),
           };
@@ -922,17 +829,9 @@ export class CustomTablesImportService {
           let changed = false;
           for (const [colIndex, columnKey] of keyByIndex.entries()) {
             const width = columnMetadata?.[colIndex]?.pixelSize;
-            if (
-              !(
-                typeof width === "number" &&
-                Number.isFinite(width) &&
-                width > 0
-              )
-            )
-              continue;
+            if (!(typeof width === 'number' && Number.isFinite(width) && width > 0)) continue;
             const existing =
-              columnsSettings[columnKey] &&
-              typeof columnsSettings[columnKey] === "object"
+              columnsSettings[columnKey] && typeof columnsSettings[columnKey] === 'object'
                 ? columnsSettings[columnKey]
                 : {};
             if (existing.width !== width) {
@@ -949,9 +848,7 @@ export class CustomTablesImportService {
             } as any);
           }
         } catch {
-          this.logger.warn(
-            `Google Sheets column width import skipped for tableId=${table.id}`,
-          );
+          this.logger.warn(`Google Sheets column width import skipped for tableId=${table.id}`);
         }
       }
 
@@ -961,21 +858,12 @@ export class CustomTablesImportService {
 
         for (const [colIndex, columnKey] of keyByIndex.entries()) {
           const headerFormat =
-            gridRowData?.[safeHeaderIndex]?.values?.[colIndex]
-              ?.userEnteredFormat;
+            gridRowData?.[safeHeaderIndex]?.values?.[colIndex]?.userEnteredFormat;
           const headerStyle = extractSheetStyle(headerFormat);
 
-          const counts = new Map<
-            string,
-            { count: number; style: SheetCellStyle }
-          >();
-          for (
-            let rowIdx = safeHeaderIndex + 1;
-            rowIdx < rowLimit;
-            rowIdx += 1
-          ) {
-            const format =
-              gridRowData?.[rowIdx]?.values?.[colIndex]?.userEnteredFormat;
+          const counts = new Map<string, { count: number; style: SheetCellStyle }>();
+          for (let rowIdx = safeHeaderIndex + 1; rowIdx < rowLimit; rowIdx += 1) {
+            const format = gridRowData?.[rowIdx]?.values?.[colIndex]?.userEnteredFormat;
             const style = extractSheetStyle(format);
             const sig = styleSignature(style);
             const existing = counts.get(sig);
@@ -1016,13 +904,11 @@ export class CustomTablesImportService {
         }
       }
     } catch (error) {
-      this.logger.warn(
-        `Google Sheets style import skipped for tableId=${table.id}`,
-      );
+      this.logger.warn(`Google Sheets style import skipped for tableId=${table.id}`);
     }
 
     if (!dto.importData) {
-      await report(100, "done");
+      await report(100, 'done');
       return {
         tableId: table.id,
         columnsCreated: createdColumns.length,
@@ -1031,20 +917,12 @@ export class CustomTablesImportService {
       };
     }
 
-    await report(10, "importing_rows");
+    await report(10, 'importing_rows');
     const dataStartIndex = safeHeaderIndex + 1;
-    const autoRowTagsByRowNumber = new Map<
-      number,
-      GoogleSheetsImportManualRowTag
-    >();
+    const autoRowTagsByRowNumber = new Map<number, GoogleSheetsImportManualRowTag>();
     if (Array.isArray(dto.autoRowTags)) {
       for (const tag of dto.autoRowTags) {
-        if (
-          tag &&
-          typeof tag.rowNumber === "number" &&
-          tag.rowNumber >= 1 &&
-          tag.tag
-        ) {
+        if (tag && typeof tag.rowNumber === 'number' && tag.rowNumber >= 1 && tag.tag) {
           autoRowTagsByRowNumber.set(tag.rowNumber, tag.tag);
         }
       }
@@ -1095,7 +973,7 @@ export class CustomTablesImportService {
       const fraction = rowsToInsert.length
         ? Math.min(1, (i + chunk.length) / rowsToInsert.length)
         : 1;
-      await report(10 + fraction * 70, "importing_rows");
+      await report(10 + fraction * 70, 'importing_rows');
     }
 
     await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
@@ -1106,24 +984,22 @@ export class CustomTablesImportService {
       usedRange: effectiveRange,
     });
 
-    await report(82, "loading_styles");
+    await report(82, 'loading_styles');
     let rowIdByRowNumber = new Map<number, string>();
     try {
       if (rowsToInsert.length) {
         const minRow = rowsToInsert[0].rowNumber;
         const maxRow = rowsToInsert[rowsToInsert.length - 1].rowNumber;
         const existingRows = await this.customTableRowRepository
-          .createQueryBuilder("r")
-          .select(["r.id", "r.rowNumber"])
-          .where("r.tableId = :tableId", { tableId: table.id })
-          .andWhere("r.rowNumber BETWEEN :minRow AND :maxRow", {
+          .createQueryBuilder('r')
+          .select(['r.id', 'r.rowNumber'])
+          .where('r.tableId = :tableId', { tableId: table.id })
+          .andWhere('r.rowNumber BETWEEN :minRow AND :maxRow', {
             minRow,
             maxRow,
           })
           .getMany();
-        rowIdByRowNumber = new Map(
-          existingRows.map((r) => [r.rowNumber, r.id]),
-        );
+        rowIdByRowNumber = new Map(existingRows.map(r => [r.rowNumber, r.id]));
       }
     } catch (error) {
       this.logger.warn(`Failed to build rowId map for tableId=${table.id}`);
@@ -1132,8 +1008,7 @@ export class CustomTablesImportService {
     if (gridRowData?.length && keyByIndex.size) {
       try {
         const rowLimit = Math.min(gridRowData.length, values.length);
-        const cellCount =
-          Math.max(0, rowLimit - dataStartIndex) * keyByIndex.size;
+        const cellCount = Math.max(0, rowLimit - dataStartIndex) * keyByIndex.size;
         const MAX_CELL_STYLE_INSERTS = 50_000;
         if (cellCount > MAX_CELL_STYLE_INSERTS) {
           this.logger.warn(
@@ -1155,8 +1030,7 @@ export class CustomTablesImportService {
           if (!rowId) continue;
           for (const [colIndex, columnKey] of keyByIndex.entries()) {
             const baseStyle = baseStyleByIndex.get(colIndex) || {};
-            const format =
-              gridRowData?.[rowIdx]?.values?.[colIndex]?.userEnteredFormat;
+            const format = gridRowData?.[rowIdx]?.values?.[colIndex]?.userEnteredFormat;
             const actualStyle = extractSheetStyle(format);
             const patch = diffStyle(baseStyle, actualStyle);
             if (Object.keys(patch).length === 0) continue;
@@ -1185,16 +1059,16 @@ export class CustomTablesImportService {
           const fraction = cellStyleEntities.length
             ? Math.min(1, (i + chunk.length) / cellStyleEntities.length)
             : 1;
-          await report(85 + fraction * 10, "saving_styles");
+          await report(85 + fraction * 10, 'saving_styles');
         }
       } catch (error) {
         this.logger.warn(
-          `Google Sheets cell style import failed for tableId=${table.id}: ${error instanceof Error ? error.message : "unknown error"}`,
+          `Google Sheets cell style import failed for tableId=${table.id}: ${error instanceof Error ? error.message : 'unknown error'}`,
         );
       }
     }
 
-    await report(100, "done");
+    await report(100, 'done');
     return {
       tableId: table.id,
       columnsCreated: createdColumns.length,

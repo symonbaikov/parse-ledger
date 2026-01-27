@@ -1,17 +1,17 @@
+import { randomBytes } from 'crypto';
 import {
   BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
-} from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
-import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
-import * as bcrypt from "bcrypt";
-import { randomBytes } from "crypto";
-import { OAuth2Client } from "google-auth-library";
-import type { Repository } from "typeorm";
-import { ROLE_PERMISSIONS } from "../../common/enums/permissions.enum";
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
+import { OAuth2Client } from 'google-auth-library';
+import type { Repository } from 'typeorm';
+import { ROLE_PERMISSIONS } from '../../common/enums/permissions.enum';
 import {
   User,
   UserRole,
@@ -20,13 +20,13 @@ import {
   WorkspaceInvitationStatus,
   WorkspaceMember,
   WorkspaceRole,
-} from "../../entities";
-import type { AuthResponseDto } from "./dto/auth-response.dto";
-import type { GoogleLoginDto } from "./dto/google-login.dto";
-import type { LoginDto } from "./dto/login.dto";
-import type { RegisterDto } from "./dto/register.dto";
-import type { JwtRefreshPayload } from "./strategies/jwt-refresh.strategy";
-import type { JwtPayload } from "./strategies/jwt.strategy";
+} from '../../entities';
+import type { AuthResponseDto } from './dto/auth-response.dto';
+import type { GoogleLoginDto } from './dto/google-login.dto';
+import type { LoginDto } from './dto/login.dto';
+import type { RegisterDto } from './dto/register.dto';
+import type { JwtRefreshPayload } from './strategies/jwt-refresh.strategy';
+import type { JwtPayload } from './strategies/jwt.strategy';
 
 @Injectable()
 export class AuthService {
@@ -53,22 +53,22 @@ export class AuthService {
       });
 
       if (!invitation) {
-        throw new BadRequestException("Invitation not found or already used");
+        throw new BadRequestException('Invitation not found or already used');
       }
 
       if (invitation.status !== WorkspaceInvitationStatus.PENDING) {
-        throw new BadRequestException("Invitation is not pending");
+        throw new BadRequestException('Invitation is not pending');
       }
 
       if (invitation.expiresAt && invitation.expiresAt.getTime() < Date.now()) {
         invitation.status = WorkspaceInvitationStatus.EXPIRED;
         await this.workspaceInvitationRepository.save(invitation);
-        throw new BadRequestException("Invitation has expired");
+        throw new BadRequestException('Invitation has expired');
       }
 
       const invitationEmail = invitation.email.trim().toLowerCase();
       if (invitationEmail !== normalizedEmail) {
-        throw new BadRequestException("Email does not match invitation");
+        throw new BadRequestException('Email does not match invitation');
       }
     }
 
@@ -77,7 +77,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictException("User with this email already exists");
+      throw new ConflictException('User with this email already exists');
     }
 
     const passwordHash = await bcrypt.hash(registerDto.password, 10);
@@ -127,35 +127,32 @@ export class AuthService {
     const user = await this.userRepository.findOne({
       where: { email: normalizedEmail },
       select: [
-        "id",
-        "email",
-        "passwordHash",
-        "name",
-        "role",
-        "workspaceId",
-        "locale",
-        "timeZone",
-        "avatarUrl",
-        "isActive",
-        "tokenVersion",
+        'id',
+        'email',
+        'passwordHash',
+        'name',
+        'role',
+        'workspaceId',
+        'locale',
+        'timeZone',
+        'avatarUrl',
+        'isActive',
+        'tokenVersion',
       ],
     });
 
     if (!user) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     if (!user.isActive) {
-      throw new UnauthorizedException("User account is inactive");
+      throw new UnauthorizedException('User account is inactive');
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      loginDto.password,
-      user.passwordHash,
-    );
+    const isPasswordValid = await bcrypt.compare(loginDto.password, user.passwordHash);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException("Invalid credentials");
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     // Update last login
@@ -165,9 +162,9 @@ export class AuthService {
   }
 
   async loginWithGoogle(dto: GoogleLoginDto): Promise<AuthResponseDto> {
-    const clientId = this.configService.get<string>("GOOGLE_CLIENT_ID");
+    const clientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
     if (!clientId) {
-      throw new BadRequestException("Google login is not configured");
+      throw new BadRequestException('Google login is not configured');
     }
 
     const googleClient = new OAuth2Client(clientId);
@@ -182,11 +179,11 @@ export class AuthService {
     const googleId = payload?.sub;
 
     if (!email || !googleId) {
-      throw new UnauthorizedException("Google account data is incomplete");
+      throw new UnauthorizedException('Google account data is incomplete');
     }
 
     if (payload?.email_verified === false) {
-      throw new UnauthorizedException("Google account email is not verified");
+      throw new UnauthorizedException('Google account email is not verified');
     }
 
     const invitationToken = dto.invitationToken?.trim() || null;
@@ -197,22 +194,22 @@ export class AuthService {
       });
 
       if (!invitation) {
-        throw new BadRequestException("Invitation not found or already used");
+        throw new BadRequestException('Invitation not found or already used');
       }
 
       if (invitation.status !== WorkspaceInvitationStatus.PENDING) {
-        throw new BadRequestException("Invitation is not pending");
+        throw new BadRequestException('Invitation is not pending');
       }
 
       if (invitation.expiresAt && invitation.expiresAt.getTime() < Date.now()) {
         invitation.status = WorkspaceInvitationStatus.EXPIRED;
         await this.workspaceInvitationRepository.save(invitation);
-        throw new BadRequestException("Invitation has expired");
+        throw new BadRequestException('Invitation has expired');
       }
 
       const invitationEmail = invitation.email.trim().toLowerCase();
       if (invitationEmail !== email) {
-        throw new BadRequestException("Email does not match invitation");
+        throw new BadRequestException('Email does not match invitation');
       }
     }
 
@@ -221,16 +218,14 @@ export class AuthService {
     });
 
     if (user && !user.isActive) {
-      throw new UnauthorizedException("User account is inactive");
+      throw new UnauthorizedException('User account is inactive');
     }
 
     if (!user) {
-      const randomPassword = randomBytes(32).toString("hex");
+      const randomPassword = randomBytes(32).toString('hex');
       const passwordHash = await bcrypt.hash(randomPassword, 10);
       const displayName =
-        payload?.name?.trim() ||
-        payload?.given_name?.trim() ||
-        email.split("@")[0];
+        payload?.name?.trim() || payload?.given_name?.trim() || email.split('@')[0];
 
       user = this.userRepository.create({
         email,
@@ -294,8 +289,8 @@ export class AuthService {
         secret: process.env.JWT_REFRESH_SECRET,
       });
 
-      if (payload.type !== "refresh") {
-        throw new UnauthorizedException("Invalid token type");
+      if (payload.type !== 'refresh') {
+        throw new UnauthorizedException('Invalid token type');
       }
 
       const user = await this.userRepository.findOne({
@@ -303,12 +298,12 @@ export class AuthService {
       });
 
       if (!user) {
-        throw new UnauthorizedException("User not found or inactive");
+        throw new UnauthorizedException('User not found or inactive');
       }
 
       const tokenVersion = payload.tokenVersion ?? 0;
       if ((user.tokenVersion ?? 0) !== tokenVersion) {
-        throw new UnauthorizedException("Token has been revoked");
+        throw new UnauthorizedException('Token has been revoked');
       }
 
       const accessTokenPayload: JwtPayload = {
@@ -320,12 +315,12 @@ export class AuthService {
 
       const access_token = this.jwtService.sign(accessTokenPayload, {
         secret: process.env.JWT_SECRET,
-        expiresIn: process.env.JWT_EXPIRES_IN || "1h",
+        expiresIn: process.env.JWT_EXPIRES_IN || '1h',
       } as any);
 
       return { access_token };
     } catch (error) {
-      throw new UnauthorizedException("Invalid refresh token");
+      throw new UnauthorizedException('Invalid refresh token');
     }
   }
 
@@ -333,12 +328,12 @@ export class AuthService {
     // In a more advanced implementation, you would store refresh tokens
     // in a database and revoke them here
     // For now, we'll just return success
-    return { message: "Logged out successfully" };
+    return { message: 'Logged out successfully' };
   }
 
   async logoutAll(userId: string): Promise<{ message: string }> {
-    await this.userRepository.increment({ id: userId }, "tokenVersion", 1);
-    return { message: "Logged out from all devices successfully" };
+    await this.userRepository.increment({ id: userId }, 'tokenVersion', 1);
+    return { message: 'Logged out from all devices successfully' };
   }
 
   private generateTokens(user: User): AuthResponseDto {
@@ -351,18 +346,18 @@ export class AuthService {
 
     const refreshPayload: JwtRefreshPayload = {
       sub: user.id,
-      type: "refresh",
+      type: 'refresh',
       tokenVersion: user.tokenVersion ?? 0,
     };
 
     const access_token = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
-      expiresIn: process.env.JWT_EXPIRES_IN || "1h",
+      expiresIn: process.env.JWT_EXPIRES_IN || '1h',
     } as any);
 
     const refresh_token = this.jwtService.sign(refreshPayload, {
       secret: process.env.JWT_REFRESH_SECRET,
-      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "30d",
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
     } as any);
 
     return {

@@ -1,7 +1,7 @@
-import { CACHE_MANAGER } from "@nestjs/cache-manager";
-import { Inject, Injectable } from "@nestjs/common";
-import { Cache } from "cache-manager";
-import { createHash } from "crypto";
+import { createHash } from 'crypto';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Inject, Injectable } from '@nestjs/common';
+import { Cache } from 'cache-manager';
 
 type RowsCacheParams = {
   cursor?: number;
@@ -16,9 +16,9 @@ export class CustomTablesCacheService {
   constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
 
   private hash(value: unknown): string {
-    return createHash("sha256")
-      .update(JSON.stringify(value ?? ""))
-      .digest("hex");
+    return createHash('sha256')
+      .update(JSON.stringify(value ?? ''))
+      .digest('hex');
   }
 
   private async getVersion(key: string): Promise<string> {

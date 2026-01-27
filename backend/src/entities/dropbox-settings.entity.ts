@@ -14,7 +14,11 @@ export class DropboxSettings {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => Integration, integration => integration.dropboxSettings, { onDelete: 'CASCADE' })
+  @OneToOne(
+    () => Integration,
+    integration => integration.dropboxSettings,
+    { onDelete: 'CASCADE' },
+  )
   @JoinColumn({ name: 'integration_id' })
   integration: Integration;
 

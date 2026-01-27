@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { BankProfile } from "./bank-profile.service";
+import { Injectable, Logger } from '@nestjs/common';
+import { BankProfile } from './bank-profile.service';
 
 export interface FeatureFlagConfig {
   enabled: boolean;
@@ -10,22 +10,8 @@ export interface FeatureFlagConfig {
 }
 
 export interface FeatureFlagCondition {
-  type:
-    | "user"
-    | "bank"
-    | "locale"
-    | "format"
-    | "environment"
-    | "custom"
-    | "feature";
-  operator:
-    | "equals"
-    | "notEquals"
-    | "contains"
-    | "startsWith"
-    | "endsWith"
-    | "in"
-    | "notIn";
+  type: 'user' | 'bank' | 'locale' | 'format' | 'environment' | 'custom' | 'feature';
+  operator: 'equals' | 'notEquals' | 'contains' | 'startsWith' | 'endsWith' | 'in' | 'notIn';
   field: string;
   value: string | number | boolean | string[];
 }
@@ -43,7 +29,7 @@ export interface FeatureFlagResult {
   enabled: boolean;
   value?: any;
   reason: string;
-  source: "global" | "condition" | "rollout" | "default";
+  source: 'global' | 'condition' | 'rollout' | 'default';
 }
 
 export interface FallbackConfig {
@@ -80,52 +66,52 @@ export class FeatureFlagService {
   // Default configuration
   private readonly defaultFlags: Record<string, FeatureFlagConfig> = {
     // ML and AI features
-    "ml-classification": {
+    'ml-classification': {
       enabled: true,
       rolloutPercentage: 80, // 80% of users
       lastUpdated: new Date().toISOString(),
     },
 
-    "ai-extraction": {
+    'ai-extraction': {
       enabled: true,
       conditions: [
         {
-          type: "bank",
-          operator: "in",
-          field: "bankId",
-          value: ["kazkomertsbank", "halykbank"],
+          type: 'bank',
+          operator: 'in',
+          field: 'bankId',
+          value: ['kazkomertsbank', 'halykbank'],
         },
         {
-          type: "environment",
-          operator: "equals",
-          field: "environment",
-          value: "production",
+          type: 'environment',
+          operator: 'equals',
+          field: 'environment',
+          value: 'production',
         },
       ],
       lastUpdated: new Date().toISOString(),
     },
 
-    "advanced-metadata-extraction": {
+    'advanced-metadata-extraction': {
       enabled: true,
       rolloutPercentage: 100, // All users
       lastUpdated: new Date().toISOString(),
     },
 
-    "auto-fix-enabled": {
+    'auto-fix-enabled': {
       enabled: true,
       value: true, // Default value
       conditions: [
         {
-          type: "bank",
-          operator: "notIn",
-          field: "bankId",
-          value: ["unknown"],
+          type: 'bank',
+          operator: 'notIn',
+          field: 'bankId',
+          value: ['unknown'],
         },
       ],
       lastUpdated: new Date().toISOString(),
     },
 
-    "checksum-validation": {
+    'checksum-validation': {
       enabled: true,
       value: {
         enabled: true,
@@ -135,7 +121,7 @@ export class FeatureFlagService {
       lastUpdated: new Date().toISOString(),
     },
 
-    "duplicate-detection": {
+    'duplicate-detection': {
       enabled: true,
       value: {
         enabled: true,
@@ -145,80 +131,80 @@ export class FeatureFlagService {
       lastUpdated: new Date().toISOString(),
     },
 
-    "ml-transaction-classification": {
+    'ml-transaction-classification': {
       enabled: true,
       conditions: [
         {
-          type: "format",
-          operator: "in",
-          field: "format",
-          value: ["pdf", "scanned"],
+          type: 'format',
+          operator: 'in',
+          field: 'format',
+          value: ['pdf', 'scanned'],
         },
         {
-          type: "bank",
-          operator: "in",
-          field: "bankId",
-          value: ["kazkomertsbank"],
+          type: 'bank',
+          operator: 'in',
+          field: 'bankId',
+          value: ['kazkomertsbank'],
         },
       ],
       lastUpdated: new Date().toISOString(),
     },
 
-    "enhanced-date-parsing": {
+    'enhanced-date-parsing': {
       enabled: true,
       rolloutPercentage: 100,
       value: {
         enabled: true,
-        languages: ["ru", "kk", "en"],
-        formats: ["auto", "dd.mm.yyyy", "mm/dd/yyyy", "yyyy-mm-dd"],
+        languages: ['ru', 'kk', 'en'],
+        formats: ['auto', 'dd.mm.yyyy', 'mm/dd/yyyy', 'yyyy-mm-dd'],
       },
       lastUpdated: new Date().toISOString(),
     },
 
-    "multi-currency-support": {
+    'multi-currency-support': {
       enabled: true,
       conditions: [
         {
-          type: "bank",
-          operator: "in",
-          field: "bankId",
-          value: ["halykbank"],
+          type: 'bank',
+          operator: 'in',
+          field: 'bankId',
+          value: ['halykbank'],
         },
       ],
       lastUpdated: new Date().toISOString(),
     },
 
-    "pdf-ocr-processing": {
+    'pdf-ocr-processing': {
       enabled: true,
       conditions: [
-        { type: "format", operator: "equals", field: "format", value: "pdf" },
+        { type: 'format', operator: 'equals', field: 'format', value: 'pdf' },
         {
-          type: "bank",
-          operator: "in",
-          field: "bankId",
-          value: ["kazkomertsbank", "berekebank"],
+          type: 'bank',
+          operator: 'in',
+          field: 'bankId',
+          value: ['kazkomertsbank', 'berekebank'],
         },
       ],
       value: {
         enabled: true,
-        language: "auto",
+        language: 'auto',
         preprocessing: true,
         confidence: 0.8,
       },
       lastUpdated: new Date().toISOString(),
     },
 
-    "column-detection-ml": {
+    'column-detection-ml': {
       enabled: true,
       rolloutPercentage: 60,
       lastUpdated: new Date().toISOString(),
     },
 
-    "quality-monitoring": {
+    'quality-monitoring': {
       enabled: true,
       value: {
         enabled: true,
-        metrics: ["accuracy", "completeness", "consistency"],
+        metrics: ['accuracy', 'completeness', 'consistency'],
         alerting: true,
         thresholds: {
           accuracy: 0.95,
@@ -234,57 +220,57 @@ export class FeatureFlagService {
     enabled: true,
     strategies: [
       {
-        name: "ml-first",
+        name: 'ml-first',
         priority: 1,
         conditions: [
           {
-            type: "feature",
-            operator: "equals",
-            field: "ml-classification",
+            type: 'feature',
+            operator: 'equals',
+            field: 'ml-classification',
             value: true,
           },
           {
-            type: "format",
-            operator: "in",
-            field: "format",
-            value: ["pdf", "excel"],
+            type: 'format',
+            operator: 'in',
+            field: 'format',
+            value: ['pdf', 'excel'],
           },
         ],
         actions: {
-          parsing: "ml-enhanced",
-          extraction: "ai-powered",
-          validation: "strict",
+          parsing: 'ml-enhanced',
+          extraction: 'ai-powered',
+          validation: 'strict',
           autoFix: true,
         },
         enabled: true,
       },
       {
-        name: "regex-based",
+        name: 'regex-based',
         priority: 2,
         conditions: [
           {
-            type: "feature",
-            operator: "equals",
-            field: "ml-classification",
+            type: 'feature',
+            operator: 'equals',
+            field: 'ml-classification',
             value: false,
           },
         ],
         actions: {
-          parsing: "regex-based",
-          extraction: "pattern-matching",
-          validation: "standard",
+          parsing: 'regex-based',
+          extraction: 'pattern-matching',
+          validation: 'standard',
           autoFix: false,
         },
         enabled: true,
       },
       {
-        name: "basic-heuristic",
+        name: 'basic-heuristic',
         priority: 3,
         conditions: [], // Always available as last resort
         actions: {
-          parsing: "basic",
-          extraction: "simple",
-          validation: "minimal",
+          parsing: 'basic',
+          extraction: 'simple',
+          validation: 'minimal',
           autoFix: false,
         },
         enabled: true,
@@ -315,17 +301,16 @@ export class FeatureFlagService {
   private loadEnvironmentFlags(): void {
     // Load from environment variables
     const envFlags = {
-      "ml-classification": process.env.FEATURE_ML_CLASSIFICATION,
-      "ai-extraction": process.env.FEATURE_AI_EXTRACTION,
-      "auto-fix-enabled": process.env.FEATURE_AUTO_FIX,
-      "checksum-validation": process.env.FEATURE_CHECKSUM_VALIDATION,
-      "duplicate-detection": process.env.FEATURE_DUPLICATE_DETECTION,
+      'ml-classification': process.env.FEATURE_ML_CLASSIFICATION,
+      'ai-extraction': process.env.FEATURE_AI_EXTRACTION,
+      'auto-fix-enabled': process.env.FEATURE_AUTO_FIX,
+      'checksum-validation': process.env.FEATURE_CHECKSUM_VALIDATION,
+      'duplicate-detection': process.env.FEATURE_DUPLICATE_DETECTION,
     };
 
     Object.entries(envFlags).forEach(([key, value]) => {
       if (value !== undefined) {
-        const enabled =
-          value === "true" || value === "1" || value === "enabled";
+        const enabled = value === 'true' || value === '1' || value === 'enabled';
         const existing = this.featureFlags.get(key);
 
         this.featureFlags.set(key, {
@@ -334,9 +319,7 @@ export class FeatureFlagService {
           lastUpdated: new Date().toISOString(),
         });
 
-        this.logger.log(
-          `Updated feature flag from environment: ${key} = ${enabled}`,
-        );
+        this.logger.log(`Updated feature flag from environment: ${key} = ${enabled}`);
       }
     });
   }
@@ -349,8 +332,8 @@ export class FeatureFlagService {
     if (!flag) {
       return {
         enabled: false,
-        reason: "Feature flag not found",
-        source: "default",
+        reason: 'Feature flag not found',
+        source: 'default',
       };
     }
 
@@ -358,17 +341,14 @@ export class FeatureFlagService {
     if (!flag.enabled) {
       return {
         enabled: false,
-        reason: "Feature flag globally disabled",
-        source: "global",
+        reason: 'Feature flag globally disabled',
+        source: 'global',
       };
     }
 
     // Check rollout percentage
     if (flag.rolloutPercentage && flag.rolloutPercentage < 100) {
-      const rolloutResult = this.checkRolloutPercentage(
-        flag.rolloutPercentage,
-        context,
-      );
+      const rolloutResult = this.checkRolloutPercentage(flag.rolloutPercentage, context);
       if (!rolloutResult.enabled) {
         return rolloutResult;
       }
@@ -385,16 +365,12 @@ export class FeatureFlagService {
     return {
       enabled: true,
       value: flag.value,
-      reason: "Feature flag enabled and conditions met",
-      source: flag.conditions ? "condition" : "default",
+      reason: 'Feature flag enabled and conditions met',
+      source: flag.conditions ? 'condition' : 'default',
     };
   }
 
-  getValue(
-    flagName: string,
-    defaultValue: any = null,
-    context?: FeatureFlagContext,
-  ): any {
+  getValue(flagName: string, defaultValue: any = null, context?: FeatureFlagContext): any {
     const result = this.isEnabled(flagName, context);
     return result.enabled ? (result.value ?? true) : defaultValue;
   }
@@ -408,11 +384,8 @@ export class FeatureFlagService {
 
     // Find enabled strategies that match conditions
     const matchingStrategies = this.fallbackConfig.strategies
-      .filter((strategy) => strategy.enabled)
-      .filter(
-        (strategy) =>
-          this.checkConditions(strategy.conditions, context).enabled,
-      )
+      .filter(strategy => strategy.enabled)
+      .filter(strategy => this.checkConditions(strategy.conditions, context).enabled)
       .sort((a, b) => a.priority - b.priority);
 
     return matchingStrategies.length > 0 ? matchingStrategies[0] : null;
@@ -422,13 +395,8 @@ export class FeatureFlagService {
     return [...this.fallbackConfig.strategies];
   }
 
-  updateFallbackStrategy(
-    strategyName: string,
-    updates: Partial<FallbackStrategy>,
-  ): void {
-    const strategyIndex = this.fallbackConfig.strategies.findIndex(
-      (s) => s.name === strategyName,
-    );
+  updateFallbackStrategy(strategyName: string, updates: Partial<FallbackStrategy>): void {
+    const strategyIndex = this.fallbackConfig.strategies.findIndex(s => s.name === strategyName);
     if (strategyIndex >= 0) {
       this.fallbackConfig.strategies[strategyIndex] = {
         ...this.fallbackConfig.strategies[strategyIndex],
@@ -442,7 +410,7 @@ export class FeatureFlagService {
     return (
       this.fallbackConfig.enabled &&
       currentQuality < this.fallbackConfig.autoSwitchThreshold &&
-      currentStrategy !== "basic-heuristic"
+      currentStrategy !== 'basic-heuristic'
     ); // Don't switch from basic
   }
 
@@ -451,7 +419,7 @@ export class FeatureFlagService {
     context?: FeatureFlagContext,
   ): FallbackStrategy | null {
     const currentStrategy = this.fallbackConfig.strategies.find(
-      (s) => s.name === currentStrategyName,
+      s => s.name === currentStrategyName,
     );
     if (!currentStrategy) {
       return this.getFallbackStrategy(context);
@@ -459,18 +427,15 @@ export class FeatureFlagService {
 
     const nextPriority = currentStrategy.priority + 1;
     const nextStrategy = this.fallbackConfig.strategies
-      .filter((s) => s.enabled && s.priority === nextPriority)
-      .find((s) => this.checkConditions(s.conditions, context).enabled);
+      .filter(s => s.enabled && s.priority === nextPriority)
+      .find(s => this.checkConditions(s.conditions, context).enabled);
 
     return nextStrategy || null;
   }
 
   // Configuration management
 
-  updateFeatureFlag(
-    flagName: string,
-    updates: Partial<FeatureFlagConfig>,
-  ): void {
+  updateFeatureFlag(flagName: string, updates: Partial<FeatureFlagConfig>): void {
     const existing = this.featureFlags.get(flagName);
     if (existing) {
       const updated = {
@@ -515,18 +480,16 @@ export class FeatureFlagService {
 
     // Apply bank-specific feature overrides from profile
     if (bankProfile.features) {
-      Object.entries(bankProfile.features).forEach(
-        ([featureName, bankValue]) => {
-          if (bankValue !== undefined) {
-            results[featureName] = {
-              enabled: Boolean(bankValue),
-              value: bankValue,
-              reason: "Bank-specific configuration",
-              source: "condition",
-            };
-          }
-        },
-      );
+      Object.entries(bankProfile.features).forEach(([featureName, bankValue]) => {
+        if (bankValue !== undefined) {
+          results[featureName] = {
+            enabled: Boolean(bankValue),
+            value: bankValue,
+            reason: 'Bank-specific configuration',
+            source: 'condition',
+          };
+        }
+      });
     }
 
     return results;
@@ -542,11 +505,8 @@ export class FeatureFlagService {
       // No user context, use global behavior
       return {
         enabled: percentage === 100,
-        reason:
-          percentage === 100
-            ? "100% rollout"
-            : "No user context for rollout check",
-        source: "default",
+        reason: percentage === 100 ? '100% rollout' : 'No user context for rollout check',
+        source: 'default',
       };
     }
 
@@ -558,10 +518,8 @@ export class FeatureFlagService {
 
     return {
       enabled,
-      reason: enabled
-        ? "User included in rollout"
-        : "User not included in rollout",
-      source: "rollout",
+      reason: enabled ? 'User included in rollout' : 'User not included in rollout',
+      source: 'rollout',
     };
   }
 
@@ -572,16 +530,16 @@ export class FeatureFlagService {
     if (!conditions || conditions.length === 0) {
       return {
         enabled: true,
-        reason: "No conditions to check",
-        source: "default",
+        reason: 'No conditions to check',
+        source: 'default',
       };
     }
 
     if (!context) {
       return {
         enabled: false,
-        reason: "No context provided for condition evaluation",
-        source: "condition",
+        reason: 'No context provided for condition evaluation',
+        source: 'condition',
       };
     }
 
@@ -590,51 +548,36 @@ export class FeatureFlagService {
         return {
           enabled: false,
           reason: `Condition failed: ${condition.type} ${condition.operator} ${condition.field}`,
-          source: "condition",
+          source: 'condition',
         };
       }
     }
 
     return {
       enabled: true,
-      reason: "All conditions satisfied",
-      source: "condition",
+      reason: 'All conditions satisfied',
+      source: 'condition',
     };
   }
 
-  private evaluateCondition(
-    condition: FeatureFlagCondition,
-    context: FeatureFlagContext,
-  ): boolean {
+  private evaluateCondition(condition: FeatureFlagCondition, context: FeatureFlagContext): boolean {
     const contextValue = this.getContextValue(condition.field, context);
 
     switch (condition.operator) {
-      case "equals":
+      case 'equals':
         return contextValue === condition.value;
-      case "notEquals":
+      case 'notEquals':
         return contextValue !== condition.value;
-      case "contains":
-        return String(contextValue)
-          .toLowerCase()
-          .includes(String(condition.value).toLowerCase());
-      case "startsWith":
-        return String(contextValue)
-          .toLowerCase()
-          .startsWith(String(condition.value).toLowerCase());
-      case "endsWith":
-        return String(contextValue)
-          .toLowerCase()
-          .endsWith(String(condition.value).toLowerCase());
-      case "in":
-        return (
-          Array.isArray(condition.value) &&
-          condition.value.includes(contextValue)
-        );
-      case "notIn":
-        return (
-          Array.isArray(condition.value) &&
-          !condition.value.includes(contextValue)
-        );
+      case 'contains':
+        return String(contextValue).toLowerCase().includes(String(condition.value).toLowerCase());
+      case 'startsWith':
+        return String(contextValue).toLowerCase().startsWith(String(condition.value).toLowerCase());
+      case 'endsWith':
+        return String(contextValue).toLowerCase().endsWith(String(condition.value).toLowerCase());
+      case 'in':
+        return Array.isArray(condition.value) && condition.value.includes(contextValue);
+      case 'notIn':
+        return Array.isArray(condition.value) && !condition.value.includes(contextValue);
       default:
         this.logger.warn(`Unknown condition operator: ${condition.operator}`);
         return false;
@@ -643,15 +586,15 @@ export class FeatureFlagService {
 
   private getContextValue(field: string, context: FeatureFlagContext): any {
     switch (field) {
-      case "bankId":
+      case 'bankId':
         return context.bankId;
-      case "userId":
+      case 'userId':
         return context.userId;
-      case "locale":
+      case 'locale':
         return context.locale;
-      case "format":
+      case 'format':
         return context.format;
-      case "environment":
+      case 'environment':
         return context.environment || process.env.NODE_ENV;
       default:
         return context.customProperties?.[field];
@@ -730,13 +673,13 @@ export class FeatureFlagService {
       this.fallbackConfig = { ...config.fallback };
     }
 
-    this.logger.log("Imported feature flag configuration");
+    this.logger.log('Imported feature flag configuration');
   }
 
   resetToDefaults(): void {
     this.featureFlags.clear();
     this.fallbackConfig = { ...this.defaultFallbackConfig };
     this.initializeFeatureFlags();
-    this.logger.log("Reset feature flags to defaults");
+    this.logger.log('Reset feature flags to defaults');
   }
 }

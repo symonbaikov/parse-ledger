@@ -1,14 +1,14 @@
-import * as fs from "fs";
-import * as path from "path";
-import { Readable } from "stream";
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import type { Repository } from "typeorm";
-import { FileType, Statement } from "../../entities";
-import { calculateFileHash } from "../utils/file-hash.util";
-import { resolveUploadsDir } from "../utils/uploads.util";
+import * as fs from 'fs';
+import * as path from 'path';
+import { Readable } from 'stream';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
+import { FileType, Statement } from '../../entities';
+import { calculateFileHash } from '../utils/file-hash.util';
+import { resolveUploadsDir } from '../utils/uploads.util';
 
-export type FileAvailabilityStatus = "both" | "disk" | "db" | "missing";
+export type FileAvailabilityStatus = 'both' | 'disk' | 'db' | 'missing';
 
 export type FileAvailability = {
   onDisk: boolean;
@@ -19,8 +19,8 @@ export type FileAvailability = {
 const uploadBaseDir = resolveUploadsDir();
 
 const extractUploadsSuffix = (rawPath: string): string | null => {
-  const normalized = rawPath.replace(/\\/g, "/");
-  const marker = "/uploads/";
+  const normalized = rawPath.replace(/\\/g, '/');
+  const marker = '/uploads/';
   const idx = normalized.lastIndexOf(marker);
   if (idx === -1) return null;
   const suffix = normalized.slice(idx + marker.length);
@@ -53,16 +53,16 @@ export class FileStorageService {
       rawPath,
       path.resolve(rawPath),
       path.isAbsolute(rawPath) ? rawPath : path.join(cwd, rawPath),
-      path.join(cwd, "dist", rawPath),
-      path.join(cwd, "..", rawPath),
+      path.join(cwd, 'dist', rawPath),
+      path.join(cwd, '..', rawPath),
       path.join(uploadBaseDir, basename),
       path.join(uploadBaseDir, rawPath),
       uploadsSuffix ? path.join(uploadBaseDir, uploadsSuffix) : null,
-      path.join(cwd, "uploads", basename),
-      path.join(cwd, "uploads", rawPath),
-      uploadsSuffix ? path.join(cwd, "uploads", uploadsSuffix) : null,
-      path.join(__dirname, "../../..", "uploads", basename), // dist/common/services -> dist/uploads
-      path.join(__dirname, "../../../uploads", basename), // dist/common/services -> backend/uploads
+      path.join(cwd, 'uploads', basename),
+      path.join(cwd, 'uploads', rawPath),
+      uploadsSuffix ? path.join(cwd, 'uploads', uploadsSuffix) : null,
+      path.join(__dirname, '../../..', 'uploads', basename), // dist/common/services -> dist/uploads
+      path.join(__dirname, '../../../uploads', basename), // dist/common/services -> backend/uploads
       path.join(path.dirname(rawPath), basename),
     ].filter(Boolean) as string[];
 
@@ -80,70 +80,68 @@ export class FileStorageService {
   }
 
   getMimeType(fileType: FileType | string): string {
-    const type = (fileType || "").toString().toLowerCase();
+    const type = (fileType || '').toString().toLowerCase();
     switch (type) {
       case FileType.PDF:
-      case "pdf":
-        return "application/pdf";
+      case 'pdf':
+        return 'application/pdf';
       case FileType.XLSX:
-      case "xlsx":
-        return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-      case "xls":
-        return "application/vnd.ms-excel";
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'xls':
+        return 'application/vnd.ms-excel';
       case FileType.CSV:
-      case "csv":
-        return "text/csv";
+      case 'csv':
+        return 'text/csv';
       case FileType.DOCX:
-      case "docx":
-        return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
       case FileType.IMAGE:
-      case "jpg":
-      case "jpeg":
-        return "image/jpeg";
-      case "png":
-        return "image/png";
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
       default:
-        return "application/octet-stream";
+        return 'application/octet-stream';
     }
   }
 
   buildAvailability(onDisk: boolean, inDb: boolean): FileAvailability {
     const status: FileAvailabilityStatus =
-      onDisk && inDb ? "both" : onDisk ? "disk" : inDb ? "db" : "missing";
+      onDisk && inDb ? 'both' : onDisk ? 'disk' : inDb ? 'db' : 'missing';
     return { onDisk, inDb, status };
   }
 
   async getFileAvailability(
-    statement: Pick<Statement, "id" | "filePath">,
+    statement: Pick<Statement, 'id' | 'filePath'>,
   ): Promise<FileAvailability> {
     const onDisk = this.isOnDisk(statement.filePath);
     const inDb = await this.hasFileData(statement.id);
     return this.buildAvailability(onDisk, inDb);
   }
 
-  async getStatementsWithFileData(
-    statementIds: string[],
-  ): Promise<Set<string>> {
+  async getStatementsWithFileData(statementIds: string[]): Promise<Set<string>> {
     if (!statementIds.length) {
       return new Set();
     }
 
     const rows = await this.statementRepository
-      .createQueryBuilder("statement")
-      .select("statement.id", "id")
-      .where("statement.id IN (:...ids)", { ids: statementIds })
-      .andWhere("statement.fileData IS NOT NULL")
+      .createQueryBuilder('statement')
+      .select('statement.id', 'id')
+      .where('statement.id IN (:...ids)', { ids: statementIds })
+      .andWhere('statement.fileData IS NOT NULL')
       .getRawMany<{ id: string }>();
 
-    return new Set(rows.map((row) => row.id));
+    return new Set(rows.map(row => row.id));
   }
 
   async hasFileData(statementId: string): Promise<boolean> {
     const row = await this.statementRepository
-      .createQueryBuilder("statement")
-      .select("statement.id", "id")
-      .where("statement.id = :id", { id: statementId })
-      .andWhere("statement.fileData IS NOT NULL")
+      .createQueryBuilder('statement')
+      .select('statement.id', 'id')
+      .where('statement.id = :id', { id: statementId })
+      .andWhere('statement.fileData IS NOT NULL')
       .getRawOne<{ id: string }>();
 
     return Boolean(row?.id);
@@ -151,9 +149,9 @@ export class FileStorageService {
 
   private async getFileData(statementId: string): Promise<Buffer | null> {
     const withData = await this.statementRepository
-      .createQueryBuilder("statement")
-      .addSelect("statement.fileData")
-      .where("statement.id = :id", { id: statementId })
+      .createQueryBuilder('statement')
+      .addSelect('statement.fileData')
+      .where('statement.id = :id', { id: statementId })
       .getOne();
 
     return ((withData as any)?.fileData as Buffer | null | undefined) ?? null;
@@ -165,15 +163,15 @@ export class FileStorageService {
     excludeStatementId?: string;
   }): Promise<Buffer | null> {
     const qb = this.statementRepository
-      .createQueryBuilder("statement")
-      .addSelect("statement.fileData")
-      .where("statement.userId = :userId", { userId: params.userId })
-      .andWhere("statement.fileHash = :fileHash", { fileHash: params.fileHash })
-      .andWhere("statement.fileData IS NOT NULL")
-      .orderBy("statement.createdAt", "DESC");
+      .createQueryBuilder('statement')
+      .addSelect('statement.fileData')
+      .where('statement.userId = :userId', { userId: params.userId })
+      .andWhere('statement.fileHash = :fileHash', { fileHash: params.fileHash })
+      .andWhere('statement.fileData IS NOT NULL')
+      .orderBy('statement.createdAt', 'DESC');
 
     if (params.excludeStatementId) {
-      qb.andWhere("statement.id <> :excludeId", {
+      qb.andWhere('statement.id <> :excludeId', {
         excludeId: params.excludeStatementId,
       });
     }
@@ -183,15 +181,12 @@ export class FileStorageService {
   }
 
   async getStatementFileStream(
-    statement: Pick<
-      Statement,
-      "id" | "fileName" | "filePath" | "fileType" | "fileHash" | "userId"
-    >,
+    statement: Pick<Statement, 'id' | 'fileName' | 'filePath' | 'fileType' | 'fileHash' | 'userId'>,
   ): Promise<{
     stream: NodeJS.ReadableStream;
     fileName: string;
     mimeType: string;
-    source: "disk" | "db" | "restored";
+    source: 'disk' | 'db' | 'restored';
   }> {
     const tryFromDisk = async () => {
       const resolved = this.resolveFilePath(statement.filePath);
@@ -212,7 +207,7 @@ export class FileStorageService {
         stream: fs.createReadStream(resolved),
         fileName: statement.fileName,
         mimeType: this.getMimeType(statement.fileType),
-        source: "disk" as const,
+        source: 'disk' as const,
       };
     };
 
@@ -222,22 +217,19 @@ export class FileStorageService {
     const restored = await this.restoreFile(statement);
     if (restored) return restored;
 
-    throw new NotFoundException("File content is unavailable");
+    throw new NotFoundException('File content is unavailable');
   }
 
   /**
    * Restore file to disk from DB (or another statement with same hash).
    */
   async restoreFile(
-    statement: Pick<
-      Statement,
-      "id" | "fileName" | "filePath" | "fileType" | "fileHash" | "userId"
-    >,
+    statement: Pick<Statement, 'id' | 'fileName' | 'filePath' | 'fileType' | 'fileHash' | 'userId'>,
   ): Promise<{
     stream: NodeJS.ReadableStream;
     fileName: string;
     mimeType: string;
-    source: "db" | "restored";
+    source: 'db' | 'restored';
   } | null> {
     let fileData = await this.getFileData(statement.id);
 
@@ -255,10 +247,7 @@ export class FileStorageService {
 
     const targetPath =
       this.resolveFilePath(statement.filePath) ||
-      path.join(
-        uploadBaseDir,
-        path.basename(statement.filePath || statement.fileName),
-      );
+      path.join(uploadBaseDir, path.basename(statement.filePath || statement.fileName));
 
     try {
       fs.mkdirSync(path.dirname(targetPath), { recursive: true });
@@ -267,14 +256,14 @@ export class FileStorageService {
         stream: fs.createReadStream(targetPath),
         fileName: statement.fileName,
         mimeType: this.getMimeType(statement.fileType),
-        source: "restored",
+        source: 'restored',
       };
     } catch {
       return {
         stream: Readable.from(fileData),
         fileName: statement.fileName,
         mimeType: this.getMimeType(statement.fileType),
-        source: "db",
+        source: 'db',
       };
     }
   }

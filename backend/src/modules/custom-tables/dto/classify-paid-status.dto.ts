@@ -1,4 +1,4 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsString } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsString } from 'class-validator';
 
 export class ClassifyPaidStatusDto {
   @IsArray()

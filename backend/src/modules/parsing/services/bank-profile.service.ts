@@ -1,6 +1,6 @@
-import { existsSync, readFileSync, readdirSync } from "fs";
-import { join, resolve } from "path";
-import { Injectable, Logger } from "@nestjs/common";
+import { existsSync, readFileSync, readdirSync } from 'fs';
+import { join, resolve } from 'path';
+import { Injectable, Logger } from '@nestjs/common';
 
 export interface BankProfile {
   id: string;
@@ -23,7 +23,7 @@ export interface BankProfile {
 
   // Parsing configuration
   parsing: {
-    format: "csv" | "excel" | "pdf" | "html" | "auto";
+    format: 'csv' | 'excel' | 'pdf' | 'html' | 'auto';
     encoding?: string;
     delimiter?: string;
     hasHeader?: boolean;
@@ -38,7 +38,7 @@ export interface BankProfile {
     amountFormat?: {
       decimalSeparator: string;
       thousandsSeparator: string;
-      currencyPosition: "before" | "after";
+      currencyPosition: 'before' | 'after';
       currencySymbol?: string;
     };
 
@@ -91,7 +91,7 @@ export interface BankProfile {
 
 export interface ColumnDefinition {
   name: string;
-  type: "date" | "amount" | "string" | "number" | "currency" | "boolean";
+  type: 'date' | 'amount' | 'string' | 'number' | 'currency' | 'boolean';
   required: boolean;
   index?: number;
   pattern?: string;
@@ -109,10 +109,10 @@ export interface ColumnDefinition {
 
 export interface FieldValidation {
   field: string;
-  type: "format" | "range" | "pattern" | "enum";
+  type: 'format' | 'range' | 'pattern' | 'enum';
   rule: string;
   message?: string;
-  severity?: "error" | "warning";
+  severity?: 'error' | 'warning';
 }
 
 export interface BusinessRule {
@@ -127,7 +127,7 @@ export interface BusinessRule {
 export class BankProfileService {
   private readonly logger = new Logger(BankProfileService.name);
   private readonly profiles = new Map<string, BankProfile>();
-  private readonly profileDirectory = "config/bank-profiles";
+  private readonly profileDirectory = 'config/bank-profiles';
 
   constructor() {
     this.loadProfiles();
@@ -146,50 +146,40 @@ export class BankProfileService {
       const files = readdirSync(profilePath);
 
       for (const file of files) {
-        if (
-          file.endsWith(".json") ||
-          file.endsWith(".yaml") ||
-          file.endsWith(".yml")
-        ) {
+        if (file.endsWith('.json') || file.endsWith('.yaml') || file.endsWith('.yml')) {
           const filePath = join(profilePath, file);
           const profile = await this.loadProfileFile(filePath);
 
           if (profile) {
             this.profiles.set(profile.id, profile);
-            this.logger.log(
-              `Loaded bank profile: ${profile.name} (${profile.id})`,
-            );
+            this.logger.log(`Loaded bank profile: ${profile.name} (${profile.id})`);
           }
         }
       }
 
       this.logger.log(`Loaded ${this.profiles.size} bank profiles`);
     } catch (error) {
-      this.logger.error("Failed to load bank profiles", error);
+      this.logger.error('Failed to load bank profiles', error);
       this.createDefaultProfiles();
     }
   }
 
   private async loadProfileFile(filePath: string): Promise<BankProfile | null> {
     try {
-      const content = readFileSync(filePath, "utf8");
-      const isYaml = filePath.endsWith(".yaml") || filePath.endsWith(".yml");
+      const content = readFileSync(filePath, 'utf8');
+      const isYaml = filePath.endsWith('.yaml') || filePath.endsWith('.yml');
 
       if (isYaml) {
         // Use yaml parser (would need to install yaml package)
         // const yaml = require('yaml');
         // return yaml.parse(content) as BankProfile;
-        this.logger.warn(
-          "YAML support requires yaml package, skipping YAML files",
-        );
+        this.logger.warn('YAML support requires yaml package, skipping YAML files');
         return null;
       }
 
       return null;
     } catch (error) {
-      this.logger.error(
-        `Failed to load profile from ${filePath}: ${error.message}`,
-      );
+      this.logger.error(`Failed to load profile from ${filePath}: ${error.message}`);
       return null;
     }
   }
@@ -202,107 +192,84 @@ export class BankProfileService {
       this.createBerekeBankProfile(),
     ];
 
-    defaultProfiles.forEach((profile) => {
+    defaultProfiles.forEach(profile => {
       this.profiles.set(profile.id, profile);
-      this.logger.log(
-        `Created default profile: ${profile.name} (${profile.id})`,
-      );
+      this.logger.log(`Created default profile: ${profile.name} (${profile.id})`);
     });
   }
 
   private createKazkomertsbankProfile(): BankProfile {
     return {
-      id: "kazkomertsbank",
-      name: "Kazkommertsbank",
+      id: 'kazkomertsbank',
+      name: 'Kazkommertsbank',
       displayName: 'АО "Казкоммерцбанк"',
-      country: "KZ",
-      locale: "ru",
-      currency: "KZT",
-      version: "1.0.0",
+      country: 'KZ',
+      locale: 'ru',
+      currency: 'KZT',
+      version: '1.0.0',
       lastUpdated: new Date().toISOString(),
 
       identification: {
-        documentPatterns: [
-          "казкоммерцбанк",
-          "kazkomertsbank",
-          "kkb",
-          'АО "Казкоммерцбанк"',
-        ],
-        filenamePatterns: [
-          "kkb_.*\\.pdf",
-          "kazkomertsbank_.*\\.xlsx",
-          "выписка_.*kkb.*",
-        ],
-        textPatterns: [
-          'АО "Казкоммерцбанк"',
-          "Казкоммерцбанк",
-          "KAZKOMERTSBANK",
-        ],
+        documentPatterns: ['казкоммерцбанк', 'kazkomertsbank', 'kkb', 'АО "Казкоммерцбанк"'],
+        filenamePatterns: ['kkb_.*\\.pdf', 'kazkomertsbank_.*\\.xlsx', 'выписка_.*kkb.*'],
+        textPatterns: ['АО "Казкоммерцбанк"', 'Казкоммерцбанк', 'KAZKOMERTSBANK'],
       },
 
       parsing: {
-        format: "pdf",
+        format: 'pdf',
         columns: [
-          { name: "transactionDate", type: "date", required: true, index: 0 },
-          { name: "documentNumber", type: "string", required: false, index: 1 },
+          { name: 'transactionDate', type: 'date', required: true, index: 0 },
+          { name: 'documentNumber', type: 'string', required: false, index: 1 },
           {
-            name: "counterpartyName",
-            type: "string",
+            name: 'counterpartyName',
+            type: 'string',
             required: true,
             index: 2,
           },
           {
-            name: "counterpartyBin",
-            type: "string",
+            name: 'counterpartyBin',
+            type: 'string',
             required: false,
             index: 3,
           },
-          { name: "debit", type: "amount", required: false, index: 4 },
-          { name: "credit", type: "amount", required: false, index: 5 },
-          { name: "paymentPurpose", type: "string", required: true, index: 6 },
-          { name: "currency", type: "currency", required: false, index: 7 },
+          { name: 'debit', type: 'amount', required: false, index: 4 },
+          { name: 'credit', type: 'amount', required: false, index: 5 },
+          { name: 'paymentPurpose', type: 'string', required: true, index: 6 },
+          { name: 'currency', type: 'currency', required: false, index: 7 },
         ],
-        dateFormat: "DD.MM.YYYY",
+        dateFormat: 'DD.MM.YYYY',
         amountFormat: {
-          decimalSeparator: ",",
-          thousandsSeparator: " ",
-          currencyPosition: "after",
-          currencySymbol: "₸",
+          decimalSeparator: ',',
+          thousandsSeparator: ' ',
+          currencyPosition: 'after',
+          currencySymbol: '₸',
         },
         reverseDebitCredit: false,
         negativeInParentheses: false,
       },
 
       metadata: {
-        headerPatterns: ["ВЫПИСКА ИЗ СЧЕТА", "ПО СЧЕТУ", 'АО "Казкоммерцбанк"'],
-        accountNumberPatterns: [
-          "Счет[:\\s]*([A-Z0-9]{20})",
-          "Номер счета[:\\s]*([A-Z0-9]{20})",
-        ],
+        headerPatterns: ['ВЫПИСКА ИЗ СЧЕТА', 'ПО СЧЕТУ', 'АО "Казкоммерцбанк"'],
+        accountNumberPatterns: ['Счет[:\\s]*([A-Z0-9]{20})', 'Номер счета[:\\s]*([A-Z0-9]{20})'],
         periodPatterns: [
-          "Период[:\\s]*(\\d{2}\\.\\d{2}\\.\\d{4})\\s*-\\s*(\\d{2}\\.\\d{2}\\.\\d{4})",
-          "За период[:\\s]*(\\d{2}\\.\\d{2}\\.\\d{4})\\s*по\\s*(\\d{2}\\.\\d{2}\\.\\d{4})",
+          'Период[:\\s]*(\\d{2}\\.\\d{2}\\.\\d{4})\\s*-\\s*(\\d{2}\\.\\d{2}\\.\\d{4})',
+          'За период[:\\s]*(\\d{2}\\.\\d{2}\\.\\d{4})\\s*по\\s*(\\d{2}\\.\\d{2}\\.\\d{4})',
         ],
         balancePatterns: [
-          "Остаток на конец[:\\s]*([\\d\\s,.-]+)",
-          "Конечный остаток[:\\s]*([\\d\\s,.-]+)",
+          'Остаток на конец[:\\s]*([\\d\\s,.-]+)',
+          'Конечный остаток[:\\s]*([\\d\\s,.-]+)',
         ],
       },
 
       validation: {
-        requiredFields: [
-          "transactionDate",
-          "counterpartyName",
-          "paymentPurpose",
-        ],
-        optionalFields: ["documentNumber", "counterpartyBin", "currency"],
+        requiredFields: ['transactionDate', 'counterpartyName', 'paymentPurpose'],
+        optionalFields: ['documentNumber', 'counterpartyBin', 'currency'],
         businessRules: [
           {
-            name: "debit_xor_credit",
-            description:
-              "Transaction must have either debit or credit, not both",
-            condition: "xor(debit, credit)",
-            action: "set_other_to_zero",
+            name: 'debit_xor_credit',
+            description: 'Transaction must have either debit or credit, not both',
+            condition: 'xor(debit, credit)',
+            action: 'set_other_to_zero',
             priority: 1,
           },
         ],
@@ -324,87 +291,71 @@ export class BankProfileService {
         useAdvancedExtraction: true,
         useAutoFix: true,
         useChecksumValidation: true,
-        fallbackMode: "regex",
+        fallbackMode: 'regex',
       },
     };
   }
 
   private createHalykBankProfile(): BankProfile {
     return {
-      id: "halykbank",
-      name: "Halyk Bank",
+      id: 'halykbank',
+      name: 'Halyk Bank',
       displayName: 'АО "Народный банк Казахстана"',
-      country: "KZ",
-      locale: "ru",
-      currency: "KZT",
-      version: "1.0.0",
+      country: 'KZ',
+      locale: 'ru',
+      currency: 'KZT',
+      version: '1.0.0',
       lastUpdated: new Date().toISOString(),
 
       identification: {
-        documentPatterns: [
-          "народный банк",
-          "halyk bank",
-          "халык банк",
-          "народный",
-        ],
-        filenamePatterns: ["halyk_.*\\.pdf", "народный_.*\\.xlsx"],
-        textPatterns: [
-          'АО "Народный банк Казахстана"',
-          "Halyk Bank",
-          "Халык Банк",
-        ],
+        documentPatterns: ['народный банк', 'halyk bank', 'халык банк', 'народный'],
+        filenamePatterns: ['halyk_.*\\.pdf', 'народный_.*\\.xlsx'],
+        textPatterns: ['АО "Народный банк Казахстана"', 'Halyk Bank', 'Халык Банк'],
       },
 
       parsing: {
-        format: "excel",
-        delimiter: ",",
+        format: 'excel',
+        delimiter: ',',
         hasHeader: true,
         skipRows: 1,
         columns: [
-          { name: "transactionDate", type: "date", required: true, index: 0 },
+          { name: 'transactionDate', type: 'date', required: true, index: 0 },
           {
-            name: "counterpartyName",
-            type: "string",
+            name: 'counterpartyName',
+            type: 'string',
             required: true,
             index: 1,
           },
-          { name: "paymentPurpose", type: "string", required: true, index: 2 },
-          { name: "debit", type: "amount", required: false, index: 3 },
-          { name: "credit", type: "amount", required: false, index: 4 },
-          { name: "currency", type: "currency", required: false, index: 5 },
+          { name: 'paymentPurpose', type: 'string', required: true, index: 2 },
+          { name: 'debit', type: 'amount', required: false, index: 3 },
+          { name: 'credit', type: 'amount', required: false, index: 4 },
+          { name: 'currency', type: 'currency', required: false, index: 5 },
         ],
-        dateFormat: "DD.MM.YYYY",
+        dateFormat: 'DD.MM.YYYY',
         amountFormat: {
-          decimalSeparator: ".",
-          thousandsSeparator: ",",
-          currencyPosition: "after",
-          currencySymbol: "₸",
+          decimalSeparator: '.',
+          thousandsSeparator: ',',
+          currencyPosition: 'after',
+          currencySymbol: '₸',
         },
       },
 
       metadata: {
-        headerPatterns: ["Народный банк", "Halyk Bank", "Выписка по счету"],
-        accountNumberPatterns: [
-          "Счет[:\\s]*([A-Z0-9]{20})",
-          "Номер счета[:\\s]*([A-Z0-9]{20})",
-        ],
+        headerPatterns: ['Народный банк', 'Halyk Bank', 'Выписка по счету'],
+        accountNumberPatterns: ['Счет[:\\s]*([A-Z0-9]{20})', 'Номер счета[:\\s]*([A-Z0-9]{20})'],
         periodPatterns: [
-          "Период[:\\s]*(\\d{2}\\.\\d{2}\\.\\d{4})\\s*-\\s*(\\d{2}\\.\\d{2}\\.\\d{4})",
+          'Период[:\\s]*(\\d{2}\\.\\d{2}\\.\\d{4})\\s*-\\s*(\\d{2}\\.\\d{2}\\.\\d{4})',
         ],
       },
 
       validation: {
-        requiredFields: [
-          "transactionDate",
-          "counterpartyName",
-          "paymentPurpose",
-        ],
+        requiredFields: ['transactionDate', 'counterpartyName', 'paymentPurpose'],
         businessRules: [
           {
-            name: "amount_required",
-            description: "Transaction must have either debit or credit",
-            condition: "or(debit, credit)",
-            action: "error_if_missing",
+            name: 'amount_required',
+            description: 'Transaction must have either debit or credit',
+            condition: 'or(debit, credit)',
+            action: 'error_if_missing',
             priority: 1,
           },
         ],
@@ -426,68 +377,60 @@ export class BankProfileService {
         useAdvancedExtraction: true,
         useAutoFix: true,
         useChecksumValidation: true,
-        fallbackMode: "heuristic",
+        fallbackMode: 'heuristic',
       },
     };
   }
 
   private createKaspiBankProfile(): BankProfile {
     return {
-      id: "kaspibank",
-      name: "Kaspi Bank",
+      id: 'kaspibank',
+      name: 'Kaspi Bank',
       displayName: 'АО "Kaspi Bank"',
-      country: "KZ",
-      locale: "ru",
-      currency: "KZT",
-      version: "1.0.0",
+      country: 'KZ',
+      locale: 'ru',
+      currency: 'KZT',
+      version: '1.0.0',
       lastUpdated: new Date().toISOString(),
 
       identification: {
-        documentPatterns: ["каспи банк", "kaspi bank", "каспи", "kaspi"],
-        filenamePatterns: [
-          "kaspi_.*\\.pdf",
-          "каспи_.*\\.xlsx",
-          "выписка_.*kaspi.*",
-        ],
-        textPatterns: ["АО Kaspi Bank", "Kaspi Bank", "Каспи Банк"],
+        documentPatterns: ['каспи банк', 'kaspi bank', 'каспи', 'kaspi'],
+        filenamePatterns: ['kaspi_.*\\.pdf', 'каспи_.*\\.xlsx', 'выписка_.*kaspi.*'],
+        textPatterns: ['АО Kaspi Bank', 'Kaspi Bank', 'Каспи Банк'],
       },
 
       parsing: {
-        format: "csv",
-        delimiter: ";",
+        format: 'csv',
+        delimiter: ';',
         hasHeader: true,
         columns: [
-          { name: "transactionDate", type: "date", required: true, index: 0 },
-          { name: "documentNumber", type: "string", required: false, index: 1 },
+          { name: 'transactionDate', type: 'date', required: true, index: 0 },
+          { name: 'documentNumber', type: 'string', required: false, index: 1 },
           {
-            name: "counterpartyName",
-            type: "string",
+            name: 'counterpartyName',
+            type: 'string',
             required: true,
             index: 2,
           },
-          { name: "debit", type: "amount", required: false, index: 3 },
-          { name: "credit", type: "amount", required: false, index: 4 },
-          { name: "paymentPurpose", type: "string", required: true, index: 5 },
+          { name: 'debit', type: 'amount', required: false, index: 3 },
+          { name: 'credit', type: 'amount', required: false, index: 4 },
+          { name: 'paymentPurpose', type: 'string', required: true, index: 5 },
         ],
-        dateFormat: "DD.MM.YYYY HH:mm:ss",
+        dateFormat: 'DD.MM.YYYY HH:mm:ss',
         amountFormat: {
-          decimalSeparator: ".",
-          thousandsSeparator: " ",
-          currencyPosition: "after",
+          decimalSeparator: '.',
+          thousandsSeparator: ' ',
+          currencyPosition: 'after',
         },
         reverseDebitCredit: false,
       },
 
       metadata: {
-        headerPatterns: ["Kaspi Bank", "АО Kaspi Bank", "Выписка по счету"],
+        headerPatterns: ['Kaspi Bank', 'АО Kaspi Bank', 'Выписка по счету'],
       },
 
       validation: {
-        requiredFields: [
-          "transactionDate",
-          "counterpartyName",
-          "paymentPurpose",
-        ],
+        requiredFields: ['transactionDate', 'counterpartyName', 'paymentPurpose'],
       },
 
       quality: {
@@ -506,62 +449,58 @@ export class BankProfileService {
         useAdvancedExtraction: true,
         useAutoFix: true,
         useChecksumValidation: true,
-        fallbackMode: "regex",
+        fallbackMode: 'regex',
       },
     };
   }
 
   private createBerekeBankProfile(): BankProfile {
     return {
-      id: "berekebank",
-      name: "Bereke Bank",
+      id: 'berekebank',
+      name: 'Bereke Bank',
       displayName: 'АО "Bereke Bank"',
-      country: "KZ",
-      locale: "ru",
-      currency: "KZT",
-      version: "1.0.0",
+      country: 'KZ',
+      locale: 'ru',
+      currency: 'KZT',
+      version: '1.0.0',
       lastUpdated: new Date().toISOString(),
 
       identification: {
-        documentPatterns: ["береке банк", "bereke bank", "береке", "bereke"],
-        filenamePatterns: ["bereke_.*\\.pdf", "береке_.*\\.xlsx"],
-        textPatterns: ["АО Bereke Bank", "Bereke Bank", "Береке Банк"],
+        documentPatterns: ['береке банк', 'bereke bank', 'береке', 'bereke'],
+        filenamePatterns: ['bereke_.*\\.pdf', 'береке_.*\\.xlsx'],
+        textPatterns: ['АО Bereke Bank', 'Bereke Bank', 'Береке Банк'],
       },
 
       parsing: {
-        format: "pdf",
+        format: 'pdf',
         columns: [
-          { name: "transactionDate", type: "date", required: true, index: 0 },
+          { name: 'transactionDate', type: 'date', required: true, index: 0 },
           {
-            name: "counterpartyName",
-            type: "string",
+            name: 'counterpartyName',
+            type: 'string',
             required: true,
             index: 1,
           },
-          { name: "paymentPurpose", type: "string", required: true, index: 2 },
-          { name: "debit", type: "amount", required: false, index: 3 },
-          { name: "credit", type: "amount", required: false, index: 4 },
-          { name: "currency", type: "currency", required: false, index: 5 },
+          { name: 'paymentPurpose', type: 'string', required: true, index: 2 },
+          { name: 'debit', type: 'amount', required: false, index: 3 },
+          { name: 'credit', type: 'amount', required: false, index: 4 },
+          { name: 'currency', type: 'currency', required: false, index: 5 },
         ],
-        dateFormat: "DD.MM.YYYY",
+        dateFormat: 'DD.MM.YYYY',
         amountFormat: {
-          decimalSeparator: ",",
-          thousandsSeparator: " ",
-          currencyPosition: "after",
-          currencySymbol: "₸",
+          decimalSeparator: ',',
+          thousandsSeparator: ' ',
+          currencyPosition: 'after',
+          currencySymbol: '₸',
         },
       },
 
       metadata: {
-        headerPatterns: ["Bereke Bank", "АО Bereke Bank", "Выписка по счету"],
+        headerPatterns: ['Bereke Bank', 'АО Bereke Bank', 'Выписка по счету'],
       },
 
       validation: {
-        requiredFields: [
-          "transactionDate",
-          "counterpartyName",
-          "paymentPurpose",
-        ],
+        requiredFields: ['transactionDate', 'counterpartyName', 'paymentPurpose'],
       },
 
       quality: {
@@ -580,7 +519,7 @@ export class BankProfileService {
         useAdvancedExtraction: true,
         useAutoFix: true,
         useChecksumValidation: true,
-        fallbackMode: "heuristic",
+        fallbackMode: 'heuristic',
       },
     };
   }
@@ -600,7 +539,7 @@ export class BankProfileService {
 
     for (const profile of this.profiles.values()) {
       for (const pattern of profile.identification.filenamePatterns) {
-        if (new RegExp(pattern, "i").test(normalizedName)) {
+        if (new RegExp(pattern, 'i').test(normalizedName)) {
           return profile;
         }
       }
@@ -668,37 +607,33 @@ export class BankProfileService {
     const errors: string[] = [];
 
     if (!profile.id) {
-      errors.push("Profile ID is required");
+      errors.push('Profile ID is required');
     }
 
     if (!profile.name) {
-      errors.push("Profile name is required");
+      errors.push('Profile name is required');
     }
 
     if (!profile.country || profile.country.length !== 2) {
-      errors.push("Valid country code is required");
+      errors.push('Valid country code is required');
     }
 
     if (!profile.currency || profile.currency.length !== 3) {
-      errors.push("Valid currency code is required");
+      errors.push('Valid currency code is required');
     }
 
     if (!profile.parsing.columns || profile.parsing.columns.length === 0) {
-      errors.push("At least one column definition is required");
+      errors.push('At least one column definition is required');
     }
 
-    const hasDateColumn = profile.parsing.columns.some(
-      (col) => col.type === "date",
-    );
+    const hasDateColumn = profile.parsing.columns.some(col => col.type === 'date');
     if (!hasDateColumn) {
-      errors.push("At least one date column is required");
+      errors.push('At least one date column is required');
     }
 
-    const hasAmountColumn = profile.parsing.columns.some(
-      (col) => col.type === "amount",
-    );
+    const hasAmountColumn = profile.parsing.columns.some(col => col.type === 'amount');
     if (!hasAmountColumn) {
-      errors.push("At least one amount column is required");
+      errors.push('At least one amount column is required');
     }
 
     return {
@@ -708,20 +643,20 @@ export class BankProfileService {
   }
 
   // Profile export/import
-  exportProfile(id: string, format: "json" | "yaml" = "json"): string | null {
+  exportProfile(id: string, format: 'json' | 'yaml' = 'json'): string | null {
     const profile = this.getProfile(id);
     if (!profile) {
       return null;
     }
 
-    if (format === "json") {
+    if (format === 'json') {
       return JSON.stringify(profile, null, 2);
     }
 
-    if (format === "yaml") {
+    if (format === 'yaml') {
       // const yaml = require('yaml');
       // return yaml.stringify(profile);
-      this.logger.warn("YAML export requires yaml package");
+      this.logger.warn('YAML export requires yaml package');
       return JSON.stringify(profile, null, 2);
     }
 
@@ -730,28 +665,28 @@ export class BankProfileService {
 
   importProfile(
     content: string,
-    format: "json" | "yaml" = "json",
+    format: 'json' | 'yaml' = 'json',
   ): { success: boolean; profile?: BankProfile; error?: string } {
     try {
       let profile: BankProfile;
 
-      if (format === "json") {
+      if (format === 'json') {
         profile = JSON.parse(content) as BankProfile;
       }
 
-      if (format === "yaml") {
+      if (format === 'yaml') {
         // const yaml = require('yaml');
         // profile = yaml.parse(content);
-        this.logger.warn("YAML import requires yaml package");
+        this.logger.warn('YAML import requires yaml package');
         return {
           success: false,
-          error: "YAML format not supported without yaml package",
+          error: 'YAML format not supported without yaml package',
         };
       }
 
       const validation = this.validateProfile(profile);
       if (!validation.isValid) {
-        return { success: false, error: validation.errors.join(", ") };
+        return { success: false, error: validation.errors.join(', ') };
       }
 
       this.addProfile(profile);

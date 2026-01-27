@@ -1,35 +1,21 @@
-import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-import {
-  Inject,
-  Injectable,
-  Logger,
-  Optional,
-  forwardRef,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import type { Repository } from "typeorm";
-import { Semaphore } from "../../../common/utils/semaphore.util";
-import {
-  BankName,
-  FileType,
-  Statement,
-  StatementStatus,
-} from "../../../entities/statement.entity";
-import {
-  Transaction,
-  TransactionType,
-} from "../../../entities/transaction.entity";
-import { ClassificationService } from "../../classification/services/classification.service";
-import { GoogleSheetsService } from "../../google-sheets/google-sheets.service";
-import { MetricsService } from "../../observability/metrics.service";
-import { AiParseValidator } from "../helpers/ai-parse-validator.helper";
-import { isAiEnabled } from "../helpers/ai-runtime.util";
-import type { ParsedTransaction } from "../interfaces/parsed-statement.interface";
-import type { ParsedStatement } from "../interfaces/parsed-statement.interface";
-import { MetadataExtractionService } from "./metadata-extraction.service";
-import { ParserFactoryService } from "./parser-factory.service";
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { Inject, Injectable, Logger, Optional, forwardRef } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import type { Repository } from 'typeorm';
+import { Semaphore } from '../../../common/utils/semaphore.util';
+import { BankName, FileType, Statement, StatementStatus } from '../../../entities/statement.entity';
+import { Transaction, TransactionType } from '../../../entities/transaction.entity';
+import { ClassificationService } from '../../classification/services/classification.service';
+import { GoogleSheetsService } from '../../google-sheets/google-sheets.service';
+import { MetricsService } from '../../observability/metrics.service';
+import { AiParseValidator } from '../helpers/ai-parse-validator.helper';
+import { isAiEnabled } from '../helpers/ai-runtime.util';
+import type { ParsedTransaction } from '../interfaces/parsed-statement.interface';
+import type { ParsedStatement } from '../interfaces/parsed-statement.interface';
+import { MetadataExtractionService } from './metadata-extraction.service';
+import { ParserFactoryService } from './parser-factory.service';
 
 function parsePositiveInt(value: string | undefined, fallback: number) {
   if (!value) return fallback;
@@ -46,7 +32,7 @@ export class StatementProcessingService {
     parsePositiveInt(process.env.STATEMENT_PARSING_CONCURRENCY, 2),
   );
   private static readonly BALANCE_EPS = (() => {
-    const parsed = Number.parseFloat(process.env.BALANCE_EPS || "0.01");
+    const parsed = Number.parseFloat(process.env.BALANCE_EPS || '0.01');
     if (!Number.isFinite(parsed) || parsed <= 0) {
       return 0.01;
     }
@@ -69,18 +55,18 @@ export class StatementProcessingService {
 
   private getFileExtension(statement: Statement): string {
     switch (statement.fileType) {
-      case "pdf":
-        return "pdf";
-      case "xlsx":
-        return "xlsx";
-      case "csv":
-        return "csv";
-      case "image":
-        return "jpg";
-      case "docx":
-        return "docx";
+      case 'pdf':
+        return 'pdf';
+      case 'xlsx':
+        return 'xlsx';
+      case 'csv':
+        return 'csv';
+      case 'image':
+        return 'jpg';
+      case 'docx':
+        return 'docx';
       default:
-        return "bin";
+        return 'bin';
     }
   }
 
@@ -93,23 +79,23 @@ export class StatementProcessingService {
     }
 
     const withData = await this.statementRepository
-      .createQueryBuilder("statement")
-      .addSelect("statement.fileData")
-      .where("statement.id = :id", { id: statement.id })
+      .createQueryBuilder('statement')
+      .addSelect('statement.fileData')
+      .where('statement.id = :id', { id: statement.id })
       .getOne();
 
     let fileData: Buffer | null | undefined = (withData as any)?.fileData;
 
     if (!fileData && statement.fileHash) {
       const alternative = await this.statementRepository
-        .createQueryBuilder("statement")
-        .addSelect("statement.fileData")
-        .where("statement.userId = :userId", { userId: statement.userId })
-        .andWhere("statement.fileHash = :fileHash", {
+        .createQueryBuilder('statement')
+        .addSelect('statement.fileData')
+        .where('statement.userId = :userId', { userId: statement.userId })
+        .andWhere('statement.fileHash = :fileHash', {
           fileHash: statement.fileHash,
         })
-        .andWhere("statement.fileData IS NOT NULL")
-        .orderBy("statement.createdAt", "DESC")
+        .andWhere('statement.fileData IS NOT NULL')
+        .orderBy('statement.createdAt', 'DESC')
         .getOne();
       fileData = (alternative as any)?.fileData;
     }
@@ -132,7 +118,7 @@ export class StatementProcessingService {
     startedAt: number,
     bank: BankName,
     fileType: FileType,
-    result: "ok" | "warn" | "error" = "ok",
+    result: 'ok' | 'warn' | 'error' = 'ok',
   ) {
     if (!this.metricsService) {
       return;
@@ -157,10 +143,10 @@ export class StatementProcessingService {
 
     const label =
       error instanceof Error
-        ? error.name || "Error"
-        : typeof error === "string"
+        ? error.name || 'Error'
+        : typeof error === 'string'
           ? error
-          : "UnknownError";
+          : 'UnknownError';
 
     this.metricsService.statementParsingErrorsTotal.inc({
       stage,
@@ -169,7 +155,7 @@ export class StatementProcessingService {
   }
 
   private validateStatement(
-    metadata: ParsedStatement["metadata"],
+    metadata: ParsedStatement['metadata'],
     transactions: ParsedTransaction[],
   ): {
     passed: boolean;
@@ -230,30 +216,25 @@ export class StatementProcessingService {
   ): { valid: ParsedTransaction[]; warnings: string[] } {
     const valid: ParsedTransaction[] = [];
     const warnings: string[] = [];
-    const currencyFallback = (defaultCurrency || "").trim() || "KZT";
+    const currencyFallback = (defaultCurrency || '').trim() || 'KZT';
 
     transactions.forEach((tx, index) => {
       const prefix = `tx#${index + 1}`;
-      if (
-        !(tx.transactionDate instanceof Date) ||
-        Number.isNaN(tx.transactionDate.getTime())
-      ) {
+      if (!(tx.transactionDate instanceof Date) || Number.isNaN(tx.transactionDate.getTime())) {
         const msg = `${prefix}: skipped (invalid date)`;
         warnings.push(msg);
-        log("warn", msg);
+        log('warn', msg);
         droppedSamples?.push({ reason: msg, transaction: tx });
         return;
       }
 
       const debit = Number.isFinite(tx.debit as number) ? Number(tx.debit) : 0;
-      const credit = Number.isFinite(tx.credit as number)
-        ? Number(tx.credit)
-        : 0;
+      const credit = Number.isFinite(tx.credit as number) ? Number(tx.credit) : 0;
 
       if (debit < 0 || credit < 0) {
         const msg = `${prefix}: skipped (negative amount)`;
         warnings.push(msg);
-        log("warn", msg);
+        log('warn', msg);
         droppedSamples?.push({ reason: msg, transaction: tx });
         return;
       }
@@ -261,13 +242,12 @@ export class StatementProcessingService {
       if (debit === 0 && credit === 0) {
         const msg = `${prefix}: skipped (no debit/credit amount)`;
         warnings.push(msg);
-        log("warn", msg);
+        log('warn', msg);
         droppedSamples?.push({ reason: msg, transaction: tx });
         return;
       }
 
-      const currency =
-        (tx.currency || currencyFallback).trim() || currencyFallback;
+      const currency = (tx.currency || currencyFallback).trim() || currencyFallback;
       const sanitized: ParsedTransaction = {
         ...tx,
         transactionDate: tx.transactionDate,
@@ -275,10 +255,9 @@ export class StatementProcessingService {
         credit: credit > 0 ? credit : undefined,
         currency,
         counterpartyName:
-          (tx.counterpartyName || "Неизвестный контрагент").toString().trim() ||
-          "Неизвестный контрагент",
-        paymentPurpose:
-          (tx.paymentPurpose || "Не указано").toString().trim() || "Не указано",
+          (tx.counterpartyName || 'Неизвестный контрагент').toString().trim() ||
+          'Неизвестный контрагент',
+        paymentPurpose: (tx.paymentPurpose || 'Не указано').toString().trim() || 'Не указано',
       };
 
       valid.push(sanitized);
@@ -288,8 +267,8 @@ export class StatementProcessingService {
   }
 
   private reportAi(
-    kind: "extract" | "validate",
-    result: "success" | "empty" | "error" | "skipped",
+    kind: 'extract' | 'validate',
+    result: 'success' | 'empty' | 'error' | 'skipped',
   ) {
     if (!this.metricsService) return;
     this.metricsService.aiParsingCallsTotal.inc({ kind, result });
@@ -313,11 +292,9 @@ export class StatementProcessingService {
     }
   }
 
-  private async processStatementInternal(
-    statementId: string,
-  ): Promise<Statement> {
+  private async processStatementInternal(statementId: string): Promise<Statement> {
     const startTime = Date.now();
-    const parsingDetails: Statement["parsingDetails"] = {
+    const parsingDetails: Statement['parsingDetails'] = {
       logEntries: [],
       errors: [],
       warnings: [],
@@ -327,9 +304,9 @@ export class StatementProcessingService {
       const timestamp = new Date().toISOString();
       parsingDetails.logEntries = parsingDetails.logEntries || [];
       parsingDetails.logEntries.push({ timestamp, level, message });
-      this.logger[
-        level === "error" ? "error" : level === "warn" ? "warn" : "log"
-      ](`[${statementId}] ${message}`);
+      this.logger[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](
+        `[${statementId}] ${message}`,
+      );
     };
 
     const statement = await this.statementRepository.findOne({
@@ -344,9 +321,9 @@ export class StatementProcessingService {
       return statement;
     }
 
-    addLog("info", `Starting processing of statement ${statementId}`);
+    addLog('info', `Starting processing of statement ${statementId}`);
     addLog(
-      "info",
+      'info',
       `File: ${statement.fileName} (${statement.fileType}, ${statement.fileSize} bytes)`,
     );
 
@@ -364,40 +341,27 @@ export class StatementProcessingService {
       await this.statementRepository.save(statement);
 
       // Detect bank and format
-      addLog(
-        "info",
-        `Detecting bank and format for file type: ${statement.fileType}`,
-      );
+      addLog('info', `Detecting bank and format for file type: ${statement.fileType}`);
       const detectStartTime = Date.now();
-      const { bankName, formatVersion } =
-        await this.parserFactory.detectBankAndFormat(
-          processingFilePath,
-          statement.fileType,
-        );
+      const { bankName, formatVersion } = await this.parserFactory.detectBankAndFormat(
+        processingFilePath,
+        statement.fileType,
+      );
       const detectTime = Date.now() - detectStartTime;
 
       parsingDetails.detectedBank = bankName;
       parsingDetails.detectedFormat = formatVersion;
       addLog(
-        "info",
-        `Detected bank: ${bankName}, format: ${formatVersion || "unknown"} (${detectTime}ms)`,
+        'info',
+        `Detected bank: ${bankName}, format: ${formatVersion || 'unknown'} (${detectTime}ms)`,
       );
-      this.observeDuration(
-        "detect",
-        detectStartTime,
-        bankName,
-        statement.fileType,
-        "ok",
-      );
+      this.observeDuration('detect', detectStartTime, bankName, statement.fileType, 'ok');
 
       statement.bankName = bankName;
       await this.statementRepository.save(statement);
 
       // Get appropriate parser
-      addLog(
-        "info",
-        `Looking for parser for bank ${bankName} and file type ${statement.fileType}`,
-      );
+      addLog('info', `Looking for parser for bank ${bankName} and file type ${statement.fileType}`);
       const parser = await this.parserFactory.getParser(
         bankName,
         statement.fileType,
@@ -406,78 +370,57 @@ export class StatementProcessingService {
 
       if (!parser) {
         const errorMsg = `No parser found for bank ${bankName} and file type ${statement.fileType}`;
-        addLog("error", errorMsg);
+        addLog('error', errorMsg);
         parsingDetails.errors = parsingDetails.errors || [];
         parsingDetails.errors.push(errorMsg);
         throw new Error(errorMsg);
       }
 
       const parserVersion =
-        typeof parser.getVersion === "function"
-          ? parser.getVersion()
-          : "unknown";
+        typeof parser.getVersion === 'function' ? parser.getVersion() : 'unknown';
 
       parsingDetails.parserUsed = parser.constructor.name;
       parsingDetails.parserVersion = parserVersion;
-      addLog(
-        "info",
-        `Using parser: ${parser.constructor.name} (version: ${parserVersion})`,
-      );
+      addLog('info', `Using parser: ${parser.constructor.name} (version: ${parserVersion})`);
 
       // Parse statement
-      addLog("info", "Starting PDF text extraction...");
+      addLog('info', 'Starting PDF text extraction...');
       const parseStartTime = Date.now();
       let parsedStatement = await parser.parse(processingFilePath);
       const parseTime = Date.now() - parseStartTime;
 
-      addLog("info", `Parsing completed in ${parseTime}ms`);
-      addLog(
-        "info",
-        `Found ${parsedStatement.transactions.length} transactions in parsed data`,
-      );
-      this.observeDuration(
-        "parse",
-        parseStartTime,
-        statement.bankName,
-        statement.fileType,
-        "ok",
-      );
+      addLog('info', `Parsing completed in ${parseTime}ms`);
+      addLog('info', `Found ${parsedStatement.transactions.length} transactions in parsed data`);
+      this.observeDuration('parse', parseStartTime, statement.bankName, statement.fileType, 'ok');
 
       // Extract enhanced metadata from raw text
-      addLog("info", "Extracting statement headers and metadata...");
+      addLog('info', 'Extracting statement headers and metadata...');
       const metadataStartTime = Date.now();
       try {
         // Read raw text for metadata extraction
-        let rawText = "";
-        if (statement.fileType === "pdf") {
+        let rawText = '';
+        if (statement.fileType === 'pdf') {
           // For PDF, we might need to extract raw text
-          const fs = require("fs");
+          const fs = require('fs');
           if (fs.existsSync(processingFilePath)) {
             // This is a simplified approach - in production, you'd use a PDF text extractor
             rawText = `Extracted from ${statement.fileName}`;
           }
-        } else if (
-          statement.fileType === "csv" ||
-          statement.fileType === "xlsx"
-        ) {
+        } else if (statement.fileType === 'csv' || statement.fileType === 'xlsx') {
           // For structured files, we can use the existing data
           rawText = JSON.stringify(parsedStatement);
         }
 
         // Extract metadata
-        const extractedMetadata =
-          await this.metadataExtractionService.extractMetadata(
-            rawText,
-            parsedStatement.metadata?.locale,
-          );
+        const extractedMetadata = await this.metadataExtractionService.extractMetadata(
+          rawText,
+          parsedStatement.metadata?.locale,
+        );
 
         // Convert and merge metadata
-        const displayInfo =
-          this.metadataExtractionService.createDisplayInfo(extractedMetadata);
+        const displayInfo = this.metadataExtractionService.createDisplayInfo(extractedMetadata);
         const enhancedMetadata =
-          this.metadataExtractionService.convertToParsedStatementMetadata(
-            extractedMetadata,
-          );
+          this.metadataExtractionService.convertToParsedStatementMetadata(extractedMetadata);
 
         // Update parsed statement with enhanced metadata
         parsedStatement.metadata = {
@@ -495,31 +438,22 @@ export class StatementProcessingService {
           },
         };
 
-        addLog(
-          "info",
-          `Metadata extraction completed in ${Date.now() - metadataStartTime}ms`,
-        );
-        addLog("info", `Extracted title: "${displayInfo.title}"`);
+        addLog('info', `Metadata extraction completed in ${Date.now() - metadataStartTime}ms`);
+        addLog('info', `Extracted title: "${displayInfo.title}"`);
         if (displayInfo.subtitle) {
-          addLog("info", `Extracted subtitle: "${displayInfo.subtitle}"`);
+          addLog('info', `Extracted subtitle: "${displayInfo.subtitle}"`);
         }
-        addLog("info", `Period display: "${displayInfo.periodDisplay}"`);
-        addLog("info", `Account display: "${displayInfo.accountDisplay}"`);
-        addLog(
-          "info",
-          `Institution display: "${displayInfo.institutionDisplay}"`,
-        );
+        addLog('info', `Period display: "${displayInfo.periodDisplay}"`);
+        addLog('info', `Account display: "${displayInfo.accountDisplay}"`);
+        addLog('info', `Institution display: "${displayInfo.institutionDisplay}"`);
       } catch (metadataError) {
-        addLog("warn", `Metadata extraction failed: ${metadataError.message}`);
+        addLog('warn', `Metadata extraction failed: ${metadataError.message}`);
         // Continue without metadata - not a critical error
       }
 
       // AI reconciliation with PDF text to correct/match results
       if (this.aiValidator.isAvailable()) {
-        addLog(
-          "info",
-          "Running AI reconciliation between PDF and parsed result...",
-        );
+        addLog('info', 'Running AI reconciliation between PDF and parsed result...');
         try {
           const aiResult = await this.aiValidator.reconcileFromPdf(
             processingFilePath,
@@ -527,32 +461,26 @@ export class StatementProcessingService {
           );
           parsedStatement = aiResult.corrected;
           if (aiResult.notes.length) {
-            aiResult.notes.forEach((note) => addLog("info", `[AI] ${note}`));
+            aiResult.notes.forEach(note => addLog('info', `[AI] ${note}`));
           }
           addLog(
-            "info",
+            'info',
             `After AI reconciliation: ${parsedStatement.transactions.length} transactions`,
           );
-          this.reportAi(
-            "validate",
-            parsedStatement.transactions.length > 0 ? "success" : "empty",
-          );
+          this.reportAi('validate', parsedStatement.transactions.length > 0 ? 'success' : 'empty');
         } catch (aiError) {
-          this.reportAi("validate", "error");
-          addLog(
-            "warn",
-            `AI reconciliation failed: ${(aiError as Error)?.message}`,
-          );
+          this.reportAi('validate', 'error');
+          addLog('warn', `AI reconciliation failed: ${(aiError as Error)?.message}`);
         }
       } else {
         const aiFlag = isAiEnabled();
         addLog(
-          "info",
+          'info',
           aiFlag
-            ? "AI reconciliation skipped (no GEMINI_API_KEY set)"
-            : "AI reconciliation skipped (AI_PARSING_ENABLED=0)",
+            ? 'AI reconciliation skipped (no GEMINI_API_KEY set)'
+            : 'AI reconciliation skipped (AI_PARSING_ENABLED=0)',
         );
-        this.reportAi("validate", "skipped");
+        this.reportAi('validate', 'skipped');
       }
 
       const droppedSamples: Array<{
@@ -561,13 +489,13 @@ export class StatementProcessingService {
       }> = [];
       const schemaResult = this.enforceTransactionSchema(
         parsedStatement.transactions,
-        parsedStatement.metadata?.currency || statement.currency || "KZT",
+        parsedStatement.metadata?.currency || statement.currency || 'KZT',
         addLog,
         droppedSamples,
       );
       if (schemaResult.warnings.length) {
         parsingDetails.warnings = parsingDetails.warnings || [];
-        schemaResult.warnings.forEach((w) => parsingDetails.warnings?.push(w));
+        schemaResult.warnings.forEach(w => parsingDetails.warnings?.push(w));
       }
       parsedStatement.transactions = schemaResult.valid;
       parsingDetails.transactionsFound = parsedStatement.transactions.length;
@@ -599,22 +527,21 @@ export class StatementProcessingService {
       statement.currency = enrichedMetadata.currency;
 
       addLog(
-        "info",
-        `Metadata extracted - Account: ${statement.accountNumber || "N/A"}, Currency: ${statement.currency}`,
+        'info',
+        `Metadata extracted - Account: ${statement.accountNumber || 'N/A'}, Currency: ${statement.currency}`,
       );
       addLog(
-        "info",
-        `Date range: ${statement.statementDateFrom?.toISOString() || "N/A"} to ${statement.statementDateTo?.toISOString() || "N/A"}`,
+        'info',
+        `Date range: ${statement.statementDateFrom?.toISOString() || 'N/A'} to ${statement.statementDateTo?.toISOString() || 'N/A'}`,
       );
 
       // Create transactions with classification
-      const majorityCategory =
-        await this.classificationService.determineMajorityCategory(
-          parsedStatement.transactions,
-          statement.userId,
-        );
+      const majorityCategory = await this.classificationService.determineMajorityCategory(
+        parsedStatement.transactions,
+        statement.userId,
+      );
 
-      addLog("info", "Creating transactions and applying classification...");
+      addLog('info', 'Creating transactions and applying classification...');
       const createStartTime = Date.now();
       const { transactions, duplicatesSkipped } = await this.createTransactions(
         statement,
@@ -625,42 +552,27 @@ export class StatementProcessingService {
       );
       const createTime = Date.now() - createStartTime;
 
-      addLog(
-        "info",
-        `Created ${transactions.length} transactions in ${createTime}ms`,
-      );
+      addLog('info', `Created ${transactions.length} transactions in ${createTime}ms`);
       parsingDetails.transactionsCreated = transactions.length;
       parsingDetails.transactionsDeduplicated = duplicatesSkipped;
       this.observeDuration(
-        "persist",
+        'persist',
         createStartTime,
         statement.bankName,
         statement.fileType,
-        "ok",
+        'ok',
       );
 
       statement.totalTransactions = transactions.length;
-      statement.totalDebit = transactions.reduce(
-        (sum, t) => sum + (t.debit ?? 0),
-        0,
-      );
-      statement.totalCredit = transactions.reduce(
-        (sum, t) => sum + (t.credit ?? 0),
-        0,
-      );
+      statement.totalDebit = transactions.reduce((sum, t) => sum + (t.debit ?? 0), 0);
+      statement.totalCredit = transactions.reduce((sum, t) => sum + (t.credit ?? 0), 0);
       if (majorityCategory.categoryId) {
         statement.categoryId = majorityCategory.categoryId;
       }
 
-      addLog(
-        "info",
-        `Totals - Debit: ${statement.totalDebit}, Credit: ${statement.totalCredit}`,
-      );
+      addLog('info', `Totals - Debit: ${statement.totalDebit}, Credit: ${statement.totalCredit}`);
 
-      const validationResult = this.validateStatement(
-        enrichedMetadata,
-        transactions,
-      );
+      const validationResult = this.validateStatement(enrichedMetadata, transactions);
       parsingDetails.validation = {
         passed: validationResult.passed,
         warnings: validationResult.warnings,
@@ -668,9 +580,9 @@ export class StatementProcessingService {
       };
       if (validationResult.warnings.length) {
         parsingDetails.warnings = parsingDetails.warnings || [];
-        validationResult.warnings.forEach((warning) => {
+        validationResult.warnings.forEach(warning => {
           parsingDetails.warnings?.push(warning);
-          addLog("warn", warning);
+          addLog('warn', warning);
         });
       }
 
@@ -686,48 +598,40 @@ export class StatementProcessingService {
       statement.parsingDetails = parsingDetails;
       await this.statementRepository.save(statement);
       this.observeDuration(
-        "total",
+        'total',
         startTime,
         statement.bankName,
         statement.fileType,
-        validationResult.passed ? "ok" : "warn",
+        validationResult.passed ? 'ok' : 'warn',
       );
 
       addLog(
-        "info",
+        'info',
         `Successfully processed statement ${statementId}: ${transactions.length} transactions (total time: ${totalTime}ms)`,
       );
 
       // Auto-sync to Google Sheets if connected (async, non-blocking)
       if (statement.googleSheetId && this.googleSheetsService) {
-        this.syncToGoogleSheets(
-          statement.googleSheetId,
-          statementId,
-          statement.userId,
-        ).catch((error) => {
-          this.logger.error(
-            `Failed to auto-sync statement ${statementId} to Google Sheets:`,
-            error,
-          );
-          // Don't throw - sync failure shouldn't fail the whole process
-        });
+        this.syncToGoogleSheets(statement.googleSheetId, statementId, statement.userId).catch(
+          error => {
+            this.logger.error(
+              `Failed to auto-sync statement ${statementId} to Google Sheets:`,
+              error,
+            );
+            // Don't throw - sync failure shouldn't fail the whole process
+          },
+        );
       }
 
       return statement;
     } catch (error) {
       const errorMsg = `Error processing statement ${statementId}: ${error.message}`;
-      addLog("error", errorMsg);
+      addLog('error', errorMsg);
       parsingDetails.errors = parsingDetails.errors || [];
       parsingDetails.errors.push(error.message);
       parsingDetails.processingTime = Date.now() - startTime;
-      this.countError("processing", error);
-      this.observeDuration(
-        "total",
-        startTime,
-        statement.bankName,
-        statement.fileType,
-        "error",
-      );
+      this.countError('processing', error);
+      this.observeDuration('total', startTime, statement.bankName, statement.fileType, 'error');
 
       statement.status = StatementStatus.ERROR;
       statement.errorMessage = error.message;
@@ -753,25 +657,24 @@ export class StatementProcessingService {
     const transactions: Transaction[] = [];
     const log =
       addLog ||
-      ((level: string, msg: string) =>
-        this.logger[level === "error" ? "error" : "log"](msg));
+      ((level: string, msg: string) => this.logger[level === 'error' ? 'error' : 'log'](msg));
 
     const seen = new Set<string>();
     const deduped: ParsedTransaction[] = [];
-    parsedTransactions.forEach((tx) => {
+    parsedTransactions.forEach(tx => {
       const dateIso = tx.transactionDate
-        ? tx.transactionDate.toISOString().split("T")[0]
-        : "no-date";
+        ? tx.transactionDate.toISOString().split('T')[0]
+        : 'no-date';
       const amount = tx.debit ?? tx.credit ?? 0;
       const signature = [
         dateIso,
         amount.toFixed(2),
-        (tx.documentNumber || "").trim().toLowerCase(),
-        (tx.counterpartyName || "").trim().toLowerCase(),
-        (tx.paymentPurpose || "").trim().toLowerCase(),
-      ].join("|");
+        (tx.documentNumber || '').trim().toLowerCase(),
+        (tx.counterpartyName || '').trim().toLowerCase(),
+        (tx.paymentPurpose || '').trim().toLowerCase(),
+      ].join('|');
       if (seen.has(signature)) {
-        log("warn", `Duplicate transaction skipped (sig=${signature})`);
+        log('warn', `Duplicate transaction skipped (sig=${signature})`);
         return;
       }
       seen.add(signature);
@@ -779,18 +682,16 @@ export class StatementProcessingService {
     });
 
     log(
-      "info",
-      `Processing ${deduped.length}/${parsedTransactions.length} parsed transactions after dedup (statement currency: ${statement.currency || "N/A"})`,
+      'info',
+      `Processing ${deduped.length}/${parsedTransactions.length} parsed transactions after dedup (statement currency: ${statement.currency || 'N/A'})`,
     );
 
     for (let i = 0; i < deduped.length; i++) {
       const parsed = deduped[i];
 
       try {
-        const counterpartyName =
-          (parsed.counterpartyName || "").trim() || "Неизвестный контрагент";
-        const paymentPurpose =
-          (parsed.paymentPurpose || "").trim() || "Не указано";
+        const counterpartyName = (parsed.counterpartyName || '').trim() || 'Неизвестный контрагент';
+        const paymentPurpose = (parsed.paymentPurpose || '').trim() || 'Не указано';
 
         // Determine transaction type
         const transactionType =
@@ -814,21 +715,20 @@ export class StatementProcessingService {
           debit: parsed.debit ?? null,
           credit: parsed.credit ?? null,
           amount,
-          currency: parsed.currency || statement.currency || "KZT",
+          currency: parsed.currency || statement.currency || 'KZT',
           paymentPurpose,
           transactionType,
         } as Transaction;
 
-        const classification =
-          await this.classificationService.classifyTransaction(
-            tempTransaction,
-            userId,
-          );
+        const classification = await this.classificationService.classifyTransaction(
+          tempTransaction,
+          userId,
+        );
         if (!classification.categoryId && defaultCategoryId) {
           classification.categoryId = defaultCategoryId;
         }
 
-        const currency = parsed.currency || statement.currency || "KZT";
+        const currency = parsed.currency || statement.currency || 'KZT';
         const exchangeRate = parsed.exchangeRate ?? null;
         const amountForeign = parsed.amountForeign ?? null;
 
@@ -857,26 +757,26 @@ export class StatementProcessingService {
 
         const missing: string[] = [];
         if (!counterpartyName || /неизвест/i.test(counterpartyName)) {
-          missing.push("counterparty");
+          missing.push('counterparty');
         }
-        if (!paymentPurpose || paymentPurpose === "Не указано") {
-          missing.push("purpose");
+        if (!paymentPurpose || paymentPurpose === 'Не указано') {
+          missing.push('purpose');
         }
         if (!classification.categoryId) {
-          missing.push("category");
+          missing.push('category');
         }
         if (!classification.branchId) {
-          missing.push("branch");
+          missing.push('branch');
         }
         if (!classification.walletId) {
-          missing.push("wallet");
+          missing.push('wallet');
         }
 
         if (missing.length && (i < 5 || i === parsedTransactions.length - 1)) {
           log(
-            "warn",
-            `Transaction ${i + 1} (${parsed.documentNumber || "no doc"}): missing ${missing.join(
-              ", ",
+            'warn',
+            `Transaction ${i + 1} (${parsed.documentNumber || 'no doc'}): missing ${missing.join(
+              ', ',
             )}`,
           );
         } else if (
@@ -885,29 +785,26 @@ export class StatementProcessingService {
           classification.walletId
         ) {
           log(
-            "info",
+            'info',
             `Transaction ${i + 1} classification -> cat: ${
-              classification.categoryId || "—"
-            }, branch: ${classification.branchId || "—"}, wallet: ${
-              classification.walletId || "—"
+              classification.categoryId || '—'
+            }, branch: ${classification.branchId || '—'}, wallet: ${
+              classification.walletId || '—'
             }`,
           );
         }
 
         if ((i + 1) % 10 === 0) {
-          log("info", `Processed ${i + 1}/${deduped.length} transactions`);
+          log('info', `Processed ${i + 1}/${deduped.length} transactions`);
         }
       } catch (error) {
         const errorMsg = `Error creating transaction ${i + 1}: ${error.message}`;
-        log("error", errorMsg);
+        log('error', errorMsg);
         // Continue processing other transactions
       }
     }
 
-    log(
-      "info",
-      `Successfully created ${transactions.length}/${deduped.length} transactions`,
-    );
+    log('info', `Successfully created ${transactions.length}/${deduped.length} transactions`);
     const duplicatesSkipped = parsedTransactions.length - deduped.length;
     return { transactions, duplicatesSkipped };
   }
@@ -921,7 +818,7 @@ export class StatementProcessingService {
     userId: string,
   ): Promise<void> {
     if (!this.googleSheetsService) {
-      this.logger.warn("GoogleSheetsService not available, skipping sync");
+      this.logger.warn('GoogleSheetsService not available, skipping sync');
       return;
     }
 
@@ -955,36 +852,30 @@ export class StatementProcessingService {
     balanceEnd: number | null | undefined;
     currency: string;
   } {
-    const transactionDates = transactions
-      .map((t) => t.transactionDate)
-      .filter((d): d is Date => !!d);
+    const transactionDates = transactions.map(t => t.transactionDate).filter((d): d is Date => !!d);
 
     const minDate =
       transactionDates.length > 0
-        ? new Date(Math.min(...transactionDates.map((d) => d.getTime())))
+        ? new Date(Math.min(...transactionDates.map(d => d.getTime())))
         : null;
     const maxDate =
       transactionDates.length > 0
-        ? new Date(Math.max(...transactionDates.map((d) => d.getTime())))
+        ? new Date(Math.max(...transactionDates.map(d => d.getTime())))
         : null;
 
     const fallbackAccount =
-      transactions.find((t) => t.counterpartyAccount)?.counterpartyAccount ||
-      transactions.find((t) => t.counterpartyBin)?.counterpartyBin ||
-      "Unknown";
+      transactions.find(t => t.counterpartyAccount)?.counterpartyAccount ||
+      transactions.find(t => t.counterpartyBin)?.counterpartyBin ||
+      'Unknown';
 
-    const currencyFromTransactions = transactions.find(
-      (t) => t.currency,
-    )?.currency;
+    const currencyFromTransactions = transactions.find(t => t.currency)?.currency;
 
-    const accountNumber =
-      (parsed.metadata.accountNumber || "").trim() || fallbackAccount;
+    const accountNumber = (parsed.metadata.accountNumber || '').trim() || fallbackAccount;
     const dateFrom = parsed.metadata.dateFrom || minDate || new Date();
     const dateTo = parsed.metadata.dateTo || maxDate || dateFrom;
     const balanceStart = parsed.metadata.balanceStart ?? null;
     const balanceEnd = parsed.metadata.balanceEnd ?? null;
-    const currency =
-      parsed.metadata.currency || currencyFromTransactions || "KZT";
+    const currency = parsed.metadata.currency || currencyFromTransactions || 'KZT';
 
     return {
       accountNumber,

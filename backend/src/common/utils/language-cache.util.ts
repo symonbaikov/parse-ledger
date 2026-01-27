@@ -3,8 +3,8 @@
  * Improves performance and consistency by caching language detection results
  */
 
-import { Injectable } from "@nestjs/common";
-import { AdvancedDetectionResult } from "./advanced-language-detector.util";
+import { Injectable } from '@nestjs/common';
+import { AdvancedDetectionResult } from './advanced-language-detector.util';
 
 interface LanguageCacheEntry {
   result: AdvancedDetectionResult;
@@ -74,11 +74,7 @@ export class LanguageCacheService {
   /**
    * Update domain language preferences based on detection results
    */
-  updateDomainLanguage(
-    domain: string,
-    result: AdvancedDetectionResult,
-    bankName?: string,
-  ): void {
+  updateDomainLanguage(domain: string, result: AdvancedDetectionResult, bankName?: string): void {
     if (result.confidence < this.MIN_CONFIDENCE_FOR_CACHING) {
       return;
     }
@@ -90,8 +86,7 @@ export class LanguageCacheService {
     if (existing) {
       // Weighted average of confidence
       const newConfidence =
-        (existing.confidence * existing.sampleSize + result.confidence) /
-        (existing.sampleSize + 1);
+        (existing.confidence * existing.sampleSize + result.confidence) / (existing.sampleSize + 1);
       existing.sampleSize += 1;
       existing.confidence = newConfidence;
 
@@ -111,10 +106,7 @@ export class LanguageCacheService {
   /**
    * Get cached language preference for domain or bank
    */
-  getDomainLanguage(
-    domain: string,
-    bankName?: string,
-  ): AdvancedDetectionResult | null {
+  getDomainLanguage(domain: string, bankName?: string): AdvancedDetectionResult | null {
     const targetCache = bankName ? this.bankCache : this.domainCache;
     const key = bankName || domain;
 
@@ -126,7 +118,7 @@ export class LanguageCacheService {
     return {
       locale: mapping.language,
       confidence: mapping.confidence,
-      method: "cached" as const,
+      method: 'cached' as const,
       reason: `domain-cache:${key}`,
     };
   }
@@ -136,7 +128,7 @@ export class LanguageCacheService {
    */
   extractDomain(source: string): string {
     // Handle URLs
-    if (source.startsWith("http://") || source.startsWith("https://")) {
+    if (source.startsWith('http://') || source.startsWith('https://')) {
       try {
         const url = new URL(source);
         return url.hostname;
@@ -149,15 +141,7 @@ export class LanguageCacheService {
     const parts = source.split(/[\/\\]/);
 
     // Look for bank name in path
-    const bankKeywords = [
-      "bank",
-      "kaspi",
-      "bereke",
-      "halyk",
-      "alfa",
-      "vtb",
-      "tinkoff",
-    ];
+    const bankKeywords = ['bank', 'kaspi', 'bereke', 'halyk', 'alfa', 'vtb', 'tinkoff'];
     for (const part of parts) {
       const lowerPart = part.toLowerCase();
       for (const keyword of bankKeywords) {
@@ -168,7 +152,7 @@ export class LanguageCacheService {
     }
 
     // Return parent directory name
-    return parts[parts.length - 2] || "unknown";
+    return parts[parts.length - 2] || 'unknown';
   }
 
   /**
@@ -216,16 +200,13 @@ export class LanguageCacheService {
    */
   preWarmCache(): void {
     // Common banking domains and their likely languages
-    const knownDomains: Record<
-      string,
-      { language: string; confidence: number }
-    > = {
-      "kaspi.kz": { language: "kk", confidence: 0.9 },
-      "berekebank.kz": { language: "kk", confidence: 0.9 },
-      "halykbank.kz": { language: "kk", confidence: 0.9 },
-      "alfabank.kz": { language: "ru", confidence: 0.8 },
-      "tinkoff.ru": { language: "ru", confidence: 0.9 },
-      "vtb.ru": { language: "ru", confidence: 0.9 },
+    const knownDomains: Record<string, { language: string; confidence: number }> = {
+      'kaspi.kz': { language: 'kk', confidence: 0.9 },
+      'berekebank.kz': { language: 'kk', confidence: 0.9 },
+      'halykbank.kz': { language: 'kk', confidence: 0.9 },
+      'alfabank.kz': { language: 'ru', confidence: 0.8 },
+      'tinkoff.ru': { language: 'ru', confidence: 0.9 },
+      'vtb.ru': { language: 'ru', confidence: 0.9 },
     };
 
     for (const [domain, data] of Object.entries(knownDomains)) {
@@ -302,10 +283,7 @@ export class LanguageCacheService {
       (a, b) => a[1].timestamp - b[1].timestamp,
     );
 
-    const toDelete = entries.slice(
-      0,
-      this.fileCache.size - this.MAX_CACHE_SIZE + 1000,
-    );
+    const toDelete = entries.slice(0, this.fileCache.size - this.MAX_CACHE_SIZE + 1000);
     for (const [key] of toDelete) {
       this.fileCache.delete(key);
     }

@@ -14,7 +14,11 @@ export class DriveSettings {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => Integration, integration => integration.driveSettings, { onDelete: 'CASCADE' })
+  @OneToOne(
+    () => Integration,
+    integration => integration.driveSettings,
+    { onDelete: 'CASCADE' },
+  )
   @JoinColumn({ name: 'integration_id' })
   integration: Integration;
 

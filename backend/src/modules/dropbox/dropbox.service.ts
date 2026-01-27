@@ -1,22 +1,17 @@
-import * as crypto from "crypto";
-import * as fs from "fs";
-import * as path from "path";
-import { pipeline } from "stream/promises";
-import { Dropbox } from "dropbox";
-import * as fetch from "isomorphic-fetch";
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import type { Repository } from "typeorm";
-import { FileStorageService } from "../../common/services/file-storage.service";
-import { decryptText, encryptText } from "../../common/utils/encryption.util";
-import { normalizeFilename } from "../../common/utils/filename.util";
-import { validateFile } from "../../common/utils/file-validator.util";
-import { resolveUploadsDir } from "../../common/utils/uploads.util";
+import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Dropbox } from 'dropbox';
+import * as fetch from 'isomorphic-fetch';
+import { pipeline } from 'stream/promises';
+import type { Repository } from 'typeorm';
+import { FileStorageService } from '../../common/services/file-storage.service';
+import { decryptText, encryptText } from '../../common/utils/encryption.util';
+import { validateFile } from '../../common/utils/file-validator.util';
+import { normalizeFilename } from '../../common/utils/filename.util';
+import { resolveUploadsDir } from '../../common/utils/uploads.util';
 import {
   DropboxSettings,
   Integration,
@@ -25,17 +20,17 @@ import {
   IntegrationToken,
   Statement,
   User,
-} from "../../entities";
-import { StatementsService } from "../statements/statements.service";
-import type { ImportDropboxFilesDto } from "./dto/import-dropbox-files.dto";
-import type { UpdateDropboxSettingsDto } from "./dto/update-dropbox-settings.dto";
+} from '../../entities';
+import { StatementsService } from '../statements/statements.service';
+import type { ImportDropboxFilesDto } from './dto/import-dropbox-files.dto';
+import type { UpdateDropboxSettingsDto } from './dto/update-dropbox-settings.dto';
 
-const DEFAULT_SYNC_TIME = "03:00";
+const DEFAULT_SYNC_TIME = '03:00';
 
 const ALLOWED_MIME_TYPES = new Set([
-  "application/pdf",
-  "text/csv",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  'application/pdf',
+  'text/csv',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]);
 
 @Injectable()
@@ -58,36 +53,30 @@ export class DropboxService {
   ) {}
 
   private getClientId() {
-    return process.env.DROPBOX_CLIENT_ID || "";
+    return process.env.DROPBOX_CLIENT_ID || '';
   }
 
   private getClientSecret() {
-    return process.env.DROPBOX_CLIENT_SECRET || "";
+    return process.env.DROPBOX_CLIENT_SECRET || '';
   }
 
   private getRedirectUri() {
-    return process.env.DROPBOX_REDIRECT_URI || "";
+    return process.env.DROPBOX_REDIRECT_URI || '';
   }
 
   private getFrontendBaseUrl() {
-    return (
-      process.env.FRONTEND_URL || process.env.APP_URL || "http://localhost:3000"
-    );
+    return process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000';
   }
 
   private getStateSecret() {
-    return (
-      process.env.DROPBOX_STATE_SECRET ||
-      process.env.JWT_SECRET ||
-      "finflow-state"
-    );
+    return process.env.DROPBOX_STATE_SECRET || process.env.JWT_SECRET || 'finflow-state';
   }
 
   private getDropboxClient(accessToken?: string) {
     const clientId = this.getClientId();
     const clientSecret = this.getClientSecret();
     if (!clientId || !clientSecret) {
-      throw new BadRequestException("Dropbox OAuth is not configured");
+      throw new BadRequestException('Dropbox OAuth is not configured');
     }
     return new Dropbox({
       clientId,
@@ -99,26 +88,22 @@ export class DropboxService {
 
   private base64UrlEncode(value: string): string {
     return Buffer.from(value)
-      .toString("base64")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/g, "");
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '');
   }
 
   private base64UrlDecode(value: string): string {
-    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-    return Buffer.from(padded, "base64").toString("utf8");
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    return Buffer.from(padded, 'base64').toString('utf8');
   }
 
   private signState(payload: string): string {
-    const hmac = crypto.createHmac("sha256", this.getStateSecret());
+    const hmac = crypto.createHmac('sha256', this.getStateSecret());
     hmac.update(payload);
-    return hmac
-      .digest("base64")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/g, "");
+    return hmac.digest('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
   }
 
   private buildState(payload: Record<string, unknown>): string {
@@ -128,13 +113,13 @@ export class DropboxService {
   }
 
   private parseState(state: string): Record<string, unknown> {
-    const [encoded, signature] = (state || "").split(".");
+    const [encoded, signature] = (state || '').split('.');
     if (!encoded || !signature) {
-      throw new BadRequestException("Invalid OAuth state");
+      throw new BadRequestException('Invalid OAuth state');
     }
     const expected = this.signState(encoded);
     if (expected !== signature) {
-      throw new BadRequestException("Invalid OAuth state signature");
+      throw new BadRequestException('Invalid OAuth state signature');
     }
     const json = this.base64UrlDecode(encoded);
     return JSON.parse(json);
@@ -143,7 +128,7 @@ export class DropboxService {
   private async getWorkspaceId(userId: string): Promise<string | null> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      select: ["id", "workspaceId"],
+      select: ['id', 'workspaceId'],
     });
     return user?.workspaceId ?? null;
   }
@@ -159,7 +144,7 @@ export class DropboxService {
 
     const integration = await this.integrationRepository.findOne({
       where,
-      relations: ["token", "dropboxSettings"],
+      relations: ['token', 'dropboxSettings'],
     });
 
     return { integration, workspaceId };
@@ -168,7 +153,7 @@ export class DropboxService {
   private async ensureIntegration(userId: string) {
     const { integration } = await this.findIntegrationForUser(userId);
     if (!integration) {
-      throw new NotFoundException("Dropbox integration not found");
+      throw new NotFoundException('Dropbox integration not found');
     }
     return integration;
   }
@@ -177,7 +162,7 @@ export class DropboxService {
     const clientId = this.getClientId();
     const redirectUri = this.getRedirectUri();
     if (!clientId || !redirectUri) {
-      throw new BadRequestException("Dropbox OAuth is not configured");
+      throw new BadRequestException('Dropbox OAuth is not configured');
     }
 
     const state = this.buildState({
@@ -190,8 +175,8 @@ export class DropboxService {
     return (dbx as any).auth.getAuthenticationUrl(
       redirectUri,
       state,
-      "code",
-      "offline",
+      'code',
+      'offline',
       undefined,
       undefined,
       true,
@@ -218,14 +203,14 @@ export class DropboxService {
       return `${redirectBase}?status=error&reason=bad_state`;
     }
 
-    const userId = typeof state.userId === "string" ? state.userId : null;
+    const userId = typeof state.userId === 'string' ? state.userId : null;
     if (!userId) {
       return `${redirectBase}?status=error&reason=missing_user`;
     }
 
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      select: ["id", "workspaceId", "timeZone"],
+      select: ['id', 'workspaceId', 'timeZone'],
     });
 
     if (!user) {
@@ -237,17 +222,14 @@ export class DropboxService {
 
     let tokenResponse: any;
     try {
-      tokenResponse = await (dbx as any).auth.getAccessTokenFromCode(
-        redirectUri,
-        params.code,
-      );
+      tokenResponse = await (dbx as any).auth.getAccessTokenFromCode(redirectUri, params.code);
     } catch (error) {
       this.logger.error(`Dropbox token exchange failed: ${error}`);
       return `${redirectBase}?status=error&reason=token_exchange_failed`;
     }
 
-    const accessToken = tokenResponse.result.access_token || "";
-    const refreshToken = tokenResponse.result.refresh_token || "";
+    const accessToken = tokenResponse.result.access_token || '';
+    const refreshToken = tokenResponse.result.refresh_token || '';
 
     if (!accessToken && !refreshToken) {
       return `${redirectBase}?status=error&reason=missing_tokens`;
@@ -262,7 +244,7 @@ export class DropboxService {
               connectedByUserId: user.id,
               provider: IntegrationProvider.DROPBOX,
             },
-        relations: ["token", "dropboxSettings"],
+        relations: ['token', 'dropboxSettings'],
       })) || null;
 
     const integration =
@@ -274,7 +256,7 @@ export class DropboxService {
       });
 
     integration.status = IntegrationStatus.CONNECTED;
-    integration.scopes = ["files.content.read", "files.content.write"];
+    integration.scopes = ['files.content.read', 'files.content.write'];
     integration.connectedByUserId = user.id;
 
     const savedIntegration = await this.integrationRepository.save(integration);
@@ -283,8 +265,8 @@ export class DropboxService {
       existing?.token ||
       this.integrationTokenRepository.create({
         integrationId: savedIntegration.id,
-        accessToken: "",
-        refreshToken: "",
+        accessToken: '',
+        refreshToken: '',
       });
 
     if (accessToken) {
@@ -295,9 +277,7 @@ export class DropboxService {
     }
     if (tokenResponse.result.expires_in) {
       const expiresAt = new Date();
-      expiresAt.setSeconds(
-        expiresAt.getSeconds() + tokenResponse.result.expires_in,
-      );
+      expiresAt.setSeconds(expiresAt.getSeconds() + tokenResponse.result.expires_in);
       tokenRecord.expiresAt = expiresAt;
     }
 
@@ -315,7 +295,7 @@ export class DropboxService {
       settings.syncTime = DEFAULT_SYNC_TIME;
     }
     if (!settings.timeZone) {
-      settings.timeZone = user.timeZone || "UTC";
+      settings.timeZone = user.timeZone || 'UTC';
     }
     settings.syncEnabled = settings.syncEnabled ?? true;
 
@@ -402,18 +382,15 @@ export class DropboxService {
     };
   }
 
-  private async ensureValidAccessToken(
-    integration: Integration,
-  ): Promise<string> {
+  private async ensureValidAccessToken(integration: Integration): Promise<string> {
     if (!integration.token) {
-      throw new BadRequestException("Integration token missing");
+      throw new BadRequestException('Integration token missing');
     }
     const refreshToken = decryptText(integration.token.refreshToken);
     let accessToken = decryptText(integration.token.accessToken);
     const expiresAt = integration.token.expiresAt?.getTime() || 0;
 
-    const shouldRefresh =
-      !accessToken || (expiresAt && expiresAt <= Date.now() + 60 * 1000);
+    const shouldRefresh = !accessToken || (expiresAt && expiresAt <= Date.now() + 60 * 1000);
     if (!shouldRefresh) {
       return accessToken;
     }
@@ -425,16 +402,14 @@ export class DropboxService {
 
       const newAccessToken = response.result.access_token;
       if (!newAccessToken) {
-        throw new Error("Missing access token");
+        throw new Error('Missing access token');
       }
       accessToken = newAccessToken;
 
       integration.token.accessToken = encryptText(accessToken);
       if (response.result.expires_in) {
         const expiresAt = new Date();
-        expiresAt.setSeconds(
-          expiresAt.getSeconds() + response.result.expires_in,
-        );
+        expiresAt.setSeconds(expiresAt.getSeconds() + response.result.expires_in);
         integration.token.expiresAt = expiresAt;
       }
       await this.integrationTokenRepository.save(integration.token);
@@ -442,13 +417,13 @@ export class DropboxService {
     } catch (error) {
       integration.status = IntegrationStatus.NEEDS_REAUTH;
       await this.integrationRepository.save(integration);
-      throw new BadRequestException("Dropbox authorization expired");
+      throw new BadRequestException('Dropbox authorization expired');
     }
   }
 
   private async getDropboxClientWithAuth(integration: Integration) {
     if (!integration.token) {
-      throw new BadRequestException("Integration token missing");
+      throw new BadRequestException('Integration token missing');
     }
     const accessToken = await this.ensureValidAccessToken(integration);
     return this.getDropboxClient(accessToken);
@@ -460,16 +435,13 @@ export class DropboxService {
     return { accessToken };
   }
 
-  private async ensureDefaultFolder(
-    integration: Integration,
-    settings: DropboxSettings,
-  ) {
+  private async ensureDefaultFolder(integration: Integration, settings: DropboxSettings) {
     if (settings.folderId) return settings;
     const dbx = await this.getDropboxClientWithAuth(integration);
 
     try {
       const response = await dbx.filesCreateFolderV2({
-        path: "/FinFlow",
+        path: '/FinFlow',
         autorename: false,
       });
 
@@ -481,9 +453,9 @@ export class DropboxService {
         return this.dropboxSettingsRepository.save(settings);
       }
     } catch (error: any) {
-      if (error?.error?.error_summary?.includes("path/conflict/folder")) {
-        settings.folderId = "/finflow";
-        settings.folderName = "FinFlow";
+      if (error?.error?.error_summary?.includes('path/conflict/folder')) {
+        settings.folderId = '/finflow';
+        settings.folderName = 'FinFlow';
         return this.dropboxSettingsRepository.save(settings);
       }
       throw error;
@@ -501,7 +473,7 @@ export class DropboxService {
 
     const results: Array<{
       fileId: string;
-      status: "ok" | "error";
+      status: 'ok' | 'error';
       message?: string;
     }> = [];
 
@@ -509,11 +481,11 @@ export class DropboxService {
       try {
         const meta = await dbx.filesGetMetadata({ path: fileId });
 
-        if (meta.result[".tag"] !== "file") {
+        if (meta.result['.tag'] !== 'file') {
           results.push({
             fileId,
-            status: "error",
-            message: "Not a file",
+            status: 'error',
+            message: 'Not a file',
           });
           continue;
         }
@@ -523,38 +495,35 @@ export class DropboxService {
         if (size && Number.isFinite(size) && size > 10 * 1024 * 1024) {
           results.push({
             fileId,
-            status: "error",
-            message: "File size exceeds limit",
+            status: 'error',
+            message: 'File size exceeds limit',
           });
           continue;
         }
 
-        const originalName = normalizeFilename(
-          fileMetadata.name || `dropbox-file-${fileId}`,
-        );
+        const originalName = normalizeFilename(fileMetadata.name || `dropbox-file-${fileId}`);
         const safeBaseName = path.basename(originalName);
         const ext = path.extname(safeBaseName).toLowerCase();
 
-        let mimeType = "application/octet-stream";
-        if (ext === ".pdf") {
-          mimeType = "application/pdf";
-        } else if (ext === ".csv") {
-          mimeType = "text/csv";
-        } else if (ext === ".docx") {
-          mimeType =
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        let mimeType = 'application/octet-stream';
+        if (ext === '.pdf') {
+          mimeType = 'application/pdf';
+        } else if (ext === '.csv') {
+          mimeType = 'text/csv';
+        } else if (ext === '.docx') {
+          mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
         }
 
         if (!ALLOWED_MIME_TYPES.has(mimeType)) {
           results.push({
             fileId,
-            status: "error",
+            status: 'error',
             message: `Unsupported file type: ${mimeType}`,
           });
           continue;
         }
 
-        const fileName = `${Date.now()}-${crypto.randomBytes(8).toString("hex")}-${safeBaseName}`;
+        const fileName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}-${safeBaseName}`;
         const filePath = path.join(uploadsDir, fileName);
 
         const download = await dbx.filesDownload({ path: fileId });
@@ -567,9 +536,9 @@ export class DropboxService {
 
         const fileStats = await fs.promises.stat(filePath);
         const file: Express.Multer.File = {
-          fieldname: "file",
+          fieldname: 'file',
           originalname: safeBaseName,
-          encoding: "7bit",
+          encoding: '7bit',
           mimetype: mimeType,
           size: fileStats.size,
           destination: uploadsDir,
@@ -580,22 +549,14 @@ export class DropboxService {
 
         validateFile(file);
 
-        await this.statementsService.create(
-          user,
-          file,
-          undefined,
-          undefined,
-          undefined,
-          false,
-        );
+        await this.statementsService.create(user, file, undefined, undefined, undefined, false);
 
-        results.push({ fileId, status: "ok" });
+        results.push({ fileId, status: 'ok' });
       } catch (error: any) {
         results.push({
           fileId,
-          status: "error",
-          message:
-            error?.error?.error_summary || error?.message || "Import failed",
+          status: 'error',
+          message: error?.error?.error_summary || error?.message || 'Import failed',
         });
       }
     }
@@ -618,7 +579,7 @@ export class DropboxService {
         provider: IntegrationProvider.DROPBOX,
         status: IntegrationStatus.CONNECTED,
       },
-      relations: ["token", "dropboxSettings"],
+      relations: ['token', 'dropboxSettings'],
     });
 
     const now = new Date();
@@ -626,30 +587,22 @@ export class DropboxService {
       if (!integration.dropboxSettings?.syncEnabled) {
         continue;
       }
-      const timeZone = integration.dropboxSettings.timeZone || "UTC";
+      const timeZone = integration.dropboxSettings.timeZone || 'UTC';
       if (!this.shouldSyncNow(now, integration.dropboxSettings, timeZone)) {
         continue;
       }
       try {
         await this.syncIntegration(integration);
       } catch (error) {
-        this.logger.error(
-          `Dropbox sync failed for integration ${integration.id}: ${error}`,
-        );
+        this.logger.error(`Dropbox sync failed for integration ${integration.id}: ${error}`);
       }
     }
   }
 
-  private shouldSyncNow(
-    now: Date,
-    settings: DropboxSettings,
-    timeZone: string,
-  ): boolean {
-    const [hourStr, minuteStr] = (settings.syncTime || DEFAULT_SYNC_TIME).split(
-      ":",
-    );
-    const syncHour = Number.parseInt(hourStr || "0", 10);
-    const syncMinute = Number.parseInt(minuteStr || "0", 10);
+  private shouldSyncNow(now: Date, settings: DropboxSettings, timeZone: string): boolean {
+    const [hourStr, minuteStr] = (settings.syncTime || DEFAULT_SYNC_TIME).split(':');
+    const syncHour = Number.parseInt(hourStr || '0', 10);
+    const syncMinute = Number.parseInt(minuteStr || '0', 10);
 
     const nowParts = this.getTimeParts(now, timeZone);
     const lastSyncParts = settings.lastSyncAt
@@ -670,27 +623,26 @@ export class DropboxService {
   private getTimeParts(date: Date, timeZone: string) {
     let tz = timeZone;
     try {
-      Intl.DateTimeFormat("en-US", { timeZone }).format(date);
+      Intl.DateTimeFormat('en-US', { timeZone }).format(date);
     } catch {
-      tz = "UTC";
+      tz = 'UTC';
     }
-    const formatter = new Intl.DateTimeFormat("en-US", {
+    const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
       hour12: false,
     });
     const parts = formatter.formatToParts(date);
-    const lookup = (type: string) =>
-      parts.find((p) => p.type === type)?.value || "00";
-    const year = lookup("year");
-    const month = lookup("month");
-    const day = lookup("day");
-    const hour = Number.parseInt(lookup("hour"), 10);
-    const minute = Number.parseInt(lookup("minute"), 10);
+    const lookup = (type: string) => parts.find(p => p.type === type)?.value || '00';
+    const year = lookup('year');
+    const month = lookup('month');
+    const day = lookup('day');
+    const hour = Number.parseInt(lookup('hour'), 10);
+    const minute = Number.parseInt(lookup('minute'), 10);
     return {
       dateKey: `${year}-${month}-${day}`,
       hour,
@@ -709,14 +661,14 @@ export class DropboxService {
     const filePath = `${folderId}/${fileName}`;
     try {
       await dbx.filesGetMetadata({ path: filePath });
-      const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 13);
-      const dot = fileName.lastIndexOf(".");
+      const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 13);
+      const dot = fileName.lastIndexOf('.');
       if (dot === -1) {
         return `${fileName}-${stamp}`;
       }
       return `${fileName.slice(0, dot)}-${stamp}${fileName.slice(dot)}`;
     } catch (error: any) {
-      if (error?.error?.error_summary?.includes("path/not_found")) {
+      if (error?.error?.error_summary?.includes('path/not_found')) {
         return fileName;
       }
       throw error;
@@ -725,29 +677,29 @@ export class DropboxService {
 
   private async syncIntegration(integration: Integration) {
     if (!integration.dropboxSettings) {
-      throw new BadRequestException("Dropbox settings missing");
+      throw new BadRequestException('Dropbox settings missing');
     }
     const dbx = await this.getDropboxClientWithAuth(integration);
     const lastSyncAt = integration.dropboxSettings.lastSyncAt;
 
     const qb = this.statementRepository
-      .createQueryBuilder("statement")
-      .leftJoin("statement.user", "user")
-      .where("statement.deletedAt IS NULL")
-      .orderBy("statement.createdAt", "ASC");
+      .createQueryBuilder('statement')
+      .leftJoin('statement.user', 'user')
+      .where('statement.deletedAt IS NULL')
+      .orderBy('statement.createdAt', 'ASC');
 
     if (integration.workspaceId) {
-      qb.andWhere("user.workspaceId = :workspaceId", {
+      qb.andWhere('user.workspaceId = :workspaceId', {
         workspaceId: integration.workspaceId,
       });
     } else if (integration.connectedByUserId) {
-      qb.andWhere("statement.userId = :userId", {
+      qb.andWhere('statement.userId = :userId', {
         userId: integration.connectedByUserId,
       });
     }
 
     if (lastSyncAt) {
-      qb.andWhere("statement.createdAt > :lastSyncAt", { lastSyncAt });
+      qb.andWhere('statement.createdAt > :lastSyncAt', { lastSyncAt });
     }
 
     const statements = await qb.getMany();
@@ -777,15 +729,13 @@ export class DropboxService {
         await dbx.filesUpload({
           path: uploadPath,
           contents,
-          mode: { ".tag": "add" },
+          mode: { '.tag': 'add' },
           autorename: true,
         });
 
         uploaded += 1;
       } catch (error) {
-        this.logger.warn(
-          `Failed to sync statement ${statement.id} to Dropbox: ${error}`,
-        );
+        this.logger.warn(`Failed to sync statement ${statement.id} to Dropbox: ${error}`);
       }
     }
 

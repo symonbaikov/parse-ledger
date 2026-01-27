@@ -14,7 +14,11 @@ export class IntegrationToken {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => Integration, integration => integration.token, { onDelete: 'CASCADE' })
+  @OneToOne(
+    () => Integration,
+    integration => integration.token,
+    { onDelete: 'CASCADE' },
+  )
   @JoinColumn({ name: 'integration_id' })
   integration: Integration;
 

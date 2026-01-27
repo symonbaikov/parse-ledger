@@ -1,20 +1,12 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Post,
-  Query,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { DropboxService } from './dropbox.service';
 import { ImportDropboxFilesDto } from './dto/import-dropbox-files.dto';
 import { UpdateDropboxSettingsDto } from './dto/update-dropbox-settings.dto';
-import { DropboxService } from './dropbox.service';
 
 @Controller('integrations/dropbox')
 @UseGuards(JwtAuthGuard)
