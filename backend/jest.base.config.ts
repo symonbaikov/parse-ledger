@@ -4,6 +4,7 @@ const baseConfig: Config = {
   testEnvironment: 'node',
   rootDir: '.',
   cache: true,
+  setupFiles: ['reflect-metadata'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

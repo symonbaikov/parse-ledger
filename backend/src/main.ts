@@ -6,6 +6,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AppLogger } from './common/observability/app-logger.service';
 import { requestContextMiddleware } from './common/observability/request-context.middleware';
+import { resolveUploadsDir } from './common/utils/uploads.util';
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -22,10 +23,7 @@ async function bootstrap() {
     requireEnv('JWT_REFRESH_SECRET');
   }
 
-  const uploadsDir = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
+  const uploadsDir = resolveUploadsDir();
   // Ensure reports directory exists
   const reportsDir = path.join(uploadsDir, 'reports');
   if (!fs.existsSync(reportsDir)) {

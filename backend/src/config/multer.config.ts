@@ -1,18 +1,16 @@
 import * as fs from 'fs';
-import { extname, join } from 'path';
+import { extname } from 'path';
 import { diskStorage } from 'multer';
 import { v4 as uuidv4 } from 'uuid';
+import { resolveUploadsDir } from '../common/utils/uploads.util';
 
 // Allow overriding upload dir for production (e.g. mounted volume)
-const uploadsRoot = process.env.UPLOADS_DIR || join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadsRoot)) {
-  fs.mkdirSync(uploadsRoot, { recursive: true });
-}
+const uploadsRoot = resolveUploadsDir();
 
 export const multerConfig = {
   storage: diskStorage({
     destination: (_req, _file, cb) => cb(null, uploadsRoot),
-    filename: (req, file, cb) => {
+    filename: (_req, file, cb) => {
       const uniqueName = `${uuidv4()}${extname(file.originalname)}`;
       cb(null, uniqueName);
     },
