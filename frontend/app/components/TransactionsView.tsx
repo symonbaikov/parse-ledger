@@ -18,7 +18,7 @@ import {
 import { useIntlayer, useLocale } from 'next-intlayer';
 import React, { useMemo, useState } from 'react';
 
-interface Transaction {
+export interface Transaction {
   id: string;
   transactionDate: string;
   documentNumber?: string;
@@ -236,7 +236,11 @@ export default function TransactionsView({ transactions }: TransactionsViewProps
     from,
     to,
     count,
-  }: { from: number; to: number; count: number }) => {
+  }: {
+    from: number;
+    to: number;
+    count: number;
+  }) => {
     return `${from}-${to} ${t.pagination.of.value} ${count}`;
   };
 

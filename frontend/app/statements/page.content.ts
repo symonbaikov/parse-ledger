@@ -27,7 +27,11 @@ const content = {
       file: t({ ru: 'Файл', en: 'File', kk: 'Файл' }),
       status: t({ ru: 'Статус', en: 'Status', kk: 'Күйі' }),
       bank: t({ ru: 'Банк', en: 'Bank', kk: 'Банк' }),
-      transactions: t({ ru: 'Транзакции', en: 'Transactions', kk: 'Транзакциялар' }),
+      transactions: t({
+        ru: 'Транзакции',
+        en: 'Transactions',
+        kk: 'Транзакциялар',
+      }),
       date: t({ ru: 'Дата', en: 'Date', kk: 'Күні' }),
       actions: t({ ru: 'Действия', en: 'Actions', kk: 'Әрекеттер' }),
       opsShort: t({ ru: 'оп.', en: 'tx', kk: 'оп.' }),
@@ -40,7 +44,11 @@ const content = {
       delete: t({ ru: 'Удалить', en: 'Delete', kk: 'Жою' }),
     },
     download: {
-      loading: t({ ru: 'Скачивание файла...', en: 'Downloading...', kk: 'Жүктелуде...' }),
+      loading: t({
+        ru: 'Скачивание файла...',
+        en: 'Downloading...',
+        kk: 'Жүктелуде...',
+      }),
       success: t({
         ru: 'Файл успешно скачан',
         en: 'Downloaded successfully',
@@ -58,9 +66,17 @@ const content = {
         en: 'Failed to open file',
         kk: 'Файлды ашу мүмкін болмады',
       }),
-      previewTitle: t({ ru: 'Предпросмотр файла', en: 'File preview', kk: 'Файл алдын ала қарау' }),
+      previewTitle: t({
+        ru: 'Предпросмотр файла',
+        en: 'File preview',
+        kk: 'Файл алдын ала қарау',
+      }),
       close: t({ ru: 'Закрыть', en: 'Close', kk: 'Жабу' }),
-      download: t({ ru: 'Скачать файл', en: 'Download file', kk: 'Файлды жүктеу' }),
+      download: t({
+        ru: 'Скачать файл',
+        en: 'Download file',
+        kk: 'Файлды жүктеу',
+      }),
     },
     logs: {
       openFailed: t({
@@ -68,8 +84,16 @@ const content = {
         en: 'Failed to load logs',
         kk: 'Өңдеу логтарын жүктеу мүмкін болмады',
       }),
-      title: t({ ru: 'Логи обработки', en: 'Processing logs', kk: 'Өңдеу логтары' }),
-      empty: t({ ru: 'Логи пока отсутствуют', en: 'No logs yet', kk: 'Әзірше логтар жоқ' }),
+      title: t({
+        ru: 'Логи обработки',
+        en: 'Processing logs',
+        kk: 'Өңдеу логтары',
+      }),
+      empty: t({
+        ru: 'Логи пока отсутствуют',
+        en: 'No logs yet',
+        kk: 'Әзірше логтар жоқ',
+      }),
       autoRefresh: t({
         ru: 'Обновляется каждые 3 секунды. Закройте окно, чтобы остановить.',
         en: 'Refreshes every 3 seconds. Close the window to stop.',
@@ -97,14 +121,14 @@ const content = {
       kk: 'Өңдеуді бастау қатесі',
     }),
     deleteLoading: t({
-      ru: 'Удаление...',
-      en: 'Deleting...',
-      kk: 'Жойылуда...',
+      ru: 'Перемещение в корзину...',
+      en: 'Moving to trash...',
+      kk: 'Себетке жылжытылуда...',
     }),
     deleteSuccess: t({
-      ru: 'Выписка удалена',
-      en: 'Statement deleted',
-      kk: 'Үзінді жойылды',
+      ru: 'Выписка перемещена в корзину',
+      en: 'Statement moved to trash',
+      kk: 'Үзінді себетке жылжытылды',
     }),
     deleteError: t({
       ru: 'Ошибка при удалении',
@@ -112,7 +136,11 @@ const content = {
       kk: 'Жою қатесі',
     }),
     uploadModal: {
-      title: t({ ru: 'Загрузка файлов', en: 'Upload files', kk: 'Файлдарды жүктеу' }),
+      title: t({
+        ru: 'Загрузка файлов',
+        en: 'Upload files',
+        kk: 'Файлдарды жүктеу',
+      }),
       subtitle: t({
         ru: 'Поддерживаются PDF, Excel, CSV и изображения',
         en: 'PDF, Excel, CSV and images are supported',
@@ -138,9 +166,21 @@ const content = {
         en: 'Files uploaded, processing started',
         kk: 'Файлдар жүктелді, өңдеу басталды',
       }),
-      uploading: t({ ru: 'Загрузка...', en: 'Uploading...', kk: 'Жүктелуде...' }),
-      uploadFiles: t({ ru: 'Загрузить файлы', en: 'Upload files', kk: 'Файлдарды жүктеу' }),
-      dropHint1: t({ ru: 'Нажмите для выбора', en: 'Click to select', kk: 'Таңдау үшін басыңыз' }),
+      uploading: t({
+        ru: 'Загрузка...',
+        en: 'Uploading...',
+        kk: 'Жүктелуде...',
+      }),
+      uploadFiles: t({
+        ru: 'Загрузить файлы',
+        en: 'Upload files',
+        kk: 'Файлдарды жүктеу',
+      }),
+      dropHint1: t({
+        ru: 'Нажмите для выбора',
+        en: 'Click to select',
+        kk: 'Таңдау үшін басыңыз',
+      }),
       dropHint2: t({
         ru: 'или перетащите файлы',
         en: 'or drag and drop files',
@@ -160,13 +200,21 @@ const content = {
       cancel: t({ ru: 'Отмена', en: 'Cancel', kk: 'Болдырмау' }),
     },
     confirmDelete: {
-      title: t({ ru: 'Удалить выписку?', en: 'Delete statement?', kk: 'Үзіндіні жою керек пе?' }),
-      message: t({
-        ru: 'Вы уверены, что хотите удалить эту выписку? Это действие нельзя отменить, и файл будет удален из хранилища.',
-        en: 'Are you sure you want to delete this statement? This action cannot be undone and the file will be removed from storage.',
-        kk: 'Осы үзіндіні жойғыңыз келетініне сенімдісіз бе? Бұл әрекетті болдырмауға болмайды және файл қоймадан жойылады.',
+      title: t({
+        ru: 'Переместить выписку в корзину?',
+        en: 'Move statement to trash?',
+        kk: 'Үзіндіні себетке жылжыту керек пе?',
       }),
-      confirm: t({ ru: 'Удалить', en: 'Delete', kk: 'Жою' }),
+      message: t({
+        ru: 'Выписка будет перемещена в корзину. Вы сможете восстановить её позже из раздела Хранилище.',
+        en: 'The statement will be moved to trash. You can restore it later from the Storage section.',
+        kk: 'Үзінді себетке жылжытылады. Оны кейінірек Сақтау бөлімінен қалпына келтіруге болады.',
+      }),
+      confirm: t({
+        ru: 'Переместить в корзину',
+        en: 'Move to trash',
+        kk: 'Себетке жылжыту',
+      }),
       cancel: t({ ru: 'Отмена', en: 'Cancel', kk: 'Болдырмау' }),
     },
     status: {

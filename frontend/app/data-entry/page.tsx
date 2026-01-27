@@ -7,6 +7,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/style.css';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useLockBodyScroll } from '@/app/hooks/useLockBodyScroll';
 import apiClient from '@/app/lib/api';
 import { Icon } from '@iconify/react';
 import {
@@ -29,6 +30,7 @@ import {
 } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
 import toast from 'react-hot-toast';
+import Select from 'react-select';
 
 type BaseTabKey = 'cash' | 'raw' | 'debit' | 'credit';
 type CustomFieldTabKey = `field:${string}`;
@@ -152,6 +154,10 @@ export default function DataEntryPage() {
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   const [editFieldName, setEditFieldName] = useState('');
   const [editFieldIcon, setEditFieldIcon] = useState('mdi:tag');
+  const [editingBaseTab, setEditingBaseTab] = useState<BaseTabKey | null>(null);
+  const [baseTabOverrides, setBaseTabOverrides] = useState<
+    Partial<Record<BaseTabKey, { label: string }>>
+  >({});
   const [editPanelOpen, setEditPanelOpen] = useState(false);
   const [editIconOpen, setEditIconOpen] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -176,7 +182,14 @@ export default function DataEntryPage() {
   const [exportingTabToTable, setExportingTabToTable] = useState(false);
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const iconInputRef = useRef<HTMLInputElement | null>(null);
-  const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [currencyModalOpen, setCurrencyModalOpen] = useState(false);
+  const [status, setStatus] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+
+  useLockBodyScroll(deleteDialog.open);
+  useLockBodyScroll(currencyModalOpen);
   const [saving, setSaving] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,15 +202,145 @@ export default function DataEntryPage() {
   const [syncingTable, setSyncingTable] = useState(false);
   const [customFieldHighlight, setCustomFieldHighlight] = useState(false);
   const dateFnsLocale = useMemo(() => resolveDateFnsLocale(locale), [locale]);
-  const currencies = useMemo(
-    () => [
-      { code: 'KZT', label: t.currencies.kzt.value },
-      { code: 'USD', label: t.currencies.usd.value },
-      { code: 'EUR', label: t.currencies.eur.value },
-      { code: 'RUB', label: t.currencies.rub.value },
-    ],
-    [t],
-  );
+  const allCurrencies = [
+    { value: 'KZT', label: 'Казахстанский тенге (KZT)' },
+    { value: 'USD', label: 'US Dollar (USD)' },
+    { value: 'EUR', label: 'Euro (EUR)' },
+    { value: 'RUB', label: 'Российский рубль (RUB)' },
+    { value: 'GBP', label: 'British Pound (GBP)' },
+    { value: 'JPY', label: 'Japanese Yen (JPY)' },
+    { value: 'CNY', label: 'Chinese Yuan (CNY)' },
+    { value: 'CHF', label: 'Swiss Franc (CHF)' },
+    { value: 'CAD', label: 'Canadian Dollar (CAD)' },
+    { value: 'AUD', label: 'Australian Dollar (AUD)' },
+    { value: 'SGD', label: 'Singapore Dollar (SGD)' },
+    { value: 'HKD', label: 'Hong Kong Dollar (HKD)' },
+    { value: 'NZD', label: 'New Zealand Dollar (NZD)' },
+    { value: 'SEK', label: 'Swedish Krona (SEK)' },
+    { value: 'NOK', label: 'Norwegian Krone (NOK)' },
+    { value: 'DKK', label: 'Danish Krone (DKK)' },
+    { value: 'PLN', label: 'Polish Złoty (PLN)' },
+    { value: 'CZK', label: 'Czech Koruna (CZK)' },
+    { value: 'HUF', label: 'Hungarian Forint (HUF)' },
+    { value: 'RON', label: 'Romanian Leu (RON)' },
+    { value: 'BGN', label: 'Bulgarian Lev (BGN)' },
+    { value: 'HRK', label: 'Croatian Kuna (HRK)' },
+    { value: 'RSD', label: 'Serbian Dinar (RSD)' },
+    { value: 'UAH', label: 'Ukrainian Hryvnia (UAH)' },
+    { value: 'BYN', label: 'Belarusian Ruble (BYN)' },
+    { value: 'GEL', label: 'Georgian Lari (GEL)' },
+    { value: 'AMD', label: 'Armenian Dram (AMD)' },
+    { value: 'AZN', label: 'Azerbaijani Manat (AZN)' },
+    { value: 'UZS', label: 'Uzbekistani Som (UZS)' },
+    { value: 'KGS', label: 'Kyrgyzstani Som (KGS)' },
+    { value: 'TJS', label: 'Tajikistani Somoni (TJS)' },
+    { value: 'MNT', label: 'Mongolian Tugrik (MNT)' },
+    { value: 'KRW', label: 'South Korean Won (KRW)' },
+    { value: 'TWD', label: 'New Taiwan Dollar (TWD)' },
+    { value: 'THB', label: 'Thai Baht (THB)' },
+    { value: 'MYR', label: 'Malaysian Ringgit (MYR)' },
+    { value: 'IDR', label: 'Indonesian Rupiah (IDR)' },
+    { value: 'PHP', label: 'Philippine Peso (PHP)' },
+    { value: 'VND', label: 'Vietnamese Dong (VND)' },
+    { value: 'LKR', label: 'Sri Lankan Rupee (LKR)' },
+    { value: 'BDT', label: 'Bangladeshi Taka (BDT)' },
+    { value: 'NPR', label: 'Nepalese Rupee (NPR)' },
+    { value: 'PKR', label: 'Pakistani Rupee (PKR)' },
+    { value: 'AFN', label: 'Afghan Afghani (AFN)' },
+    { value: 'KWD', label: 'Kuwaiti Dinar (KWD)' },
+    { value: 'BHD', label: 'Bahraini Dinar (BHD)' },
+    { value: 'QAR', label: 'Qatari Riyal (QAR)' },
+    { value: 'SAR', label: 'Saudi Riyal (SAR)' },
+    { value: 'AED', label: 'UAE Dirham (AED)' },
+    { value: 'OMR', label: 'Omani Rial (OMR)' },
+    { value: 'JOD', label: 'Jordanian Dinar (JOD)' },
+    { value: 'LBP', label: 'Lebanese Pound (LBP)' },
+    { value: 'EGP', label: 'Egyptian Pound (EGP)' },
+    { value: 'ILS', label: 'Israeli Shekel (ILS)' },
+    { value: 'TRY', label: 'Turkish Lira (TRY)' },
+    { value: 'IRR', label: 'Iranian Rial (IRR)' },
+    { value: 'IQD', label: 'Iraqi Dinar (IQD)' },
+    { value: 'LYD', label: 'Libyan Dinar (LYD)' },
+    { value: 'TND', label: 'Tunisian Dinar (TND)' },
+    { value: 'DZD', label: 'Algerian Dinar (DZD)' },
+    { value: 'MAD', label: 'Moroccan Dirham (MAD)' },
+    { value: 'NGN', label: 'Nigerian Naira (NGN)' },
+    { value: 'GHS', label: 'Ghanaian Cedi (GHS)' },
+    { value: 'XOF', label: 'West African CFA (XOF)' },
+    { value: 'XAF', label: 'Central African CFA (XAF)' },
+    { value: 'XPF', label: 'CFP Franc (XPF)' },
+    { value: 'ZAR', label: 'South African Rand (ZAR)' },
+    { value: 'BWP', label: 'Botswana Pula (BWP)' },
+    { value: 'NAD', label: 'Namibian Dollar (NAD)' },
+    { value: 'SZL', label: 'Eswatini Lilangeni (SZL)' },
+    { value: 'LSL', label: 'Lesotho Loti (LSL)' },
+    { value: 'MGA', label: 'Malagasy Ariary (MGA)' },
+    { value: 'MUR', label: 'Mauritian Rupee (MUR)' },
+    { value: 'SCR', label: 'Seychellois Rupee (SCR)' },
+    { value: 'KES', label: 'Kenyan Shilling (KES)' },
+    { value: 'UGX', label: 'Ugandan Shilling (UGX)' },
+    { value: 'TZS', label: 'Tanzanian Shilling (TZS)' },
+    { value: 'RWF', label: 'Rwandan Franc (RWF)' },
+    { value: 'BIF', label: 'Burundian Franc (BIF)' },
+    { value: 'DJF', label: 'Djiboutian Franc (DJF)' },
+    { value: 'ERN', label: 'Eritrean Nakfa (ERN)' },
+    { value: 'ETB', label: 'Ethiopian Birr (ETB)' },
+    { value: 'SOS', label: 'Somali Shilling (SOS)' },
+    { value: 'SSP', label: 'South Sudanese Pound (SSP)' },
+    { value: 'GMD', label: 'Gambian Dalasi (GMD)' },
+    { value: 'GNF', label: 'Guinean Franc (GNF)' },
+    { value: 'LRD', label: 'Liberian Dollar (LRD)' },
+    { value: 'SLL', label: 'Sierra Leonean Leone (SLL)' },
+    { value: 'SDG', label: 'Sudanese Pound (SDG)' },
+    { value: 'CUP', label: 'Cuban Peso (CUP)' },
+    { value: 'HTG', label: 'Haitian Gourde (HTG)' },
+    { value: 'JMD', label: 'Jamaican Dollar (JMD)' },
+    { value: 'BBD', label: 'Barbadian Dollar (BBD)' },
+    { value: 'TTD', label: 'Trinidad & Tobago Dollar (TTD)' },
+    { value: 'XCD', label: 'East Caribbean Dollar (XCD)' },
+    { value: 'BZD', label: 'Belize Dollar (BZD)' },
+    { value: 'GTQ', label: 'Guatemalan Quetzal (GTQ)' },
+    { value: 'HNL', label: 'Honduran Lempira (HNL)' },
+    { value: 'NIO', label: 'Nicaraguan Córdoba (NIO)' },
+    { value: 'CRC', label: 'Costa Rican Colón (CRC)' },
+    { value: 'PAB', label: 'Panamanian Balboa (PAB)' },
+    { value: 'COP', label: 'Colombian Peso (COP)' },
+    { value: 'VES', label: 'Venezuelan Bolívar (VES)' },
+    { value: 'BOB', label: 'Bolivian Boliviano (BOB)' },
+    { value: 'PYG', label: 'Paraguayan Guaraní (PYG)' },
+    { value: 'UYU', label: 'Uruguayan Peso (UYU)' },
+    { value: 'CLP', label: 'Chilean Peso (CLP)' },
+    { value: 'PEN', label: 'Peruvian Sol (PEN)' },
+    { value: 'ARS', label: 'Argentine Peso (ARS)' },
+    { value: 'BRL', label: 'Brazilian Real (BRL)' },
+    { value: 'GYD', label: 'Guyana Dollar (GYD)' },
+    { value: 'SRD', label: 'Surinamese Dollar (SRD)' },
+    { value: 'AWG', label: 'Aruban Florin (AWG)' },
+    { value: 'ANG', label: 'Netherlands Antillean Guilder (ANG)' },
+    { value: 'CUC', label: 'Cuban Convertible Peso (CUC)' },
+    { value: 'MXN', label: 'Mexican Peso (MXN)' },
+  ];
+
+  const currencies = useMemo(() => {
+    const popularCurrencies = [
+      'KZT',
+      'USD',
+      'EUR',
+      'RUB',
+      'GBP',
+      'JPY',
+      'CNY',
+      'CHF',
+      'CAD',
+      'AUD',
+    ];
+
+    return [
+      ...allCurrencies.filter(currency => popularCurrencies.includes(currency.value)),
+      { value: 'separator', label: '─────────────────', isDisabled: true },
+      ...allCurrencies.filter(currency => !popularCurrencies.includes(currency.value)),
+    ];
+  }, []);
 
   const tabMeta: Record<
     BaseTabKey | 'custom',
@@ -246,7 +389,10 @@ export default function DataEntryPage() {
   const handleSubmit = (tab: TabKey) => {
     const payload = forms[tab] || initialForm;
     if (tab === 'custom') {
-      setStatus({ type: 'error', message: t.errors.useColumnCreationForTab.value });
+      setStatus({
+        type: 'error',
+        message: t.errors.useColumnCreationForTab.value,
+      });
       return;
     }
     if (!payload.date || !payload.amount) {
@@ -326,14 +472,24 @@ export default function DataEntryPage() {
       const fieldId = getFieldId(activeTab);
       const field = customFields.find(f => f.id === fieldId);
       setEditingFieldId(field?.id || null);
+      setEditingBaseTab(null);
       setEditFieldName(field?.name || '');
       setEditFieldIcon(field?.icon || 'mdi:tag');
       return;
     }
+    if (isBaseTab(activeTab)) {
+      setEditingFieldId(null);
+      setEditingBaseTab(activeTab);
+      setEditFieldName(baseTabOverrides[activeTab]?.label || tabMeta[activeTab].label);
+      setEditPanelOpen(false);
+      setEditIconOpen(false);
+      return;
+    }
     setEditingFieldId(null);
+    setEditingBaseTab(null);
     setEditPanelOpen(false);
     setEditIconOpen(false);
-  }, [activeTab, customFields]);
+  }, [activeTab, baseTabOverrides, customFields, tabMeta]);
 
   const currentForm = forms[activeTab] || initialForm;
   const currentMeta = tabMeta[activeTab as BaseTabKey] || tabMeta.custom;
@@ -344,7 +500,12 @@ export default function DataEntryPage() {
   const debouncedActiveQuery = useDebouncedValue(activeQuery, 250);
   const activeListMeta = listMetaByTab[activeTab];
   const effectiveListMeta = useMemo(
-    () => activeListMeta || { total: currentEntries.length, page: activePage, limit: PAGE_SIZE },
+    () =>
+      activeListMeta || {
+        total: currentEntries.length,
+        page: activePage,
+        limit: PAGE_SIZE,
+      },
     [activeListMeta, activePage, currentEntries.length],
   );
   const effectiveTotalPages = Math.max(
@@ -359,9 +520,7 @@ export default function DataEntryPage() {
       : Math.min(effectiveListMeta.page * effectiveListMeta.limit, effectiveListMeta.total);
   const canGoPrev = effectiveListMeta.page > 1;
   const canGoNext = effectiveListMeta.page < effectiveTotalPages;
-  const showPagination =
-    Boolean(activeListMeta) &&
-    (effectiveListMeta.total > effectiveListMeta.limit || effectiveListMeta.page > 1);
+  const showPagination = Boolean(activeListMeta) && effectiveListMeta.total > 0;
 
   const isBaseTab = (tab: TabKey): tab is BaseTabKey =>
     tab === 'cash' || tab === 'raw' || tab === 'debit' || tab === 'credit';
@@ -397,7 +556,7 @@ export default function DataEntryPage() {
   };
 
   const getTabLabel = (tab: TabKey): string => {
-    if (isBaseTab(tab)) return tabMeta[tab].label;
+    if (isBaseTab(tab)) return baseTabOverrides[tab]?.label || tabMeta[tab].label;
     if (tab === 'custom') return tabMeta.custom.label;
     const fieldId = getFieldId(tab);
     const field = customFields.find(f => f.id === fieldId);
@@ -694,6 +853,33 @@ export default function DataEntryPage() {
     }
   };
 
+  const saveTabEdit = async () => {
+    if (editingBaseTab) {
+      const name = editFieldName.trim();
+      if (!name) {
+        setStatus({
+          type: 'error',
+          message: t.errors.columnNameRequired.value,
+        });
+        return;
+      }
+      setSavingEdit(true);
+      setStatus(null);
+      setError(null);
+      setBaseTabOverrides(prev => ({
+        ...prev,
+        [editingBaseTab]: { label: name },
+      }));
+      setStatus({ type: 'success', message: t.status.columnUpdated.value });
+      toast.success(t.status.columnUpdated.value);
+      setEditPanelOpen(false);
+      setEditIconOpen(false);
+      setSavingEdit(false);
+      return;
+    }
+    await saveCustomFieldEdit();
+  };
+
   const removeCustomField = (id: string) => {
     setError(null);
     apiClient
@@ -746,7 +932,13 @@ export default function DataEntryPage() {
     }
 
     // Otherwise query total count from API.
-    setDeleteDialog({ open: true, kind: 'base', id: tab, name: getTabLabel(tab), entriesCount: 0 });
+    setDeleteDialog({
+      open: true,
+      kind: 'base',
+      id: tab,
+      name: getTabLabel(tab),
+      entriesCount: 0,
+    });
     try {
       const resp = await apiClient.get('/data-entry', {
         params: { type: tab, limit: 1, page: 1 },
@@ -802,7 +994,9 @@ export default function DataEntryPage() {
         const tableId = payload?.tableId;
         if (!tableId) throw new Error('tableId missing');
         await apiClient.delete(`/data-entry/base-tabs/${deleteDialog.id}`);
-        setHiddenBaseTabs(prev => (prev.includes(deleteDialog.id) ? prev : [...prev, deleteDialog.id]));
+        setHiddenBaseTabs(prev =>
+          prev.includes(deleteDialog.id) ? prev : [...prev, deleteDialog.id],
+        );
         setEntries(prev => {
           const next = { ...prev };
           delete next[deleteDialog.id];
@@ -837,7 +1031,9 @@ export default function DataEntryPage() {
         if (activeTab === (`field:${deleteDialog.id}` as TabKey)) setActiveTab(resolveFallbackTab);
       } else {
         await apiClient.delete(`/data-entry/base-tabs/${deleteDialog.id}`);
-        setHiddenBaseTabs(prev => (prev.includes(deleteDialog.id) ? prev : [...prev, deleteDialog.id]));
+        setHiddenBaseTabs(prev =>
+          prev.includes(deleteDialog.id) ? prev : [...prev, deleteDialog.id],
+        );
         setEntries(prev => {
           const next = { ...prev };
           delete next[deleteDialog.id];
@@ -965,7 +1161,11 @@ export default function DataEntryPage() {
   useEffect(() => {
     if (!user) return;
     if (isBaseTab(activeTab)) {
-      loadEntries(activeTab, { page: activePage, query: debouncedActiveQuery, date: activeDate });
+      loadEntries(activeTab, {
+        page: activePage,
+        query: debouncedActiveQuery,
+        date: activeDate,
+      });
       return;
     }
     if (isFieldTab(activeTab)) {
@@ -1000,7 +1200,10 @@ export default function DataEntryPage() {
           setCustomFields(prev =>
             prev.map(f =>
               f.id === fieldId
-                ? { ...f, entriesCount: Math.max(0, Number(f.entriesCount || 0) - 1) }
+                ? {
+                    ...f,
+                    entriesCount: Math.max(0, Number(f.entriesCount || 0) - 1),
+                  }
                 : f,
             ),
           );
@@ -1013,7 +1216,11 @@ export default function DataEntryPage() {
         if (isBaseTab(effectiveTab)) {
           loadEntries(effectiveTab, { page, query, date });
         } else if (isFieldTab(effectiveTab)) {
-          loadCustomTabEntries(getFieldId(effectiveTab), effectiveTab, { page, query, date });
+          loadCustomTabEntries(getFieldId(effectiveTab), effectiveTab, {
+            page,
+            query,
+            date,
+          });
         }
       })
       .catch(err => {
@@ -1033,7 +1240,7 @@ export default function DataEntryPage() {
 
   if (!user) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="container-shared px-4 sm:px-6 lg:px-8 py-10">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm text-center">
           <p className="text-gray-800 font-semibold mb-2">{t.labels.signInTitle}</p>
           <p className="text-sm text-gray-600">{t.labels.signInSubtitle}</p>
@@ -1043,98 +1250,119 @@ export default function DataEntryPage() {
   }
 
   return (
-    <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div className="flex items-start gap-3">
-          <div className="p-2 rounded-full bg-primary/10 text-primary">
-            <Droplets className="h-6 w-6" />
-          </div>
-          <div>
+    <div className="container-shared px-4 sm:px-6 lg:px-8 py-10">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-2 rounded-full bg-primary/10 text-primary">
+              <Droplets className="h-6 w-6" />
+            </div>
             <h1 className="text-2xl font-bold text-gray-900">{t.labels.title}</h1>
-            <p className="text-secondary mt-1">{t.labels.subtitle}</p>
           </div>
+          <p className="text-secondary">{t.labels.subtitle}</p>
         </div>
 
-        {(isBaseTab(activeTab) || isFieldTab(activeTab)) && (
-          <div className="relative">
-            <button
-              type="button"
-              data-tour-id="data-entry-table-actions-button"
-              disabled={exportingTable || syncingTable}
-              onClick={() => setExportMenuOpen(v => !v)}
-              className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {exportingTable ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Table className="h-4 w-4" />
-              )}
-              {t.labels.tableActions}
-            </button>
+        <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
+          <button
+            type="button"
+            data-tour-id="data-entry-edit-columns-button"
+            disabled={!(isFieldTab(activeTab) || isBaseTab(activeTab))}
+            onClick={() => {
+              if (!(isFieldTab(activeTab) || isBaseTab(activeTab))) return;
+              setEditPanelOpen(open => !open);
+              setEditIconOpen(false);
+              setCustomIconOpen(false);
+              setExportMenuOpen(false);
+              setCalendarOpen(false);
+            }}
+            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={t.labels.editColumnButton.value}
+          >
+            <PencilLine className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+            {t.labels.editColumnButton}
+          </button>
 
-            {exportMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setExportMenuOpen(false)}
-                  onKeyDown={event => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      setExportMenuOpen(false);
-                    }
-                  }}
-                />
-                <div
-                  className="absolute right-0 mt-2 z-20 w-80 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden"
-                  data-tour-id="data-entry-table-actions-menu"
-                >
-                  <button
-                    type="button"
-                    data-tour-id="data-entry-table-actions-create-for-tab"
-                    onClick={() => createTableFromDataEntry('type')}
-                    disabled={exportingTable || syncingTable}
-                    className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+          {(isBaseTab(activeTab) || isFieldTab(activeTab)) && (
+            <div className="relative">
+              <button
+                type="button"
+                data-tour-id="data-entry-table-actions-button"
+                disabled={exportingTable || syncingTable}
+                onClick={() => setExportMenuOpen(v => !v)}
+                className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors disabled:opacity-60 disabled:cursor-not-allowed w-full md:w-auto"
+              >
+                {exportingTable ? (
+                  <Loader2 className="-ml-1 mr-2 h-5 w-5 animate-spin text-gray-500" />
+                ) : (
+                  <Table className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+                )}
+                {t.labels.tableActions}
+              </button>
+
+              {exportMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setExportMenuOpen(false)}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setExportMenuOpen(false);
+                      }
+                    }}
+                  />
+                  <div
+                    className="absolute right-0 mt-2 z-20 w-80 rounded-xl border border-gray-200 bg-white shadow-xl overflow-hidden"
+                    data-tour-id="data-entry-table-actions-menu"
                   >
-                    {t.labels.createTableForTabPrefix}
-                    <span className="font-semibold">{getTabLabel(activeTab)}</span>
-                  </button>
-                  <button
-                    type="button"
-                    data-tour-id="data-entry-table-actions-create-single"
-                    onClick={() => createTableFromDataEntry('all')}
-                    disabled={exportingTable || syncingTable}
-                    className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {t.labels.createSingleTable}
-                  </button>
-                  {linkedTable && (
                     <button
                       type="button"
-                      data-tour-id="data-entry-table-actions-sync-linked"
-                      onClick={() => syncDataEntryTable(linkedTable.id)}
+                      data-tour-id="data-entry-table-actions-create-for-tab"
+                      onClick={() => createTableFromDataEntry('type')}
+                      disabled={exportingTable || syncingTable}
+                      className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {t.labels.createTableForTabPrefix}
+                      <span className="font-semibold">{getTabLabel(activeTab)}</span>
+                    </button>
+                    <button
+                      type="button"
+                      data-tour-id="data-entry-table-actions-create-single"
+                      onClick={() => createTableFromDataEntry('all')}
                       disabled={exportingTable || syncingTable}
                       className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      {syncingTable ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          {t.labels.syncing}
-                        </span>
-                      ) : (
-                        <>
-                          {t.labels.syncWithTablePrefix}
-                          <span className="font-semibold">{linkedTable.name}</span>
-                        </>
-                      )}
+                      {t.labels.createSingleTable}
                     </button>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                    {linkedTable && (
+                      <button
+                        type="button"
+                        data-tour-id="data-entry-table-actions-sync-linked"
+                        onClick={() => syncDataEntryTable(linkedTable.id)}
+                        disabled={exportingTable || syncingTable}
+                        className="w-full px-4 py-3 text-left text-sm text-gray-800 hover:bg-gray-50 border-t border-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        {syncingTable ? (
+                          <span className="inline-flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {t.labels.syncing}
+                          </span>
+                        ) : (
+                          <>
+                            {t.labels.syncWithTablePrefix}
+                            <span className="font-semibold">{linkedTable.name}</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {(status || error) && (
@@ -1177,7 +1405,7 @@ export default function DataEntryPage() {
                         window.setTimeout(() => setCustomFieldHighlight(false), 1200);
                       }
                     }}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0 ${
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors whitespace-nowrap shrink-0 ${
                       isActive
                         ? 'text-primary border-b-2 border-primary bg-primary/5'
                         : 'text-gray-600 hover:text-primary'
@@ -1221,25 +1449,6 @@ export default function DataEntryPage() {
                 );
               })}
           </div>
-
-          <button
-            type="button"
-            data-tour-id="data-entry-edit-columns-button"
-            disabled={!isFieldTab(activeTab)}
-            onClick={() => {
-              if (!isFieldTab(activeTab)) return;
-              setEditPanelOpen(open => !open);
-              setEditIconOpen(false);
-              setCustomIconOpen(false);
-              setExportMenuOpen(false);
-              setCalendarOpen(false);
-            }}
-            className="ml-auto inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:text-primary flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-            title={t.labels.editColumnButton.value}
-          >
-            <PencilLine className="h-4 w-4" />
-            {t.labels.editColumnButton}
-          </button>
         </div>
 
         <div className="p-4 space-y-4">
@@ -1249,7 +1458,7 @@ export default function DataEntryPage() {
               : currentMeta.description}
           </div>
 
-          {isFieldTab(activeTab) && editPanelOpen && (
+          {(isFieldTab(activeTab) || isBaseTab(activeTab)) && editPanelOpen && (
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -1271,7 +1480,7 @@ export default function DataEntryPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={saveCustomFieldEdit}
+                    onClick={saveTabEdit}
                     disabled={savingEdit}
                     className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
                   >
@@ -1298,63 +1507,65 @@ export default function DataEntryPage() {
                   />
                 </label>
 
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditIconOpen(v => !v);
-                        setCustomIconOpen(false);
-                        setExportMenuOpen(false);
-                        setCalendarOpen(false);
-                      }}
-                      className="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                      title={t.labels.chooseIconTitle.value}
-                    >
-                      {renderIconPreview(editFieldIcon || 'mdi:tag')}
-                      <span className="text-sm font-semibold">{t.labels.iconLabel}</span>
-                    </button>
+                {editingBaseTab ? null : (
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditIconOpen(v => !v);
+                          setCustomIconOpen(false);
+                          setExportMenuOpen(false);
+                          setCalendarOpen(false);
+                        }}
+                        className="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                        title={t.labels.chooseIconTitle.value}
+                      >
+                        {renderIconPreview(editFieldIcon || 'mdi:tag')}
+                        <span className="text-sm font-semibold">{t.labels.iconLabel}</span>
+                      </button>
 
-                    {editIconOpen && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-10"
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setEditIconOpen(false)}
-                          onKeyDown={event => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              setEditIconOpen(false);
-                            }
-                          }}
-                        />
-                        <div className="absolute mt-2 z-30 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
-                          <div className="grid grid-cols-7 gap-2">
-                            {CUSTOM_FIELD_ICONS.map(icon => (
-                              <button
-                                key={icon}
-                                type="button"
-                                onClick={() => {
-                                  setEditFieldIcon(icon);
-                                  setEditIconOpen(false);
-                                }}
-                                className={`inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors ${
-                                  editFieldIcon === icon
-                                    ? 'border-primary bg-primary/10 text-primary'
-                                    : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-                                }`}
-                                title={icon}
-                              >
-                                {renderIconPreview(icon)}
-                              </button>
-                            ))}
+                      {editIconOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setEditIconOpen(false)}
+                            onKeyDown={event => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                setEditIconOpen(false);
+                              }
+                            }}
+                          />
+                          <div className="absolute mt-2 z-30 w-[320px] rounded-xl border border-gray-200 bg-white shadow-xl p-4">
+                            <div className="grid grid-cols-7 gap-2">
+                              {CUSTOM_FIELD_ICONS.map(icon => (
+                                <button
+                                  key={icon}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditFieldIcon(icon);
+                                    setEditIconOpen(false);
+                                  }}
+                                  className={`inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors ${
+                                    editFieldIcon === icon
+                                      ? 'border-primary bg-primary/10 text-primary'
+                                      : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                                  }`}
+                                  title={icon}
+                                >
+                                  {renderIconPreview(icon)}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      </>
-                    )}
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}
@@ -1605,40 +1816,23 @@ export default function DataEntryPage() {
                   />
                 </label>
 
-                <label className="block" data-tour-id="currency-field">
+                <div className="block" data-tour-id="currency-field">
                   <span className="text-sm font-medium text-gray-700 block mb-1">
                     {t.labels.currency}
                   </span>
-                  <div className="mt-1 w-full rounded-lg border border-gray-200 bg-white text-sm focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
-                    <select
-                      className="w-full bg-transparent px-3 py-2 outline-none"
-                      value={currentForm.currency}
-                      onChange={e => handleChange(activeTab, 'currency', e.target.value)}
+                  <div className="mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrencyModalOpen(true)}
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-left hover:border-primary focus:border-primary focus:ring-1 focus:ring-primary"
                     >
-                      {currencies.map(cur => (
-                        <option key={cur.code} value={cur.code}>
-                          {cur.code} — {cur.label}
-                        </option>
-                      ))}
-                    </select>
+                      {currentForm.currency
+                        ? currencies.find(c => c.value === currentForm.currency)?.label ||
+                          currentForm.currency
+                        : t.labels.currency}
+                    </button>
                   </div>
-                  <div className="mt-2 flex flex-wrap gap-2" data-tour-id="currency-buttons">
-                    {currencies.map(cur => (
-                      <button
-                        key={cur.code}
-                        type="button"
-                        onClick={() => handleChange(activeTab, 'currency', cur.code)}
-                        className={`flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${
-                          currentForm.currency === cur.code
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-gray-200 text-gray-700 hover:border-primary'
-                        }`}
-                      >
-                        {cur.code}
-                      </button>
-                    ))}
-                  </div>
-                </label>
+                </div>
               </div>
 
               <div className="flex justify-end pt-2">
@@ -1713,7 +1907,9 @@ export default function DataEntryPage() {
                   >
                     <span className={activeDate ? 'text-gray-900' : 'text-gray-400'}>
                       {activeDate
-                        ? format(new Date(activeDate), 'd MMMM yyyy', { locale: dateFnsLocale })
+                        ? format(new Date(activeDate), 'd MMMM yyyy', {
+                            locale: dateFnsLocale,
+                          })
                         : t.labels.selectDate}
                     </span>
                     <CalendarIcon className="h-4 w-4 text-gray-500" />
@@ -1852,31 +2048,42 @@ export default function DataEntryPage() {
               </div>
 
               {showPagination && (
-                <div className="flex flex-col gap-2 border-t border-gray-100 px-4 py-3 bg-gray-50/30 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-xs text-gray-500 font-medium">
+                <div
+                  className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50/50"
+                  data-tour-id="pagination"
+                >
+                  <div className="text-sm text-gray-600 font-medium">
                     {t.labels.paginationShowingPrefix.value} {effectiveStartIndex}–
                     {effectiveEndIndex} {t.labels.paginationShowingOf.value}{' '}
                     {effectiveListMeta.total}
                   </div>
-                  <div className="flex items-center justify-end gap-2">
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setPageForTab(activeTab, effectiveListMeta.page - 1)}
                       disabled={!canGoPrev}
-                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
+                      className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm border transition-all ${
+                        !canGoPrev
+                          ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                          : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-white'
+                      }`}
                     >
                       <ChevronLeft className="h-4 w-4" />
                       {t.labels.paginationPrev.value}
                     </button>
-                    <span className="text-xs text-gray-600 font-semibold">
-                      {t.labels.paginationPageShort.value} {effectiveListMeta.page} /{' '}
+                    <span className="text-sm text-gray-600 font-semibold text-center min-w-[120px]">
+                      {t.labels.paginationPageShort.value} {effectiveListMeta.page} из{' '}
                       {effectiveTotalPages}
                     </span>
                     <button
                       type="button"
                       onClick={() => setPageForTab(activeTab, effectiveListMeta.page + 1)}
                       disabled={!canGoNext}
-                      className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:hover:bg-white"
+                      className={`inline-flex items-center gap-1 rounded-full px-3 py-2 text-sm border transition-all ${
+                        !canGoNext
+                          ? 'border-gray-200 text-gray-300 cursor-not-allowed'
+                          : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-white'
+                      }`}
                     >
                       {t.labels.paginationNext.value}
                       <ChevronRight className="h-4 w-4" />
@@ -1892,7 +2099,7 @@ export default function DataEntryPage() {
       {deleteDialog.open && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/30"
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
             role="button"
             tabIndex={0}
             onClick={closeDeleteDialog}
@@ -1946,6 +2153,70 @@ export default function DataEntryPage() {
                   onClick={closeDeleteDialog}
                   disabled={exportingTabToTable || deletingTab}
                   className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {t.labels.cancel}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {currencyModalOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-70 bg-black/30 backdrop-blur-sm"
+            role="button"
+            tabIndex={0}
+            onClick={() => setCurrencyModalOpen(false)}
+            onKeyDown={event => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setCurrencyModalOpen(false);
+              }
+            }}
+          />
+          <div className="fixed inset-0 z-80 flex items-center justify-center p-4">
+            <div className="w-full max-w-md max-h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden flex flex-col">
+              <div className="p-5 shrink-0">
+                <h3 className="text-lg font-bold text-gray-900">{t.labels.currency}</h3>
+              </div>
+
+              <div className="px-5 pb-5 flex-1 overflow-y-auto">
+                <Select
+                  options={currencies}
+                  value={currencies.find(c => c.value === currentForm.currency)}
+                  onChange={option => {
+                    if (option) {
+                      handleChange(activeTab, 'currency', option.value);
+                      setCurrencyModalOpen(false);
+                    }
+                  }}
+                  placeholder={t.labels.currency}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  isSearchable
+                  menuShouldScrollIntoView={false}
+                  styles={{
+                    menu: base => ({
+                      ...base,
+                      position: 'relative',
+                      zIndex: 1,
+                    }),
+                    menuList: base => ({
+                      ...base,
+                      maxHeight: '200px',
+                      overflowY: 'auto',
+                    }),
+                  }}
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 border-t border-gray-100 p-4">
+                <button
+                  type="button"
+                  onClick={() => setCurrencyModalOpen(false)}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
                 >
                   {t.labels.cancel}
                 </button>

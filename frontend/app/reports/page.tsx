@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  BarChart3,
   CheckCircle2,
   Download,
   FileText,
@@ -562,22 +563,25 @@ export default function ReportsPage() {
   }, [parsedStatements.statuses, resolvedTheme]);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-4">
-      <div className="flex items-start justify-between">
+    <div className="container-shared px-4 sm:px-6 lg:px-8 py-8 space-y-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t.labels.title}</h1>
-          <p className="text-secondary mt-1">{t.labels.subtitle}</p>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-2 rounded-full bg-primary/10 text-primary">
+              <BarChart3 className="h-6 w-6" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">{t.labels.title}</h1>
+          </div>
+          <p className="text-secondary">{t.labels.subtitle}</p>
         </div>
-      </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2" data-tour-id="reports-tabs">
           <button
             onClick={() => setTab('sheets')}
-            className={`rounded-md border px-4 py-2 text-sm font-semibold transition-colors ${
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
               tab === 'sheets'
-                ? 'border-primary bg-primary text-white shadow-sm'
-                : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
+                ? 'bg-primary text-white shadow-sm'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
             data-tour-id="reports-tab-sheets"
           >
@@ -585,10 +589,10 @@ export default function ReportsPage() {
           </button>
           <button
             onClick={() => setTab('local')}
-            className={`rounded-md border px-4 py-2 text-sm font-semibold transition-colors ${
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
               tab === 'local'
-                ? 'border-primary bg-primary text-white shadow-sm'
-                : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
+                ? 'bg-primary text-white shadow-sm'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
             data-tour-id="reports-tab-local"
           >
@@ -596,10 +600,10 @@ export default function ReportsPage() {
           </button>
           <button
             onClick={() => setTab('statements')}
-            className={`rounded-md border px-4 py-2 text-sm font-semibold transition-colors ${
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
               tab === 'statements'
-                ? 'border-primary bg-primary text-white shadow-sm'
-                : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50'
+                ? 'bg-primary text-white shadow-sm'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
             data-tour-id="reports-tab-statements"
           >

@@ -1,37 +1,30 @@
 'use client';
 
 import { useAuth } from '@/app/hooks/useAuth';
+import { useLockBodyScroll } from '@/app/hooks/useLockBodyScroll';
 import apiClient from '@/app/lib/api';
 import { Icon } from '@iconify/react';
-import { Add, Check, Delete, Edit, MoreVert, Search } from '@mui/icons-material';
+import { Add, Check, Delete, Edit, MoreVert, Search as SearchIcon } from '@mui/icons-material';
 import {
   Box,
   Button,
-  Card,
-  CardContent,
-  Container,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControl,
-  Grid,
-  IconButton,
-  InputAdornment,
   InputLabel,
   Menu,
   MenuItem,
   Select,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
   alpha,
   useTheme,
 } from '@mui/material';
+import { Loader2, MoreVertical, Pencil, Plus, Search, Tag, Trash2 } from 'lucide-react';
 import { useIntlayer } from 'next-intlayer';
-import { useEffect, useRef, useState } from 'react';
-import type { ChangeEvent } from 'react';
+import { type ChangeEvent, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
 interface Category {
@@ -95,7 +88,6 @@ const PREDEFINED_COLORS = [
   '#3F51B5',
   '#2196F3',
   '#03A9F4',
-  '#00BCD4',
   '#009688',
   '#4CAF50',
   '#8BC34A',
@@ -119,6 +111,8 @@ export default function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [uploadingIcon, setUploadingIcon] = useState(false);
   const iconInputRef = useRef<HTMLInputElement | null>(null);
+
+  // useLockBodyScroll(dialogOpen);
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -144,6 +138,8 @@ export default function CategoriesPage() {
   });
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, category: Category) => {
+    event.preventDefault();
+    event.stopPropagation();
     setMenuAnchorEl(event.currentTarget);
     setMenuTargetCategory(category);
   };
@@ -287,170 +283,189 @@ export default function CategoriesPage() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
-      <Box sx={{ mb: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box>
-            <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
-              {t.title}
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              {t.subtitle}
-            </Typography>
-          </Box>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
+    <div className="container-shared px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-2 rounded-full bg-primary/10 text-primary">
+              <Tag className="h-6 w-6" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
+          </div>
+          <p className="text-secondary">{t.subtitle}</p>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
+          {/* Search */}
+          <div className="relative w-full md:w-64">
+            <Search className="h-4 w-4 text-gray-400 absolute left-3 top-3" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder={t.dialog.placeholderName.value}
+              className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+            />
+          </div>
+
+          {/* Add Button */}
+          <button
             onClick={() => handleOpenDialog()}
-            sx={{ borderRadius: 2, px: 3, py: 1 }}
+            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-primary hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors whitespace-nowrap"
           >
+            <Plus className="-ml-1 mr-2 h-5 w-5" />
             {t.add}
-          </Button>
-        </Box>
+          </button>
+        </div>
+      </div>
 
-        {/* Search and Filter Controls */}
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <TextField
-            placeholder={t.dialog.placeholderName.value} // "Search categories..." would be better but reusing existing string or generic
-            size="small"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            slotProps={{
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search fontSize="small" color="action" />
-                  </InputAdornment>
-                ),
-              },
-            }}
-            sx={{ flexGrow: 1, maxWidth: 300 }}
-          />
-          <ToggleButtonGroup
-            value={filterType}
-            exclusive
-            onChange={(_, newValue) => newValue && setFilterType(newValue)}
-            size="small"
-            aria-label="category filter"
-          >
-            <ToggleButton value="all" sx={{ px: 2 }}>
-              {t.type.label}
-            </ToggleButton>
-            <ToggleButton value="income" sx={{ px: 2 }}>
-              {t.type.income}
-            </ToggleButton>
-            <ToggleButton value="expense" sx={{ px: 2 }}>
-              {t.type.expense}
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-      </Box>
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
+        <button
+          onClick={() => setFilterType('all')}
+          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors border ${
+            filterType === 'all'
+              ? 'bg-gray-900 text-white border-gray-900'
+              : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          {t.type.label}
+        </button>
+        <button
+          onClick={() => setFilterType('income')}
+          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors border ${
+            filterType === 'income'
+              ? 'bg-emerald-600 text-white border-emerald-600'
+              : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          {t.type.income}
+        </button>
+        <button
+          onClick={() => setFilterType('expense')}
+          className={`rounded-full px-4 py-2 text-sm font-medium transition-colors border ${
+            filterType === 'expense'
+              ? 'bg-red-600 text-white border-red-600'
+              : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          {t.type.expense}
+        </button>
+      </div>
 
-      {loading ? (
-        <Typography>{t.loading}</Typography>
-      ) : (
-        <Grid container spacing={2}>
-          {filteredCategories.map(category => (
-            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={category.id}>
-              <Card
-                variant="outlined"
-                sx={{
-                  borderRadius: 2,
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  transition: 'all 0.2s',
-                  '&:hover': {
-                    boxShadow: theme.shadows[2],
-                    borderColor: 'primary.main',
-                    transform: 'translateY(-2px)',
-                  },
-                }}
+      {/* Table Content */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : filteredCategories.length === 0 ? (
+          <div className="text-center py-20 px-4">
+            <div className="mx-auto h-16 w-16 text-gray-300 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
+              <Search className="h-8 w-8" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">
+              {(t as any).noData?.value || 'Нет категорий'}
+            </h3>
+            <div className="mt-6">
+              <button
+                onClick={() => handleOpenDialog()}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
               >
-                <CardContent
-                  sx={{
-                    flexGrow: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1.5,
-                    p: 2,
-                    '&:last-child': { pb: 2 },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: alpha(category.color || '#2196F3', 0.1),
-                      color: category.color || '#2196F3',
-                      flexShrink: 0,
-                    }}
+                <Plus className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+                {t.add}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50/50">
+                <tr>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
                   >
-                    {resolveIconUrl(category.icon) ? (
-                      <Box
-                        component="img"
-                        src={resolveIconUrl(category.icon) as string}
-                        alt=""
-                        sx={{ width: 24, height: 24, objectFit: 'contain' }}
-                      />
-                    ) : (
-                      <Icon icon={category.icon || 'mdi:tag'} width={24} height={24} />
-                    )}
-                  </Box>
-                  <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                    <Typography
-                      variant="subtitle1"
-                      fontWeight="600"
-                      lineHeight={1.2}
-                      sx={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        mb: 0.5,
-                      }}
-                      title={category.name}
-                    >
-                      {category.name}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Box
-                        sx={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          bgcolor: category.type === 'income' ? 'success.main' : 'error.main',
-                        }}
-                      />
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ fontSize: '0.7rem' }}
+                    {(t as any).columns?.name?.value || 'Название'}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  >
+                    {t.type.label}
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                  >
+                    {(t as any).columns?.actions?.value || 'Действия'}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredCategories.map(category => (
+                  <tr key={category.id} className="transition-colors hover:bg-gray-50/50 group">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div
+                          className="shrink-0 h-10 w-10 rounded-lg flex items-center justify-center border border-gray-100 shadow-sm"
+                          style={{
+                            backgroundColor: alpha(category.color || '#2196F3', 0.1),
+                            color: category.color || '#2196F3',
+                          }}
+                        >
+                          {resolveIconUrl(category.icon) ? (
+                            <img
+                              src={resolveIconUrl(category.icon) as string}
+                              alt=""
+                              className="h-5 w-5 object-contain"
+                            />
+                          ) : (
+                            <Icon icon={category.icon || 'mdi:tag'} width={20} height={20} />
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-semibold text-gray-900">{category.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                          category.type === 'income'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                            : 'bg-red-50 text-red-700 border-red-100'
+                        }`}
                       >
                         {category.type === 'income' ? t.type.income : t.type.expense}
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  <Box sx={{ display: 'flex', gap: 0 }}>
-                    <IconButton
-                      size="small"
-                      onClick={e => handleMenuOpen(e, category)}
-                      sx={{ opacity: 0.6, '&:hover': { opacity: 1 } }}
-                    >
-                      <MoreVert fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleOpenDialog(category)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-primary hover:bg-blue-50 transition-colors"
+                          title={t.actions.edit.value}
+                        >
+                          <Pencil size={18} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(category.id)}
+                          className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title={t.actions.delete.value}
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Menu for Edit/Delete actions */}
       <Menu
@@ -459,13 +474,25 @@ export default function CategoriesPage() {
         onClose={handleMenuClose}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        PaperProps={{
+          elevation: 3,
+          sx: {
+            mt: 0.5,
+            borderRadius: 2,
+            minWidth: 160,
+            overflow: 'hidden',
+          },
+        }}
       >
-        <MenuItem onClick={onEditFromMenu}>
-          <Edit fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+        <MenuItem onClick={onEditFromMenu} sx={{ py: 1.5, fontSize: '0.875rem' }}>
+          <Pencil className="mr-2 h-4 w-4 text-gray-500" />
           {t.actions.edit}
         </MenuItem>
-        <MenuItem onClick={onDeleteFromMenu} sx={{ color: 'error.main' }}>
-          <Delete fontSize="small" sx={{ mr: 1 }} />
+        <MenuItem
+          onClick={onDeleteFromMenu}
+          sx={{ py: 1.5, fontSize: '0.875rem', color: 'error.main' }}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
           {t.actions.delete}
         </MenuItem>
       </Menu>
@@ -491,7 +518,10 @@ export default function CategoriesPage() {
                   value={formData.type}
                   label={t.type.label.value}
                   onChange={e =>
-                    setFormData({ ...formData, type: e.target.value as 'income' | 'expense' })
+                    setFormData({
+                      ...formData,
+                      type: e.target.value as 'income' | 'expense',
+                    })
                   }
                 >
                   <MenuItem value="income">{t.type.income}</MenuItem>
@@ -680,6 +710,6 @@ export default function CategoriesPage() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </div>
   );
 }

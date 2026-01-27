@@ -3,7 +3,9 @@
 import { BankLogoAvatar } from '@/app/components/BankLogoAvatar';
 import ConfirmModal from '@/app/components/ConfirmModal';
 import { DocumentTypeIcon } from '@/app/components/DocumentTypeIcon';
+import { PDFPreviewModal } from '@/app/components/PDFPreviewModal';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useLockBodyScroll } from '@/app/hooks/useLockBodyScroll';
 import apiClient from '@/app/lib/api';
 import { resolveBankLogo } from '@bank-logos';
 import {
@@ -15,6 +17,7 @@ import {
   Download,
   Eye,
   File,
+  FileText,
   Loader2,
   RefreshCw,
   Search,
@@ -25,7 +28,7 @@ import {
 } from 'lucide-react';
 import { useIntlayer } from 'next-intlayer';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
 interface Statement {
@@ -82,8 +85,7 @@ export default function StatementsPage() {
   const [total, setTotal] = useState(0);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [viewingFile, setViewingFile] = useState<string | null>(null);
-  const [fileViewUrl, setFileViewUrl] = useState<string | null>(null);
+
   const [logStatementId, setLogStatementId] = useState<string | null>(null);
   const [logEntries, setLogEntries] = useState<
     Array<{ timestamp: string; level: string; message: string }>
@@ -97,6 +99,8 @@ export default function StatementsPage() {
   const [allowDuplicates, setAllowDuplicates] = useState(false);
   const allowDuplicatesLabel =
     (t.uploadModal as any)?.allowDuplicates?.value ?? 'Разрешить загрузку дубликатов';
+
+  useLockBodyScroll(!!uploadModalOpen || !!logStatementId);
   const totalPagesCount = Math.max(1, Math.ceil(total / pageSize) || 1);
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = total === 0 ? 0 : Math.min(total, page * pageSize);
@@ -104,6 +108,11 @@ export default function StatementsPage() {
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [statementToDelete, setStatementToDelete] = useState<string | null>(null);
+
+  // PDF Preview Modal State
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewFileId, setPreviewFileId] = useState<string | null>(null);
+  const [previewFileName, setPreviewFileName] = useState<string>('');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -121,6 +130,12 @@ export default function StatementsPage() {
     if (!user) return;
     loadStatements({ page, search });
   }, [user, page, search]);
+
+  const filteredStatements = useMemo(() => {
+    const query = searchInput.trim().toLowerCase();
+    if (!query) return statements;
+    return statements.filter(stmt => stmt.fileName.toLowerCase().includes(query));
+  }, [searchInput, statements]);
 
   const loadStatements = async (opts?: {
     silent?: boolean;
@@ -236,14 +251,15 @@ export default function StatementsPage() {
 
     const toastId = toast.loading(t.deleteLoading.value);
     try {
-      await apiClient.delete(`/statements/${statementToDelete}`);
+      await apiClient.post(`/statements/${statementToDelete}/trash`);
       await loadStatements({ page, search });
       toast.success(t.deleteSuccess.value, { id: toastId });
     } catch (error) {
-      console.error('Failed to delete statement:', error);
+      console.error('Failed to move statement to trash:', error);
       toast.error(t.deleteError.value, { id: toastId });
     }
     setStatementToDelete(null);
+    setDeleteModalOpen(false);
   };
 
   const addFiles = (files: File[]) => {
@@ -353,12 +369,13 @@ export default function StatementsPage() {
     }
   };
 
-  const getFileIcon = (fileType?: string, fileName?: string) => {
+  const getFileIcon = (fileType?: string, fileName?: string, fileId?: string) => {
     return (
       <DocumentTypeIcon
         fileType={fileType}
         fileName={fileName}
-        size={24}
+        fileId={fileId}
+        size={40}
         className="text-red-500"
       />
     );
@@ -391,40 +408,10 @@ export default function StatementsPage() {
       }
     } catch (error) {
       console.error('Failed to download file:', error);
-      toast.error((error as Error).message || t.download.failed.value, { id: toastId });
-    }
-  };
-
-  const handleViewFile = async (id: string) => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch(`${apiBaseUrl}/statements/${id}/view`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      toast.error((error as Error).message || t.download.failed.value, {
+        id: toastId,
       });
-
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        setFileViewUrl(url);
-        setViewingFile(id);
-      } else {
-        const message = await extractErrorMessage(response);
-        toast.error(message || t.viewFile.failed.value);
-      }
-    } catch (error) {
-      console.error('Failed to load file:', error);
-      toast.error(t.viewFile.failed.value);
     }
-  };
-
-  const handleCloseView = () => {
-    if (fileViewUrl) {
-      window.URL.revokeObjectURL(fileViewUrl);
-      setFileViewUrl(null);
-    }
-    setViewingFile(null);
   };
 
   const openLogs = async (id: string, name: string) => {
@@ -471,15 +458,18 @@ export default function StatementsPage() {
     setLogStatementName('');
   };
 
-  const viewingStatement = viewingFile ? statements.find(s => s.id === viewingFile) : null;
-
   return (
-    <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="container-shared px-4 sm:px-6 lg:px-8 py-8">
       {/* Header / CTA Section */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
-          <p className="text-secondary mt-1">{t.subtitle}</p>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-2 rounded-full bg-primary/10 text-primary">
+              <FileText className="h-6 w-6" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">{t.title}</h1>
+          </div>
+          <p className="text-secondary">{t.subtitle}</p>
         </div>
         <div className="flex flex-col md:flex-row md:items-center gap-3 w-full md:w-auto">
           <div className="relative w-full md:w-80" data-tour-id="search-bar">
@@ -517,7 +507,7 @@ export default function StatementsPage() {
           <div className="flex justify-center items-center h-64">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
           </div>
-        ) : statements.length === 0 ? (
+        ) : filteredStatements.length === 0 ? (
           <div className="text-center py-20 px-4">
             <div className="mx-auto h-16 w-16 text-gray-300 mb-4 bg-gray-50 rounded-full flex items-center justify-center">
               <File className="h-8 w-8" />
@@ -579,7 +569,7 @@ export default function StatementsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {statements.map(statement => (
+                  {filteredStatements.map(statement => (
                     <tr
                       key={statement.id}
                       className={`transition-all duration-200 group hover:shadow-md hover:bg-white hover:z-10 relative ${
@@ -587,30 +577,41 @@ export default function StatementsPage() {
                       }`}
                     >
                       <td className="px-6 py-5">
-                        <button
-                          type="button"
-                          className="flex items-center w-full text-left cursor-pointer group/file"
-                          onClick={() => handleViewFile(statement.id)}
-                        >
-                          <div className="flex-shrink-0 h-12 w-12 flex items-center justify-center rounded-xl bg-red-50 text-red-500 group-hover/file:bg-red-100 group-hover/file:scale-110 transition-all duration-200">
-                            {getFileIcon(statement.fileType, statement.fileName)}
-                          </div>
+                        <div className="flex items-center w-full">
+                          <button
+                            type="button"
+                            className="shrink-0 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity duration-200"
+                            onClick={() => {
+                              setPreviewFileId(statement.id);
+                              setPreviewFileName(statement.fileName);
+                              setPreviewModalOpen(true);
+                            }}
+                            title="Открыть предпросмотр"
+                          >
+                            {getFileIcon(statement.fileType, statement.fileName, statement.id)}
+                          </button>
                           <div className="ml-4 min-w-0 flex-1">
-                            <div
-                              className="text-base font-semibold text-gray-900 truncate group-hover:text-primary transition-colors"
+                            <button
+                              type="button"
+                              className="text-base font-semibold text-gray-900 truncate group-hover:text-primary transition-colors cursor-pointer text-left"
                               title={statement.fileName}
+                              onClick={() => {
+                                setPreviewFileId(statement.id);
+                                setPreviewFileName(statement.fileName);
+                                setPreviewModalOpen(true);
+                              }}
                             >
                               {statement.fileName.length > 20
                                 ? `${statement.fileName.substring(0, 20)}...`
                                 : statement.fileName}
-                            </div>
+                            </button>
                             <div className="flex items-center gap-2 mt-0.5">
                               <span className="text-xs text-gray-400">
                                 {(statement.fileType || 'document').toUpperCase()}
                               </span>
                             </div>
                           </div>
-                        </button>
+                        </div>
                       </td>
                       <td className="px-6 py-5 text-center whitespace-nowrap">
                         {getStatusBadge(statement.status)}
@@ -654,7 +655,7 @@ export default function StatementsPage() {
                           data-tour-id="action-buttons"
                         >
                           <button
-                            onClick={() => handleViewFile(statement.id)}
+                            onClick={() => router.push(`/statements/${statement.id}/edit`)}
                             className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 transition-all"
                             title={t.actions.view.value}
                           >
@@ -905,73 +906,9 @@ export default function StatementsPage() {
         isDestructive={true}
       />
 
-      {/* File Viewer Modal */}
-      {viewingFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-              <div className="flex items-center">
-                <div className="mr-3 p-1.5 bg-white rounded shadow-sm border border-gray-100">
-                  <DocumentTypeIcon
-                    fileType={viewingStatement?.fileType}
-                    fileName={viewingStatement?.fileName}
-                    size={20}
-                    className="text-red-500"
-                  />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {viewingStatement?.fileName}
-                </h3>
-              </div>
-              <button
-                onClick={handleCloseView}
-                className="p-2 rounded-full hover:bg-gray-200 text-gray-500 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="flex-1 bg-gray-100 relative">
-              {fileViewUrl ? (
-                <iframe
-                  src={fileViewUrl}
-                  className="w-full h-full border-0"
-                  title={t.viewFile.previewTitle.value}
-                />
-              ) : (
-                <div className="flex justify-center items-center h-full">
-                  <Loader2 className="h-10 w-10 text-primary animate-spin" />
-                </div>
-              )}
-            </div>
-
-            <div className="px-6 py-4 border-t border-gray-200 bg-white flex justify-end space-x-3">
-              <button
-                onClick={handleCloseView}
-                className="px-4 py-2 border border-gray-300 rounded-full text-gray-700 hover:bg-gray-50 font-medium text-sm transition-colors"
-              >
-                {t.viewFile.close}
-              </button>
-              <button
-                onClick={() => {
-                  const statement = statements.find(s => s.id === viewingFile);
-                  if (statement) {
-                    handleDownloadFile(viewingFile, statement.fileName);
-                  }
-                }}
-                className="px-4 py-2 bg-primary text-white rounded-full hover:bg-primary-hover font-medium text-sm shadow-sm flex items-center transition-colors"
-              >
-                <Download size={16} className="mr-2" />
-                {t.viewFile.download}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Logs modal */}
       {logStatementId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col">
             <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
               <div>
@@ -1030,6 +967,20 @@ export default function StatementsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* PDF Preview Modal */}
+      {previewModalOpen && previewFileId && (
+        <PDFPreviewModal
+          isOpen={previewModalOpen}
+          onClose={() => {
+            setPreviewModalOpen(false);
+            setPreviewFileId(null);
+            setPreviewFileName('');
+          }}
+          fileId={previewFileId}
+          fileName={previewFileName}
+        />
       )}
     </div>
   );
