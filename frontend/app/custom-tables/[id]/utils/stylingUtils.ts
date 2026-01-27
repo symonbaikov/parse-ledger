@@ -1,12 +1,6 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties } from 'react';
 
-export type ColumnType =
-  | "text"
-  | "number"
-  | "date"
-  | "boolean"
-  | "select"
-  | "multi_select";
+export type ColumnType = 'text' | 'number' | 'date' | 'boolean' | 'select' | 'multi_select';
 
 export interface CustomTableColumn {
   id: string;
@@ -29,24 +23,24 @@ export interface CustomTableGridRow {
 }
 
 export type RowFilterOp =
-  | "eq"
-  | "neq"
-  | "contains"
-  | "startsWith"
-  | "gt"
-  | "gte"
-  | "lt"
-  | "lte"
-  | "between"
-  | "in"
-  | "isEmpty"
-  | "isNotEmpty"
-  | "search";
+  | 'eq'
+  | 'neq'
+  | 'contains'
+  | 'startsWith'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte'
+  | 'between'
+  | 'in'
+  | 'isEmpty'
+  | 'isNotEmpty'
+  | 'search';
 
 export type RowFilter = { col: string; op: RowFilterOp; value?: any };
 
 export const isPlainObject = (value: unknown): value is Record<string, any> => {
-  if (!value || typeof value !== "object") return false;
+  if (!value || typeof value !== 'object') return false;
   if (Array.isArray(value)) return false;
   return true;
 };
@@ -72,26 +66,24 @@ export const mergeSheetStyle = (
   return merged;
 };
 
-export const mapHorizontalAlignment = (
-  value: unknown,
-): CSSProperties["textAlign"] | undefined => {
-  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+export const mapHorizontalAlignment = (value: unknown): CSSProperties['textAlign'] | undefined => {
+  const raw = typeof value === 'string' ? value.trim().toUpperCase() : '';
   if (!raw) return undefined;
-  if (raw === "LEFT") return "left";
-  if (raw === "CENTER") return "center";
-  if (raw === "RIGHT") return "right";
-  if (raw === "JUSTIFY") return "justify";
+  if (raw === 'LEFT') return 'left';
+  if (raw === 'CENTER') return 'center';
+  if (raw === 'RIGHT') return 'right';
+  if (raw === 'JUSTIFY') return 'justify';
   return undefined;
 };
 
 export const mapVerticalAlignment = (
   value: unknown,
-): CSSProperties["verticalAlign"] | undefined => {
-  const raw = typeof value === "string" ? value.trim().toUpperCase() : "";
+): CSSProperties['verticalAlign'] | undefined => {
+  const raw = typeof value === 'string' ? value.trim().toUpperCase() : '';
   if (!raw) return undefined;
-  if (raw === "TOP") return "top";
-  if (raw === "MIDDLE" || raw === "CENTER") return "middle";
-  if (raw === "BOTTOM") return "bottom";
+  if (raw === 'TOP') return 'top';
+  if (raw === 'MIDDLE' || raw === 'CENTER') return 'middle';
+  if (raw === 'BOTTOM') return 'bottom';
   return undefined;
 };
 
@@ -99,63 +91,44 @@ export const mapFontFamily = (value: string): string | undefined => {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
   const quoted =
-    /[\s"]/g.test(trimmed) && !trimmed.includes(",")
+    /[\s"]/g.test(trimmed) && !trimmed.includes(',')
       ? `"${trimmed.replace(/"/g, '\\"')}"`
       : trimmed;
-  if (trimmed.includes(",")) return trimmed;
+  if (trimmed.includes(',')) return trimmed;
   return `${quoted}, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif`;
 };
 
 export const sheetStyleToCss = (style: Record<string, any>) => {
   const backgroundColor =
-    typeof style.backgroundColor === "string"
-      ? style.backgroundColor
-      : undefined;
+    typeof style.backgroundColor === 'string' ? style.backgroundColor : undefined;
   const textAlign = mapHorizontalAlignment(style.horizontalAlignment);
   const verticalAlign = mapVerticalAlignment(style.verticalAlignment);
 
   const tf =
-    style.textFormat && typeof style.textFormat === "object"
-      ? (style.textFormat as any)
-      : null;
-  const color =
-    tf && typeof tf.foregroundColor === "string"
-      ? tf.foregroundColor
-      : undefined;
-  const fontWeight =
-    tf && typeof tf.bold === "boolean" ? (tf.bold ? 700 : 400) : undefined;
+    style.textFormat && typeof style.textFormat === 'object' ? (style.textFormat as any) : null;
+  const color = tf && typeof tf.foregroundColor === 'string' ? tf.foregroundColor : undefined;
+  const fontWeight = tf && typeof tf.bold === 'boolean' ? (tf.bold ? 700 : 400) : undefined;
   const fontStyle =
-    tf && typeof tf.italic === "boolean"
-      ? tf.italic
-        ? "italic"
-        : "normal"
-      : undefined;
+    tf && typeof tf.italic === 'boolean' ? (tf.italic ? 'italic' : 'normal') : undefined;
 
-  const underline =
-    tf && typeof tf.underline === "boolean" ? tf.underline : undefined;
-  const strikethrough =
-    tf && typeof tf.strikethrough === "boolean" ? tf.strikethrough : undefined;
-  let textDecorationLine: CSSProperties["textDecorationLine"] | undefined;
+  const underline = tf && typeof tf.underline === 'boolean' ? tf.underline : undefined;
+  const strikethrough = tf && typeof tf.strikethrough === 'boolean' ? tf.strikethrough : undefined;
+  let textDecorationLine: CSSProperties['textDecorationLine'] | undefined;
   if (underline === true || strikethrough === true) {
     const parts: string[] = [];
-    if (underline === true) parts.push("underline");
-    if (strikethrough === true) parts.push("line-through");
-    textDecorationLine = parts.join(" ") as any;
+    if (underline === true) parts.push('underline');
+    if (strikethrough === true) parts.push('line-through');
+    textDecorationLine = parts.join(' ') as any;
   } else if (underline === false || strikethrough === false) {
-    textDecorationLine = "none";
+    textDecorationLine = 'none';
   }
 
   const fontSize =
-    tf &&
-    typeof tf.fontSize === "number" &&
-    Number.isFinite(tf.fontSize) &&
-    tf.fontSize > 0
+    tf && typeof tf.fontSize === 'number' && Number.isFinite(tf.fontSize) && tf.fontSize > 0
       ? tf.fontSize
       : undefined;
   const fontFamily =
-    tf && typeof tf.fontFamily === "string"
-      ? mapFontFamily(tf.fontFamily)
-      : undefined;
+    tf && typeof tf.fontFamily === 'string' ? mapFontFamily(tf.fontFamily) : undefined;
 
   return {
     backgroundColor,
@@ -188,9 +161,7 @@ export const getCellStyle = (
     ...(css.color ? { color: css.color } : {}),
     ...(css.fontWeight ? { fontWeight: css.fontWeight } : {}),
     ...(css.fontStyle ? { fontStyle: css.fontStyle } : {}),
-    ...(css.textDecorationLine
-      ? { textDecorationLine: css.textDecorationLine }
-      : {}),
+    ...(css.textDecorationLine ? { textDecorationLine: css.textDecorationLine } : {}),
     ...(css.fontSize ? { fontSize: `${css.fontSize}px` } : {}),
     ...(css.fontFamily ? { fontFamily: css.fontFamily } : {}),
   };
@@ -204,11 +175,11 @@ export const getRowStyle = (row: CustomTableGridRow): CSSProperties => {
   }
 
   const tag = styles.manualTag;
-  if (tag === "heading") {
-    return { backgroundColor: "#111827", color: "#fff", fontWeight: 600 };
+  if (tag === 'heading') {
+    return { backgroundColor: '#111827', color: '#fff', fontWeight: 600 };
   }
-  if (tag === "total") {
-    return { backgroundColor: "#0f172a", color: "#fff", fontWeight: 700 };
+  if (tag === 'total') {
+    return { backgroundColor: '#0f172a', color: '#fff', fontWeight: 700 };
   }
 
   return {};

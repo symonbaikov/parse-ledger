@@ -50,7 +50,11 @@ const content = {
         en: 'Opening Google authorization…',
         kk: 'Google авторизациясы ашылуда…',
       }),
-      connected: t({ ru: 'Google Drive подключен', en: 'Google Drive connected', kk: 'Google Drive қосылды' }),
+      connected: t({
+        ru: 'Google Drive подключен',
+        en: 'Google Drive connected',
+        kk: 'Google Drive қосылды',
+      }),
       disconnected: t({
         ru: 'Интеграция отключена',
         en: 'Integration disconnected',

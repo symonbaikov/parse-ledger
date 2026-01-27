@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import apiClient from "@/app/lib/api";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import apiClient from '@/app/lib/api';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface User {
   id: string;
@@ -25,20 +25,20 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    const token = localStorage.getItem('access_token');
     if (token) {
       // Fetch user profile
       apiClient
-        .get("/auth/me")
-        .then((response) => {
+        .get('/auth/me')
+        .then(response => {
           setUser(response.data);
         })
         .catch(() => {
           // Token invalid, clear storage
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-          localStorage.removeItem("user");
-          router.push("/login");
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user');
+          router.push('/login');
         })
         .finally(() => {
           setLoading(false);
@@ -50,15 +50,15 @@ export function useAuth() {
 
   const logout = async () => {
     try {
-      await apiClient.post("/auth/logout");
+      await apiClient.post('/auth/logout');
     } catch (error) {
-      console.error("Logout error:", error);
+      console.error('Logout error:', error);
     } finally {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("user");
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
       setUser(null);
-      router.push("/login");
+      router.push('/login');
     }
   };
 

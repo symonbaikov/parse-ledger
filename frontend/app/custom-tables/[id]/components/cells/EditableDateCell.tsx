@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import type { Column, Table } from "@tanstack/react-table";
-import { format } from "date-fns";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
-import { DayPicker } from "react-day-picker";
-import "react-day-picker/style.css";
-import type { CustomTableGridRow } from "@/app/custom-tables/[id]/utils/stylingUtils";
+import type { Column, Table } from '@tanstack/react-table';
+import { format } from 'date-fns';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
+import { DayPicker } from 'react-day-picker';
+import 'react-day-picker/style.css';
+import type { CustomTableGridRow } from '@/app/custom-tables/[id]/utils/stylingUtils';
 
 interface EditableDateCellProps {
   row: any;
@@ -16,12 +16,7 @@ interface EditableDateCellProps {
   style?: CSSProperties;
 }
 
-export function EditableDateCell({
-  row,
-  column,
-  onUpdateCell,
-  style,
-}: EditableDateCellProps) {
+export function EditableDateCell({ row, column, onUpdateCell, style }: EditableDateCellProps) {
   const initialValue = row.original.data[column.id];
   const [isEditing, setIsEditing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
@@ -32,10 +27,7 @@ export function EditableDateCell({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         if (isEditing) {
           handleSave();
         }
@@ -43,16 +35,16 @@ export function EditableDateCell({
     };
 
     if (isEditing) {
-      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isEditing, selectedDate]);
 
   const handleSave = async () => {
-    const newValue = selectedDate ? format(selectedDate, "yyyy-MM-dd") : null;
+    const newValue = selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null;
 
     if (newValue === initialValue) {
       setIsEditing(false);
@@ -64,7 +56,7 @@ export function EditableDateCell({
       await onUpdateCell(row.original.id, column.id, newValue);
       setIsEditing(false);
     } catch (error) {
-      console.error("Failed to update cell:", error);
+      console.error('Failed to update cell:', error);
       setSelectedDate(initialValue ? new Date(initialValue) : undefined);
     } finally {
       setIsSaving(false);
@@ -76,9 +68,7 @@ export function EditableDateCell({
     setIsEditing(false);
   };
 
-  const displayValue = initialValue
-    ? format(new Date(initialValue), "dd.MM.yyyy")
-    : "—";
+  const displayValue = initialValue ? format(new Date(initialValue), 'dd.MM.yyyy') : '—';
 
   if (isEditing) {
     return (
@@ -87,7 +77,7 @@ export function EditableDateCell({
           <DayPicker
             mode="single"
             selected={selectedDate}
-            onSelect={(date) => {
+            onSelect={date => {
               setSelectedDate(date);
               if (date) {
                 // Auto-save on select

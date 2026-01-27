@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import apiClient from "@/app/lib/api";
-import { Box, CircularProgress } from "@mui/material";
-import Script from "next/script";
-import { useCallback, useEffect, useRef, useState } from "react";
+import apiClient from '@/app/lib/api';
+import { Box, CircularProgress } from '@mui/material';
+import Script from 'next/script';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 declare global {
   interface Window {
@@ -19,12 +19,12 @@ declare global {
           renderButton: (
             parent: HTMLElement,
             options?: {
-              theme?: "outline" | "filled_blue" | "filled_black";
-              size?: "large" | "medium" | "small";
-              text?: "signin_with" | "signup_with" | "continue_with" | "signin";
-              shape?: "rectangular" | "pill" | "circle" | "square";
+              theme?: 'outline' | 'filled_blue' | 'filled_black';
+              size?: 'large' | 'medium' | 'small';
+              text?: 'signin_with' | 'signup_with' | 'continue_with' | 'signin';
+              shape?: 'rectangular' | 'pill' | 'circle' | 'square';
               width?: number;
-              logo_alignment?: "left" | "center";
+              logo_alignment?: 'left' | 'center';
             },
           ) => void;
         };
@@ -65,28 +65,24 @@ export function GoogleAuthButton({
         return;
       }
 
-      onError("");
+      onError('');
       setSigningIn(true);
 
       try {
-        const result = await apiClient.post("/auth/google", {
+        const result = await apiClient.post('/auth/google', {
           credential,
           invitationToken: inviteToken || undefined,
         });
 
         const { access_token, refresh_token, user } = result.data;
 
-        localStorage.setItem("access_token", access_token);
-        localStorage.setItem("refresh_token", refresh_token);
-        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', refresh_token);
+        localStorage.setItem('user', JSON.stringify(user));
 
-        window.location.href = nextPath || "/";
+        window.location.href = nextPath || '/';
       } catch (err: any) {
-        onError(
-          err.response?.data?.message ||
-            err.response?.data?.error?.message ||
-            errorFallback,
-        );
+        onError(err.response?.data?.message || err.response?.data?.error?.message || errorFallback);
       } finally {
         setSigningIn(false);
       }
@@ -99,7 +95,7 @@ export function GoogleAuthButton({
     const google = window.google;
     if (!google?.accounts?.id) return;
 
-    buttonRef.current.innerHTML = "";
+    buttonRef.current.innerHTML = '';
     google.accounts.id.initialize({
       client_id: clientId,
       callback: handleCredentialResponse,
@@ -107,12 +103,12 @@ export function GoogleAuthButton({
       cancel_on_tap_outside: true,
     });
     google.accounts.id.renderButton(buttonRef.current, {
-      theme: "outline",
-      size: "large",
-      shape: "pill",
-      text: "continue_with",
+      theme: 'outline',
+      size: 'large',
+      shape: 'pill',
+      text: 'continue_with',
       width: 320,
-      logo_alignment: "left",
+      logo_alignment: 'left',
     });
   }, [clientId, handleCredentialResponse, scriptLoaded]);
 
@@ -125,21 +121,21 @@ export function GoogleAuthButton({
   }
 
   return (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={{ width: '100%' }}>
       <Script
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
         onLoad={() => setScriptLoaded(true)}
       />
-      <Box sx={{ display: "flex", justifyContent: "center" }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
         <Box ref={buttonRef} />
       </Box>
       {signingIn && (
         <Box
           sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             mt: 1,
           }}
         >

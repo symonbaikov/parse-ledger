@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useLockBodyScroll } from "@/app/hooks/useLockBodyScroll";
-import { cn } from "@/app/lib/utils";
-import { X } from "lucide-react";
-import * as React from "react";
-import { useCallback, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useLockBodyScroll } from '@/app/hooks/useLockBodyScroll';
+import { cn } from '@/app/lib/utils';
+import { X } from 'lucide-react';
+import * as React from 'react';
+import { useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
-export type ModalSize = "sm" | "md" | "lg" | "xl" | "full";
+export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
 export interface ModalShellProps {
   /** Whether the modal is open */
@@ -35,11 +35,11 @@ export interface ModalShellProps {
 }
 
 const sizeClasses: Record<ModalSize, string> = {
-  sm: "max-w-md",
-  md: "max-w-lg",
-  lg: "max-w-2xl",
-  xl: "max-w-4xl",
-  full: "max-w-[95vw] h-[90vh]",
+  sm: 'max-w-md',
+  md: 'max-w-lg',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  full: 'max-w-[95vw] h-[90vh]',
 };
 
 /**
@@ -56,7 +56,7 @@ export function ModalShell({
   isOpen,
   onClose,
   title,
-  size = "md",
+  size = 'md',
   children,
   footer,
   showCloseButton = true,
@@ -75,7 +75,7 @@ export function ModalShell({
 
   const handleEscape = useCallback(
     (event: KeyboardEvent) => {
-      if (closeOnEscape && event.key === "Escape") {
+      if (closeOnEscape && event.key === 'Escape') {
         onClose();
       }
     },
@@ -84,8 +84,8 @@ export function ModalShell({
 
   useEffect(() => {
     if (isOpen) {
-      document.addEventListener("keydown", handleEscape);
-      return () => document.removeEventListener("keydown", handleEscape);
+      document.addEventListener('keydown', handleEscape);
+      return () => document.removeEventListener('keydown', handleEscape);
     }
   }, [isOpen, handleEscape]);
 
@@ -100,16 +100,17 @@ export function ModalShell({
   const modal = (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden p-4"
+      // biome-ignore lint/a11y/useSemanticElements: using div for styling control
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? "modal-title" : undefined}
+      aria-labelledby={title ? 'modal-title' : undefined}
     >
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm animate-in fade-in duration-200"
         onClick={handleBackdropClick}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+        onKeyDown={e => {
+          if (e.key === 'Enter' || e.key === ' ') {
             handleBackdropClick();
           }
         }}
@@ -120,22 +121,19 @@ export function ModalShell({
       {/* Modal container */}
       <div
         className={cn(
-          "relative flex flex-col bg-white shadow-2xl animate-in zoom-in-95 duration-200 focus:outline-none",
+          'relative flex flex-col bg-white shadow-2xl animate-in zoom-in-95 duration-200 focus:outline-none',
           sizeClasses[size],
           className,
         )}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
+        onKeyDown={e => e.stopPropagation()}
         role="presentation"
       >
         {/* Header */}
         {(title || showCloseButton) && (
           <div className="flex items-center justify-between p-4 md:p-5 border-b border-gray-100">
             {title && (
-              <h2
-                id="modal-title"
-                className="text-lg font-semibold text-gray-900"
-              >
+              <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
                 {title}
               </h2>
             )}
@@ -144,10 +142,10 @@ export function ModalShell({
                 type="button"
                 onClick={onClose}
                 className={cn(
-                  "text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900",
-                  "rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center",
-                  "transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200",
-                  !title && "ml-auto",
+                  'text-gray-400 bg-transparent hover:bg-gray-100 hover:text-gray-900',
+                  'rounded-lg text-sm w-8 h-8 inline-flex justify-center items-center',
+                  'transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200',
+                  !title && 'ml-auto',
                 )}
                 aria-label="Close modal"
               >
@@ -158,7 +156,7 @@ export function ModalShell({
         )}
 
         {/* Content */}
-        <div className={cn("p-4 md:p-5", contentClassName)}>{children}</div>
+        <div className={cn('p-4 md:p-5', contentClassName)}>{children}</div>
 
         {/* Footer */}
         {footer && (
@@ -183,9 +181,7 @@ export function ModalHeader({
   children: React.ReactNode;
   className?: string;
 }) {
-  return (
-    <div className={cn("flex items-center gap-3", className)}>{children}</div>
-  );
+  return <div className={cn('flex items-center gap-3', className)}>{children}</div>;
 }
 
 /**
@@ -196,7 +192,7 @@ export interface ModalFooterProps {
   onConfirm?: () => void;
   cancelText?: string;
   confirmText?: string;
-  confirmVariant?: "primary" | "destructive";
+  confirmVariant?: 'primary' | 'destructive';
   isConfirmLoading?: boolean;
   isConfirmDisabled?: boolean;
   children?: React.ReactNode;
@@ -205,9 +201,9 @@ export interface ModalFooterProps {
 export function ModalFooter({
   onCancel,
   onConfirm,
-  cancelText = "Отмена",
-  confirmText = "Подтвердить",
-  confirmVariant = "primary",
+  cancelText = 'Отмена',
+  confirmText = 'Подтвердить',
+  confirmVariant = 'primary',
   isConfirmLoading = false,
   isConfirmDisabled = false,
   children,
@@ -233,11 +229,11 @@ export function ModalFooter({
           onClick={onConfirm}
           disabled={isConfirmDisabled || isConfirmLoading}
           className={cn(
-            "py-2 px-4 text-sm font-medium text-white rounded-full focus:ring-4 focus:outline-none transition-colors shadow-sm",
-            "disabled:opacity-50 disabled:cursor-not-allowed",
-            confirmVariant === "destructive"
-              ? "bg-red-600 hover:bg-red-700 focus:ring-red-300"
-              : "bg-blue-600 hover:bg-blue-700 focus:ring-blue-300",
+            'py-2 px-4 text-sm font-medium text-white rounded-full focus:ring-4 focus:outline-none transition-colors shadow-sm',
+            'disabled:opacity-50 disabled:cursor-not-allowed',
+            confirmVariant === 'destructive'
+              ? 'bg-red-600 hover:bg-red-700 focus:ring-red-300'
+              : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-300',
           )}
         >
           {isConfirmLoading ? (

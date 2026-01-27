@@ -871,7 +871,7 @@ export default function EditStatementPage() {
           zIndex: 10,
         }}
       >
-      <CardContent sx={{ p: 3, overflow: 'visible' }}>
+        <CardContent sx={{ p: 3, overflow: 'visible' }}>
           <Box
             sx={{
               display: 'flex',

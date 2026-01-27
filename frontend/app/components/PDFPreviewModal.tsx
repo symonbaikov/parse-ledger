@@ -137,9 +137,7 @@ export function PDFPreviewModal({ isOpen, onClose, fileId, fileName }: PDFPrevie
           <span className="font-medium text-gray-900 truncate text-sm leading-tight">
             {fileName}
           </span>
-          <span className="text-xs text-gray-400 mt-0.5 font-normal">
-            PDF Document
-          </span>
+          <span className="text-xs text-gray-400 mt-0.5 font-normal">PDF Document</span>
         </div>
       </div>
       <div className="flex items-center gap-1 ml-4 border-l border-gray-100 pl-4">
@@ -199,9 +197,7 @@ export function PDFPreviewModal({ isOpen, onClose, fileId, fileName }: PDFPrevie
               <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
                 <X size={24} className="text-red-500" strokeWidth={1.5} />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                Ошибка загрузки
-              </h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Ошибка загрузки</h3>
               <p className="text-sm text-gray-500 mb-4">{error}</p>
               <button
                 type="button"

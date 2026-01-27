@@ -65,17 +65,11 @@ export default function CustomDatePicker({
 
   return (
     <div className="relative" style={{ zIndex: isOpen ? 100 : 'auto' }} ref={containerRef}>
-      {label && (
-        <span className="text-xs text-gray-500 block mb-1 font-medium ml-1">
-          {label}
-        </span>
-      )}
+      {label && <span className="text-xs text-gray-500 block mb-1 font-medium ml-1">{label}</span>}
       <button
         type="button"
         className={`w-full rounded-lg border bg-white px-3 py-[8.5px] text-sm flex items-center justify-between transition-colors ${
-          isOpen
-            ? 'border-primary ring-1 ring-primary'
-            : 'border-gray-300 hover:border-gray-400'
+          isOpen ? 'border-primary ring-1 ring-primary' : 'border-gray-300 hover:border-gray-400'
         }`} // Adjusted border colors to match MUI text field default look slightly better or stay consistent with DataEntry
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -100,9 +94,7 @@ export default function CustomDatePicker({
         </button>
       )}
 
-      {helperText && (
-        <p className="mt-1 text-xs text-gray-500 ml-3.5">{helperText}</p>
-      )}
+      {helperText && <p className="mt-1 text-xs text-gray-500 ml-3.5">{helperText}</p>}
 
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 z-[9999] bg-white rounded-xl shadow-xl border border-gray-200 p-3 animate-in fade-in zoom-in-95 duration-200">

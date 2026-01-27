@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import type { CustomTableGridRow } from "@/app/custom-tables/[id]/utils/stylingUtils";
-import type { Column, Table } from "@tanstack/react-table";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import type { CustomTableGridRow } from '@/app/custom-tables/[id]/utils/stylingUtils';
+import type { Column, Table } from '@tanstack/react-table';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 
 interface EditableNumberCellProps {
   row: any;
@@ -13,15 +13,10 @@ interface EditableNumberCellProps {
   style?: CSSProperties;
 }
 
-export function EditableNumberCell({
-  row,
-  column,
-  onUpdateCell,
-  style,
-}: EditableNumberCellProps) {
+export function EditableNumberCell({ row, column, onUpdateCell, style }: EditableNumberCellProps) {
   const initialValue = row.original.data[column.id];
   const [isEditing, setIsEditing] = useState(false);
-  const [value, setValue] = useState(initialValue?.toString() || "");
+  const [value, setValue] = useState(initialValue?.toString() || '');
   const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -33,7 +28,7 @@ export function EditableNumberCell({
   }, [isEditing]);
 
   const handleSave = async () => {
-    const numValue = value.trim() === "" ? null : Number(value);
+    const numValue = value.trim() === '' ? null : Number(value);
 
     if (numValue === initialValue) {
       setIsEditing(false);
@@ -45,23 +40,23 @@ export function EditableNumberCell({
       await onUpdateCell(row.original.id, column.id, numValue);
       setIsEditing(false);
     } catch (error) {
-      console.error("Failed to update cell:", error);
-      setValue(initialValue?.toString() || "");
+      console.error('Failed to update cell:', error);
+      setValue(initialValue?.toString() || '');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleCancel = () => {
-    setValue(initialValue?.toString() || "");
+    setValue(initialValue?.toString() || '');
     setIsEditing(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault();
       handleSave();
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       e.preventDefault();
       handleCancel();
     }
@@ -74,7 +69,7 @@ export function EditableNumberCell({
         type="number"
         step="any"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={e => setValue(e.target.value)}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
         disabled={isSaving}
@@ -84,8 +79,7 @@ export function EditableNumberCell({
     );
   }
 
-  const displayValue =
-    initialValue != null ? Number(initialValue).toLocaleString() : "—";
+  const displayValue = initialValue != null ? Number(initialValue).toLocaleString() : '—';
 
   return (
     <div

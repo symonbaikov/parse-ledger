@@ -129,7 +129,11 @@ export default function TelegramSettingsPage() {
 
   if (authLoading) {
     return (
-      <Container maxWidth={false} className="container-shared" sx={{ mt: 8, display: 'flex', justifyContent: 'center' }}>
+      <Container
+        maxWidth={false}
+        className="container-shared"
+        sx={{ mt: 8, display: 'flex', justifyContent: 'center' }}
+      >
         <CircularProgress />
       </Container>
     );

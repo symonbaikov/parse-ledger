@@ -163,14 +163,8 @@ body {
   border-color: var(--border-color);
 }
 
-.dark
-  .divide-gray-100:not([class*="dark:divide-"])
-  > :not([hidden])
-  ~ :not([hidden]),
-.dark
-  .divide-gray-200:not([class*="dark:divide-"])
-  > :not([hidden])
-  ~ :not([hidden]) {
+.dark .divide-gray-100:not([class*="dark:divide-"]) > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-200:not([class*="dark:divide-"]) > :not([hidden]) ~ :not([hidden]) {
   border-color: var(--border-color);
 }
 
@@ -284,11 +278,7 @@ body {
 /* React Day Picker: align default variables with dark theme tokens. */
 .dark .rdp-root {
   --rdp-accent-color: var(--primary);
-  --rdp-accent-background-color: color-mix(
-    in srgb,
-    var(--primary) 18%,
-    transparent
-  );
+  --rdp-accent-background-color: color-mix(in srgb, var(--primary) 18%, transparent);
 }
 
 /* Custom Tables: in-app fullscreen mode (hides global navigation/breadcrumbs). */

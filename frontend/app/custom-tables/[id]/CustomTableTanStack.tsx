@@ -1,19 +1,17 @@
-"use client";
+'use client';
 
-import { EditableBooleanCell } from "@/app/custom-tables/[id]/components/cells/EditableBooleanCell";
-import { EditableDateCell } from "@/app/custom-tables/[id]/components/cells/EditableDateCell";
-import { EditableNumberCell } from "@/app/custom-tables/[id]/components/cells/EditableNumberCell";
-import { EditableSelectCell } from "@/app/custom-tables/[id]/components/cells/EditableSelectCell";
-import { EditableTextCell } from "@/app/custom-tables/[id]/components/cells/EditableTextCell";
-import { EditableHeader } from "@/app/custom-tables/[id]/components/headers/EditableHeader";
+import { EditableBooleanCell } from '@/app/custom-tables/[id]/components/cells/EditableBooleanCell';
+import { EditableDateCell } from '@/app/custom-tables/[id]/components/cells/EditableDateCell';
+import { EditableNumberCell } from '@/app/custom-tables/[id]/components/cells/EditableNumberCell';
+import { EditableSelectCell } from '@/app/custom-tables/[id]/components/cells/EditableSelectCell';
+import { EditableTextCell } from '@/app/custom-tables/[id]/components/cells/EditableTextCell';
+import { EditableHeader } from '@/app/custom-tables/[id]/components/headers/EditableHeader';
 import type {
   CustomTableColumn,
   CustomTableGridRow,
-} from "@/app/custom-tables/[id]/utils/stylingUtils";
-import {
-  getCellStyle,
-  getRowStyle,
-} from "@/app/custom-tables/[id]/utils/stylingUtils";
+} from '@/app/custom-tables/[id]/utils/stylingUtils';
+import { getCellStyle, getRowStyle } from '@/app/custom-tables/[id]/utils/stylingUtils';
+import { Popover } from '@mui/material';
 import {
   type ColumnDef,
   type ColumnResizeMode,
@@ -21,21 +19,13 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
-} from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { GripVertical, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { useTheme } from "next-themes";
-import { Popover } from "@mui/material";
-import { HexColorPicker } from "react-colorful";
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useIntlayer } from "next-intlayer";
+} from '@tanstack/react-table';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { GripVertical, Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useIntlayer } from 'next-intlayer';
+import { useTheme } from 'next-themes';
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { HexColorPicker } from 'react-colorful';
 
 interface CustomTableTanStackProps {
   tableId: string;
@@ -52,10 +42,7 @@ interface CustomTableTanStackProps {
   onLoadMore: (opts?: { reset?: boolean; filtersParam?: string }) => void;
   onFiltersParamChange: (filtersParam: string | undefined) => void;
   onUpdateCell: (rowId: string, columnKey: string, value: any) => Promise<void>;
-  onUpdateRowStyle: (
-    rowId: string,
-    styles: Record<string, any>,
-  ) => Promise<void>;
+  onUpdateRowStyle: (rowId: string, styles: Record<string, any>) => Promise<void>;
 
   onCreateRow?: () => Promise<CustomTableGridRow | null>;
   onViewRow?: (rowId: string) => void;
@@ -71,7 +58,7 @@ interface CustomTableTanStackProps {
 }
 
 export function CustomTableTanStack(props: CustomTableTanStackProps) {
-  const t = useIntlayer("customTableDetailPage");
+  const t = useIntlayer('customTableDetailPage');
   const { resolvedTheme } = useTheme();
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const rowSelection = useMemo<RowSelectionState>(() => {
@@ -80,13 +67,8 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
     return next;
   }, [props.selectedRowIds]);
   const onRowSelectionChange = useCallback(
-    (
-      updater:
-        | RowSelectionState
-        | ((prev: RowSelectionState) => RowSelectionState),
-    ) => {
-      const next =
-        typeof updater === "function" ? updater(rowSelection) : updater;
+    (updater: RowSelectionState | ((prev: RowSelectionState) => RowSelectionState)) => {
+      const next = typeof updater === 'function' ? updater(rowSelection) : updater;
       const nextIds = Object.entries(next)
         .filter(([, isSelected]) => isSelected)
         .map(([id]) => id);
@@ -96,7 +78,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
   );
   const [columnResizing, setColumnResizing] = useState({});
   const [colorPickerRowId, setColorPickerRowId] = useState<string | null>(null);
-  const [colorPickerValue, setColorPickerValue] = useState("#ff8a00");
+  const [colorPickerValue, setColorPickerValue] = useState('#ff8a00');
   const [colorPickerAnchorPosition, setColorPickerAnchorPosition] = useState<{
     top: number;
     left: number;
@@ -107,8 +89,8 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
   const parseHexFromColor = (value: string | null | undefined) => {
     if (!value) return null;
     const trimmed = value.trim();
-    if (trimmed.startsWith("#")) {
-      const hex = trimmed.replace("#", "");
+    if (trimmed.startsWith('#')) {
+      const hex = trimmed.replace('#', '');
       if (hex.length === 3 || hex.length === 6) return `#${hex}`;
     }
     const match = trimmed.match(/rgba?\\((\\d+),\\s*(\\d+)),\\s*(\\d+)/i);
@@ -116,20 +98,20 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
       const r = Math.max(0, Math.min(255, Number(match[1])));
       const g = Math.max(0, Math.min(255, Number(match[2])));
       const b = Math.max(0, Math.min(255, Number(match[3])));
-      const toHex = (n: number) => n.toString(16).padStart(2, "0");
+      const toHex = (n: number) => n.toString(16).padStart(2, '0');
       return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
     }
     return null;
   };
 
   const hexToRgba = (hex: string, alpha: number) => {
-    const clean = hex.replace("#", "");
+    const clean = hex.replace('#', '');
     const full =
       clean.length === 3
         ? clean
-            .split("")
-            .map((c) => c + c)
-            .join("")
+            .split('')
+            .map(c => c + c)
+            .join('')
         : clean;
     const r = Number.parseInt(full.slice(0, 2), 16);
     const g = Number.parseInt(full.slice(2, 4), 16);
@@ -139,9 +121,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
   };
 
   const orderedColumns = useMemo(() => {
-    return [...props.columns].sort(
-      (a, b) => (a.position ?? 0) - (b.position ?? 0),
-    );
+    return [...props.columns].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   }, [props.columns]);
 
   // Build column definitions
@@ -149,7 +129,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
     const cols: ColumnDef<CustomTableGridRow>[] = [
       // Selection column (pinned left)
       {
-        id: "__select",
+        id: '__select',
         header: ({ table }) => (
           <div className="flex items-center justify-center">
             <input
@@ -157,7 +137,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
               aria-label="Select all rows"
               className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary/30"
               checked={table.getIsAllRowsSelected()}
-              ref={(input) => {
+              ref={input => {
                 if (input) {
                   input.indeterminate = table.getIsSomeRowsSelected();
                 }
@@ -186,8 +166,8 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
       },
       // Row number column (pinned left)
       {
-        id: "__rowNumber",
-        header: "#",
+        id: '__rowNumber',
+        header: '#',
         size: 80,
         minSize: 60,
         maxSize: 120,
@@ -234,13 +214,13 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
 
           // Render appropriate cell based on column type
           switch (col.type) {
-            case "boolean":
+            case 'boolean':
               return <EditableBooleanCell {...cellProps} style={cellStyle} />;
-            case "date":
+            case 'date':
               return <EditableDateCell {...cellProps} style={cellStyle} />;
-            case "number":
+            case 'number':
               return <EditableNumberCell {...cellProps} style={cellStyle} />;
-            case "select":
+            case 'select':
               return (
                 <EditableSelectCell
                   {...cellProps}
@@ -248,7 +228,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
                   style={cellStyle}
                 />
               );
-            case "multi_select":
+            case 'multi_select':
               return (
                 <EditableSelectCell
                   {...cellProps}
@@ -266,7 +246,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
 
     // Add Actions column
     cols.push({
-      id: "__actions",
+      id: '__actions',
       header: () => (
         <div className="text-center font-semibold text-gray-600">
           {(t as any).actions.actionsHeader.value}
@@ -280,11 +260,9 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
         <div className="flex items-center justify-center gap-3">
           <button
             type="button"
-            onClick={(event) => {
-              const currentFill = parseHexFromColor(
-                row.original.styles?.manualFill,
-              );
-              setColorPickerValue(currentFill || "#ff8a00");
+            onClick={event => {
+              const currentFill = parseHexFromColor(row.original.styles?.manualFill);
+              setColorPickerValue(currentFill || '#ff8a00');
               setColorPickerRowId(row.original.id);
               setColorPickerAnchorPosition({
                 top: event.clientY,
@@ -310,7 +288,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
 
     // Add "Add Column" column
     cols.push({
-      id: "__add_column",
+      id: '__add_column',
       header: () => (
         <button
           onClick={props.onAddColumnClick}
@@ -341,11 +319,11 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
     data: props.rows,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getRowId: (row) => row.id,
+    getRowId: row => row.id,
     enableRowSelection: true,
     enableMultiRowSelection: true,
     enableColumnResizing: true,
-    columnResizeMode: "onChange" as ColumnResizeMode,
+    columnResizeMode: 'onChange' as ColumnResizeMode,
     state: {
       rowSelection,
       columnSizing: columnResizing,
@@ -387,29 +365,23 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
       }
     }
     return { left, right };
-  }, [
-    table,
-    stickyLeftSet,
-    stickyRightSet,
-    props.columnWidths,
-    columnResizing,
-  ]);
+  }, [table, stickyLeftSet, stickyRightSet, props.columnWidths, columnResizing]);
 
-  const isDark = resolvedTheme === "dark";
+  const isDark = resolvedTheme === 'dark';
 
   const parseColor = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return null;
-    if (trimmed.startsWith("rgb")) {
+    if (trimmed.startsWith('rgb')) {
       const match = trimmed.match(/rgba?\(([^)]+)\)/i);
       if (!match) return null;
-      const parts = match[1].split(",").map((part) => part.trim());
+      const parts = match[1].split(',').map(part => part.trim());
       if (parts.length < 3) return null;
       const r = Number(parts[0]);
       const g = Number(parts[1]);
       const b = Number(parts[2]);
       const a = parts.length >= 4 ? Number(parts[3]) : 1;
-      if (![r, g, b, a].every((n) => Number.isFinite(n))) return null;
+      if (![r, g, b, a].every(n => Number.isFinite(n))) return null;
       return {
         r: Math.max(0, Math.min(255, r)),
         g: Math.max(0, Math.min(255, g)),
@@ -417,8 +389,8 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
         a: Math.max(0, Math.min(1, a)),
       };
     }
-    if (trimmed.startsWith("#")) {
-      const hex = trimmed.replace("#", "");
+    if (trimmed.startsWith('#')) {
+      const hex = trimmed.replace('#', '');
       const expand = (v: string) => Number.parseInt(v, 16);
       if (hex.length === 3 || hex.length === 4) {
         const r = expand(hex[0] + hex[0]);
@@ -442,10 +414,9 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
     const fg = parseColor(value);
     if (!fg) return value;
     if (fg.a >= 0.999) return value;
-    const base = parseColor(isDark ? "#111827" : "#ffffff");
+    const base = parseColor(isDark ? '#111827' : '#ffffff');
     if (!base) return value;
-    const blend = (c: number, b: number) =>
-      Math.round(fg.a * c + (1 - fg.a) * b);
+    const blend = (c: number, b: number) => Math.round(fg.a * c + (1 - fg.a) * b);
     const r = blend(fg.r, base.r);
     const g = blend(fg.g, base.g);
     const b = blend(fg.b, base.b);
@@ -461,14 +432,14 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
     const right = stickyOffsets.right[columnId];
     if (left === undefined && right === undefined) return {};
     const style: CSSProperties = {
-      position: "sticky",
+      position: 'sticky',
       top: isHeader ? 0 : undefined,
       left: left !== undefined ? left : undefined,
       right: right !== undefined ? right : undefined,
       zIndex: isHeader ? 4 : 2,
     };
     if (isHeader) {
-      style.backgroundColor = isDark ? "#1f2937" : "#f9fafb";
+      style.backgroundColor = isDark ? '#1f2937' : '#f9fafb';
     } else if (bodyBackground) {
       style.backgroundColor = solidifyBackground(bodyBackground);
     }
@@ -494,10 +465,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
     const container = tableContainerRef.current;
     const footer = addRowFooterRef.current;
     if (!container || !footer) return;
-    const tableWidth = Math.max(
-      table.getTotalSize(),
-      container.clientWidth || 0,
-    );
+    const tableWidth = Math.max(table.getTotalSize(), container.clientWidth || 0);
     const containerWidth = container.clientWidth || 0;
     const scrollLeft = container.scrollLeft || 0;
     const offset = scrollLeft + containerWidth / 2 - tableWidth / 2;
@@ -514,12 +482,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
     if (scrollHeight - scrollTop - clientHeight < 200) {
       props.onLoadMore();
     }
-  }, [
-    props.loadingRows,
-    props.hasMore,
-    props.onLoadMore,
-    updateAddRowPosition,
-  ]);
+  }, [props.loadingRows, props.hasMore, props.onLoadMore, updateAddRowPosition]);
 
   useEffect(() => {
     if (!resizingColumnId) return;
@@ -532,29 +495,29 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
       setResizingColumnId(null);
     };
 
-    window.addEventListener("mouseup", handleResizeEnd);
-    window.addEventListener("touchend", handleResizeEnd);
+    window.addEventListener('mouseup', handleResizeEnd);
+    window.addEventListener('touchend', handleResizeEnd);
     return () => {
-      window.removeEventListener("mouseup", handleResizeEnd);
-      window.removeEventListener("touchend", handleResizeEnd);
+      window.removeEventListener('mouseup', handleResizeEnd);
+      window.removeEventListener('touchend', handleResizeEnd);
     };
   }, [resizingColumnId, props.onPersistColumnWidth, table]);
 
   useEffect(() => {
     updateAddRowPosition();
     const handleResize = () => updateAddRowPosition();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [updateAddRowPosition, props.columnWidths, props.isFullscreen]);
 
   return (
-    <div className={`custom-table-container ${isDark ? "dark" : ""}`}>
+    <div className={`custom-table-container ${isDark ? 'dark' : ''}`}>
       <div
         ref={tableContainerRef}
         onScroll={handleScroll}
         className="relative overflow-y-auto overflow-x-auto border-x border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 pt-1"
         style={{
-          height: props.isFullscreen ? "calc(100vh - 150px)" : "600px",
+          height: props.isFullscreen ? 'calc(100vh - 150px)' : '600px',
         }}
       >
         <Popover
@@ -571,12 +534,12 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
             setColorPickerAnchorPosition(null);
           }}
           anchorOrigin={{
-            vertical: "bottom",
-            horizontal: "right",
+            vertical: 'bottom',
+            horizontal: 'right',
           }}
           transformOrigin={{
-            vertical: "top",
-            horizontal: "right",
+            vertical: 'top',
+            horizontal: 'right',
           }}
           slotProps={
             {
@@ -584,26 +547,25 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
                 sx: {
                   p: 1.5,
                   mt: 1,
-                  borderRadius: "16px",
-                  border: "1px solid",
-                  borderColor: "divider",
-                  boxShadow:
-                    "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)",
-                  overflow: "visible",
-                  "&::before": {
+                  borderRadius: '16px',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                  overflow: 'visible',
+                  '&::before': {
                     content: '""',
-                    display: "block",
-                    position: "absolute",
+                    display: 'block',
+                    position: 'absolute',
                     top: 0,
                     right: 14,
                     width: 10,
                     height: 10,
-                    bgcolor: "background.paper",
-                    transform: "translateY(-50%) rotate(45deg)",
+                    bgcolor: 'background.paper',
+                    transform: 'translateY(-50%) rotate(45deg)',
                     zIndex: 0,
-                    borderLeft: "1px solid",
-                    borderTop: "1px solid",
-                    borderColor: "divider",
+                    borderLeft: '1px solid',
+                    borderTop: '1px solid',
+                    borderColor: 'divider',
                   },
                 },
               },
@@ -612,7 +574,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
         >
           <HexColorPicker
             color={colorPickerValue}
-            onChange={(next) => {
+            onChange={next => {
               setColorPickerValue(next);
               if (!colorPickerRowId) return;
               props.onUpdateRowStyle(colorPickerRowId, {
@@ -621,17 +583,14 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
             }}
           />
         </Popover>
-        <table
-          className="w-full border-collapse"
-          style={{ minWidth: table.getTotalSize() }}
-        >
+        <table className="w-full border-collapse" style={{ minWidth: table.getTotalSize() }}>
           <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
-            {table.getHeaderGroups().map((headerGroup) => (
+            {table.getHeaderGroups().map(headerGroup => (
               <tr
                 key={headerGroup.id}
                 className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
               >
-                {headerGroup.headers.map((header) => {
+                {headerGroup.headers.map(header => {
                   const isResizing = header.column.getIsResizing();
                   return (
                     <th
@@ -644,29 +603,26 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
                         ...getStickyStyle(header.column.id, true),
                       }}
                     >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                      {flexRender(header.column.columnDef.header, header.getContext())}
 
                       {/* Resize handle */}
                       {header.column.getCanResize() && (
                         <div
-                          onMouseDown={(event) => {
+                          onMouseDown={event => {
                             setResizingColumnId(header.column.id);
                             header.getResizeHandler()(event);
                           }}
-                          onTouchStart={(event) => {
+                          onTouchStart={event => {
                             setResizingColumnId(header.column.id);
                             header.getResizeHandler()(event);
                           }}
                           className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none ${
                             isResizing
-                              ? "bg-blue-500"
-                              : "bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500"
+                              ? 'bg-blue-500'
+                              : 'bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500'
                           }`}
                           style={{
-                            transform: isResizing ? "scaleX(2)" : undefined,
+                            transform: isResizing ? 'scaleX(2)' : undefined,
                           }}
                         />
                       )}
@@ -685,49 +641,40 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
                 />
               </tr>
             )}
-            {virtualItems.map((virtualRow) => {
+            {virtualItems.map(virtualRow => {
               const row = table.getRowModel().rows[virtualRow.index];
               if (!row) return null;
 
               const rowStyle = getRowStyle(row.original);
-              const rowBackground = (rowStyle as any).backgroundColor as
-                | string
-                | undefined;
+              const rowBackground = (rowStyle as any).backgroundColor as string | undefined;
               const hasRowFill = Boolean(rowBackground);
 
               return (
                 <tr
                   key={row.id}
                   className={`group border-b border-gray-200 dark:border-gray-800 ${
-                    hasRowFill
-                      ? "row-fill"
-                      : "hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    hasRowFill ? 'row-fill' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
                   }`}
                   style={{
                     height: `${virtualRow.size}px`,
                     ...rowStyle,
                   }}
                 >
-                  {row.getVisibleCells().map((cell) => (
+                  {row.getVisibleCells().map(cell => (
                     <td
                       key={cell.id}
                       className={`px-4 py-3 text-sm text-gray-900 dark:text-gray-100 ${
                         hasRowFill
-                          ? ""
-                          : "bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800/50"
+                          ? ''
+                          : 'bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800/50'
                       }`}
                       style={{
                         width: cell.column.getSize(),
-                        ...(rowBackground
-                          ? { backgroundColor: rowBackground }
-                          : {}),
+                        ...(rowBackground ? { backgroundColor: rowBackground } : {}),
                         ...getStickyStyle(cell.column.id, false, rowBackground),
                       }}
                     >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}
                 </tr>
@@ -749,10 +696,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
           {props.showAddRow !== false && (
             <tfoot>
               <tr className="border-t border-gray-200 bg-gray-50">
-                <td
-                  colSpan={table.getVisibleLeafColumns().length}
-                  className="py-3"
-                >
+                <td colSpan={table.getVisibleLeafColumns().length} className="py-3">
                   <div className="flex justify-center">
                     <div ref={addRowFooterRef} className="w-max">
                       <button
@@ -783,9 +727,7 @@ export function CustomTableTanStack(props: CustomTableTanStackProps) {
         {!props.loadingRows && props.rows.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-gray-500">
             <GripVertical className="h-12 w-12 mb-4 opacity-20" />
-            <p className="text-lg font-medium">
-              {(t as any).grid.emptyTitle.value}
-            </p>
+            <p className="text-lg font-medium">{(t as any).grid.emptyTitle.value}</p>
             <p className="text-sm">{(t as any).grid.emptySubtitle.value}</p>
           </div>
         )}

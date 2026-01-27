@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import type { CustomTableGridRow } from "@/app/custom-tables/[id]/utils/stylingUtils";
-import type { Cell, Column, Table } from "@tanstack/react-table";
-import { type CSSProperties, useEffect, useRef, useState } from "react";
+import type { CustomTableGridRow } from '@/app/custom-tables/[id]/utils/stylingUtils';
+import type { Cell, Column, Table } from '@tanstack/react-table';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 
 interface EditableTextCellProps {
   row: any;
@@ -20,7 +20,7 @@ export function EditableTextCell({
   onUpdateCell,
   style,
 }: EditableTextCellProps) {
-  const initialValue = row.original.data[column.id] || "";
+  const initialValue = row.original.data[column.id] || '';
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(initialValue);
   const [isSaving, setIsSaving] = useState(false);
@@ -44,7 +44,7 @@ export function EditableTextCell({
       await onUpdateCell(row.original.id, column.id, value);
       setIsEditing(false);
     } catch (error) {
-      console.error("Failed to update cell:", error);
+      console.error('Failed to update cell:', error);
       setValue(initialValue);
     } finally {
       setIsSaving(false);
@@ -57,10 +57,10 @@ export function EditableTextCell({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       e.preventDefault();
       handleSave();
-    } else if (e.key === "Escape") {
+    } else if (e.key === 'Escape') {
       e.preventDefault();
       handleCancel();
     }
@@ -72,7 +72,7 @@ export function EditableTextCell({
         ref={inputRef}
         type="text"
         value={value}
-        onChange={(e) => setValue(e.target.value)}
+        onChange={e => setValue(e.target.value)}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
         disabled={isSaving}

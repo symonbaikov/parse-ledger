@@ -1,21 +1,14 @@
-"use client";
+'use client';
 
-import { useAuth } from "@/app/hooks/useAuth";
-import apiClient from "@/app/lib/api";
-import { getPickerDocName, pickDriveFolder } from "@/app/lib/googleDrivePicker";
-import Image from "next/image";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Link2Off,
-  Loader2,
-  RefreshCcw,
-  XCircle,
-} from "lucide-react";
-import { useIntlayer } from "next-intlayer";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import toast from "react-hot-toast";
+import { useAuth } from '@/app/hooks/useAuth';
+import apiClient from '@/app/lib/api';
+import { getPickerDocName, pickDriveFolder } from '@/app/lib/googleDrivePicker';
+import { AlertCircle, CheckCircle2, Link2Off, Loader2, RefreshCcw, XCircle } from 'lucide-react';
+import { useIntlayer } from 'next-intlayer';
+import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 
 type DriveSettings = {
   folderId?: string | null;
@@ -28,35 +21,35 @@ type DriveSettings = {
 
 type DriveStatus = {
   connected: boolean;
-  status: "connected" | "disconnected" | "needs_reauth";
+  status: 'connected' | 'disconnected' | 'needs_reauth';
   settings?: DriveSettings | null;
 };
 
 const formatDateTime = (value?: string | null, locale?: string) => {
-  if (!value) return "";
+  if (!value) return '';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(locale || "ru", {
-    dateStyle: "medium",
-    timeStyle: "short",
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat(locale || 'ru', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
   }).format(date);
 };
 
 export default function GoogleDriveIntegrationPage() {
   const { user, loading: authLoading } = useAuth();
-  const t = useIntlayer("googleDriveIntegrationPage");
+  const t = useIntlayer('googleDriveIntegrationPage');
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<DriveStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY || "";
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY || '';
 
   const loadStatus = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get("/integrations/google-drive/status");
+      const response = await apiClient.get('/integrations/google-drive/status');
       setStatus(response.data);
     } catch (error) {
       toast.error(t.errors.loadStatus.value);
@@ -72,11 +65,11 @@ export default function GoogleDriveIntegrationPage() {
   }, [user]);
 
   useEffect(() => {
-    const statusParam = searchParams.get("status");
-    if (statusParam === "connected") {
+    const statusParam = searchParams.get('status');
+    if (statusParam === 'connected') {
       toast.success(t.toasts.connected.value);
     }
-    if (statusParam === "error") {
+    if (statusParam === 'error') {
       toast.error(t.errors.connectFailed.value);
     }
   }, [searchParams, t]);
@@ -84,9 +77,7 @@ export default function GoogleDriveIntegrationPage() {
   const handleConnect = async () => {
     try {
       toast.success(t.toasts.connecting.value);
-      const response = await apiClient.get(
-        "/integrations/google-drive/connect",
-      );
+      const response = await apiClient.get('/integrations/google-drive/connect');
       const url = response.data?.url;
       if (!url) {
         toast.error(t.errors.connectFailed.value);
@@ -101,7 +92,7 @@ export default function GoogleDriveIntegrationPage() {
   const handleDisconnect = async () => {
     try {
       setSaving(true);
-      await apiClient.post("/integrations/google-drive/disconnect");
+      await apiClient.post('/integrations/google-drive/disconnect');
       toast.success(t.toasts.disconnected.value);
       await loadStatus();
     } catch (error) {
@@ -114,7 +105,7 @@ export default function GoogleDriveIntegrationPage() {
   const handleSyncNow = async () => {
     try {
       setSyncing(true);
-      await apiClient.post("/integrations/google-drive/sync");
+      await apiClient.post('/integrations/google-drive/sync');
       toast.success(t.toasts.syncStarted.value);
       await loadStatus();
     } catch (error) {
@@ -127,7 +118,7 @@ export default function GoogleDriveIntegrationPage() {
   const updateSettings = async (payload: Partial<DriveSettings>) => {
     try {
       setSaving(true);
-      await apiClient.post("/integrations/google-drive/settings", payload);
+      await apiClient.post('/integrations/google-drive/settings', payload);
       toast.success(t.toasts.settingsSaved.value);
       await loadStatus();
     } catch (error) {
@@ -143,9 +134,7 @@ export default function GoogleDriveIntegrationPage() {
       return;
     }
     try {
-      const tokenResp = await apiClient.get(
-        "/integrations/google-drive/picker-token",
-      );
+      const tokenResp = await apiClient.get('/integrations/google-drive/picker-token');
       const accessToken = tokenResp.data?.accessToken;
       if (!accessToken) {
         toast.error(t.errors.pickerUnavailable.value);
@@ -163,8 +152,8 @@ export default function GoogleDriveIntegrationPage() {
   };
 
   const statusLabel = useMemo(() => {
-    if (!status) return "";
-    if (status.status === "needs_reauth") return t.status.needsReauth.value;
+    if (!status) return '';
+    if (status.status === 'needs_reauth') return t.status.needsReauth.value;
     if (status.connected) return t.status.connected.value;
     return t.status.disconnected.value;
   }, [status, t]);
@@ -181,9 +170,7 @@ export default function GoogleDriveIntegrationPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm text-center">
-          <p className="text-gray-800 font-semibold mb-2">
-            {t.status.disconnected.value}
-          </p>
+          <p className="text-gray-800 font-semibold mb-2">{t.status.disconnected.value}</p>
           <p className="text-sm text-gray-600">{t.header.subtitle}</p>
         </div>
       </div>
@@ -194,12 +181,7 @@ export default function GoogleDriveIntegrationPage() {
     <div className="container-shared px-4 sm:px-6 lg:px-8 py-10">
       <div className="flex items-start gap-3 mb-6">
         <div className="p-2 rounded-full bg-primary/10 text-primary">
-          <Image
-            src="/icons/google-drive-icon.png"
-            alt="Google Drive"
-            width={24}
-            height={24}
-          />
+          <Image src="/icons/google-drive-icon.png" alt="Google Drive" width={24} height={24} />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t.header.title}</h1>
@@ -263,9 +245,7 @@ export default function GoogleDriveIntegrationPage() {
                     className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 transition-colors"
                   >
                     <RefreshCcw className="h-4 w-4" />
-                    {status?.status === "needs_reauth"
-                      ? t.actions.reconnect
-                      : t.actions.connect}
+                    {status?.status === 'needs_reauth' ? t.actions.reconnect : t.actions.connect}
                   </button>
                 )}
               </div>
@@ -274,9 +254,7 @@ export default function GoogleDriveIntegrationPage() {
 
           <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">
-                {t.settings.title}
-              </h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t.settings.title}</h2>
               <button
                 type="button"
                 onClick={handlePickFolder}
@@ -299,28 +277,21 @@ export default function GoogleDriveIntegrationPage() {
               <div className="space-y-1">
                 <p className="text-sm text-gray-500">{t.settings.lastSync}</p>
                 <p className="font-medium text-gray-900">
-                  {formatDateTime(status?.settings?.lastSyncAt, user?.locale) ||
-                    "—"}
+                  {formatDateTime(status?.settings?.lastSyncAt, user?.locale) || '—'}
                 </p>
               </div>
               <div className="space-y-2">
-                <p className="text-sm text-gray-500">
-                  {t.settings.syncEnabled}
-                </p>
+                <p className="text-sm text-gray-500">{t.settings.syncEnabled}</p>
                 <label className="inline-flex items-center gap-2">
                   <input
                     type="checkbox"
                     checked={status?.settings?.syncEnabled ?? true}
-                    onChange={(e) =>
-                      updateSettings({ syncEnabled: e.target.checked })
-                    }
+                    onChange={e => updateSettings({ syncEnabled: e.target.checked })}
                     disabled={!status?.connected || saving}
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
                   <span className="text-sm text-gray-700">
-                    {status?.settings?.syncEnabled
-                      ? t.status.connected
-                      : t.status.disconnected}
+                    {status?.settings?.syncEnabled ? t.status.connected : t.status.disconnected}
                   </span>
                 </label>
               </div>
@@ -328,17 +299,15 @@ export default function GoogleDriveIntegrationPage() {
                 <p className="text-sm text-gray-500">{t.settings.syncTime}</p>
                 <input
                   type="time"
-                  value={status?.settings?.syncTime || "03:00"}
-                  onChange={(e) => updateSettings({ syncTime: e.target.value })}
+                  value={status?.settings?.syncTime || '03:00'}
+                  onChange={e => updateSettings({ syncTime: e.target.value })}
                   disabled={!status?.connected || saving}
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-gray-500">{t.settings.timeZone}</p>
-                <p className="font-medium text-gray-900">
-                  {status?.settings?.timeZone || "UTC"}
-                </p>
+                <p className="font-medium text-gray-900">{status?.settings?.timeZone || 'UTC'}</p>
               </div>
             </div>
           </div>
