@@ -266,7 +266,7 @@ export class StorageService {
         );
       }
 
-      if (filters?.tagIds && filters.tagIds.length) {
+      if (filters?.tagIds?.length) {
         const tagSet = new Set(filters.tagIds);
         filtered = filtered.filter(
           (s: any) => Array.isArray(s.tags) && s.tags.some((t: Tag) => t && tagSet.has(t.id)),
