@@ -1,7 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Cache } from 'cache-manager';
 import { Between, In, LessThanOrEqual, MoreThanOrEqual, type Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
 import { AuditAction, AuditLog } from '../../entities/audit-log.entity';
@@ -181,7 +183,18 @@ export class ReportsService {
     private customTableColumnRepository: Repository<CustomTableColumn>,
     @InjectRepository(CustomTableRow)
     private customTableRowRepository: Repository<CustomTableRow>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
+  private async getReportsVersion(userId: string): Promise<string> {
+    const key = `reports:version:${userId}`;
+    let version = await this.cacheManager.get<string>(key);
+    if (!version) {
+      version = Date.now().toString();
+      await this.cacheManager.set(key, version, 0); // No expiry (until invalidated)
+    }
+    return version;
+  }
 
   private scoreDateColumn(col: CustomTableColumn): number {
     const title = (col.title || '').toLowerCase();
@@ -255,6 +268,11 @@ export class ReportsService {
     userId: string,
     dto: CustomTablesSummaryDto,
   ): Promise<CustomTablesSummaryResponse> {
+    const version = await this.getReportsVersion(userId);
+    const cacheKey = `reports:custom-tables:${userId}:${version}:${JSON.stringify(dto)}`;
+    const cached = await this.cacheManager.get<CustomTablesSummaryResponse>(cacheKey);
+    if (cached) return cached;
+
     const safeDays =
       Number.isFinite(dto.days) && (dto.days as number) > 0
         ? Math.min(dto.days as number, 3650)
@@ -430,7 +448,7 @@ export class ReportsService {
       })
       .sort((a, b) => b.rows - a.rows);
 
-    return {
+    const response: CustomTablesSummaryResponse = {
       totals,
       timeseries,
       categories,
@@ -438,12 +456,19 @@ export class ReportsService {
       recent,
       tables: tablesBreakdown,
     };
+
+    await this.cacheManager.set(cacheKey, response, 300000); // 5 minutes
+    return response;
   }
 
   /**
-   * Generate daily report
    */
   async generateDailyReport(userId: string, date: string): Promise<DailyReport> {
+    const version = await this.getReportsVersion(userId);
+    const cacheKey = `reports:daily:${userId}:${version}:${date || 'latest'}`;
+    const cached = await this.cacheManager.get<DailyReport>(cacheKey);
+    if (cached) return cached;
+
     const resolvedDate = date || (await this.getLatestTransactionDate(userId));
     const reportDate = resolvedDate ? new Date(resolvedDate) : new Date();
     const startOfDay = new Date(reportDate);
@@ -542,6 +567,11 @@ export class ReportsService {
    * Generate monthly report
    */
   async generateMonthlyReport(userId: string, year: number, month: number): Promise<MonthlyReport> {
+    const version = await this.getReportsVersion(userId);
+    const cacheKey = `reports:monthly:${userId}:${version}:${year}:${month}`;
+    const cached = await this.cacheManager.get<MonthlyReport>(cacheKey);
+    if (cached) return cached;
+
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59, 999);
 

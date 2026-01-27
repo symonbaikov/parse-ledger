@@ -118,7 +118,7 @@ export class DataEntryController {
       limits: { fileSize: 1_500_000 },
     }),
   )
-  async uploadCustomIcon(@UploadedFile() file: Express.Multer.File) {
+  async uploadCustomIcon(@UploadedFile() file: { filename: string } | undefined) {
     if (!file) {
       throw new BadRequestException('Файл не загружен');
     }

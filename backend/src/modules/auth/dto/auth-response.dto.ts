@@ -7,6 +7,7 @@ export class AuthResponseDto {
     workspaceId?: string | null;
     locale?: string;
     timeZone?: string | null;
+    avatarUrl?: string | null;
   };
   access_token: string;
   refresh_token: string;
