@@ -24,7 +24,7 @@
 
 FinFlow is a comprehensive web application designed for importing and processing bank statements, organizing financial data, and enabling team collaboration:
 
-- 📄 **Bank Statement Import** - Upload and parse bank statements (PDF, CSV)
+- 📄 **Bank Statement Import** - Upload and parse bank statements (PDF, CSV) with intelligent header extraction
 - 🏗️ **Custom Tables** - Create custom data structures for flexible financial tracking
 - 📊 **Google Sheets Integration** - Sync data with Google Sheets in real-time
 - 👥 **Workspace Collaboration** - Invite team members with granular role-based permissions
@@ -336,6 +336,82 @@ npm test
 npm test -- --watch
 ```
 
+### Storybook
+
+FinFlow uses Storybook for component development and documentation.
+
+#### Local Development
+
+```bash
+cd frontend
+
+# Start Storybook development server
+npm run storybook
+
+# Build Storybook (static files)
+npm run storybook:build
+```
+
+Storybook will be available at http://localhost:6006
+
+#### CI/CD Integration
+
+Storybook is automatically built and published as artifacts:
+
+**For Pull Requests:**
+- Storybook is built on every PR that changes frontend files
+- Artifacts are available for 7 days
+- A comment with download instructions is posted to the PR
+
+**For Main Branch:**
+- Storybook is built on every push to main
+- Artifacts are available for 30 days
+
+#### Viewing CI Storybook Artifacts
+
+**Option 1: Direct Download**
+1. Go to GitHub Actions runs
+2. Find the completed Storybook workflow
+3. Download the `storybook-pr` or `storybook-main` artifact
+4. Extract and serve locally with `npx http-server storybook-static -p 6006`
+
+**Option 2: Using Helper Scripts**
+
+```bash
+# Download latest Storybook from CI
+./scripts/storybook-download.sh
+
+# Download and serve Storybook locally
+./scripts/storybook-serve.sh
+
+# Download specific run and serve
+./scripts/storybook-download.sh <run-id>
+./scripts/storybook-serve.sh storybook-downloaded
+```
+
+**Option 3: GitHub CLI**
+
+```bash
+# List recent Storybook runs
+gh run list --workflow="storybook.yml" --limit 5
+
+# Download specific run
+gh run download <run-id> --name "storybook-pr"
+
+# Download latest successful run
+gh run download --name "storybook-ci"
+```
+
+#### Storybook Structure
+
+- **Components**: UI components with interactive examples
+- **Pages**: Full page layouts and components
+- **Transactions**: Transaction-related components and views
+- **Modals**: Dialog and modal components
+- **Mock Data**: Sample data for development
+
+Stories are located in `frontend/app/stories/` and follow the pattern `*.stories.tsx`.
+
 ### Docker Testing
 
 ```bash
@@ -380,6 +456,8 @@ make test              # Run all tests
 make migrate           # Run database migrations
 make shell-backend     # Open shell in backend container
 make health            # Check service health
+make storybook         # Start Storybook development server
+make storybook-build   # Build Storybook for production
 ```
 
 **Using npm:**
@@ -397,6 +475,8 @@ cd frontend
 npm run dev            # Development server
 npm run build          # Production build
 npm run lint           # Lint code
+npm run storybook      # Storybook development server
+npm run storybook:build # Build Storybook for production
 ```
 
 ### Hot Reload
