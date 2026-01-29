@@ -28,7 +28,7 @@ export class StorageTrashScheduler {
     const cutoff = new Date(Date.now() - ttlDays * MS_PER_DAY);
     const expired = await this.statementRepository.find({
       where: { deletedAt: LessThanOrEqual(cutoff) },
-      select: ['id', 'userId', 'fileName', 'deletedAt'],
+      select: ['id', 'userId', 'workspaceId', 'fileName', 'deletedAt'],
     });
 
     if (!expired.length) {
@@ -37,7 +37,7 @@ export class StorageTrashScheduler {
 
     for (const statement of expired) {
       try {
-        await this.statementsService.remove(statement.id, statement.userId);
+        await this.statementsService.remove(statement.id, statement.userId, statement.workspaceId);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.error(

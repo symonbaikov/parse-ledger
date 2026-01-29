@@ -3,10 +3,13 @@ import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nest
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cache } from 'cache-manager';
 import type { Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
+import { ActorType, AuditAction, EntityType } from '../../entities/audit-event.entity';
 import { Statement } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
 import { WorkspaceMember, WorkspaceRole } from '../../entities/workspace-member.entity';
+import { AuditService } from '../audit/audit.service';
 import type { BulkUpdateItemDto } from './dto/bulk-update-transaction.dto';
 import type { UpdateTransactionDto } from './dto/update-transaction.dto';
 
@@ -22,6 +25,7 @@ export class TransactionsService {
     @InjectRepository(WorkspaceMember)
     private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly auditService: AuditService,
   ) {}
 
   private async invalidateReports(userId: string): Promise<void> {
@@ -51,7 +55,7 @@ export class TransactionsService {
   }
 
   async findAll(
-    userId: string,
+    workspaceId: string,
     filters: {
       statementId?: string;
       dateFrom?: Date;
@@ -64,8 +68,7 @@ export class TransactionsService {
   ): Promise<{ data: Transaction[]; total: number; page: number; limit: number }> {
     const query = this.transactionRepository
       .createQueryBuilder('transaction')
-      .innerJoin('transaction.statement', 'statement')
-      .where('statement.userId = :userId', { userId })
+      .where('transaction.workspaceId = :workspaceId', { workspaceId })
       .leftJoinAndSelect('transaction.category', 'category')
       .leftJoinAndSelect('transaction.branch', 'branch')
       .leftJoinAndSelect('transaction.wallet', 'wallet');
@@ -109,27 +112,29 @@ export class TransactionsService {
     return { data, total, page, limit };
   }
 
-  async findOne(id: string, userId: string): Promise<Transaction> {
+  async findOne(id: string, workspaceId: string): Promise<Transaction> {
     const transaction = await this.transactionRepository.findOne({
-      where: { id },
-      relations: ['statement', 'category', 'branch', 'wallet'],
+      where: { id, workspaceId },
+      relations: ['category', 'branch', 'wallet'],
     });
 
     if (!transaction) {
       throw new NotFoundException('Transaction not found');
     }
 
-    const ownerId = (transaction as any).statement?.userId;
-    if (ownerId && ownerId !== userId) {
-      throw new ForbiddenException('Access denied');
-    }
-
     return transaction;
   }
 
-  async update(id: string, userId: string, updateDto: UpdateTransactionDto): Promise<Transaction> {
+  async update(
+    id: string,
+    workspaceId: string,
+    userId: string,
+    updateDto: UpdateTransactionDto,
+    batchId?: string | null,
+  ): Promise<Transaction> {
     await this.ensureCanEditStatements(userId);
-    const transaction = await this.findOne(id, userId);
+    const transaction = await this.findOne(id, workspaceId);
+    const before = { ...transaction };
 
     // Recalculate amount if debit/credit changed
     if (updateDto.debit !== undefined || updateDto.credit !== undefined) {
@@ -156,16 +161,43 @@ export class TransactionsService {
 
     const saved = await this.transactionRepository.save(transaction);
     await this.invalidateReports(userId);
+
+    // Audit: capture transaction update with before/after snapshot.
+    await this.auditService.createEvent({
+      workspaceId,
+      actorType: ActorType.USER,
+      actorId: userId,
+      entityType: EntityType.TRANSACTION,
+      entityId: saved.id,
+      action: AuditAction.UPDATE,
+      diff: { before, after: saved },
+      meta: {
+        updatedFields: Object.keys(updateDto),
+      },
+      batchId: batchId ?? null,
+      isUndoable: true,
+    });
     return saved;
   }
 
-  async bulkUpdate(userId: string, items: BulkUpdateItemDto[]): Promise<Transaction[]> {
+  async bulkUpdate(
+    workspaceId: string,
+    userId: string,
+    items: BulkUpdateItemDto[],
+  ): Promise<Transaction[]> {
     await this.ensureCanEditStatements(userId);
     const updatedTransactions: Transaction[] = [];
+    const batchId = items.length > 1 ? uuidv4() : null;
 
     for (const item of items) {
       try {
-        const transaction = await this.update(item.id, userId, item.updates);
+        const transaction = await this.update(
+          item.id,
+          workspaceId,
+          userId,
+          item.updates,
+          batchId,
+        );
         updatedTransactions.push(transaction);
       } catch (error) {
         console.error(`Error updating transaction ${item.id}:`, error);
@@ -179,12 +211,27 @@ export class TransactionsService {
     return updatedTransactions;
   }
 
-  async remove(id: string, userId: string): Promise<void> {
+  async remove(id: string, workspaceId: string, userId: string): Promise<void> {
     await this.ensureCanEditStatements(userId);
-    const transaction = await this.findOne(id, userId);
+    const transaction = await this.findOne(id, workspaceId);
     // Use delete for simplicity; entity already validated for ownership.
 
     await this.transactionRepository.delete(transaction.id);
     await this.invalidateReports(userId);
+
+    // Audit: record deletion for potential rollback.
+    await this.auditService.createEvent({
+      workspaceId,
+      actorType: ActorType.USER,
+      actorId: userId,
+      entityType: EntityType.TRANSACTION,
+      entityId: transaction.id,
+      action: AuditAction.DELETE,
+      diff: { before: transaction, after: null },
+      meta: {
+        statementId: transaction.statementId,
+      },
+      isUndoable: true,
+    });
   }
 }

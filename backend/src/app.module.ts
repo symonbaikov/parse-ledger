@@ -13,7 +13,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { getDatabaseConfig } from './config/database.config';
 import {
-  AuditLog,
+  AuditEvent,
   Branch,
   Category,
   CategoryLearning,
@@ -24,11 +24,15 @@ import {
   DriveSettings,
   DropboxSettings,
   FilePermission,
+  GmailSettings,
+  GmailWatchSubscription,
   GoogleSheet,
   GoogleSheetRow,
   Integration,
   IntegrationToken,
   ParsingRule,
+  Receipt,
+  ReceiptProcessingJob,
   SharedLink,
   Statement,
   TelegramReport,
@@ -40,12 +44,15 @@ import {
   WorkspaceMember,
 } from './entities';
 import { AuthModule } from './modules/auth/auth.module';
+import { AuditModule } from './modules/audit/audit.module';
+import { AuditInterceptor } from './modules/audit/interceptors/audit.interceptor';
 import { BranchesModule } from './modules/branches/branches.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ClassificationModule } from './modules/classification/classification.module';
 import { CustomTablesModule } from './modules/custom-tables/custom-tables.module';
 import { DataEntryModule } from './modules/data-entry/data-entry.module';
 import { DropboxModule } from './modules/dropbox/dropbox.module';
+import { GmailModule } from './modules/gmail/gmail.module';
 import { GoogleDriveModule } from './modules/google-drive/google-drive.module';
 import { GoogleSheetsModule } from './modules/google-sheets/google-sheets.module';
 import { HttpMetricsInterceptor } from './modules/observability/http-metrics.interceptor';
@@ -100,7 +107,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
       GoogleSheetRow,
       TelegramReport,
       ParsingRule,
-      AuditLog,
+      AuditEvent,
       SharedLink,
       FilePermission,
       DataEntry,
@@ -114,12 +121,18 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
       IntegrationToken,
       DriveSettings,
       DropboxSettings,
+      GmailSettings,
+      GmailWatchSubscription,
+      Receipt,
+      ReceiptProcessingJob,
     ]),
     AuthModule,
+    AuditModule,
     UsersModule,
     StatementsModule,
     GoogleSheetsModule,
     GoogleDriveModule,
+    GmailModule,
     DropboxModule,
     ParsingModule,
     ClassificationModule,
@@ -149,6 +162,10 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: HttpMetricsInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
     },
     {
       provide: APP_GUARD,

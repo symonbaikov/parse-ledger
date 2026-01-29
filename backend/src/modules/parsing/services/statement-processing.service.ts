@@ -5,11 +5,15 @@ import { Inject, Injectable, Logger, Optional, forwardRef } from '@nestjs/common
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { Semaphore } from '../../../common/utils/semaphore.util';
+import { ImportSessionMode } from '../../../entities/import-session.entity';
 import { BankName, FileType, Statement, StatementStatus } from '../../../entities/statement.entity';
 import { Transaction, TransactionType } from '../../../entities/transaction.entity';
 import { ClassificationService } from '../../classification/services/classification.service';
 import { GoogleSheetsService } from '../../google-sheets/google-sheets.service';
+import { ImportSessionService } from '../../import/services/import-session.service';
 import { MetricsService } from '../../observability/metrics.service';
+import { CrossStatementDeduplicationService } from '../../transactions/services/cross-statement-deduplication.service';
+import { TransactionFingerprintService } from '../../transactions/services/transaction-fingerprint.service';
 import { AiParseValidator } from '../helpers/ai-parse-validator.helper';
 import { isAiEnabled } from '../helpers/ai-runtime.util';
 import type { ParsedTransaction } from '../interfaces/parsed-statement.interface';
@@ -47,10 +51,14 @@ export class StatementProcessingService {
     private parserFactory: ParserFactoryService,
     private classificationService: ClassificationService,
     private metadataExtractionService: MetadataExtractionService,
+    private importSessionService: ImportSessionService,
+    private transactionFingerprintService: TransactionFingerprintService,
     @Optional()
     @Inject(forwardRef(() => GoogleSheetsService))
     private googleSheetsService?: GoogleSheetsService,
     private metricsService?: MetricsService,
+    @Optional()
+    private crossStatementDeduplicationService?: CrossStatementDeduplicationService,
   ) {}
 
   private getFileExtension(statement: Statement): string {
@@ -290,6 +298,74 @@ export class StatementProcessingService {
     } finally {
       StatementProcessingService.inFlight.delete(statementId);
     }
+  }
+
+  async commitImport(statementId: string): Promise<Statement> {
+    const statement = await this.statementRepository.findOne({
+      where: { id: statementId },
+    });
+
+    if (!statement) {
+      throw new Error(`Statement ${statementId} not found`);
+    }
+
+    const importPreview = (statement.parsingDetails as any)?.importPreview;
+    if (!importPreview?.sessionId) {
+      throw new Error(`Import preview session missing for statement ${statementId}`);
+    }
+
+    const transactions = this.hydratePreviewTransactions(importPreview.transactions);
+    if (transactions.length === 0) {
+      throw new Error(`No preview transactions available for statement ${statementId}`);
+    }
+
+    const commitResult = await this.importSessionService.processImport(
+      importPreview.sessionId,
+      transactions,
+      ImportSessionMode.COMMIT,
+    );
+
+    if (this.crossStatementDeduplicationService && statement.workspaceId) {
+      this.logger.log(`Running cross-statement duplicate detection for ${statementId}...`);
+      try {
+        const duplicateGroups = await this.crossStatementDeduplicationService.findDuplicates(
+          statement.workspaceId,
+          statement.id,
+          0.85,
+        );
+
+        if (duplicateGroups.length > 0) {
+          const markedCount =
+            await this.crossStatementDeduplicationService.markDuplicates(duplicateGroups);
+          statement.parsingDetails = {
+            ...(statement.parsingDetails || {}),
+            crossStatementDuplicates: {
+              groups: duplicateGroups.length,
+              marked: markedCount,
+            },
+          };
+        }
+      } catch (dedupError) {
+        this.logger.warn(`Cross-statement deduplication failed: ${dedupError.message}`);
+      }
+    }
+
+    const committedTransactions = await this.transactionRepository.find({
+      where: { statementId: statement.id },
+    });
+    statement.totalTransactions = committedTransactions.length;
+    statement.totalDebit = committedTransactions.reduce((sum, t) => sum + (t.debit ?? 0), 0);
+    statement.totalCredit = committedTransactions.reduce((sum, t) => sum + (t.credit ?? 0), 0);
+    statement.status = StatementStatus.COMPLETED;
+    statement.processedAt = new Date();
+    statement.parsingDetails = {
+      ...(statement.parsingDetails || {}),
+      importCommit: commitResult.summary,
+    } as Statement['parsingDetails'];
+
+    await this.statementRepository.save(statement);
+
+    return statement;
   }
 
   private async processStatementInternal(statementId: string): Promise<Statement> {
@@ -535,44 +611,74 @@ export class StatementProcessingService {
         `Date range: ${statement.statementDateFrom?.toISOString() || 'N/A'} to ${statement.statementDateTo?.toISOString() || 'N/A'}`,
       );
 
-      // Create transactions with classification
       const majorityCategory = await this.classificationService.determineMajorityCategory(
         parsedStatement.transactions,
         statement.userId,
       );
 
-      addLog('info', 'Creating transactions and applying classification...');
-      const createStartTime = Date.now();
-      const { transactions, duplicatesSkipped } = await this.createTransactions(
-        statement,
-        parsedStatement.transactions,
+      addLog('info', 'Preparing preview import session...');
+      if (!statement.workspaceId) {
+        throw new Error('Statement workspaceId is missing');
+      }
+
+      const fingerprintStartTime = Date.now();
+      const fingerprintMap = this.transactionFingerprintService.bulkGenerateFingerprints(
+        parsedStatement.transactions.map((tx, index) => ({
+          id: `${index}`,
+          workspaceId: statement.workspaceId,
+          transactionDate: tx.transactionDate,
+          amount: tx.debit ?? tx.credit ?? null,
+          debit: tx.debit,
+          credit: tx.credit,
+          currency: tx.currency || statement.currency || 'KZT',
+          counterpartyName: tx.counterpartyName,
+          transactionType:
+            tx.debit && tx.debit > 0 ? TransactionType.EXPENSE : TransactionType.INCOME,
+        })),
+        statement.accountNumber || '',
+      );
+      addLog(
+        'info',
+        `Generated ${fingerprintMap.size} fingerprints in ${Date.now() - fingerprintStartTime}ms`,
+      );
+
+      const session = await this.importSessionService.createSession(
+        statement.workspaceId,
         statement.userId,
-        majorityCategory.categoryId,
-        addLog,
-      );
-      const createTime = Date.now() - createStartTime;
-
-      addLog('info', `Created ${transactions.length} transactions in ${createTime}ms`);
-      parsingDetails.transactionsCreated = transactions.length;
-      parsingDetails.transactionsDeduplicated = duplicatesSkipped;
-      this.observeDuration(
-        'persist',
-        createStartTime,
-        statement.bankName,
-        statement.fileType,
-        'ok',
+        statement.id,
+        ImportSessionMode.PREVIEW,
+        statement.fileHash,
+        statement.fileName,
+        statement.fileSize,
       );
 
-      statement.totalTransactions = transactions.length;
-      statement.totalDebit = transactions.reduce((sum, t) => sum + (t.debit ?? 0), 0);
-      statement.totalCredit = transactions.reduce((sum, t) => sum + (t.credit ?? 0), 0);
+      const previewResult = await this.importSessionService.processImport(
+        session.id,
+        parsedStatement.transactions,
+        ImportSessionMode.PREVIEW,
+      );
+      const previewSession = await this.importSessionService.getSession(session.id);
+      const previewMetadata = previewSession.sessionMetadata || previewResult.summary;
+
+      parsingDetails.importPreview = {
+        sessionId: previewSession.id,
+        ...(previewMetadata as Record<string, any>),
+        transactions: this.serializePreviewTransactions(parsedStatement.transactions),
+      };
+
+      parsingDetails.transactionsCreated = 0;
+      parsingDetails.transactionsDeduplicated = 0;
+
+      statement.totalTransactions = parsedStatement.transactions.length;
+      statement.totalDebit = parsedStatement.transactions.reduce((sum, t) => sum + (t.debit ?? 0), 0);
+      statement.totalCredit = parsedStatement.transactions.reduce((sum, t) => sum + (t.credit ?? 0), 0);
       if (majorityCategory.categoryId) {
         statement.categoryId = majorityCategory.categoryId;
       }
 
       addLog('info', `Totals - Debit: ${statement.totalDebit}, Credit: ${statement.totalCredit}`);
 
-      const validationResult = this.validateStatement(enrichedMetadata, transactions);
+      const validationResult = this.validateStatement(enrichedMetadata, parsedStatement.transactions);
       parsingDetails.validation = {
         passed: validationResult.passed,
         warnings: validationResult.warnings,
@@ -586,9 +692,7 @@ export class StatementProcessingService {
         });
       }
 
-      const finalStatus = validationResult.passed
-        ? StatementStatus.VALIDATED
-        : StatementStatus.PARSED;
+      const finalStatus = StatementStatus.PARSED;
 
       // Update status
       const totalTime = Date.now() - startTime;
@@ -607,7 +711,7 @@ export class StatementProcessingService {
 
       addLog(
         'info',
-        `Successfully processed statement ${statementId}: ${transactions.length} transactions (total time: ${totalTime}ms)`,
+        `Successfully processed statement ${statementId}: ${parsedStatement.transactions.length} transactions (total time: ${totalTime}ms)`,
       );
 
       // Auto-sync to Google Sheets if connected (async, non-blocking)
@@ -735,6 +839,7 @@ export class StatementProcessingService {
         // Create transaction with classification
         const transaction = this.transactionRepository.create({
           statementId: statement.id,
+          workspaceId: statement.workspaceId,
           transactionDate: parsed.transactionDate,
           documentNumber: parsed.documentNumber,
           counterpartyName,
@@ -839,6 +944,27 @@ export class StatementProcessingService {
       // Re-throw to be caught by caller
       throw error;
     }
+  }
+
+  private serializePreviewTransactions(
+    transactions: ParsedTransaction[],
+  ): Array<Omit<ParsedTransaction, 'transactionDate'> & { transactionDate: string }> {
+    return transactions.map(tx => ({
+      ...tx,
+      transactionDate: tx.transactionDate.toISOString(),
+    }));
+  }
+
+  private hydratePreviewTransactions(raw: unknown): ParsedTransaction[] {
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return (raw as Array<Omit<ParsedTransaction, 'transactionDate'> & { transactionDate?: string }>)
+      .map(tx => ({
+        ...tx,
+        transactionDate: tx.transactionDate ? new Date(tx.transactionDate) : new Date('invalid'),
+      }))
+      .filter(tx => tx.transactionDate instanceof Date && !Number.isNaN(tx.transactionDate.getTime()));
   }
 
   private buildCompleteMetadata(

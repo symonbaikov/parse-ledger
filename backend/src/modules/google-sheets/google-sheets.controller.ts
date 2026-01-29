@@ -10,7 +10,9 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { WorkspaceId } from '../../common/decorators/workspace.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { WorkspaceContextGuard } from '../../common/guards/workspace-context.guard';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ConnectSheetDto } from './dto/connect-sheet.dto';
@@ -43,9 +45,15 @@ export class GoogleSheetsController {
   }
 
   @Post('oauth/callback')
-  async oauthCallback(@Body() body: OAuthCallbackDto, @CurrentUser() user: User) {
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard)
+  async oauthCallback(
+    @Body() body: OAuthCallbackDto,
+    @CurrentUser() user: User,
+    @WorkspaceId() workspaceId: string,
+  ) {
     const sheet = await this.googleSheetsService.connectWithOAuthCode(
       user,
+      workspaceId,
       body.code,
       body.sheetId,
       body.worksheetName,
@@ -55,31 +63,48 @@ export class GoogleSheetsController {
   }
 
   @Post('connect')
-  async connect(@Body() connectDto: ConnectSheetDto, @CurrentUser() user: User) {
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard)
+  async connect(
+    @Body() connectDto: ConnectSheetDto,
+    @CurrentUser() user: User,
+    @WorkspaceId() workspaceId: string,
+  ) {
     throw new BadRequestException(
       'Подключение через этот endpoint больше не поддерживается. Используйте OAuth: GET /google-sheets/oauth/url → POST /google-sheets/oauth/callback',
     );
   }
 
   @Get()
-  async findAll(@CurrentUser() user: User) {
-    const sheets = await this.googleSheetsService.findAll(user.id);
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard)
+  async findAll(@CurrentUser() user: User, @WorkspaceId() workspaceId: string) {
+    const sheets = await this.googleSheetsService.findAll(workspaceId);
     return sheets.map(sheet => this.toPublicSheet(sheet));
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @CurrentUser() user: User) {
-    const sheet = await this.googleSheetsService.findOne(id, user.id);
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard)
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @WorkspaceId() workspaceId: string,
+  ) {
+    const sheet = await this.googleSheetsService.findOne(id, workspaceId);
     return this.toPublicSheet(sheet);
   }
 
   @Put(':id/sync')
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard)
   async sync(
     @Param('id') id: string,
     @CurrentUser() user: User,
+    @WorkspaceId() workspaceId: string,
     @Body() body?: { statementId?: string },
   ) {
-    const result = await this.googleSheetsService.syncTransactions(id, user.id, body?.statementId);
+    const result = await this.googleSheetsService.syncTransactions(
+      id,
+      workspaceId,
+      body?.statementId,
+    );
     return {
       message: `Successfully synced ${result.synced} transactions`,
       lastSync: result.sheet.lastSync,
@@ -87,8 +112,13 @@ export class GoogleSheetsController {
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string, @CurrentUser() user: User) {
-    await this.googleSheetsService.remove(id, user.id);
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard)
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @WorkspaceId() workspaceId: string,
+  ) {
+    await this.googleSheetsService.remove(id, workspaceId);
     return { message: 'Google Sheet disconnected successfully' };
   }
 }

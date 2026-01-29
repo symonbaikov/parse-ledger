@@ -10,10 +10,13 @@ import {
   Sse,
   UseGuards,
 } from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
 import type { Observable } from 'rxjs';
+import { AuditAction, ActorType, EntityType } from '../../entities/audit-event.entity';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { AuditService } from '../audit/audit.service';
 import { GoogleSheetsBatchUpdateDto, GoogleSheetsUpdateDto } from './dto/sheets-update.dto';
 import { GoogleSheetsWebhookGuard } from './guards/google-sheets-webhook.guard';
 import {
@@ -29,6 +32,7 @@ export class GoogleSheetsIntegrationController {
     private readonly updatesService: GoogleSheetsUpdatesService,
     private readonly realtimeService: GoogleSheetsRealtimeService,
     private readonly analyticsService: GoogleSheetsAnalyticsService,
+    private readonly auditService: AuditService,
   ) {}
 
   @Public()
@@ -36,6 +40,29 @@ export class GoogleSheetsIntegrationController {
   @Post('update')
   async receiveUpdate(@Body() body: GoogleSheetsUpdateDto) {
     const result = await this.updatesService.handleWebhookUpdate(body);
+
+    if (result.processed && result.row?.googleSheetId) {
+      try {
+        // Audit: record integration-level sync activity for single row updates.
+        await this.auditService.createEvent({
+          workspaceId: null,
+          actorType: ActorType.INTEGRATION,
+          actorId: result.row.userId,
+          actorLabel: 'Google Sheets Sync',
+          entityType: EntityType.INTEGRATION,
+          entityId: result.row.googleSheetId,
+          action: AuditAction.UPDATE,
+          meta: {
+            provider: 'google_sheets',
+            spreadsheetId: body.spreadsheetId,
+            sheetName: body.sheetName,
+            rowNumber: body.row,
+          },
+        });
+      } catch {
+        // audit failures should not block sync
+      }
+    }
     return {
       ok: result.processed,
       reason: result.reason,
@@ -47,8 +74,36 @@ export class GoogleSheetsIntegrationController {
   @UseGuards(GoogleSheetsWebhookGuard)
   @Post('batch')
   async receiveBatch(@Body() body: GoogleSheetsBatchUpdateDto) {
-    const results = await this.updatesService.handleBatchUpdate(body);
-    return { ok: true, processed: results.filter(item => item.processed).length, results };
+    const batchId = body.items.length > 1 ? uuidv4() : null;
+    const results = await this.updatesService.handleBatchUpdate(body, batchId);
+    const processedCount = results.filter(item => item.processed).length;
+
+    const firstRow = results.find(item => item.row?.googleSheetId)?.row;
+    if (batchId && firstRow?.googleSheetId) {
+      try {
+        // Audit: record batch sync summary for Google Sheets updates.
+        await this.auditService.createEvent({
+          workspaceId: null,
+          actorType: ActorType.INTEGRATION,
+          actorId: firstRow.userId,
+          actorLabel: 'Google Sheets Sync',
+          entityType: EntityType.INTEGRATION,
+          entityId: firstRow.googleSheetId,
+          action: AuditAction.IMPORT,
+          meta: {
+            provider: 'google_sheets',
+            spreadsheetId: body.items[0]?.spreadsheetId,
+            sheetName: body.items[0]?.sheetName,
+            rowsCount: processedCount,
+          },
+          batchId,
+        });
+      } catch {
+        // audit failures should not block sync
+      }
+    }
+
+    return { ok: true, processed: processedCount, results };
   }
 
   @Get('rows')

@@ -95,7 +95,7 @@ export interface TransactionTypeMapping {
 export class BankProfileService {
   private readonly logger = new Logger(BankProfileService.name);
   private profiles = new Map<string, BankProfile>();
-  private readonly PROFILES_DIR = path.join(__dirname, '../../config/bank-profiles');
+  private readonly PROFILES_DIR = path.join(__dirname, '../../config-assets/bank-profiles');
 
   constructor() {
     this.loadProfiles();

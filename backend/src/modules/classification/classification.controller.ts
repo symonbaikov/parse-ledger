@@ -1,6 +1,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
+import { v4 as uuidv4 } from 'uuid';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { Transaction } from '../../entities/transaction.entity';
 import type { User } from '../../entities/user.entity';
@@ -42,6 +43,7 @@ export class ClassificationController {
   @HttpCode(HttpStatus.OK)
   async classifyBulk(@Body() body: { transactionIds: string[] }, @CurrentUser() user: User) {
     const { transactionIds } = body;
+    const batchId = transactionIds.length > 1 ? uuidv4() : null;
     const results = {
       total: transactionIds.length,
       successful: 0,
@@ -68,6 +70,7 @@ export class ClassificationController {
         const classification = await this.classificationService.classifyTransaction(
           transaction,
           user.id,
+          batchId,
         );
 
         // Check if categoryId was actually assigned

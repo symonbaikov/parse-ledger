@@ -34,6 +34,7 @@ export class GoogleSheetsService {
 
   async connectWithOAuthCode(
     user: User,
+    workspaceId: string,
     code: string,
     sheetId: string,
     worksheetName?: string,
@@ -48,6 +49,7 @@ export class GoogleSheetsService {
 
     return this.create(
       user,
+      workspaceId,
       { sheetId, sheetName, worksheetName: worksheet || undefined },
       accessToken,
       refreshToken,
@@ -56,12 +58,14 @@ export class GoogleSheetsService {
 
   async create(
     user: User,
+    workspaceId: string,
     connectDto: ConnectSheetDto,
     accessToken: string,
     refreshToken: string,
   ): Promise<GoogleSheet> {
     const googleSheet = this.googleSheetRepository.create({
       userId: user.id,
+      workspaceId,
       sheetId: connectDto.sheetId,
       sheetName: connectDto.sheetName,
       worksheetName: connectDto.worksheetName || null,
@@ -73,16 +77,16 @@ export class GoogleSheetsService {
     return this.googleSheetRepository.save(googleSheet);
   }
 
-  async findAll(userId: string): Promise<GoogleSheet[]> {
+  async findAll(workspaceId: string): Promise<GoogleSheet[]> {
     return this.googleSheetRepository.find({
-      where: { userId, isActive: true },
+      where: { workspaceId, isActive: true },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async findOne(id: string, userId: string): Promise<GoogleSheet> {
+  async findOne(id: string, workspaceId: string): Promise<GoogleSheet> {
     const sheet = await this.googleSheetRepository.findOne({
-      where: { id, userId },
+      where: { id, workspaceId },
     });
 
     if (!sheet) {
@@ -92,8 +96,8 @@ export class GoogleSheetsService {
     return sheet;
   }
 
-  async updateLastSync(id: string, userId: string): Promise<GoogleSheet> {
-    const sheet = await this.findOne(id, userId);
+  async updateLastSync(id: string, workspaceId: string): Promise<GoogleSheet> {
+    const sheet = await this.findOne(id, workspaceId);
     sheet.lastSync = new Date();
     return this.googleSheetRepository.save(sheet);
   }
@@ -103,10 +107,10 @@ export class GoogleSheetsService {
    */
   async syncTransactions(
     id: string,
-    userId: string,
+    workspaceId: string,
     statementId?: string,
   ): Promise<{ synced: number; sheet: GoogleSheet }> {
-    const sheet = await this.findOne(id, userId);
+    const sheet = await this.findOne(id, workspaceId);
 
     if (!sheet.isActive) {
       throw new BadRequestException('Google Sheet is not active');
@@ -138,7 +142,7 @@ export class GoogleSheetsService {
         .leftJoinAndSelect('transaction.branch', 'branch')
         .leftJoinAndSelect('transaction.wallet', 'wallet')
         .innerJoin('transaction.statement', 'statement')
-        .where('statement.userId = :userId', { userId })
+        .where('statement.workspaceId = :workspaceId', { workspaceId })
         .andWhere('statement.googleSheetId = :sheetId', { sheetId: id });
 
       // If statementId is provided, sync only that statement's transactions
@@ -235,14 +239,14 @@ export class GoogleSheetsService {
   async syncStatementTransactions(
     googleSheetId: string,
     statementId: string,
-    userId: string,
+    workspaceId: string,
   ): Promise<{ synced: number }> {
-    const result = await this.syncTransactions(googleSheetId, userId, statementId);
+    const result = await this.syncTransactions(googleSheetId, workspaceId, statementId);
     return { synced: result.synced };
   }
 
-  async remove(id: string, userId: string): Promise<void> {
-    const sheet = await this.findOne(id, userId);
+  async remove(id: string, workspaceId: string): Promise<void> {
+    const sheet = await this.findOne(id, workspaceId);
     sheet.isActive = false;
     await this.googleSheetRepository.save(sheet);
   }

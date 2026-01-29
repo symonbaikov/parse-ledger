@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Req,
   UseGuards,
@@ -17,7 +18,9 @@ import type { User } from '../../entities';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { AcceptInvitationDto } from './dto/accept-invitation.dto';
+import { CreateWorkspaceDto } from './dto/create-workspace.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { UpdateWorkspaceDto } from './dto/update-workspace.dto';
 import { WorkspacesService } from './workspaces.service';
 
 @Controller('workspaces')
@@ -52,22 +55,108 @@ export class WorkspacesController {
     return undefined;
   }
 
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  async getUserWorkspaces(@CurrentUser() user: User) {
+    return this.workspacesService.getUserWorkspaces(user.id);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async getMyWorkspace(@CurrentUser() user: User, @Req() req: Request) {
     return this.workspacesService.getWorkspaceOverview(user, this.getRequestAppOrigin(req));
   }
 
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  async getWorkspaceById(@CurrentUser() user: User, @Param('id') id: string) {
+    const workspace = await this.workspacesService.getWorkspaceById(id, user.id);
+    const members = await this.workspacesService.getWorkspaceMembers(id, user.id);
+    return {
+      ...workspace,
+      members,
+    };
+  }
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  async createWorkspace(@CurrentUser() user: User, @Body() dto: CreateWorkspaceDto) {
+    return this.workspacesService.createWorkspace(user.id, dto);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  async updateWorkspace(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: UpdateWorkspaceDto,
+  ) {
+    return this.workspacesService.updateWorkspace(id, user.id, dto);
+  }
+
+  @Post(':id/switch')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async switchWorkspace(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.workspacesService.switchWorkspace(id, user.id);
+    return { message: 'Workspace switched successfully' };
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  async deleteWorkspace(@CurrentUser() user: User, @Param('id') id: string) {
+    await this.workspacesService.deleteWorkspace(id, user.id);
+    return { message: 'Workspace deleted successfully' };
+  }
+
+  @Patch(':id/favorite')
+  @UseGuards(JwtAuthGuard)
+  async toggleFavorite(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.workspacesService.toggleFavorite(id, user.id);
+  }
+
+  @Get(':id/invitations')
+  @UseGuards(JwtAuthGuard)
+  async getWorkspaceInvitations(@CurrentUser() user: User, @Param('id') workspaceId: string) {
+    return this.workspacesService.getWorkspaceInvitations(workspaceId, user.id);
+  }
+
+  @Post(':id/invitations')
+  @UseGuards(JwtAuthGuard)
+  async inviteMemberToWorkspace(
+    @CurrentUser() user: User,
+    @Param('id') workspaceId: string,
+    @Body() dto: InviteMemberDto,
+    @Req() req: Request,
+  ) {
+    return this.workspacesService.inviteMember(
+      workspaceId,
+      user,
+      dto,
+      this.getRequestAppOrigin(req),
+    );
+  }
+
+  @Delete(':id/members/:userId')
+  @UseGuards(JwtAuthGuard)
+  async removeWorkspaceMember(
+    @CurrentUser() user: User,
+    @Param('id') workspaceId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.workspacesService.removeMember(workspaceId, user.id, userId);
+  }
+
   @Post('invitations')
   @UseGuards(JwtAuthGuard)
   async inviteMember(@CurrentUser() user: User, @Body() dto: InviteMemberDto, @Req() req: Request) {
-    return this.workspacesService.inviteMember(user, dto, this.getRequestAppOrigin(req));
+    return this.workspacesService.inviteMemberLegacy(user, dto, this.getRequestAppOrigin(req));
   }
 
   @Delete('members/:userId')
   @UseGuards(JwtAuthGuard)
   async removeMember(@CurrentUser() user: User, @Param('userId') userId: string) {
-    return this.workspacesService.removeMember(user, userId);
+    return this.workspacesService.removeMemberLegacy(user, userId);
   }
 
   @Public()

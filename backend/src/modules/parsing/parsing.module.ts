@@ -34,7 +34,7 @@ import { UniversalDateParser } from './services/universal-date-parser.service';
     TypeOrmModule.forFeature([Statement, Transaction, ParsingRule]),
     ClassificationModule,
     forwardRef(() => GoogleSheetsModule),
-    ImportModule,
+    forwardRef(() => ImportModule),
     ObservabilityModule,
     forwardRef(() => TransactionsModule),
   ],

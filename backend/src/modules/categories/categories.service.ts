@@ -9,8 +9,10 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cache } from 'cache-manager';
 import type { Repository } from 'typeorm';
+import { ActorType, AuditAction, EntityType } from '../../entities/audit-event.entity';
 import { User, WorkspaceMember, WorkspaceRole } from '../../entities';
 import { Category, CategoryType } from '../../entities/category.entity';
+import { AuditService } from '../audit/audit.service';
 import type { CreateCategoryDto } from './dto/create-category.dto';
 import type { UpdateCategoryDto } from './dto/update-category.dto';
 
@@ -24,14 +26,10 @@ export class CategoriesService {
     @InjectRepository(WorkspaceMember)
     private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly auditService: AuditService,
   ) {}
 
-  private async ensureCanEditCategories(userId: string): Promise<void> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      select: ['id', 'workspaceId'],
-    });
-    const workspaceId = user?.workspaceId ?? null;
+  private async ensureCanEditCategories(workspaceId: string, userId: string): Promise<void> {
     if (!workspaceId) return;
 
     const membership = await this.workspaceMemberRepository.findOne({
@@ -46,11 +44,15 @@ export class CategoriesService {
     }
   }
 
-  async create(userId: string, createDto: CreateCategoryDto): Promise<Category> {
-    await this.ensureCanEditCategories(userId);
+  async create(
+    workspaceId: string,
+    userId: string,
+    createDto: CreateCategoryDto,
+  ): Promise<Category> {
+    await this.ensureCanEditCategories(workspaceId, userId);
     // Check for duplicate name
     const existing = await this.categoryRepository.findOne({
-      where: { userId, name: createDto.name, type: createDto.type },
+      where: { workspaceId, name: createDto.name, type: createDto.type },
     });
 
     if (existing) {
@@ -58,23 +60,38 @@ export class CategoriesService {
     }
 
     const category = this.categoryRepository.create({
+      workspaceId,
       userId,
       ...createDto,
       isSystem: false,
     });
 
     const saved = await this.categoryRepository.save(category);
-    await this.invalidateCache(userId);
+    await this.invalidateCache(workspaceId);
+
+    // Audit: track category creation.
+    await this.auditService.createEvent({
+      workspaceId,
+      actorType: ActorType.USER,
+      actorId: userId,
+      entityType: EntityType.CATEGORY,
+      entityId: saved.id,
+      action: AuditAction.CREATE,
+      diff: { before: null, after: saved },
+      meta: {
+        parentId: saved.parentId ?? null,
+      },
+    });
     return saved;
   }
 
-  async findAll(userId: string, type?: CategoryType): Promise<Category[]> {
-    const where: any = { userId };
+  async findAll(workspaceId: string, type?: CategoryType): Promise<Category[]> {
+    const where: any = { workspaceId };
     if (type) {
       where.type = type;
     }
 
-    const cacheKey = `categories:${userId}:${type || 'all'}`;
+    const cacheKey = `categories:${workspaceId}:${type || 'all'}`;
     const cached = await this.cacheManager.get<Category[]>(cacheKey);
     if (cached) {
       return cached;
@@ -90,9 +107,9 @@ export class CategoriesService {
     return categories;
   }
 
-  async findOne(id: string, userId: string): Promise<Category> {
+  async findOne(id: string, workspaceId: string): Promise<Category> {
     const category = await this.categoryRepository.findOne({
-      where: { id, userId },
+      where: { id, workspaceId },
       relations: ['children', 'parent'],
     });
 
@@ -103,9 +120,15 @@ export class CategoriesService {
     return category;
   }
 
-  async update(id: string, userId: string, updateDto: UpdateCategoryDto): Promise<Category> {
-    await this.ensureCanEditCategories(userId);
-    const category = await this.findOne(id, userId);
+  async update(
+    id: string,
+    workspaceId: string,
+    userId: string,
+    updateDto: UpdateCategoryDto,
+  ): Promise<Category> {
+    await this.ensureCanEditCategories(workspaceId, userId);
+    const category = await this.findOne(id, workspaceId);
+    const before = { ...category };
 
     if (category.isSystem) {
       throw new ForbiddenException('Cannot modify system category');
@@ -114,7 +137,7 @@ export class CategoriesService {
     // Check for duplicate name if name is being changed
     if (updateDto.name && updateDto.name !== category.name) {
       const existing = await this.categoryRepository.findOne({
-        where: { userId, name: updateDto.name, type: category.type },
+        where: { workspaceId, name: updateDto.name, type: category.type },
       });
 
       if (existing) {
@@ -124,23 +147,54 @@ export class CategoriesService {
 
     Object.assign(category, updateDto);
     const saved = await this.categoryRepository.save(category);
-    await this.invalidateCache(userId);
+    await this.invalidateCache(workspaceId);
+
+    const parentChanged = before.parentId !== saved.parentId;
+    // Audit: track category updates with before/after diff.
+    await this.auditService.createEvent({
+      workspaceId,
+      actorType: ActorType.USER,
+      actorId: userId,
+      entityType: EntityType.CATEGORY,
+      entityId: saved.id,
+      action: AuditAction.UPDATE,
+      diff: { before, after: saved },
+      meta: parentChanged
+        ? { parentChange: { from: before.parentId ?? null, to: saved.parentId ?? null } }
+        : undefined,
+      isUndoable: true,
+    });
     return saved;
   }
 
-  async remove(id: string, userId: string): Promise<void> {
-    await this.ensureCanEditCategories(userId);
-    const category = await this.findOne(id, userId);
+  async remove(id: string, workspaceId: string, userId: string): Promise<void> {
+    await this.ensureCanEditCategories(workspaceId, userId);
+    const category = await this.findOne(id, workspaceId);
 
     if (category.isSystem) {
       throw new ForbiddenException('Cannot delete system category');
     }
 
     await this.categoryRepository.remove(category);
-    await this.invalidateCache(userId);
+    await this.invalidateCache(workspaceId);
+
+    // Audit: track category deletion for potential rollback.
+    await this.auditService.createEvent({
+      workspaceId,
+      actorType: ActorType.USER,
+      actorId: userId,
+      entityType: EntityType.CATEGORY,
+      entityId: category.id,
+      action: AuditAction.DELETE,
+      diff: { before: category, after: null },
+      meta: {
+        parentId: category.parentId ?? null,
+      },
+      isUndoable: true,
+    });
   }
 
-  async createSystemCategories(userId: string): Promise<void> {
+  async createSystemCategories(workspaceId: string, userId?: string): Promise<void> {
     const systemCategories = [
       // Income categories
       { name: 'Приход', type: CategoryType.INCOME, isSystem: true },
@@ -165,23 +219,24 @@ export class CategoriesService {
 
     for (const catData of systemCategories) {
       const existing = await this.categoryRepository.findOne({
-        where: { userId, name: catData.name },
+        where: { workspaceId, name: catData.name },
       });
 
       if (!existing) {
         const category = this.categoryRepository.create({
+          workspaceId,
           userId,
           ...catData,
         });
         await this.categoryRepository.save(category);
       }
     }
-    await this.invalidateCache(userId);
+    await this.invalidateCache(workspaceId);
   }
 
-  private async invalidateCache(userId: string): Promise<void> {
-    await this.cacheManager.del(`categories:${userId}:all`);
-    await this.cacheManager.del(`categories:${userId}:${CategoryType.INCOME}`);
-    await this.cacheManager.del(`categories:${userId}:${CategoryType.EXPENSE}`);
+  private async invalidateCache(workspaceId: string): Promise<void> {
+    await this.cacheManager.del(`categories:${workspaceId}:all`);
+    await this.cacheManager.del(`categories:${workspaceId}:${CategoryType.INCOME}`);
+    await this.cacheManager.del(`categories:${workspaceId}:${CategoryType.EXPENSE}`);
   }
 }

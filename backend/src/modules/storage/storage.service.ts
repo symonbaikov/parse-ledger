@@ -532,7 +532,7 @@ export class StorageService {
 
     if (deleteFiles) {
       for (const statement of statements) {
-        await this.statementsService.remove(statement.id, userId);
+        await this.statementsService.remove(statement.id, userId, statement.workspaceId);
       }
     } else if (statements.length > 0) {
       await this.statementRepository.update({ folderId: folder.id }, { folderId: null });
@@ -611,7 +611,7 @@ export class StorageService {
     if (!statement.deletedAt) {
       throw new BadRequestException('File is not in trash');
     }
-    await this.statementsService.remove(statementId, userId);
+    await this.statementsService.remove(statementId, userId, statement.workspaceId);
     return { status: 'deleted' };
   }
 
@@ -865,7 +865,7 @@ export class StorageService {
 
     const deletable = statements.filter(st => st.deletedAt);
     for (const st of deletable) {
-      await this.statementsService.remove(st.id, userId);
+      await this.statementsService.remove(st.id, userId, st.workspaceId);
     }
 
     return {

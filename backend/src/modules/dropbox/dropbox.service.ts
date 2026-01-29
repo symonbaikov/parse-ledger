@@ -13,6 +13,9 @@ import { validateFile } from '../../common/utils/file-validator.util';
 import { normalizeFilename } from '../../common/utils/filename.util';
 import { resolveUploadsDir } from '../../common/utils/uploads.util';
 import {
+  ActorType,
+  AuditAction,
+  EntityType,
   DropboxSettings,
   Integration,
   IntegrationProvider,
@@ -21,6 +24,7 @@ import {
   Statement,
   User,
 } from '../../entities';
+import { AuditService } from '../audit/audit.service';
 import { StatementsService } from '../statements/statements.service';
 import type { ImportDropboxFilesDto } from './dto/import-dropbox-files.dto';
 import type { UpdateDropboxSettingsDto } from './dto/update-dropbox-settings.dto';
@@ -50,6 +54,7 @@ export class DropboxService {
     private readonly userRepository: Repository<User>,
     private readonly statementsService: StatementsService,
     private readonly fileStorageService: FileStorageService,
+    private readonly auditService: AuditService,
   ) {}
 
   private getClientId() {
@@ -549,7 +554,15 @@ export class DropboxService {
 
         validateFile(file);
 
-        await this.statementsService.create(user, file, undefined, undefined, undefined, false);
+        await this.statementsService.create(
+          user,
+          user.workspaceId,
+          file,
+          undefined,
+          undefined,
+          undefined,
+          false,
+        );
 
         results.push({ fileId, status: 'ok' });
       } catch (error: any) {
@@ -741,6 +754,27 @@ export class DropboxService {
 
     integration.dropboxSettings.lastSyncAt = new Date();
     await this.dropboxSettingsRepository.save(integration.dropboxSettings);
+
+    try {
+      // Audit: record Dropbox sync/export activity.
+      await this.auditService.createEvent({
+        workspaceId: integration.workspaceId ?? null,
+        actorType: ActorType.INTEGRATION,
+        actorId: integration.connectedByUserId ?? null,
+        actorLabel: 'Dropbox Sync',
+        entityType: EntityType.INTEGRATION,
+        entityId: integration.id,
+        action: AuditAction.EXPORT,
+        meta: {
+          provider: IntegrationProvider.DROPBOX,
+          uploaded,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Audit event failed for Dropbox sync: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
 
     return {
       ok: true,

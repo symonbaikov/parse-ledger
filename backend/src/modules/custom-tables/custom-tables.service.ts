@@ -8,7 +8,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, QueryFailedError, type Repository } from 'typeorm';
 import { validate as uuidValidate, v4 as uuidv4 } from 'uuid';
-import { AuditAction, AuditLog } from '../../entities/audit-log.entity';
+import {
+  ActorType,
+  AuditAction,
+  type AuditEventDiff,
+  EntityType,
+  Severity,
+} from '../../entities/audit-event.entity';
 import { Category } from '../../entities/category.entity';
 import { CustomTableCellStyle } from '../../entities/custom-table-cell-style.entity';
 import { CustomTableColumnStyle } from '../../entities/custom-table-column-style.entity';
@@ -24,6 +30,7 @@ import { Statement } from '../../entities/statement.entity';
 import { Transaction, TransactionType } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
 import { WorkspaceMember, WorkspaceRole } from '../../entities/workspace-member.entity';
+import { AuditService } from '../audit/audit.service';
 import type { BatchCreateCustomTableRowsDto } from './dto/batch-create-custom-table-rows.dto';
 import type { ClassifyPaidStatusDto } from './dto/classify-paid-status.dto';
 import type { CreateCustomTableColumnDto } from './dto/create-custom-table-column.dto';
@@ -70,12 +77,11 @@ export class CustomTablesService {
     private readonly statementRepository: Repository<Statement>,
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
-    @InjectRepository(AuditLog)
-    private readonly auditLogRepository: Repository<AuditLog>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(WorkspaceMember)
     private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
+    private readonly auditService: AuditService,
   ) {}
 
   private throwHelpfulSchemaError(error: unknown): never {
@@ -90,18 +96,7 @@ export class CustomTablesService {
     throw error;
   }
 
-  private async getWorkspaceId(userId: string): Promise<string | null> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      select: ['id', 'workspaceId'],
-    });
-    return user?.workspaceId ?? null;
-  }
-
-  private async ensureCanEditCustomTables(userId: string): Promise<void> {
-    const workspaceId = await this.getWorkspaceId(userId);
-    if (!workspaceId) return;
-
+  private async ensureCanEditCustomTables(userId: string, workspaceId: string): Promise<void> {
     const membership = await this.workspaceMemberRepository.findOne({
       where: { workspaceId, userId },
       select: ['role', 'permissions'],
@@ -114,23 +109,14 @@ export class CustomTablesService {
     }
   }
 
-  private async resolveCategoryId(userId: string, categoryId: string): Promise<string> {
+  private async resolveCategoryId(workspaceId: string, categoryId: string): Promise<string> {
     let category: Category | null = null;
     try {
-      const workspaceId = await this.getWorkspaceId(userId);
       const qb = this.categoryRepository
         .createQueryBuilder('category')
         .leftJoin('category.user', 'owner')
-        .where('category.id = :categoryId', { categoryId });
-
-      if (workspaceId) {
-        qb.andWhere('(category.userId = :userId OR owner.workspaceId = :workspaceId)', {
-          userId,
-          workspaceId,
-        });
-      } else {
-        qb.andWhere('category.userId = :userId', { userId });
-      }
+        .where('category.id = :categoryId', { categoryId })
+        .andWhere('owner.workspaceId = :workspaceId', { workspaceId });
 
       category = await qb.getOne();
     } catch (error) {
@@ -142,25 +128,16 @@ export class CustomTablesService {
     return category.id;
   }
 
-  private async requireTable(userId: string, tableId: string): Promise<CustomTable> {
+  private async requireTable(workspaceId: string, tableId: string): Promise<CustomTable> {
     if (!this.isUuid(tableId)) {
       throw new BadRequestException('Некорректный идентификатор таблицы');
     }
-    const workspaceId = await this.getWorkspaceId(userId);
     try {
       const qb = this.customTableRepository
         .createQueryBuilder('table')
         .leftJoinAndSelect('table.user', 'owner')
-        .where('table.id = :tableId', { tableId });
-
-      if (workspaceId) {
-        qb.andWhere('(table.userId = :userId OR owner.workspaceId = :workspaceId)', {
-          userId,
-          workspaceId,
-        });
-      } else {
-        qb.andWhere('table.userId = :userId', { userId });
-      }
+        .where('table.id = :tableId', { tableId })
+        .andWhere('owner.workspaceId = :workspaceId', { workspaceId });
 
       const table = await qb.getOne();
       if (!table) {
@@ -342,26 +319,78 @@ export class CustomTablesService {
     return Number.isFinite(max) ? max + 1 : 1;
   }
 
-  private async log(userId: string, action: AuditAction, metadata?: Record<string, any>) {
+  private async logEvent(params: {
+    userId: string;
+    workspaceId: string | null;
+    entityType: EntityType;
+    entityId: string;
+    action: AuditAction;
+    diff?: AuditEventDiff | null;
+    meta?: Record<string, any> | null;
+    batchId?: string | null;
+    severity?: Severity;
+    isUndoable?: boolean;
+  }) {
     try {
-      await this.auditLogRepository.save(
-        this.auditLogRepository.create({
-          userId,
-          action,
-          metadata: metadata || null,
-        }),
-      );
+      // Audit: capture custom table mutations (tables, columns, rows, cells).
+      await this.auditService.createEvent({
+        workspaceId: params.workspaceId,
+        actorType: ActorType.USER,
+        actorId: params.userId,
+        entityType: params.entityType,
+        entityId: params.entityId,
+        action: params.action,
+        diff: params.diff ?? null,
+        meta: params.meta ?? null,
+        batchId: params.batchId ?? null,
+        severity: params.severity ?? Severity.INFO,
+        isUndoable: params.isUndoable,
+      });
     } catch (error) {
-      this.logger.warn(`Audit log write failed for action=${action}`);
+      this.logger.warn(
+        `Audit event write failed for action=${params.action}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
-  async createTable(userId: string, dto: CreateCustomTableDto): Promise<CustomTable> {
-    await this.ensureCanEditCustomTables(userId);
+  private async logRowBatchCreate(params: {
+    userId: string;
+    workspaceId: string | null;
+    tableId: string;
+    rows: CustomTableRow[];
+    meta?: Record<string, any>;
+  }) {
+    if (!params.rows.length) return;
+    try {
+      await this.auditService.createBatchEvents(
+        params.rows.map(row => ({
+          workspaceId: params.workspaceId,
+          actorType: ActorType.USER,
+          actorId: params.userId,
+          entityType: EntityType.TABLE_ROW,
+          entityId: row.id,
+          action: AuditAction.CREATE,
+          diff: { before: null, after: row },
+          meta: { tableId: params.tableId, rowNumber: row.rowNumber, ...(params.meta || {}) },
+        })),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Audit event batch write failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  async createTable(
+    userId: string,
+    workspaceId: string,
+    dto: CreateCustomTableDto,
+  ): Promise<CustomTable> {
+    await this.ensureCanEditCustomTables(userId, workspaceId);
     const categoryId =
       dto.categoryId === null || dto.categoryId === undefined
         ? null
-        : await this.resolveCategoryId(userId, dto.categoryId);
+        : await this.resolveCategoryId(workspaceId, dto.categoryId);
 
     const table = this.customTableRepository.create({
       userId,
@@ -377,26 +406,26 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_CREATE, {
-      tableId: saved.id,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.CUSTOM_TABLE,
+      entityId: saved.id,
+      action: AuditAction.CREATE,
+      diff: { before: null, after: saved },
+      meta: { name: saved.name },
     });
     return saved;
   }
 
-  async listTables(userId: string): Promise<CustomTable[]> {
+  async listTables(workspaceId: string): Promise<CustomTable[]> {
     try {
-      const workspaceId = await this.getWorkspaceId(userId);
       const qb = this.customTableRepository
         .createQueryBuilder('table')
         .leftJoinAndSelect('table.category', 'category')
         .leftJoin('table.user', 'owner')
+        .where('owner.workspaceId = :workspaceId', { workspaceId })
         .orderBy('table.createdAt', 'DESC');
-
-      if (workspaceId) {
-        qb.where('owner.workspaceId = :workspaceId', { workspaceId });
-      } else {
-        qb.where('table.userId = :userId', { userId });
-      }
 
       return await qb.getMany();
     } catch (error) {
@@ -404,8 +433,8 @@ export class CustomTablesService {
     }
   }
 
-  async getTable(userId: string, tableId: string): Promise<CustomTable> {
-    await this.requireTable(userId, tableId);
+  async getTable(workspaceId: string, tableId: string): Promise<CustomTable> {
+    await this.requireTable(workspaceId, tableId);
     let table: CustomTable | null = null;
     try {
       table = await this.customTableRepository.findOne({
@@ -439,16 +468,18 @@ export class CustomTablesService {
 
   async updateTable(
     userId: string,
+    workspaceId: string,
     tableId: string,
     dto: UpdateCustomTableDto,
   ): Promise<CustomTable> {
-    await this.ensureCanEditCustomTables(userId);
-    const table = await this.requireTable(userId, tableId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    const table = await this.requireTable(workspaceId, tableId);
+    const before = { ...table };
     if (dto.name !== undefined) table.name = dto.name;
     if (dto.description !== undefined) table.description = dto.description ?? null;
     if (dto.categoryId !== undefined) {
       table.categoryId =
-        dto.categoryId === null ? null : await this.resolveCategoryId(userId, dto.categoryId);
+        dto.categoryId === null ? null : await this.resolveCategoryId(workspaceId, dto.categoryId);
     }
     let saved: CustomTable;
     try {
@@ -456,28 +487,39 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_UPDATE, {
-      tableId: saved.id,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.CUSTOM_TABLE,
+      entityId: saved.id,
+      action: AuditAction.UPDATE,
+      diff: { before, after: saved },
     });
     return saved;
   }
 
   async createFromDataEntry(
     userId: string,
+    workspaceId: string,
     dto: CreateCustomTableFromDataEntryDto,
   ): Promise<{ tableId: string; columnsCreated: number; rowsCreated: number }> {
-    await this.ensureCanEditCustomTables(userId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
     const selectedType = dto.scope === DataEntryToCustomTableScope.TYPE ? dto.type : undefined;
 
     let entries: DataEntry[];
     try {
-      entries = await this.dataEntryRepository.find({
-        where: {
-          userId,
-          ...(selectedType ? { type: selectedType } : {}),
-        },
-        order: { date: 'ASC', createdAt: 'ASC' },
-      });
+      const qb = this.dataEntryRepository
+        .createQueryBuilder('entry')
+        .leftJoin('entry.user', 'owner')
+        .where('owner.workspaceId = :workspaceId', { workspaceId })
+        .orderBy('entry.date', 'ASC')
+        .addOrderBy('entry.createdAt', 'ASC');
+
+      if (selectedType) {
+        qb.andWhere('entry.type = :type', { type: selectedType });
+      }
+
+      entries = await qb.getMany();
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
@@ -596,13 +638,20 @@ export class CustomTablesService {
       this.throwHelpfulSchemaError(error);
     }
 
-    await this.log(userId, AuditAction.CUSTOM_TABLE_CREATE, {
-      tableId: table.id,
-      source: 'data_entry_export',
-      scope: dto.scope,
-      type: selectedType || null,
-      rowsPlanned: entries.length,
-      customColumns: customNames.length,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.CUSTOM_TABLE,
+      entityId: table.id,
+      action: AuditAction.CREATE,
+      diff: { before: null, after: table },
+      meta: {
+        source: 'data_entry_export',
+        scope: dto.scope,
+        type: selectedType || null,
+        rowsPlanned: entries.length,
+        customColumns: customNames.length,
+      },
     });
 
     let createdColumns: CustomTableColumn[];
@@ -689,11 +738,16 @@ export class CustomTablesService {
       }
     }
 
-    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
+    await this.logRowBatchCreate({
+      userId,
+      workspaceId,
       tableId: table.id,
-      rowsCreated: rowsToInsert.length,
-      scope: dto.scope,
-      type: selectedType || null,
+      rows: rowsToInsert,
+      meta: {
+        rowsCreated: rowsToInsert.length,
+        scope: dto.scope,
+        type: selectedType || null,
+      },
     });
 
     return {
@@ -705,14 +759,19 @@ export class CustomTablesService {
 
   async createFromDataEntryCustomTab(
     userId: string,
+    workspaceId: string,
     dto: CreateCustomTableFromDataEntryCustomTabDto,
   ): Promise<{ tableId: string; columnsCreated: number; rowsCreated: number }> {
-    await this.ensureCanEditCustomTables(userId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
     let customTab: DataEntryCustomField | null = null;
     try {
-      customTab = await this.dataEntryCustomFieldRepository.findOne({
-        where: { id: dto.customTabId, userId },
-      });
+      const qb = this.dataEntryCustomFieldRepository
+        .createQueryBuilder('customField')
+        .leftJoin('customField.user', 'owner')
+        .where('customField.id = :id', { id: dto.customTabId })
+        .andWhere('owner.workspaceId = :workspaceId', { workspaceId });
+
+      customTab = await qb.getOne();
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
@@ -722,10 +781,15 @@ export class CustomTablesService {
 
     let entries: DataEntry[];
     try {
-      entries = await this.dataEntryRepository.find({
-        where: { userId, customTabId: customTab.id },
-        order: { date: 'ASC', createdAt: 'ASC' },
-      });
+      const qb = this.dataEntryRepository
+        .createQueryBuilder('entry')
+        .leftJoin('entry.user', 'owner')
+        .where('entry.customTabId = :customTabId', { customTabId: customTab.id })
+        .andWhere('owner.workspaceId = :workspaceId', { workspaceId })
+        .orderBy('entry.date', 'ASC')
+        .addOrderBy('entry.createdAt', 'ASC');
+
+      entries = await qb.getMany();
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
@@ -756,11 +820,18 @@ export class CustomTablesService {
       this.throwHelpfulSchemaError(error);
     }
 
-    await this.log(userId, AuditAction.CUSTOM_TABLE_CREATE, {
-      tableId: table.id,
-      source: 'data_entry_custom_tab_export',
-      customTabId: customTab.id,
-      rowsPlanned: entries.length,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.CUSTOM_TABLE,
+      entityId: table.id,
+      action: AuditAction.CREATE,
+      diff: { before: null, after: table },
+      meta: {
+        source: 'data_entry_custom_tab_export',
+        customTabId: customTab.id,
+        rowsPlanned: entries.length,
+      },
     });
 
     const columnDefs: Array<{
@@ -880,11 +951,16 @@ export class CustomTablesService {
       }
     }
 
-    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
+    await this.logRowBatchCreate({
+      userId,
+      workspaceId,
       tableId: table.id,
-      rowsCreated: rowsToInsert.length,
-      source: 'data_entry_custom_tab_export',
-      customTabId: customTab.id,
+      rows: rowsToInsert,
+      meta: {
+        rowsCreated: rowsToInsert.length,
+        source: 'data_entry_custom_tab_export',
+        customTabId: customTab.id,
+      },
     });
 
     return {
@@ -896,15 +972,20 @@ export class CustomTablesService {
 
   async syncFromDataEntry(
     userId: string,
+    workspaceId: string,
     tableId: string,
   ): Promise<{ tableId: string; rowsCreated: number; syncedAt: Date }> {
-    await this.ensureCanEditCustomTables(userId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
     let table: CustomTable | null = null;
     try {
-      table = await this.customTableRepository.findOne({
-        where: { id: tableId, userId },
-        relations: { columns: true },
-      });
+      const qb = this.customTableRepository
+        .createQueryBuilder('table')
+        .leftJoinAndSelect('table.columns', 'columns')
+        .leftJoin('table.user', 'owner')
+        .where('table.id = :tableId', { tableId })
+        .andWhere('owner.workspaceId = :workspaceId', { workspaceId });
+
+      table = await qb.getOne();
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
@@ -919,25 +1000,25 @@ export class CustomTablesService {
 
     let entries: DataEntry[];
     try {
+      const qb = this.dataEntryRepository
+        .createQueryBuilder('entry')
+        .leftJoin('entry.user', 'owner')
+        .where('owner.workspaceId = :workspaceId', { workspaceId })
+        .orderBy('entry.date', 'ASC')
+        .addOrderBy('entry.createdAt', 'ASC');
+
       if (isCustomTab) {
-        entries = await this.dataEntryRepository.find({
-          where: { userId, customTabId: table.dataEntryCustomTabId },
-          order: { date: 'ASC', createdAt: 'ASC' },
+        qb.andWhere('entry.customTabId = :customTabId', {
+          customTabId: table.dataEntryCustomTabId,
         });
       } else if (table.dataEntryScope === DataEntryToCustomTableScope.TYPE) {
         if (!table.dataEntryType) {
           throw new BadRequestException('Не указан тип для синхронизации');
         }
-        entries = await this.dataEntryRepository.find({
-          where: { userId, type: table.dataEntryType },
-          order: { date: 'ASC', createdAt: 'ASC' },
-        });
-      } else {
-        entries = await this.dataEntryRepository.find({
-          where: { userId },
-          order: { date: 'ASC', createdAt: 'ASC' },
-        });
+        qb.andWhere('entry.type = :type', { type: table.dataEntryType });
       }
+
+      entries = await qb.getMany();
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
@@ -1012,15 +1093,20 @@ export class CustomTablesService {
           await manager.save(CustomTableRow, chunk);
         }
       }
-      await manager.update(CustomTable, { id: table.id, userId }, {
+      await manager.update(CustomTable, { id: table.id }, {
         dataEntrySyncedAt: syncedAt,
       } as any);
     });
 
-    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
+    await this.logRowBatchCreate({
+      userId,
+      workspaceId,
       tableId: table.id,
-      rowsCreated: rowsToInsert.length,
-      source: 'data_entry_sync',
+      rows: rowsToInsert,
+      meta: {
+        rowsCreated: rowsToInsert.length,
+        source: 'data_entry_sync',
+      },
     });
 
     return { tableId: table.id, rowsCreated: rowsToInsert.length, syncedAt };
@@ -1028,9 +1114,10 @@ export class CustomTablesService {
 
   async createFromStatements(
     userId: string,
+    workspaceId: string,
     dto: CreateCustomTableFromStatementsDto,
   ): Promise<{ tableId: string; columnsCreated: number; rowsCreated: number }> {
-    await this.ensureCanEditCustomTables(userId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
     const statementIds = Array.from(
       new Set((dto.statementIds || []).map(v => String(v).trim()).filter(Boolean)),
     );
@@ -1043,10 +1130,14 @@ export class CustomTablesService {
 
     let statements: Statement[];
     try {
-      statements = await this.statementRepository.find({
-        where: { id: In(statementIds), userId },
-        order: { createdAt: 'DESC' },
-      });
+      const qb = this.statementRepository
+        .createQueryBuilder('statement')
+        .leftJoin('statement.user', 'owner')
+        .where('statement.id IN (:...ids)', { ids: statementIds })
+        .andWhere('owner.workspaceId = :workspaceId', { workspaceId })
+        .orderBy('statement.createdAt', 'DESC');
+
+      statements = await qb.getMany();
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
@@ -1118,11 +1209,18 @@ export class CustomTablesService {
       this.throwHelpfulSchemaError(error);
     }
 
-    await this.log(userId, AuditAction.CUSTOM_TABLE_CREATE, {
-      tableId: table.id,
-      source: 'statement_export',
-      statementIds,
-      rowsPlanned: transactions.length,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.CUSTOM_TABLE,
+      entityId: table.id,
+      action: AuditAction.CREATE,
+      diff: { before: null, after: table },
+      meta: {
+        source: 'statement_export',
+        statementIds,
+        rowsPlanned: transactions.length,
+      },
     });
 
     let createdColumns: CustomTableColumn[];
@@ -1226,11 +1324,16 @@ export class CustomTablesService {
       }
     }
 
-    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
+    await this.logRowBatchCreate({
+      userId,
+      workspaceId,
       tableId: table.id,
-      rowsCreated: rowsToInsert.length,
-      source: 'statement_export',
-      statementIds,
+      rows: rowsToInsert,
+      meta: {
+        rowsCreated: rowsToInsert.length,
+        source: 'statement_export',
+        statementIds,
+      },
     });
 
     return {
@@ -1240,24 +1343,33 @@ export class CustomTablesService {
     };
   }
 
-  async removeTable(userId: string, tableId: string): Promise<void> {
-    await this.ensureCanEditCustomTables(userId);
-    const table = await this.requireTable(userId, tableId);
+  async removeTable(userId: string, workspaceId: string, tableId: string): Promise<void> {
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    const table = await this.requireTable(workspaceId, tableId);
     try {
-      await this.customTableRepository.delete({ id: table.id, userId });
+      await this.customTableRepository.delete({ id: table.id });
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_DELETE, { tableId });
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.CUSTOM_TABLE,
+      entityId: table.id,
+      action: AuditAction.DELETE,
+      diff: { before: table, after: null },
+      isUndoable: true,
+    });
   }
 
   async addColumn(
     userId: string,
+    workspaceId: string,
     tableId: string,
     dto: CreateCustomTableColumnDto,
   ): Promise<CustomTableColumn> {
-    await this.ensureCanEditCustomTables(userId);
-    await this.requireTable(userId, tableId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    await this.requireTable(workspaceId, tableId);
 
     const position = dto.position ?? (await this.getNextColumnPosition(tableId));
     const column = this.customTableColumnRepository.create({
@@ -1277,22 +1389,30 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_COLUMN_CREATE, {
-      tableId,
-      columnId: saved.id,
-      key: saved.key,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.CUSTOM_TABLE_COLUMN,
+      entityId: saved.id,
+      action: AuditAction.CREATE,
+      diff: { before: null, after: saved },
+      meta: {
+        tableId,
+        key: saved.key,
+      },
     });
     return saved;
   }
 
   async updateColumn(
     userId: string,
+    workspaceId: string,
     tableId: string,
     columnId: string,
     dto: UpdateCustomTableColumnDto,
   ): Promise<CustomTableColumn> {
-    await this.ensureCanEditCustomTables(userId);
-    await this.requireTable(userId, tableId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    await this.requireTable(workspaceId, tableId);
     if (!this.isUuid(columnId)) {
       throw new BadRequestException('Некорректный идентификатор колонки');
     }
@@ -1308,6 +1428,7 @@ export class CustomTablesService {
       throw new NotFoundException('Колонка не найдена');
     }
 
+    const before = { ...column };
     if (dto.title !== undefined) column.title = dto.title;
     if (dto.type !== undefined) column.type = dto.type;
     if (dto.isRequired !== undefined) column.isRequired = dto.isRequired;
@@ -1321,20 +1442,26 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_COLUMN_UPDATE, {
-      tableId,
-      columnId,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.CUSTOM_TABLE_COLUMN,
+      entityId: columnId,
+      action: AuditAction.UPDATE,
+      diff: { before, after: saved },
+      meta: { tableId },
     });
     return saved;
   }
 
   async reorderColumns(
     userId: string,
+    workspaceId: string,
     tableId: string,
     dto: ReorderCustomTableColumnsDto,
   ): Promise<void> {
-    await this.ensureCanEditCustomTables(userId);
-    await this.requireTable(userId, tableId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    await this.requireTable(workspaceId, tableId);
     const invalidId = dto.columnIds.find(id => !this.isUuid(id));
     if (invalidId) {
       throw new BadRequestException('Некорректный идентификатор колонки');
@@ -1347,6 +1474,7 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
+    const beforePositions = new Map(columns.map(col => [col.id, col.position ?? 0]));
     const existingIds = new Set(columns.map(c => c.id));
     for (const id of dto.columnIds) {
       if (!existingIds.has(id)) {
@@ -1364,14 +1492,37 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_COLUMN_REORDER, {
-      tableId,
-    });
+    try {
+      await this.auditService.createBatchEvents(
+        dto.columnIds.map((id, idx) => ({
+          workspaceId,
+          actorType: ActorType.USER,
+          actorId: userId,
+          entityType: EntityType.CUSTOM_TABLE_COLUMN,
+          entityId: id,
+          action: AuditAction.UPDATE,
+          diff: {
+            before: { position: beforePositions.get(id) ?? null },
+            after: { position: idx },
+          },
+          meta: { tableId, reorder: true },
+        })),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Audit event write failed for column reorder: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
-  async removeColumn(userId: string, tableId: string, columnId: string): Promise<void> {
-    await this.ensureCanEditCustomTables(userId);
-    await this.requireTable(userId, tableId);
+  async removeColumn(
+    userId: string,
+    workspaceId: string,
+    tableId: string,
+    columnId: string,
+  ): Promise<void> {
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    await this.requireTable(workspaceId, tableId);
     if (!this.isUuid(columnId)) {
       throw new BadRequestException('Некорректный идентификатор колонки');
     }
@@ -1391,15 +1542,20 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_COLUMN_DELETE, {
-      tableId,
-      columnId,
-      key: column.key,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.CUSTOM_TABLE_COLUMN,
+      entityId: columnId,
+      action: AuditAction.DELETE,
+      diff: { before: column, after: null },
+      meta: { tableId, key: column.key },
+      isUndoable: true,
     });
   }
 
   async listRows(
-    userId: string,
+    workspaceId: string,
     tableId: string,
     params: {
       cursor?: number;
@@ -1407,7 +1563,7 @@ export class CustomTablesService {
       filters?: CustomTableRowFilterDto[];
     },
   ): Promise<{ items: CustomTableRow[]; total: number }> {
-    await this.requireTable(userId, tableId);
+    await this.requireTable(workspaceId, tableId);
 
     const query = this.customTableRowRepository
       .createQueryBuilder('r')
@@ -1741,11 +1897,11 @@ export class CustomTablesService {
   }
 
   async classifyPaidStatus(
-    userId: string,
+    workspaceId: string,
     tableId: string,
     dto: ClassifyPaidStatusDto,
   ): Promise<{ items: Array<{ rowId: string; paid: boolean | null }> }> {
-    await this.requireTable(userId, tableId);
+    await this.requireTable(workspaceId, tableId);
     const rowIds = Array.isArray(dto.rowIds) ? dto.rowIds.filter(Boolean) : [];
     const uniqueRowIds = Array.from(new Set(rowIds));
     if (!uniqueRowIds.length) return { items: [] };
@@ -1806,11 +1962,12 @@ export class CustomTablesService {
 
   async createRow(
     userId: string,
+    workspaceId: string,
     tableId: string,
     dto: CreateCustomTableRowDto,
   ): Promise<CustomTableRow> {
-    await this.ensureCanEditCustomTables(userId);
-    await this.requireTable(userId, tableId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    await this.requireTable(workspaceId, tableId);
     const allowedKeys = await this.getAllowedColumnKeys(tableId);
     const data = this.sanitizeRowData(dto.data, allowedKeys);
     const rowNumber = dto.rowNumber ?? (await this.getNextRowNumber(tableId));
@@ -1827,22 +1984,27 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_CREATE, {
-      tableId,
-      rowId: saved.id,
-      rowNumber: saved.rowNumber,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.TABLE_ROW,
+      entityId: saved.id,
+      action: AuditAction.CREATE,
+      diff: { before: null, after: saved },
+      meta: { tableId, rowNumber: saved.rowNumber },
     });
     return saved;
   }
 
   async updateRow(
     userId: string,
+    workspaceId: string,
     tableId: string,
     rowId: string,
     dto: UpdateCustomTableRowDto,
   ): Promise<CustomTableRow> {
-    await this.ensureCanEditCustomTables(userId);
-    await this.requireTable(userId, tableId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    await this.requireTable(workspaceId, tableId);
     if (!this.isUuid(rowId)) {
       throw new BadRequestException('Некорректный идентификатор строки');
     }
@@ -1860,6 +2022,8 @@ export class CustomTablesService {
 
     const allowedKeys = await this.getAllowedColumnKeys(tableId);
     const patch = this.sanitizeRowData(dto.data, allowedKeys);
+    const beforeData = { ...(row.data || {}) };
+    const beforeStyles = row.styles ? { ...row.styles } : null;
     row.data = { ...(row.data || {}), ...patch };
     if (dto.styles && typeof dto.styles === 'object') {
       row.styles = { ...(row.styles || {}), ...dto.styles };
@@ -1871,16 +2035,58 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_UPDATE, {
-      tableId,
-      rowId,
-    });
+    const patchKeys = Object.keys(patch || {});
+    const batchId = patchKeys.length > 1 ? uuidv4() : null;
+
+    for (const key of patchKeys) {
+      const beforeValue = (beforeData as any)?.[key] ?? null;
+      const afterValue = (saved.data as any)?.[key] ?? null;
+      await this.logEvent({
+        userId,
+        workspaceId,
+        entityType: EntityType.TABLE_CELL,
+        entityId: rowId,
+        action: AuditAction.UPDATE,
+        diff: {
+          before: { value: beforeValue },
+          after: { value: afterValue },
+        },
+        meta: {
+          tableId,
+          cell: { column: key },
+        },
+        batchId,
+      });
+    }
+
+    if (dto.styles && typeof dto.styles === 'object') {
+      await this.logEvent({
+        userId,
+        workspaceId,
+        entityType: EntityType.TABLE_ROW,
+        entityId: rowId,
+        action: AuditAction.UPDATE,
+        diff: {
+          before: { styles: beforeStyles },
+          after: { styles: saved.styles },
+        },
+        meta: {
+          tableId,
+          stylesUpdated: true,
+        },
+      });
+    }
     return saved;
   }
 
-  async removeRow(userId: string, tableId: string, rowId: string): Promise<void> {
-    await this.ensureCanEditCustomTables(userId);
-    await this.requireTable(userId, tableId);
+  async removeRow(
+    userId: string,
+    workspaceId: string,
+    tableId: string,
+    rowId: string,
+  ): Promise<void> {
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    await this.requireTable(workspaceId, tableId);
     if (!this.isUuid(rowId)) {
       throw new BadRequestException('Некорректный идентификатор строки');
     }
@@ -1900,20 +2106,26 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_DELETE, {
-      tableId,
-      rowId,
-      rowNumber: row.rowNumber,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.TABLE_ROW,
+      entityId: rowId,
+      action: AuditAction.DELETE,
+      diff: { before: row, after: null },
+      meta: { tableId, rowNumber: row.rowNumber },
+      isUndoable: true,
     });
   }
 
   async batchCreateRows(
     userId: string,
+    workspaceId: string,
     tableId: string,
     dto: BatchCreateCustomTableRowsDto,
   ): Promise<{ created: number; rows: CustomTableRow[] }> {
-    await this.ensureCanEditCustomTables(userId);
-    await this.requireTable(userId, tableId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    await this.requireTable(workspaceId, tableId);
     const allowedKeys = await this.getAllowedColumnKeys(tableId);
 
     let nextRowNumber = await this.getNextRowNumber(tableId);
@@ -1932,20 +2144,27 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
+    await this.logRowBatchCreate({
+      userId,
+      workspaceId,
       tableId,
-      count: rows.length,
+      rows: savedRows,
+      meta: {
+        count: rows.length,
+      },
     });
     return { created: savedRows.length, rows: savedRows };
   }
 
   async updateViewSettingsColumn(
     userId: string,
+    workspaceId: string,
     tableId: string,
     dto: UpdateCustomTableViewSettingsColumnDto,
   ): Promise<CustomTable> {
-    await this.ensureCanEditCustomTables(userId);
-    const table = await this.requireTable(userId, tableId);
+    await this.ensureCanEditCustomTables(userId, workspaceId);
+    const table = await this.requireTable(workspaceId, tableId);
+    const before = { ...table };
 
     const columnKey = dto.columnKey?.trim();
     if (!columnKey) {
@@ -1984,10 +2203,15 @@ export class CustomTablesService {
     } catch (error) {
       this.throwHelpfulSchemaError(error);
     }
-    await this.log(userId, AuditAction.CUSTOM_TABLE_UPDATE, {
-      tableId: saved.id,
-      viewSettings: true,
+    await this.logEvent({
+      userId,
+      workspaceId,
+      entityType: EntityType.CUSTOM_TABLE,
+      entityId: saved.id,
+      action: AuditAction.UPDATE,
+      diff: { before, after: saved },
+      meta: { viewSettings: true },
     });
-    return this.getTable(userId, tableId);
+    return this.getTable(workspaceId, tableId);
   }
 }

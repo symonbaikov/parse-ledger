@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Cache } from 'cache-manager';
 import { Between, In, LessThanOrEqual, MoreThanOrEqual, type Repository } from 'typeorm';
 import * as XLSX from 'xlsx';
-import { AuditAction, AuditLog } from '../../entities/audit-log.entity';
+import { ActorType, AuditAction, EntityType } from '../../entities/audit-event.entity';
 import { Branch } from '../../entities/branch.entity';
 import { Category } from '../../entities/category.entity';
 import {
@@ -16,7 +16,9 @@ import {
 import { CustomTableRow } from '../../entities/custom-table-row.entity';
 import { CustomTable } from '../../entities/custom-table.entity';
 import { Transaction, TransactionType } from '../../entities/transaction.entity';
+import { User } from '../../entities/user.entity';
 import { Wallet } from '../../entities/wallet.entity';
+import { AuditService } from '../audit/audit.service';
 import { type CustomReportDto, ReportGroupBy } from './dto/custom-report.dto';
 import type { CustomTablesSummaryDto } from './dto/custom-tables-summary.dto';
 import { ExportFormat, type ExportReportDto } from './dto/export-report.dto';
@@ -175,15 +177,16 @@ export class ReportsService {
     private branchRepository: Repository<Branch>,
     @InjectRepository(Wallet)
     private walletRepository: Repository<Wallet>,
-    @InjectRepository(AuditLog)
-    private auditLogRepository: Repository<AuditLog>,
     @InjectRepository(CustomTable)
     private customTableRepository: Repository<CustomTable>,
     @InjectRepository(CustomTableColumn)
     private customTableColumnRepository: Repository<CustomTableColumn>,
     @InjectRepository(CustomTableRow)
     private customTableRowRepository: Repository<CustomTableRow>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly auditService: AuditService,
   ) {}
 
   private async getReportsVersion(userId: string): Promise<string> {
@@ -1009,11 +1012,20 @@ export class ReportsService {
     reportType: string,
     reportDate: string,
   ): Promise<void> {
-    await this.auditLogRepository.save({
-      userId,
-      action: AuditAction.REPORT_GENERATE,
-      description: `Generated ${reportType} report for ${reportDate}`,
-      metadata: {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'workspaceId'],
+    });
+
+    // Audit: record report exports for traceability.
+    await this.auditService.createEvent({
+      workspaceId: user?.workspaceId ?? null,
+      actorType: user ? ActorType.USER : ActorType.SYSTEM,
+      actorId: user?.id ?? null,
+      entityType: EntityType.WORKSPACE,
+      entityId: user?.workspaceId ?? userId,
+      action: AuditAction.EXPORT,
+      meta: {
         reportType,
         reportDate,
       },

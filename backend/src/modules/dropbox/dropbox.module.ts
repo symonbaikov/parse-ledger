@@ -9,6 +9,7 @@ import {
   User,
   WorkspaceMember,
 } from '../../entities';
+import { AuditModule } from '../audit/audit.module';
 import { StatementsModule } from '../statements/statements.module';
 import { DropboxController } from './dropbox.controller';
 import { DropboxScheduler } from './dropbox.scheduler';
@@ -25,6 +26,7 @@ import { DropboxService } from './dropbox.service';
       WorkspaceMember,
     ]),
     StatementsModule,
+    AuditModule,
   ],
   controllers: [DropboxController],
   providers: [DropboxService, DropboxScheduler, FileStorageService],

@@ -9,6 +9,7 @@ import {
   User,
   WorkspaceMember,
 } from '../../entities';
+import { AuditModule } from '../audit/audit.module';
 import { StatementsModule } from '../statements/statements.module';
 import { GoogleDriveController } from './google-drive.controller';
 import { GoogleDriveScheduler } from './google-drive.scheduler';
@@ -25,6 +26,7 @@ import { GoogleDriveService } from './google-drive.service';
       WorkspaceMember,
     ]),
     StatementsModule,
+    AuditModule,
   ],
   controllers: [GoogleDriveController],
   providers: [GoogleDriveService, GoogleDriveScheduler, FileStorageService],

@@ -1,11 +1,15 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { RequirePermission } from '../../common/decorators/require-permission.decorator';
+import { WorkspaceId } from '../../common/decorators/workspace.decorator';
 import { Permission } from '../../common/enums/permissions.enum';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { WorkspaceContextGuard } from '../../common/guards/workspace-context.guard';
+import { EntityType } from '../../entities/audit-event.entity';
 import type { CategoryType } from '../../entities/category.entity';
 import type { User } from '../../entities/user.entity';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Audit } from '../audit/decorators/audit.decorator';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -16,42 +20,62 @@ export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
-  @UseGuards(PermissionsGuard)
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard, PermissionsGuard)
   @RequirePermission(Permission.CATEGORY_CREATE)
-  async create(@Body() createDto: CreateCategoryDto, @CurrentUser() user: User) {
-    return this.categoriesService.create(user.id, createDto);
+  @Audit({ entityType: EntityType.CATEGORY, includeDiff: true, isUndoable: true })
+  async create(
+    @Body() createDto: CreateCategoryDto,
+    @CurrentUser() user: User,
+    @WorkspaceId() workspaceId: string,
+  ) {
+    return this.categoriesService.create(workspaceId, user.id, createDto);
   }
 
   @Get()
-  @UseGuards(PermissionsGuard)
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard, PermissionsGuard)
   @RequirePermission(Permission.CATEGORY_VIEW)
-  async findAll(@CurrentUser() user: User, @Query('type') type?: CategoryType) {
-    return this.categoriesService.findAll(user.id, type);
+  async findAll(
+    @CurrentUser() user: User,
+    @WorkspaceId() workspaceId: string,
+    @Query('type') type?: CategoryType,
+  ) {
+    return this.categoriesService.findAll(workspaceId, type);
   }
 
   @Get(':id')
-  @UseGuards(PermissionsGuard)
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard, PermissionsGuard)
   @RequirePermission(Permission.CATEGORY_VIEW)
-  async findOne(@Param('id') id: string, @CurrentUser() user: User) {
-    return this.categoriesService.findOne(id, user.id);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @WorkspaceId() workspaceId: string,
+  ) {
+    return this.categoriesService.findOne(id, workspaceId);
   }
 
   @Put(':id')
-  @UseGuards(PermissionsGuard)
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard, PermissionsGuard)
   @RequirePermission(Permission.CATEGORY_EDIT)
+  @Audit({ entityType: EntityType.CATEGORY, includeDiff: true, isUndoable: true })
   async update(
     @Param('id') id: string,
     @Body() updateDto: UpdateCategoryDto,
     @CurrentUser() user: User,
+    @WorkspaceId() workspaceId: string,
   ) {
-    return this.categoriesService.update(id, user.id, updateDto);
+    return this.categoriesService.update(id, workspaceId, user.id, updateDto);
   }
 
   @Delete(':id')
-  @UseGuards(PermissionsGuard)
+  @UseGuards(JwtAuthGuard, WorkspaceContextGuard, PermissionsGuard)
   @RequirePermission(Permission.CATEGORY_DELETE)
-  async remove(@Param('id') id: string, @CurrentUser() user: User) {
-    await this.categoriesService.remove(id, user.id);
+  @Audit({ entityType: EntityType.CATEGORY, includeDiff: true, isUndoable: true })
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @WorkspaceId() workspaceId: string,
+  ) {
+    await this.categoriesService.remove(id, workspaceId, user.id);
     return { message: 'Category deleted successfully' };
   }
 }

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuditLog } from '../../entities/audit-log.entity';
 import { Branch } from '../../entities/branch.entity';
 import { Category } from '../../entities/category.entity';
 import { CustomTableColumn } from '../../entities/custom-table-column.entity';
@@ -9,9 +8,9 @@ import { CustomTable } from '../../entities/custom-table.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
 import { Wallet } from '../../entities/wallet.entity';
-import { AuditLogController } from './audit-log.controller';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
@@ -20,14 +19,14 @@ import { ReportsService } from './reports.service';
       Category,
       Branch,
       Wallet,
-      AuditLog,
       CustomTable,
       CustomTableColumn,
       CustomTableRow,
       User,
     ]),
+    AuditModule,
   ],
-  controllers: [ReportsController, AuditLogController],
+  controllers: [ReportsController],
   providers: [ReportsService],
   exports: [ReportsService],
 })

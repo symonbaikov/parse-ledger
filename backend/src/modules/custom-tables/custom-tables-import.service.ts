@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, type Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { AuditAction, AuditLog } from '../../entities/audit-log.entity';
+import { ActorType, AuditAction, EntityType } from '../../entities/audit-event.entity';
 import { Category } from '../../entities/category.entity';
 import { CustomTableCellStyle } from '../../entities/custom-table-cell-style.entity';
 import { CustomTableColumnStyle } from '../../entities/custom-table-column-style.entity';
@@ -14,6 +14,7 @@ import { CustomTableRow } from '../../entities/custom-table-row.entity';
 import { CustomTable, CustomTableSource } from '../../entities/custom-table.entity';
 import { GoogleSheet } from '../../entities/google-sheet.entity';
 import { GoogleSheetsApiService } from '../google-sheets/services/google-sheets-api.service';
+import { AuditService } from '../audit/audit.service';
 import type {
   GoogleSheetsImportColumnDto,
   GoogleSheetsImportCommitDto,
@@ -363,9 +364,8 @@ export class CustomTablesImportService {
     private readonly customTableColumnStyleRepository: Repository<CustomTableColumnStyle>,
     @InjectRepository(CustomTableCellStyle)
     private readonly customTableCellStyleRepository: Repository<CustomTableCellStyle>,
-    @InjectRepository(AuditLog)
-    private readonly auditLogRepository: Repository<AuditLog>,
     private readonly googleSheetsApiService: GoogleSheetsApiService,
+    private readonly auditService: AuditService,
   ) {}
 
   private generateColumnKey(): string {
@@ -373,17 +373,61 @@ export class CustomTablesImportService {
     return `col_${raw.slice(0, 12)}`;
   }
 
-  private async log(userId: string, action: AuditAction, metadata?: Record<string, any>) {
+  private async logIntegrationEvent(params: {
+    userId: string;
+    workspaceId: string | null;
+    entityType: EntityType;
+    entityId: string;
+    action: AuditAction;
+    meta?: Record<string, any> | null;
+    diff?: Record<string, any> | null;
+    batchId?: string | null;
+  }) {
     try {
-      await this.auditLogRepository.save(
-        this.auditLogRepository.create({
-          userId,
-          action,
-          metadata: metadata || null,
-        }),
-      );
+      // Audit: record integration-driven table changes during import.
+      await this.auditService.createEvent({
+        workspaceId: params.workspaceId,
+        actorType: ActorType.INTEGRATION,
+        actorId: params.userId,
+        actorLabel: 'Google Sheets Import',
+        entityType: params.entityType,
+        entityId: params.entityId,
+        action: params.action,
+        diff: params.diff ?? null,
+        meta: params.meta ?? null,
+        batchId: params.batchId ?? null,
+      });
     } catch {
-      this.logger.warn(`Audit log write failed for action=${action}`);
+      this.logger.warn(`Audit log write failed for action=${params.action}`);
+    }
+  }
+
+  private async logIntegrationRowBatch(params: {
+    userId: string;
+    workspaceId: string | null;
+    tableId: string;
+    rows: CustomTableRow[];
+    meta?: Record<string, any> | null;
+  }) {
+    if (!params.rows.length) return;
+    try {
+      await this.auditService.createBatchEvents(
+        params.rows.map(row => ({
+          workspaceId: params.workspaceId,
+          actorType: ActorType.INTEGRATION,
+          actorId: params.userId,
+          actorLabel: 'Google Sheets Import',
+          entityType: EntityType.TABLE_ROW,
+          entityId: row.id,
+          action: AuditAction.CREATE,
+          diff: { before: null, after: row },
+          meta: { tableId: params.tableId, rowNumber: row.rowNumber, ...(params.meta || {}) },
+        })),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Audit log batch write failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -734,12 +778,19 @@ export class CustomTablesImportService {
       this.throwHelpfulSchemaError(error);
     }
 
-    await this.log(userId, AuditAction.CUSTOM_TABLE_CREATE, {
-      tableId: table.id,
-      source: 'google_sheets_import',
-      spreadsheetId: sheet.sheetId,
-      worksheetName,
-      usedRange: effectiveRange,
+    await this.logIntegrationEvent({
+      userId,
+      workspaceId: sheet.workspaceId ?? null,
+      entityType: EntityType.CUSTOM_TABLE,
+      entityId: table.id,
+      action: AuditAction.CREATE,
+      diff: { before: null, after: table },
+      meta: {
+        source: 'google_sheets_import',
+        spreadsheetId: sheet.sheetId,
+        worksheetName,
+        usedRange: effectiveRange,
+      },
     });
 
     let createdColumns: CustomTableColumn[];
@@ -976,14 +1027,6 @@ export class CustomTablesImportService {
       await report(10 + fraction * 70, 'importing_rows');
     }
 
-    await this.log(userId, AuditAction.CUSTOM_TABLE_ROW_BATCH_CREATE, {
-      tableId: table.id,
-      rowsCreated: rowsToInsert.length,
-      spreadsheetId: sheet.sheetId,
-      worksheetName,
-      usedRange: effectiveRange,
-    });
-
     await report(82, 'loading_styles');
     let rowIdByRowNumber = new Map<number, string>();
     try {
@@ -1003,6 +1046,29 @@ export class CustomTablesImportService {
       }
     } catch (error) {
       this.logger.warn(`Failed to build rowId map for tableId=${table.id}`);
+    }
+
+    if (rowIdByRowNumber.size) {
+      const rowsForAudit = rowsToInsert
+        .map(row => {
+          const id = rowIdByRowNumber.get(row.rowNumber);
+          if (!id) return null;
+          return { ...row, id } as CustomTableRow;
+        })
+        .filter((row): row is CustomTableRow => Boolean(row));
+
+      await this.logIntegrationRowBatch({
+        userId,
+        workspaceId: sheet.workspaceId ?? null,
+        tableId: table.id,
+        rows: rowsForAudit,
+        meta: {
+          rowsCreated: rowsToInsert.length,
+          spreadsheetId: sheet.sheetId,
+          worksheetName,
+          usedRange: effectiveRange,
+        },
+      });
     }
 
     if (gridRowData?.length && keyByIndex.size) {

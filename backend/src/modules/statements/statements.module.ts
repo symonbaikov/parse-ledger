@@ -1,21 +1,30 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FileStorageService } from '../../common/services/file-storage.service';
+import { IdempotencyService } from '../../common/services/idempotency.service';
 import { User, WorkspaceMember } from '../../entities';
-import { AuditLog } from '../../entities/audit-log.entity';
+import { IdempotencyKey } from '../../entities/idempotency-key.entity';
 import { Statement } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
+import { AuditModule } from '../audit/audit.module';
 import { ParsingModule } from '../parsing/parsing.module';
 import { StatementsController } from './statements.controller';
 import { StatementsService } from './statements.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Statement, Transaction, AuditLog, User, WorkspaceMember]),
+    TypeOrmModule.forFeature([
+      Statement,
+      Transaction,
+      User,
+      WorkspaceMember,
+      IdempotencyKey,
+    ]),
+    AuditModule,
     ParsingModule,
   ],
   controllers: [StatementsController],
-  providers: [StatementsService, FileStorageService],
+  providers: [StatementsService, FileStorageService, IdempotencyService],
   exports: [StatementsService],
 })
 export class StatementsModule {}

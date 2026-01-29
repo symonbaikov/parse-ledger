@@ -8,8 +8,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
+import { ActorType, AuditAction, EntityType } from '../../../entities/audit-event.entity';
 import { GoogleSheetRow } from '../../../entities/google-sheet-row.entity';
 import { GoogleSheet } from '../../../entities/google-sheet.entity';
+import { AuditService } from '../../audit/audit.service';
 import type { GoogleSheetsBatchUpdateDto, GoogleSheetsUpdateDto } from '../dto/sheets-update.dto';
 import {
   GoogleSheetRowEventPayload,
@@ -46,6 +48,7 @@ export class GoogleSheetsUpdatesService {
     private readonly googleSheetsRepository: Repository<GoogleSheet>,
     private readonly realtimeService: GoogleSheetsRealtimeService,
     private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
   ) {
     this.allowedSpreadsheetIds = this.parseList(
       this.configService.get<string>('SHEETS_ALLOWED_SPREADSHEET_IDS') ||
@@ -60,19 +63,25 @@ export class GoogleSheetsUpdatesService {
     );
   }
 
-  async handleBatchUpdate(batch: GoogleSheetsBatchUpdateDto): Promise<GoogleSheetsUpdateResult[]> {
+  async handleBatchUpdate(
+    batch: GoogleSheetsBatchUpdateDto,
+    batchId?: string | null,
+  ): Promise<GoogleSheetsUpdateResult[]> {
     const results: GoogleSheetsUpdateResult[] = [];
 
     for (const item of batch.items) {
       // Process sequentially to keep order and avoid race conditions on the same row
-      const result = await this.handleWebhookUpdate(item);
+      const result = await this.handleWebhookUpdate(item, batchId);
       results.push(result);
     }
 
     return results;
   }
 
-  async handleWebhookUpdate(dto: GoogleSheetsUpdateDto): Promise<GoogleSheetsUpdateResult> {
+  async handleWebhookUpdate(
+    dto: GoogleSheetsUpdateDto,
+    batchId?: string | null,
+  ): Promise<GoogleSheetsUpdateResult> {
     if (dto.row <= 1) {
       throw new BadRequestException('Row number must be greater than 1 (header row is ignored)');
     }
@@ -158,6 +167,32 @@ export class GoogleSheetsUpdatesService {
 
     this.rememberEvent(dto.eventId);
     this.realtimeService.broadcastUpdate(sheet.userId, this.toEventPayload(savedRow));
+
+    try {
+      // Audit: record row-level sync changes from Google Sheets.
+      await this.auditService.createEvent({
+        workspaceId: sheet.workspaceId ?? null,
+        actorType: ActorType.INTEGRATION,
+        actorId: sheet.userId,
+        actorLabel: 'Google Sheets Sync',
+        entityType: EntityType.TABLE_ROW,
+        entityId: savedRow.id,
+        action: existingRow ? AuditAction.UPDATE : AuditAction.CREATE,
+        diff: { before: existingRow ?? null, after: savedRow },
+        meta: {
+          provider: 'google_sheets',
+          spreadsheetId: dto.spreadsheetId,
+          sheetName: dto.sheetName,
+          rowNumber: dto.row,
+          editedCell: dto.editedCell?.a1 ?? null,
+        },
+        batchId: batchId ?? null,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Audit event failed for Google Sheets update: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
 
     return { processed: true, row: savedRow };
   }

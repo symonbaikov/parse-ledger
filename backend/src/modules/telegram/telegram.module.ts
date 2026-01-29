@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TelegramReport } from '../../entities/telegram-report.entity';
 import { User } from '../../entities/user.entity';
+import { AuditModule } from '../audit/audit.module';
 import { ReportsModule } from '../reports/reports.module';
 import { StatementsModule } from '../statements/statements.module';
 import { TelegramWebhookController } from './telegram-webhook.controller';
@@ -10,7 +11,12 @@ import { TelegramScheduler } from './telegram.scheduler';
 import { TelegramService } from './telegram.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TelegramReport, User]), ReportsModule, StatementsModule],
+  imports: [
+    TypeOrmModule.forFeature([TelegramReport, User]),
+    ReportsModule,
+    StatementsModule,
+    AuditModule,
+  ],
   controllers: [TelegramController, TelegramWebhookController],
   providers: [TelegramService, TelegramScheduler],
   exports: [TelegramService],

@@ -407,6 +407,7 @@ export class TelegramService {
       const multerFile = await this.downloadTelegramFile(document.file_id, fileName, mimeType);
       const statement = await this.statementsService.create(
         user,
+        user.workspaceId,
         multerFile as Express.Multer.File,
       );
       await this.sendMessage(

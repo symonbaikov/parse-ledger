@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuditLog } from '../../entities/audit-log.entity';
 import { Category } from '../../entities/category.entity';
 import { CustomTableCellStyle } from '../../entities/custom-table-cell-style.entity';
 import { CustomTableColumnStyle } from '../../entities/custom-table-column-style.entity';
@@ -15,6 +14,7 @@ import { Statement } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
 import { WorkspaceMember } from '../../entities/workspace-member.entity';
+import { AuditModule } from '../audit/audit.module';
 import { GoogleSheetsModule } from '../google-sheets/google-sheets.module';
 import { CustomTableImportJobsProcessor } from './custom-table-import-jobs.processor';
 import { CustomTableImportJobsService } from './custom-table-import-jobs.service';
@@ -34,7 +34,6 @@ import { CustomTablesService } from './custom-tables.service';
       CustomTableCellStyle,
       DataEntry,
       DataEntryCustomField,
-      AuditLog,
       GoogleSheet,
       Category,
       Statement,
@@ -42,6 +41,7 @@ import { CustomTablesService } from './custom-tables.service';
       User,
       WorkspaceMember,
     ]),
+    AuditModule,
     GoogleSheetsModule,
   ],
   controllers: [CustomTablesController],

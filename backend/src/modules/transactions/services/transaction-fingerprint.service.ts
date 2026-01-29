@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { Between, IsNull, Repository } from 'typeorm';
 import { generateTransactionFingerprint } from '../../../common/utils/fingerprint.util';
 import { Transaction, TransactionType } from '../../../entities/transaction.entity';
 
@@ -140,6 +140,47 @@ export class TransactionFingerprintService {
       .where('transaction.workspaceId = :workspaceId', { workspaceId })
       .andWhere('transaction.fingerprint IN (:...fingerprints)', { fingerprints })
       .getMany();
+  }
+
+  /**
+   * Finds candidate transactions within a date and amount window for fuzzy matching.
+   *
+   * @param workspaceId Workspace ID to search within
+   * @param dateRange Date window for candidate search
+   * @param amountRanges Amount ranges to include
+   * @param limit Maximum number of candidates to return
+   * @returns Array of candidate transactions
+   */
+  async findCandidatesByWindow(
+    workspaceId: string,
+    dateRange: { start: Date; end: Date },
+    amountRanges: Array<{ min: number; max: number }>,
+    limit = 1000,
+  ): Promise<Transaction[]> {
+    if (!workspaceId || amountRanges.length === 0) {
+      return [];
+    }
+
+    const candidates = new Map<string, Transaction>();
+
+    for (const range of amountRanges) {
+      if (candidates.size >= limit) break;
+      const found = await this.transactionRepository.find({
+        where: {
+          workspaceId,
+          transactionDate: Between(dateRange.start, dateRange.end),
+          amount: Between(range.min, range.max),
+        },
+        take: Math.min(limit - candidates.size, 250),
+      });
+
+      for (const tx of found) {
+        candidates.set(tx.id, tx);
+        if (candidates.size >= limit) break;
+      }
+    }
+
+    return Array.from(candidates.values());
   }
 
   /**

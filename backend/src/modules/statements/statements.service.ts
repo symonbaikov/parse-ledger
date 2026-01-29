@@ -19,7 +19,7 @@ import { calculateFileHash } from '../../common/utils/file-hash.util';
 import { getFileTypeFromMime } from '../../common/utils/file-validator.util';
 import { normalizeFilename } from '../../common/utils/filename.util';
 import { WorkspaceMember, WorkspaceRole } from '../../entities';
-import { AuditAction, AuditLog } from '../../entities/audit-log.entity';
+import { ActorType, AuditAction, EntityType, Severity } from '../../entities/audit-event.entity';
 import {
   BankName,
   type FileType,
@@ -28,6 +28,7 @@ import {
 } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { User } from '../../entities/user.entity';
+import { AuditService } from '../audit/audit.service';
 import { StatementProcessingService } from '../parsing/services/statement-processing.service';
 import type { UpdateStatementDto } from './dto/update-statement.dto';
 
@@ -40,8 +41,6 @@ export class StatementsService {
     private statementRepository: Repository<Statement>,
     @InjectRepository(Transaction)
     private transactionRepository: Repository<Transaction>,
-    @InjectRepository(AuditLog)
-    private auditLogRepository: Repository<AuditLog>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     @InjectRepository(WorkspaceMember)
@@ -49,18 +48,10 @@ export class StatementsService {
     private readonly fileStorageService: FileStorageService,
     private statementProcessingService: StatementProcessingService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly auditService: AuditService,
   ) {}
 
-  private async getWorkspaceId(userId: string): Promise<string | null> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      select: ['id', 'workspaceId'],
-    });
-    return user?.workspaceId ?? null;
-  }
-
-  private async ensureCanEditStatements(userId: string): Promise<void> {
-    const workspaceId = await this.getWorkspaceId(userId);
+  private async ensureCanEditStatements(userId: string, workspaceId: string): Promise<void> {
     if (!workspaceId) return;
 
     const membership = await this.workspaceMemberRepository.findOne({
@@ -76,13 +67,16 @@ export class StatementsService {
     }
   }
 
-  private async ensureCanModify(statement: Statement, userId: string): Promise<void> {
-    await this.ensureCanEditStatements(userId);
+  private async ensureCanModify(
+    statement: Statement,
+    userId: string,
+    workspaceId: string,
+  ): Promise<void> {
+    await this.ensureCanEditStatements(userId, workspaceId);
     if (statement.userId === userId) {
       return;
     }
-    const workspaceId = await this.getWorkspaceId(userId);
-    if (workspaceId && statement.user?.workspaceId === workspaceId) {
+    if (workspaceId && statement.workspaceId === workspaceId) {
       const membership = await this.workspaceMemberRepository.findOne({
         where: { workspaceId, userId },
         select: ['role'],
@@ -96,22 +90,44 @@ export class StatementsService {
 
   async create(
     user: User,
+    workspaceId: string,
     file: Express.Multer.File,
     googleSheetId?: string,
     walletId?: string,
     branchId?: string,
     allowDuplicates = false,
   ): Promise<Statement> {
-    await this.ensureCanEditStatements(user.id);
+    await this.ensureCanEditStatements(user.id, workspaceId);
     const normalizedName = normalizeFilename(file.originalname);
     const fileHash = await calculateFileHash(file.path);
 
-    const duplicate = await this.statementRepository.findOne({
-      where: { userId: user.id, fileHash },
+    // Check for exact file hash duplicate
+    const hashDuplicate = await this.statementRepository.findOne({
+      where: { workspaceId, fileHash },
     });
 
-    if (duplicate && !allowDuplicates) {
-      throw new ConflictException('Такая выписка уже загружена (дубликат файла)');
+    if (hashDuplicate && !allowDuplicates) {
+      throw new ConflictException({
+        message: 'Такая выписка уже загружена (дубликат файла)',
+        duplicateStatementId: hashDuplicate.id,
+      });
+    }
+
+    // Check for near-duplicate (same name, size, within 5 minutes)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const recentStatements = await this.statementRepository
+      .createQueryBuilder('statement')
+      .where('statement.workspaceId = :workspaceId', { workspaceId })
+      .andWhere('statement.fileName = :fileName', { fileName: normalizedName })
+      .andWhere('statement.fileSize = :fileSize', { fileSize: file.size })
+      .andWhere('statement.createdAt >= :fiveMinutesAgo', { fiveMinutesAgo })
+      .getMany();
+
+    if (recentStatements.length > 0 && !allowDuplicates) {
+      throw new ConflictException({
+        message: 'Аналогичная выписка была недавно загружена',
+        duplicateStatementId: recentStatements[0].id,
+      });
     }
     // Calculate file hash
     let fileData: Buffer | null = null;
@@ -126,6 +142,7 @@ export class StatementsService {
     // Create new statement
     const statement = this.statementRepository.create({
       userId: user.id,
+      workspaceId,
       googleSheetId: googleSheetId || null,
       fileName: normalizedName,
       filePath: file.path,
@@ -151,16 +168,22 @@ export class StatementsService {
 
     // Keep disk copy even if stored in DB to allow previews without DB select issues
 
-    // Log to audit
-    await this.auditLogRepository.save({
-      userId: user.id,
-      action: AuditAction.STATEMENT_UPLOAD,
-      description: `Uploaded statement: ${file.originalname}`,
-      metadata: {
-        statementId: savedStatement.id,
+    // Audit: record statement import for traceability.
+    await this.auditService.createEvent({
+      workspaceId,
+      actorType: ActorType.USER,
+      actorId: user.id,
+      actorLabel: user.email || user.name || 'User',
+      entityType: EntityType.STATEMENT,
+      entityId: savedStatement.id,
+      action: AuditAction.IMPORT,
+      diff: { before: null, after: savedStatement },
+      meta: {
         fileName: file.originalname,
         fileSize: file.size,
       },
+      severity: Severity.INFO,
+      isUndoable: false,
     });
 
     // Start processing asynchronously
@@ -174,7 +197,7 @@ export class StatementsService {
   }
 
   async findAll(
-    userId: string,
+    workspaceId: string,
     page = 1,
     limit = 20,
     search?: string,
@@ -184,23 +207,14 @@ export class StatementsService {
     page: number;
     limit: number;
   }> {
-    const workspaceId = await this.getWorkspaceId(userId);
     const qb = this.statementRepository
       .createQueryBuilder('statement')
       .leftJoinAndSelect('statement.user', 'user')
       .where('statement.deletedAt IS NULL')
+      .andWhere('statement.workspaceId = :workspaceId', { workspaceId })
       .orderBy('statement.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit);
-
-    if (workspaceId) {
-      qb.andWhere('user.workspaceId = :workspaceId OR statement.userId = :userId', {
-        workspaceId,
-        userId,
-      });
-    } else {
-      qb.andWhere('statement.userId = :userId', { userId });
-    }
 
     if (search) {
       qb.andWhere('statement.fileName ILIKE :search', {
@@ -222,16 +236,10 @@ export class StatementsService {
     return { data, total, page, limit };
   }
 
-  async findOne(id: string, userId: string): Promise<Statement> {
-    const workspaceId = await this.getWorkspaceId(userId);
+  async findOne(id: string, workspaceId: string): Promise<Statement> {
     if (typeof (this.statementRepository as any).createQueryBuilder !== 'function') {
       const statement = await this.statementRepository.findOne({
-        where: workspaceId
-          ? [
-              { id, userId },
-              { id, user: { workspaceId } as any },
-            ]
-          : { id, userId },
+        where: { id, workspaceId },
         relations: ['transactions', 'googleSheet', 'user'],
       } as any);
 
@@ -252,16 +260,8 @@ export class StatementsService {
       .leftJoinAndSelect('statement.transactions', 'transactions')
       .leftJoinAndSelect('statement.googleSheet', 'googleSheet')
       .leftJoinAndSelect('statement.user', 'owner')
-      .where('statement.id = :id', { id });
-
-    if (workspaceId) {
-      qb.andWhere('(statement.userId = :userId OR owner.workspaceId = :workspaceId)', {
-        userId,
-        workspaceId,
-      });
-    } else {
-      qb.andWhere('statement.userId = :userId', { userId });
-    }
+      .where('statement.id = :id', { id })
+      .andWhere('statement.workspaceId = :workspaceId', { workspaceId });
 
     const statement = await qb.getOne();
 
@@ -280,10 +280,11 @@ export class StatementsService {
   async updateMetadata(
     id: string,
     userId: string,
+    workspaceId: string,
     updateDto: UpdateStatementDto,
   ): Promise<Statement> {
-    const statement = await this.findOne(id, userId);
-    await this.ensureCanModify(statement, userId);
+    const statement = await this.findOne(id, workspaceId);
+    await this.ensureCanModify(statement, userId, workspaceId);
 
     if (updateDto.balanceStart !== undefined) {
       statement.balanceStart =
@@ -326,28 +327,37 @@ export class StatementsService {
     return this.statementRepository.save(statement);
   }
 
-  async moveToTrash(id: string, userId: string): Promise<Statement> {
-    const statement = await this.findOne(id, userId);
-    await this.ensureCanModify(statement, userId);
+  async moveToTrash(id: string, userId: string, workspaceId: string): Promise<Statement> {
+    const statement = await this.findOne(id, workspaceId);
+    await this.ensureCanModify(statement, userId, workspaceId);
 
     // Mark as deleted (soft delete)
+    const beforeState = { ...statement };
     statement.deletedAt = new Date();
     await this.statementRepository.save(statement);
 
-    // Log to audit
-    await this.auditLogRepository.save({
-      userId,
-      action: AuditAction.STATEMENT_DELETE,
-      description: `Moved statement to trash: ${statement.fileName}`,
-      metadata: { statementId: id },
+    // Audit: record statement deletion with before snapshot.
+    await this.auditService.createEvent({
+      workspaceId,
+      actorType: ActorType.USER,
+      actorId: userId,
+      entityType: EntityType.STATEMENT,
+      entityId: statement.id,
+      action: AuditAction.DELETE,
+      diff: { before: beforeState, after: null },
+      meta: {
+        fileName: statement.fileName,
+        source: 'trash',
+      },
+      isUndoable: true,
     });
 
     return statement;
   }
 
-  async permanentDelete(id: string, userId: string): Promise<void> {
+  async permanentDelete(id: string, userId: string, workspaceId: string): Promise<void> {
     const statement = await this.statementRepository.findOne({
-      where: { id },
+      where: { id, workspaceId },
       relations: ['user'],
     });
 
@@ -355,14 +365,22 @@ export class StatementsService {
       throw new NotFoundException('Statement not found');
     }
 
-    await this.ensureCanModify(statement, userId);
+    await this.ensureCanModify(statement, userId, workspaceId);
 
-    // Log to audit before deletion
-    await this.auditLogRepository.save({
-      userId,
-      action: AuditAction.STATEMENT_DELETE,
-      description: `Permanently deleted statement: ${statement.fileName}`,
-      metadata: { statementId: id },
+    // Audit: record statement rollback for restore operations.
+    await this.auditService.createEvent({
+      workspaceId,
+      actorType: ActorType.USER,
+      actorId: userId,
+      entityType: EntityType.STATEMENT,
+      entityId: statement.id,
+      action: AuditAction.DELETE,
+      diff: { before: { ...statement }, after: null },
+      meta: {
+        fileName: statement.fileName,
+        source: 'permanent',
+      },
+      isUndoable: true,
     });
 
     // Delete all related transactions first
@@ -385,21 +403,56 @@ export class StatementsService {
     await this.cacheManager.del(`statements:thumbnail:${id}`);
   }
 
-  async remove(id: string, userId: string): Promise<void> {
+  async remove(id: string, userId: string, workspaceId: string): Promise<void> {
     // For backward compatibility, remove now does soft delete
-    await this.moveToTrash(id, userId);
+    await this.moveToTrash(id, userId, workspaceId);
   }
 
-  async reprocess(id: string, userId: string): Promise<Statement> {
-    const statement = await this.findOne(id, userId);
-    await this.ensureCanModify(statement, userId);
+  async reprocess(
+    id: string,
+    userId: string,
+    workspaceId: string,
+    mode: 'merge' | 'replace' = 'merge',
+  ): Promise<Statement> {
+    const statement = await this.findOne(id, workspaceId);
+    await this.ensureCanModify(statement, userId, workspaceId);
 
     if (statement.status === StatementStatus.PROCESSING) {
       return statement;
     }
 
-    // Clear previous parsing results to avoid duplicates on reprocess
-    await this.transactionRepository.delete({ statementId: statement.id });
+    if (mode === 'replace') {
+      // Full delete mode - clear all transactions
+      await this.transactionRepository.delete({ statementId: statement.id });
+    } else {
+      // Merge mode - keep user-modified transactions, soft-delete others
+      const existingTransactions = await this.transactionRepository.find({
+        where: { statementId: statement.id },
+      });
+
+      // Identify user-modified transactions (where updatedAt > createdAt + 1 second)
+      const userModified: string[] = [];
+      const toDelete: string[] = [];
+
+      for (const tx of existingTransactions) {
+        const timeDiff = tx.updatedAt.getTime() - tx.createdAt.getTime();
+        if (timeDiff > 1000) {
+          // Modified more than 1 second after creation
+          userModified.push(tx.id);
+        } else {
+          toDelete.push(tx.id);
+        }
+      }
+
+      // Soft-delete non-modified transactions
+      if (toDelete.length > 0) {
+        await this.transactionRepository.delete(toDelete);
+      }
+
+      console.log(
+        `[Reprocess Merge] Keeping ${userModified.length} user-modified transactions, deleting ${toDelete.length}`,
+      );
+    }
 
     statement.status = StatementStatus.UPLOADED;
     statement.errorMessage = null;
@@ -419,23 +472,29 @@ export class StatementsService {
     return statement;
   }
 
+  async commitImport(id: string, userId: string, workspaceId: string): Promise<Statement> {
+    const statement = await this.findOne(id, workspaceId);
+    await this.ensureCanModify(statement, userId, workspaceId);
+    return this.statementProcessingService.commitImport(statement.id);
+  }
+
   async getFileStream(
     id: string,
-    userId: string,
+    workspaceId: string,
   ): Promise<{
     stream: NodeJS.ReadableStream;
     fileName: string;
     mimeType: string;
   }> {
-    const statement = await this.findOne(id, userId);
+    const statement = await this.findOne(id, workspaceId);
     const { stream, fileName, mimeType } =
       await this.fileStorageService.getStatementFileStream(statement);
     return { stream, fileName, mimeType };
   }
 
-  async restoreFile(id: string, userId: string) {
+  async restoreFile(id: string, userId: string, workspaceId: string) {
     const statement = await this.statementRepository.findOne({
-      where: { id },
+      where: { id, workspaceId },
       relations: ['user'],
     });
 
@@ -443,19 +502,27 @@ export class StatementsService {
       throw new NotFoundException('Statement not found');
     }
 
-    await this.ensureCanModify(statement, userId);
+    await this.ensureCanModify(statement, userId, workspaceId);
 
     // If the file is in trash, restore it from trash
     if (statement.deletedAt) {
       statement.deletedAt = null;
       await this.statementRepository.save(statement);
 
-      // Log to audit
-      await this.auditLogRepository.save({
-        userId,
-        action: AuditAction.STATEMENT_DELETE,
-        description: `Restored statement from trash: ${statement.fileName}`,
-        metadata: { statementId: id },
+      // Audit: record permanent removal (used for hard delete flow).
+      await this.auditService.createEvent({
+        workspaceId,
+        actorType: ActorType.USER,
+        actorId: userId,
+        entityType: EntityType.STATEMENT,
+        entityId: statement.id,
+        action: AuditAction.ROLLBACK,
+        diff: { before: null, after: statement },
+        meta: {
+          source: 'trash_restore',
+        },
+        severity: Severity.INFO,
+        isUndoable: false,
       });
 
       return { status: 'restored', source: 'trash' };
@@ -469,8 +536,8 @@ export class StatementsService {
     return { status: 'restored', source: restored.source };
   }
 
-  async getThumbnail(id: string, userId: string): Promise<Buffer> {
-    const statement = await this.findOne(id, userId);
+  async getThumbnail(id: string, workspaceId: string): Promise<Buffer> {
+    const statement = await this.findOne(id, workspaceId);
 
     const cacheKey = `statements:thumbnail:${id}`;
     const cached = await this.cacheManager.get<string>(cacheKey);

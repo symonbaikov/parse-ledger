@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { User, WorkspaceMember } from '../../entities';
 import { Branch } from '../../entities/branch.entity';
 import { Category } from '../../entities/category.entity';
 import { GoogleSheetRow } from '../../entities/google-sheet-row.entity';
 import { GoogleSheet } from '../../entities/google-sheet.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { Wallet } from '../../entities/wallet.entity';
+import { AuditModule } from '../audit/audit.module';
 import { GoogleSheetsIntegrationController } from './google-sheets-integration.controller';
 import { GoogleSheetsController } from './google-sheets.controller';
 import { GoogleSheetsService } from './google-sheets.service';
@@ -18,8 +20,18 @@ import { GoogleSheetsUpdatesService } from './services/google-sheets-updates.ser
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([GoogleSheet, GoogleSheetRow, Transaction, Category, Branch, Wallet]),
+    TypeOrmModule.forFeature([
+      GoogleSheet,
+      GoogleSheetRow,
+      Transaction,
+      Category,
+      Branch,
+      Wallet,
+      User,
+      WorkspaceMember,
+    ]),
     ConfigModule,
+    AuditModule,
   ],
   controllers: [GoogleSheetsController, GoogleSheetsIntegrationController],
   providers: [

@@ -3,7 +3,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cache } from 'cache-manager';
 import type { Repository } from 'typeorm';
+import { ActorType, AuditAction, EntityType } from '../../../entities/audit-event.entity';
 import { Branch } from '../../../entities/branch.entity';
+import { CategorizationRule } from '../../../entities/categorization-rule.entity';
 import { CategoryLearning } from '../../../entities/category-learning.entity';
 import { Category, CategoryType } from '../../../entities/category.entity';
 import { type Transaction, TransactionType } from '../../../entities/transaction.entity';
@@ -13,6 +15,7 @@ import {
   ClassificationResult,
   type ClassificationRule,
 } from '../interfaces/classification-rule.interface';
+import { AuditService } from '../../audit/audit.service';
 
 @Injectable()
 export class ClassificationService {
@@ -25,14 +28,19 @@ export class ClassificationService {
     private branchRepository: Repository<Branch>,
     @InjectRepository(Wallet)
     private walletRepository: Repository<Wallet>,
+    @InjectRepository(CategorizationRule)
+    private categorizationRuleRepository: Repository<CategorizationRule>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly auditService: AuditService,
   ) {}
 
   async classifyTransaction(
     transaction: Transaction,
     userId: string,
+    batchId?: string | null,
   ): Promise<Partial<Transaction>> {
     const classification: Partial<Transaction> = {};
+    let matchedRule: ClassificationRule | null = null;
 
     // Determine transaction type (income/expense)
     if (transaction.debit && transaction.debit > 0) {
@@ -54,6 +62,7 @@ export class ClassificationService {
     // Apply rules in priority order
     for (const rule of rules.sort((a, b) => b.priority - a.priority)) {
       if (this.matchesRule(transaction, rule.conditions)) {
+        matchedRule = rule;
         // Apply rule result
         if (rule.result.categoryId) {
           classification.categoryId = rule.result.categoryId;
@@ -97,6 +106,24 @@ export class ClassificationService {
 
     // Cache result for 5 minutes
     await this.cacheManager.set(cacheKey, classification, 300000); // 5 minutes in ms
+
+    if (matchedRule) {
+      // Audit: record rule application for categorization transparency.
+      await this.auditService.createEvent({
+        workspaceId: transaction.workspaceId ?? null,
+        actorType: ActorType.USER,
+        actorId: userId,
+        entityType: EntityType.TRANSACTION,
+        entityId: transaction.id,
+        action: AuditAction.APPLY_RULE,
+        meta: {
+          ruleId: matchedRule.id ?? null,
+          ruleName: matchedRule.name,
+          confidence: 1,
+        },
+        batchId: batchId ?? null,
+      });
+    }
 
     return classification;
   }
@@ -332,6 +359,29 @@ export class ClassificationService {
   }
 
   private async getClassificationRules(userId: string): Promise<ClassificationRule[]> {
+    // Load user-defined categorization rules from database
+    const userRules = await this.categorizationRuleRepository.find({
+      where: {
+        userId,
+        isActive: true,
+      },
+      order: {
+        priority: 'DESC',
+      },
+    });
+
+    // Convert database rules to ClassificationRule format
+    const dbRules: ClassificationRule[] = userRules.map(rule => ({
+      id: rule.id,
+      name: rule.name,
+      type: 'category',
+      conditions: rule.conditions,
+      result: rule.result,
+      priority: rule.priority,
+      isActive: rule.isActive,
+    }));
+
+    // Default system rules (templates)
     const templates: Array<{
       name: string;
       field: ClassificationCondition['field'];
@@ -476,7 +526,8 @@ export class ClassificationService {
       });
     }
 
-    return rules;
+    // Merge user rules with system rules (user rules have higher priority)
+    return [...dbRules, ...rules].sort((a, b) => b.priority - a.priority);
   }
 
   private async getCategoryIdByName(
