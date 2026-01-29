@@ -16,7 +16,10 @@
       "backend/uploads/**",
       "**/stories/**",
       "**/storybook-static/**",
-      "**/*.stories.*"
+      "**/*.stories.*",
+      "**/docs/**",
+      "**/.claude/**",
+      "**/.agent/**"
     ]
   },
   "formatter": {
