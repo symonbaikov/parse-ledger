@@ -6,7 +6,9 @@ import { Statement } from '../../entities/statement.entity';
 import { Transaction } from '../../entities/transaction.entity';
 import { ClassificationModule } from '../classification/classification.module';
 import { GoogleSheetsModule } from '../google-sheets/google-sheets.module';
+import { ImportModule } from '../import/import.module';
 import { ObservabilityModule } from '../observability/observability.module';
+import { TransactionsModule } from '../transactions/transactions.module';
 import { BankProfileService } from './services/bank-profile.service';
 import { ChecksumAutoFixService } from './services/checksum-auto-fix.service';
 import { ChecksumValidationService } from './services/checksum-validation.service';
@@ -32,7 +34,9 @@ import { UniversalDateParser } from './services/universal-date-parser.service';
     TypeOrmModule.forFeature([Statement, Transaction, ParsingRule]),
     ClassificationModule,
     forwardRef(() => GoogleSheetsModule),
+    ImportModule,
     ObservabilityModule,
+    forwardRef(() => TransactionsModule),
   ],
   providers: [
     ParserFactoryService,

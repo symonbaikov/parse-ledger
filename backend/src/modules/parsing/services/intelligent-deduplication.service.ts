@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Transaction } from '../../../entities/transaction.entity';
+import { ImportConfigService } from '../../import/config/import.config';
 import { ParsedTransaction } from '../interfaces/parsed-statement.interface';
 
 export interface DuplicationResult {
@@ -71,9 +73,51 @@ export interface FuzzyMatch {
   fields: string[];
 }
 
+/**
+ * Enum for recommended actions when conflicts are detected
+ */
+export enum ConflictAction {
+  KEEP_EXISTING = 'keep_existing',
+  REPLACE = 'replace',
+  MERGE = 'merge',
+  MANUAL_REVIEW = 'manual_review',
+}
+
+/**
+ * Result of tolerant matching between two transactions
+ */
+export interface MatchResult {
+  isMatch: boolean;
+  confidence: number; // 0-1
+  matchType: 'exact' | 'fuzzy_date' | 'fuzzy_amount' | 'fuzzy_text' | 'combined';
+  details: {
+    dateDiff?: number; // days difference
+    amountDiff?: number; // percentage difference
+    textSimilarity?: number; // 0-1 similarity score
+  };
+}
+
+/**
+ * Represents a conflict between a new transaction and an existing one
+ */
+export interface ConflictGroup {
+  newTransaction: ParsedTransaction;
+  existingTransaction: Transaction;
+  confidence: number; // 0-1
+  matchType: 'exact' | 'fuzzy_date' | 'fuzzy_amount' | 'fuzzy_text' | 'combined';
+  recommendedAction: ConflictAction;
+  details: {
+    dateDiff?: number; // days difference
+    amountDiff?: number; // percentage difference
+    textSimilarity?: number; // 0-1 similarity score
+  };
+}
+
 @Injectable()
 export class IntelligentDeduplicationService {
   private readonly logger = new Logger(IntelligentDeduplicationService.name);
+
+  constructor(private readonly importConfigService: ImportConfigService) {}
 
   // Default deduplication rules
   private readonly defaultRules: DeduplicationRule[] = [
@@ -920,6 +964,273 @@ export class IntelligentDeduplicationService {
       return process.memoryUsage().heapUsed / 1024 / 1024; // MB
     }
     return 0;
+  }
+
+  /**
+   * Detect conflicts between new transactions and existing transactions using tolerant matching.
+   * This method compares parsed transactions from a new statement against already-stored transactions
+   * in the database to identify potential duplicates with fuzzy matching rules.
+   *
+   * @param newTransactions Array of parsed transactions from newly uploaded statement
+   * @param existingTransactions Array of transaction entities already in the database
+   * @returns Array of conflict groups with recommended actions
+   */
+  async detectConflicts(
+    newTransactions: ParsedTransaction[],
+    existingTransactions: Transaction[],
+  ): Promise<ConflictGroup[]> {
+    this.logger.log(
+      `Detecting conflicts between ${newTransactions.length} new and ${existingTransactions.length} existing transactions`,
+    );
+
+    const conflictGroups: ConflictGroup[] = [];
+
+    // Get configuration values for tolerant matching
+    const dateToleranceDays = this.importConfigService.getDedupDateToleranceDays();
+    const amountTolerancePercent = this.importConfigService.getDedupAmountTolerancePercent();
+    const textSimilarityThreshold = this.importConfigService.getDedupTextSimilarityThreshold();
+
+    this.logger.debug(
+      `Using tolerances: date=${dateToleranceDays} days, amount=${amountTolerancePercent}%, text=${textSimilarityThreshold}`,
+    );
+
+    // Compare each new transaction against all existing transactions
+    for (const newTx of newTransactions) {
+      for (const existingTx of existingTransactions) {
+        const matchResult = this.applyTolerantRules(newTx, existingTx);
+
+        if (matchResult.isMatch) {
+          // Determine recommended action based on confidence and match type
+          const recommendedAction = this.determineRecommendedAction(matchResult);
+
+          const conflict: ConflictGroup = {
+            newTransaction: newTx,
+            existingTransaction: existingTx,
+            confidence: matchResult.confidence,
+            matchType: matchResult.matchType,
+            recommendedAction,
+            details: matchResult.details,
+          };
+
+          conflictGroups.push(conflict);
+
+          this.logger.debug(
+            `Conflict detected: ${matchResult.matchType} (confidence: ${matchResult.confidence.toFixed(3)}, action: ${recommendedAction})`,
+          );
+
+          // Break after first match to avoid multiple conflicts for the same new transaction
+          break;
+        }
+      }
+    }
+
+    this.logger.log(
+      `Detected ${conflictGroups.length} conflicts out of ${newTransactions.length} new transactions`,
+    );
+
+    return conflictGroups;
+  }
+
+  /**
+   * Apply tolerant matching rules to compare two transactions.
+   * Uses configurable tolerances for date shifts, amount variations, and text similarity.
+   *
+   * @param transaction1 First transaction (typically new/parsed transaction)
+   * @param transaction2 Second transaction (typically existing transaction)
+   * @returns Match result with confidence score and details
+   */
+  applyTolerantRules(
+    transaction1: ParsedTransaction,
+    transaction2: ParsedTransaction | Transaction,
+  ): MatchResult {
+    const dateToleranceDays = this.importConfigService.getDedupDateToleranceDays();
+    const amountTolerancePercent = this.importConfigService.getDedupAmountTolerancePercent();
+    const textSimilarityThreshold = this.importConfigService.getDedupTextSimilarityThreshold();
+
+    const result: MatchResult = {
+      isMatch: false,
+      confidence: 0,
+      matchType: 'exact',
+      details: {},
+    };
+
+    // 1. Check date tolerance (±N days)
+    const dateDiff = this.calculateDateDifferenceInDays(
+      transaction1.transactionDate,
+      transaction2.transactionDate,
+    );
+    result.details.dateDiff = dateDiff;
+
+    const dateMatches = dateDiff <= dateToleranceDays;
+
+    if (!dateMatches) {
+      // If dates don't match within tolerance, this is not a match
+      return result;
+    }
+
+    // 2. Check amount tolerance (±N%)
+    const amount1 = transaction1.debit || transaction1.credit || 0;
+    const amount2 =
+      transaction2.debit || transaction2.credit || (transaction2 as Transaction).amount || 0;
+
+    const amountDiff = this.calculateAmountDifferencePercent(amount1, amount2);
+    result.details.amountDiff = amountDiff;
+
+    const amountMatches = amountDiff <= amountTolerancePercent;
+
+    if (!amountMatches) {
+      // If amounts don't match within tolerance, this is not a match
+      return result;
+    }
+
+    // 3. Check text similarity for merchant/counterparty name and payment purpose
+    const merchantSimilarity = this.calculateStringSimilarity(
+      transaction1.counterpartyName,
+      transaction2.counterpartyName,
+    );
+
+    const purposeSimilarity = this.calculateStringSimilarity(
+      transaction1.paymentPurpose,
+      transaction2.paymentPurpose,
+    );
+
+    // Average text similarity across both fields
+    const textSimilarity = (merchantSimilarity + purposeSimilarity) / 2;
+    result.details.textSimilarity = textSimilarity;
+
+    const textMatches = textSimilarity >= textSimilarityThreshold;
+
+    // 4. Determine overall match type and confidence
+    const exactDate = dateDiff === 0;
+    const exactAmount = amountDiff === 0;
+    const exactText = textSimilarity === 1.0;
+
+    if (exactDate && exactAmount && exactText) {
+      // Perfect exact match
+      result.isMatch = true;
+      result.confidence = 1.0;
+      result.matchType = 'exact';
+    } else if (dateMatches && amountMatches && textMatches) {
+      // All criteria match within tolerances - determine primary match type
+      if (!exactDate && exactAmount && exactText) {
+        // Only date is fuzzy
+        result.isMatch = true;
+        result.confidence = this.calculateCombinedConfidence(dateDiff, amountDiff, textSimilarity);
+        result.matchType = 'fuzzy_date';
+      } else if (exactDate && !exactAmount && exactText) {
+        // Only amount is fuzzy
+        result.isMatch = true;
+        result.confidence = this.calculateCombinedConfidence(dateDiff, amountDiff, textSimilarity);
+        result.matchType = 'fuzzy_amount';
+      } else if (exactDate && exactAmount && !exactText) {
+        // Only text is fuzzy
+        result.isMatch = true;
+        result.confidence = this.calculateCombinedConfidence(dateDiff, amountDiff, textSimilarity);
+        result.matchType = 'fuzzy_text';
+      } else {
+        // Multiple fields are fuzzy
+        result.isMatch = true;
+        result.confidence = this.calculateCombinedConfidence(dateDiff, amountDiff, textSimilarity);
+        result.matchType = 'combined';
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Calculate the difference between two dates in days
+   */
+  private calculateDateDifferenceInDays(date1: Date, date2: Date): number {
+    const time1 = date1.getTime();
+    const time2 = date2.getTime();
+    const diffMs = Math.abs(time1 - time2);
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  }
+
+  /**
+   * Calculate the percentage difference between two amounts
+   */
+  private calculateAmountDifferencePercent(amount1: number, amount2: number): number {
+    if (amount1 === 0 && amount2 === 0) {
+      return 0;
+    }
+
+    const maxAmount = Math.max(Math.abs(amount1), Math.abs(amount2));
+    if (maxAmount === 0) {
+      return 0;
+    }
+
+    const diff = Math.abs(amount1 - amount2);
+    return (diff / maxAmount) * 100;
+  }
+
+  /**
+   * Calculate combined confidence score based on date, amount, and text matching
+   * Higher confidence when differences are smaller
+   */
+  private calculateCombinedConfidence(
+    dateDiff: number,
+    amountDiff: number,
+    textSimilarity: number,
+  ): number {
+    const dateToleranceDays = this.importConfigService.getDedupDateToleranceDays();
+    const amountTolerancePercent = this.importConfigService.getDedupAmountTolerancePercent();
+
+    // Normalize each component to 0-1 scale
+    // Date score: decreases linearly with days difference
+    const dateScore = Math.max(0, 1 - dateDiff / Math.max(dateToleranceDays, 1));
+
+    // Amount score: decreases linearly with percentage difference
+    const amountScore = Math.max(0, 1 - amountDiff / Math.max(amountTolerancePercent, 1));
+
+    // Text similarity is already 0-1
+
+    // Weighted average: date (30%), amount (40%), text (30%)
+    const confidence = dateScore * 0.3 + amountScore * 0.4 + textSimilarity * 0.3;
+
+    return Math.min(1.0, Math.max(0, confidence));
+  }
+
+  /**
+   * Determine recommended action based on match result
+   */
+  private determineRecommendedAction(matchResult: MatchResult): ConflictAction {
+    const autoResolveThreshold = this.importConfigService.getConflictAutoResolveThreshold();
+
+    // Exact matches: keep existing
+    if (matchResult.matchType === 'exact' && matchResult.confidence >= 0.99) {
+      return ConflictAction.KEEP_EXISTING;
+    }
+
+    // High confidence fuzzy matches
+    if (matchResult.confidence >= autoResolveThreshold) {
+      // If only date differs slightly, likely a correction - replace
+      if (matchResult.matchType === 'fuzzy_date') {
+        return ConflictAction.REPLACE;
+      }
+
+      // If only amount differs slightly, likely pending vs. final - merge or replace
+      if (matchResult.matchType === 'fuzzy_amount') {
+        return ConflictAction.MERGE;
+      }
+
+      // If only text differs, likely formatting differences - keep existing
+      if (matchResult.matchType === 'fuzzy_text') {
+        return ConflictAction.KEEP_EXISTING;
+      }
+
+      // Combined fuzzy matches with high confidence - manual review
+      return ConflictAction.MANUAL_REVIEW;
+    }
+
+    // Medium confidence: always manual review
+    if (matchResult.confidence >= 0.75) {
+      return ConflictAction.MANUAL_REVIEW;
+    }
+
+    // Low confidence: manual review (shouldn't happen as match wouldn't be detected)
+    return ConflictAction.MANUAL_REVIEW;
   }
 
   // Public methods for configuration
