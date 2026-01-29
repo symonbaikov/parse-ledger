@@ -1,5 +1,4 @@
 import type {
-  AuditLog,
   Category,
   CustomTable,
   CustomTableCellStyle,
@@ -10,6 +9,7 @@ import type {
 } from '@/entities';
 import { CustomTableColumnType } from '@/entities/custom-table-column.entity';
 import { CustomTablesImportService } from '@/modules/custom-tables/custom-tables-import.service';
+import { AuditService } from '@/modules/audit/audit.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 
@@ -29,7 +29,10 @@ describe('CustomTablesImportService', () => {
   const customTableRowRepository = createRepoMock<CustomTableRow>();
   const customTableColumnStyleRepository = createRepoMock<CustomTableColumnStyle>();
   const customTableCellStyleRepository = createRepoMock<CustomTableCellStyle>();
-  const auditLogRepository = createRepoMock<AuditLog>();
+  const auditService = {
+    createEvent: jest.fn(),
+    createBatchEvents: jest.fn(),
+  } as unknown as AuditService;
 
   const googleSheetsApiService = {
     getValues: jest.fn(),
@@ -49,8 +52,8 @@ describe('CustomTablesImportService', () => {
       customTableRowRepository as any,
       customTableColumnStyleRepository as any,
       customTableCellStyleRepository as any,
-      auditLogRepository as any,
       googleSheetsApiService as any,
+      auditService as any,
     );
   });
 

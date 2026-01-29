@@ -1,8 +1,12 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Branch } from '@/entities/branch.entity';
+import { CategorizationRule } from '@/entities/categorization-rule.entity';
+import { CategoryLearning } from '@/entities/category-learning.entity';
 import { Category, CategoryType } from '@/entities/category.entity';
 import { type Transaction, TransactionType } from '@/entities/transaction.entity';
 import { Wallet } from '@/entities/wallet.entity';
 import { ClassificationService } from '@/modules/classification/services/classification.service';
+import { AuditService } from '@/modules/audit/audit.service';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
@@ -13,6 +17,7 @@ describe('ClassificationService', () => {
   let categoryRepository: Repository<Category>;
   let branchRepository: Repository<Branch>;
   let walletRepository: Repository<Wallet>;
+  let auditService: AuditService;
 
   const mockCategory: Partial<Category> = {
     id: 'cat-1',
@@ -55,6 +60,15 @@ describe('ClassificationService', () => {
           },
         },
         {
+          provide: getRepositoryToken(CategoryLearning),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+          },
+        },
+        {
           provide: getRepositoryToken(Branch),
           useValue: {
             find: jest.fn(),
@@ -68,6 +82,27 @@ describe('ClassificationService', () => {
             findOne: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(CategorizationRule),
+          useValue: {
+            find: jest.fn(),
+            findOne: jest.fn(),
+          },
+        },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            createEvent: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -75,6 +110,7 @@ describe('ClassificationService', () => {
     categoryRepository = testingModule.get<Repository<Category>>(getRepositoryToken(Category));
     branchRepository = testingModule.get<Repository<Branch>>(getRepositoryToken(Branch));
     walletRepository = testingModule.get<Repository<Wallet>>(getRepositoryToken(Wallet));
+    auditService = testingModule.get<AuditService>(AuditService);
   });
 
   beforeEach(() => {
@@ -157,6 +193,35 @@ describe('ClassificationService', () => {
 
       expect(result).toBeDefined();
       expect(result.categoryId).toBeDefined();
+    });
+
+    it('should emit audit event when rule matched', async () => {
+      jest.spyOn<any, any>(service as any, 'getClassificationRules').mockResolvedValue([
+        {
+          id: 'rule-1',
+          name: 'Test Rule',
+          conditions: [{ field: 'payment_purpose', operator: 'contains', value: 'Purchase' }],
+          result: { categoryId: 'cat-1' },
+          priority: 100,
+          isActive: true,
+        },
+      ]);
+
+      const transaction = {
+        ...mockTransaction,
+        paymentPurpose: 'Purchase at store',
+        workspaceId: 'ws-1',
+      } as Transaction;
+
+      await service.classifyTransaction(transaction, '1');
+
+      expect(auditService.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'apply_rule',
+          entityId: 'tx-1',
+          meta: expect.objectContaining({ ruleId: 'rule-1' }),
+        }),
+      );
     });
 
     it('should respect user-specific categories', async () => {

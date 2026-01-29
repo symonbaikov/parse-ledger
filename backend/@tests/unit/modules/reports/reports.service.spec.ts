@@ -1,6 +1,7 @@
 import type { CustomTableColumn } from '@/entities';
 import { CustomTableColumnType } from '@/entities/custom-table-column.entity';
 import { ReportsService } from '@/modules/reports/reports.service';
+import { AuditService } from '@/modules/audit/audit.service';
 
 function createRepoMock() {
   return {} as any;
@@ -19,6 +20,8 @@ describe('ReportsService (helpers)', () => {
       createRepoMock() as any,
       createRepoMock() as any,
       createRepoMock() as any,
+      { get: jest.fn(), set: jest.fn() } as any,
+      { createEvent: jest.fn() } as AuditService,
     );
   });
 

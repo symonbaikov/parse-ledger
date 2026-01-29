@@ -1,8 +1,11 @@
+import { AuditAction, EntityType } from '@/entities/audit-event.entity';
 import { Category, CategoryType } from '@/entities/category.entity';
 import { User, UserRole } from '@/entities/user.entity';
 import { WorkspaceMember, WorkspaceRole } from '@/entities/workspace-member.entity';
 import { CategoriesService } from '@/modules/categories/categories.service';
+import { AuditService } from '@/modules/audit/audit.service';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
@@ -13,6 +16,7 @@ describe('CategoriesService', () => {
   let categoryRepository: Repository<Category>;
   let userRepository: Repository<User>;
   let workspaceMemberRepository: Repository<WorkspaceMember>;
+  let auditService: AuditService;
 
   const mockUser: Partial<User> = {
     id: '1',
@@ -55,6 +59,20 @@ describe('CategoriesService', () => {
             findOne: jest.fn(),
           },
         },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            createEvent: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -64,6 +82,7 @@ describe('CategoriesService', () => {
     workspaceMemberRepository = testingModule.get<Repository<WorkspaceMember>>(
       getRepositoryToken(WorkspaceMember),
     );
+    auditService = testingModule.get<AuditService>(AuditService);
   });
 
   beforeEach(() => {
@@ -108,6 +127,13 @@ describe('CategoriesService', () => {
 
       expect(result).toEqual(mockCategory);
       expect(categoryRepository.save).toHaveBeenCalled();
+      expect(auditService.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: AuditAction.CREATE,
+          entityType: EntityType.CATEGORY,
+          entityId: mockCategory.id,
+        }),
+      );
     });
 
     it('should check for duplicate names', async () => {
@@ -318,6 +344,13 @@ describe('CategoriesService', () => {
 
       expect(result.name).toBe(updateDto.name);
       expect(categoryRepository.save).toHaveBeenCalled();
+      expect(auditService.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: AuditAction.UPDATE,
+          entityType: EntityType.CATEGORY,
+          entityId: 'cat-1',
+        }),
+      );
     });
 
     it('should check permissions before update', async () => {
@@ -398,6 +431,13 @@ describe('CategoriesService', () => {
       await service.remove('cat-1', '1');
 
       expect(removeSpy).toHaveBeenCalledWith(mockCategory);
+      expect(auditService.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: AuditAction.DELETE,
+          entityType: EntityType.CATEGORY,
+          entityId: 'cat-1',
+        }),
+      );
     });
 
     it('should check permissions before delete', async () => {

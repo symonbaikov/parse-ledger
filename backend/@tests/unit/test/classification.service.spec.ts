@@ -1,8 +1,11 @@
 import type { Branch } from '@/entities/branch.entity';
+import type { CategorizationRule } from '@/entities/categorization-rule.entity';
+import type { CategoryLearning } from '@/entities/category-learning.entity';
 import { type Category, CategoryType } from '@/entities/category.entity';
 import { type Transaction, TransactionType } from '@/entities/transaction.entity';
 import type { Wallet } from '@/entities/wallet.entity';
 import { ClassificationService } from '@/modules/classification/services/classification.service';
+import { AuditService } from '@/modules/audit/audit.service';
 
 function createRepoMock<T>() {
   return {
@@ -17,14 +20,26 @@ function createRepoMock<T>() {
 describe('ClassificationService', () => {
   let service: ClassificationService;
   const categoryRepo = createRepoMock<Category>();
+  const categoryLearningRepo = createRepoMock<CategoryLearning>();
   const branchRepo = createRepoMock<Branch>();
   const walletRepo = createRepoMock<Wallet>();
+  const categorizationRuleRepo = createRepoMock<CategorizationRule>();
+  const cacheManager = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+  const auditService = { createEvent: jest.fn() } as AuditService;
 
   beforeEach(() => {
     jest.clearAllMocks();
     walletRepo.find.mockResolvedValue([]);
     branchRepo.find.mockResolvedValue([]);
-    service = new ClassificationService(categoryRepo, branchRepo, walletRepo);
+    service = new ClassificationService(
+      categoryRepo as any,
+      categoryLearningRepo as any,
+      branchRepo as any,
+      walletRepo as any,
+      categorizationRuleRepo as any,
+      cacheManager as any,
+      auditService as any,
+    );
   });
 
   it('should classify transaction with rule match and auto-fillers', async () => {

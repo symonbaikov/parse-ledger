@@ -7,7 +7,10 @@ import {
   WorkspaceMember,
   WorkspaceRole,
 } from '@/entities';
+import { AuditAction, EntityType } from '@/entities/audit-event.entity';
+import { Integration } from '@/entities/integration.entity';
 import { WorkspacesService } from '@/modules/workspaces/workspaces.service';
+import { AuditService } from '@/modules/audit/audit.service';
 import {
   BadRequestException,
   ConflictException,
@@ -25,6 +28,7 @@ describe('WorkspacesService', () => {
   let workspaceMemberRepository: Repository<WorkspaceMember>;
   let invitationRepository: Repository<WorkspaceInvitation>;
   let userRepository: Repository<User>;
+  let auditService: AuditService;
 
   const mockUser: Partial<User> = {
     id: '1',
@@ -83,6 +87,18 @@ describe('WorkspacesService', () => {
             update: jest.fn(),
           },
         },
+        {
+          provide: getRepositoryToken(Integration),
+          useValue: {
+            count: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            createEvent: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -95,6 +111,7 @@ describe('WorkspacesService', () => {
       getRepositoryToken(WorkspaceInvitation),
     );
     userRepository = testingModule.get<Repository<User>>(getRepositoryToken(User));
+    auditService = testingModule.get<AuditService>(AuditService);
   });
 
   beforeEach(() => {
@@ -163,6 +180,29 @@ describe('WorkspacesService', () => {
       expect(updateSpy).toHaveBeenCalledWith(userWithoutWorkspace.id, {
         workspaceId: mockWorkspace.id,
       });
+    });
+  });
+
+  describe('createWorkspace', () => {
+    it('should emit audit event on create', async () => {
+      jest.spyOn(workspaceRepository, 'create').mockReturnValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceRepository, 'save').mockResolvedValue(mockWorkspace as Workspace);
+      jest.spyOn(workspaceMemberRepository, 'save').mockResolvedValue({} as any);
+      jest.spyOn(userRepository, 'update').mockResolvedValue({} as any);
+      jest.spyOn(service as any, 'getWorkspaceStats').mockResolvedValue({});
+
+      const result = await service.createWorkspace(mockUser.id as string, {
+        name: 'New Workspace',
+      } as any);
+
+      expect(result.id).toBe(mockWorkspace.id);
+      expect(auditService.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: AuditAction.CREATE,
+          entityType: EntityType.WORKSPACE,
+          entityId: mockWorkspace.id,
+        }),
+      );
     });
   });
 

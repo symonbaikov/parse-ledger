@@ -6,6 +6,7 @@ import {
   WorkspaceRole,
 } from '@/entities';
 import { TransactionsService } from '@/modules/transactions/transactions.service';
+import { AuditService } from '@/modules/audit/audit.service';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 
@@ -23,6 +24,8 @@ describe('TransactionsService', () => {
   const statementRepository = createRepoMock<Statement>();
   const userRepository = createRepoMock<User>();
   const workspaceMemberRepository = createRepoMock<WorkspaceMember>();
+  const cacheManager = { get: jest.fn(), set: jest.fn() };
+  const auditService = { createEvent: jest.fn(), createBatchEvents: jest.fn() } as AuditService;
 
   let service: TransactionsService;
 
@@ -33,6 +36,8 @@ describe('TransactionsService', () => {
       statementRepository as any,
       userRepository as any,
       workspaceMemberRepository as any,
+      cacheManager as any,
+      auditService as any,
     );
   });
 
@@ -46,7 +51,7 @@ describe('TransactionsService', () => {
       permissions: { canEditStatements: false },
     }));
 
-    await expect(service.update('t1', 'u1', { amount: 1 } as any)).rejects.toThrow(
+    await expect(service.update('t1', 'w1', 'u1', { amount: 1 } as any)).rejects.toThrow(
       ForbiddenException,
     );
     expect(transactionRepository.findOne).not.toHaveBeenCalled();
@@ -70,7 +75,7 @@ describe('TransactionsService', () => {
     }));
     transactionRepository.save = jest.fn(async (tx: any) => tx);
 
-    const updated = await service.update('t1', 'u1', { debit: 100 } as any);
+    const updated = await service.update('t1', 'w1', 'u1', { debit: 100 } as any);
 
     expect(updated.amount).toBe(100);
     expect(updated.transactionType).toBe('expense');
@@ -94,7 +99,7 @@ describe('TransactionsService', () => {
     }));
     transactionRepository.save = jest.fn(async (tx: any) => tx);
 
-    const updated = await service.update('t1', 'u1', {
+    const updated = await service.update('t1', 'w1', 'u1', {
       amountForeign: 10,
       exchangeRate: 500,
     } as any);
@@ -102,18 +107,20 @@ describe('TransactionsService', () => {
     expect(updated.amount).toBe(5000);
   });
 
-  it('throws ForbiddenException if transaction belongs to another user', async () => {
+  it('returns transaction when found', async () => {
     transactionRepository.findOne = jest.fn(async () => ({
       id: 't1',
-      statement: { userId: 'someone-else' },
+      workspaceId: 'w1',
     }));
 
-    await expect(service.findOne('t1', 'u1')).rejects.toThrow(ForbiddenException);
+    const result = await service.findOne('t1', 'w1');
+
+    expect(result.id).toBe('t1');
   });
 
   it('throws NotFoundException if transaction does not exist', async () => {
     transactionRepository.findOne = jest.fn(async () => null);
-    await expect(service.findOne('missing', 'u1')).rejects.toThrow(NotFoundException);
+    await expect(service.findOne('missing', 'w1')).rejects.toThrow(NotFoundException);
   });
 
   it('bulkUpdate returns only successfully updated transactions', async () => {
@@ -127,7 +134,7 @@ describe('TransactionsService', () => {
       .mockRejectedValueOnce(new Error('boom'));
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    const result = await service.bulkUpdate('u1', [
+    const result = await service.bulkUpdate('w1', 'u1', [
       { id: 't-ok', updates: { amount: 1 } as any },
       { id: 't-fail', updates: { amount: 2 } as any },
     ]);
@@ -149,7 +156,7 @@ describe('TransactionsService', () => {
       statement: { userId: 'u1' },
     }));
 
-    await service.remove('t1', 'u1');
+    await service.remove('t1', 'w1', 'u1');
 
     expect(transactionRepository.delete).toHaveBeenCalledWith('t1');
   });

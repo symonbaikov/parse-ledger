@@ -15,7 +15,7 @@ describe('StatementsService', () => {
     createQueryBuilder: jest.fn(),
   };
 
-  const auditLogRepository = { save: jest.fn().mockResolvedValue(undefined) };
+  const auditService = { createEvent: jest.fn().mockResolvedValue(undefined) };
   const userRepository = {
     findOne: jest.fn(),
   };
@@ -27,6 +27,7 @@ describe('StatementsService', () => {
   };
   const fileStorageService = {};
   const transactionRepository = {};
+  const cacheManager = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
 
   let service: StatementsService;
   let qb: any;
@@ -50,11 +51,12 @@ describe('StatementsService', () => {
     service = new StatementsService(
       statementRepository as any,
       transactionRepository as any,
-      auditLogRepository as any,
       userRepository as any,
       workspaceMemberRepository as any,
       fileStorageService as any,
       statementProcessingService as any,
+      cacheManager as any,
+      auditService as any,
     );
     jest.spyOn(service as any, 'ensureCanEditStatements').mockResolvedValue(undefined);
   });

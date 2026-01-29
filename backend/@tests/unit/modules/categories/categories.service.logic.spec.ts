@@ -6,6 +6,7 @@ import {
   WorkspaceRole,
 } from '@/entities';
 import { CategoriesService } from '@/modules/categories/categories.service';
+import { AuditService } from '@/modules/audit/audit.service';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 
@@ -24,6 +25,8 @@ describe('CategoriesService', () => {
   const categoryRepository = createRepoMock<Category>();
   const userRepository = createRepoMock<User>();
   const workspaceMemberRepository = createRepoMock<WorkspaceMember>();
+  const cacheManager = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+  const auditService = { createEvent: jest.fn() } as unknown as AuditService;
 
   let service: CategoriesService;
 
@@ -33,6 +36,8 @@ describe('CategoriesService', () => {
       categoryRepository as any,
       userRepository as any,
       workspaceMemberRepository as any,
+      cacheManager as any,
+      auditService as any,
     );
   });
 

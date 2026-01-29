@@ -1,4 +1,5 @@
 import {
+  type Integration,
   type User,
   type Workspace,
   type WorkspaceInvitation,
@@ -31,6 +32,8 @@ describe('WorkspacesService', () => {
   const workspaceMemberRepository = createRepoMock<WorkspaceMember>();
   const invitationRepository = createRepoMock<WorkspaceInvitation>();
   const userRepository = createRepoMock<User>();
+  const integrationRepository = createRepoMock<Integration>();
+  const auditService = { createEvent: jest.fn() };
 
   let service: WorkspacesService;
 
@@ -41,6 +44,8 @@ describe('WorkspacesService', () => {
       workspaceMemberRepository as any,
       invitationRepository as any,
       userRepository as any,
+      integrationRepository as any,
+      auditService as any,
     );
     (service as any).sendInvitationEmail = jest.fn(async () => undefined);
   });

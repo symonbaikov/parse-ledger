@@ -1,18 +1,19 @@
 import * as fs from 'fs';
 import { FileStorageService } from '@/common/services/file-storage.service';
-import { AuditAction, AuditLog } from '@/entities/audit-log.entity';
 import { BankName, FileType, Statement, StatementStatus } from '@/entities/statement.entity';
 import { Transaction } from '@/entities/transaction.entity';
 import { User, UserRole } from '@/entities/user.entity';
 import { WorkspaceMember, WorkspaceRole } from '@/entities/workspace-member.entity';
 import { StatementProcessingService } from '@/modules/parsing/services/statement-processing.service';
 import { StatementsService } from '@/modules/statements/statements.service';
+import { AuditService } from '@/modules/audit/audit.service';
 import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
@@ -25,7 +26,7 @@ describe('StatementsService', () => {
   let service: StatementsService;
   let statementRepository: Repository<Statement>;
   let transactionRepository: Repository<Transaction>;
-  let auditLogRepository: Repository<AuditLog>;
+  let auditService: AuditService;
   let userRepository: Repository<User>;
   let workspaceMemberRepository: Repository<WorkspaceMember>;
   let fileStorageService: FileStorageService;
@@ -86,10 +87,9 @@ describe('StatementsService', () => {
           },
         },
         {
-          provide: getRepositoryToken(AuditLog),
+          provide: AuditService,
           useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
+            createEvent: jest.fn(),
           },
         },
         {
@@ -119,6 +119,14 @@ describe('StatementsService', () => {
             processStatement: jest.fn(),
           },
         },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -127,7 +135,7 @@ describe('StatementsService', () => {
     transactionRepository = testingModule.get<Repository<Transaction>>(
       getRepositoryToken(Transaction),
     );
-    auditLogRepository = testingModule.get<Repository<AuditLog>>(getRepositoryToken(AuditLog));
+    auditService = testingModule.get<AuditService>(AuditService);
     userRepository = testingModule.get<Repository<User>>(getRepositoryToken(User));
     workspaceMemberRepository = testingModule.get<Repository<WorkspaceMember>>(
       getRepositoryToken(WorkspaceMember),
@@ -435,20 +443,20 @@ describe('StatementsService', () => {
       await expect(service.remove('1', '1')).rejects.toThrow(ForbiddenException);
     });
 
-    it('should create audit log for deletion', async () => {
+    it('should create audit event for deletion', async () => {
       jest.spyOn(statementRepository, 'findOne').mockResolvedValue({
         ...mockStatement,
         filePath: '/tmp/file.pdf',
       } as Statement);
       jest.spyOn(transactionRepository, 'delete').mockResolvedValue({ affected: 0, raw: [] });
       jest.spyOn(statementRepository, 'remove').mockResolvedValue(mockStatement as Statement);
-      const auditSpy = jest.spyOn(auditLogRepository, 'save');
+      const auditSpy = jest.spyOn(auditService, 'createEvent');
 
       await service.remove('1', '1');
 
       expect(auditSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          action: AuditAction.STATEMENT_DELETE,
+          action: 'delete',
         }),
       );
     });

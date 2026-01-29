@@ -1,12 +1,15 @@
 import { Statement } from '@/entities/statement.entity';
+import { AuditAction, EntityType } from '@/entities/audit-event.entity';
 import { Transaction, TransactionType } from '@/entities/transaction.entity';
 import { User, UserRole } from '@/entities/user.entity';
 import { WorkspaceMember, WorkspaceRole } from '@/entities/workspace-member.entity';
 import { TransactionsService } from '@/modules/transactions/transactions.service';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
+import { AuditService } from '@/modules/audit/audit.service';
 
 describe('TransactionsService', () => {
   let testingModule: TestingModule;
@@ -15,6 +18,7 @@ describe('TransactionsService', () => {
   let statementRepository: Repository<Statement>;
   let userRepository: Repository<User>;
   let workspaceMemberRepository: Repository<WorkspaceMember>;
+  let auditService: AuditService;
 
   const mockUser: Partial<User> = {
     id: '1',
@@ -67,6 +71,20 @@ describe('TransactionsService', () => {
             findOne: jest.fn(),
           },
         },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+          },
+        },
+        {
+          provide: AuditService,
+          useValue: {
+            createEvent: jest.fn(),
+          },
+        },
       ],
     }).compile();
 
@@ -79,6 +97,7 @@ describe('TransactionsService', () => {
     workspaceMemberRepository = testingModule.get<Repository<WorkspaceMember>>(
       getRepositoryToken(WorkspaceMember),
     );
+    auditService = testingModule.get<AuditService>(AuditService);
   });
 
   beforeEach(() => {
@@ -112,7 +131,7 @@ describe('TransactionsService', () => {
     });
 
     it('should return paginated transactions', async () => {
-      const result = await service.findAll('1', {
+      const result = await service.findAll('ws-1', {
         page: 1,
         limit: 10,
       });
@@ -127,7 +146,7 @@ describe('TransactionsService', () => {
     it('should filter by statement id', async () => {
       const qb = mockQueryBuilder; // transactionRepository.createQueryBuilder('transaction');
 
-      await service.findAll('1', {
+      await service.findAll('ws-1', {
         statementId: 'stmt-1',
       });
 
@@ -140,7 +159,7 @@ describe('TransactionsService', () => {
       const dateFrom = new Date('2026-01-01');
       const dateTo = new Date('2026-01-31');
 
-      await service.findAll('1', {
+      await service.findAll('ws-1', {
         dateFrom,
         dateTo,
       });
@@ -150,7 +169,7 @@ describe('TransactionsService', () => {
     });
 
     it('should filter by transaction type', async () => {
-      await service.findAll('1', {
+      await service.findAll('ws-1', {
         type: 'expense',
       });
 
@@ -159,7 +178,7 @@ describe('TransactionsService', () => {
     });
 
     it('should filter by category', async () => {
-      await service.findAll('1', {
+      await service.findAll('ws-1', {
         categoryId: 'cat-1',
       });
 
@@ -168,33 +187,29 @@ describe('TransactionsService', () => {
     });
 
     it('should load related entities', async () => {
-      await service.findAll('1', {});
+      await service.findAll('ws-1', {});
 
       const qb = mockQueryBuilder; // transactionRepository.createQueryBuilder('transaction');
       expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('transaction.category', 'category');
     });
 
-    it('should scope to user statements', async () => {
-      await service.findAll('1', {});
+    it('should scope to workspace transactions', async () => {
+      await service.findAll('ws-1', {});
 
       const qb = mockQueryBuilder; // transactionRepository.createQueryBuilder('transaction');
-      expect(qb.where).toHaveBeenCalledWith('statement.userId = :userId', {
-        userId: '1',
+      expect(qb.where).toHaveBeenCalledWith('transaction.workspaceId = :workspaceId', {
+        workspaceId: 'ws-1',
       });
     });
   });
 
   describe('findOne', () => {
-    beforeEach(() => {
-      jest.spyOn(userRepository, 'findOne').mockResolvedValue(mockUser as User);
-    });
-
     it('should return transaction by id', async () => {
       jest
         .spyOn(transactionRepository, 'findOne')
         .mockResolvedValue(mockTransaction as Transaction);
 
-      const result = await service.findOne('1', '1');
+      const result = await service.findOne('1', 'ws-1');
 
       expect(result).toEqual(mockTransaction);
     });
@@ -202,7 +217,7 @@ describe('TransactionsService', () => {
     it('should throw NotFoundException if not found', async () => {
       jest.spyOn(transactionRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findOne('999', '1')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('999', 'ws-1')).rejects.toThrow(NotFoundException);
     });
 
     it('should load related entities', async () => {
@@ -210,7 +225,7 @@ describe('TransactionsService', () => {
         .spyOn(transactionRepository, 'findOne')
         .mockResolvedValue(mockTransaction as Transaction);
 
-      await service.findOne('1', '1');
+      await service.findOne('1', 'ws-1');
 
       expect(findOneSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -219,13 +234,18 @@ describe('TransactionsService', () => {
       );
     });
 
-    it('should verify user access to transaction', async () => {
-      jest.spyOn(transactionRepository, 'findOne').mockResolvedValue({
-        ...mockTransaction,
-        statement: { userId: '2' },
-      } as any);
+    it('should scope lookups by workspace', async () => {
+      const findOneSpy = jest
+        .spyOn(transactionRepository, 'findOne')
+        .mockResolvedValue(mockTransaction as Transaction);
 
-      await expect(service.findOne('1', '1')).rejects.toThrow(ForbiddenException);
+      await service.findOne('1', 'ws-1');
+
+      expect(findOneSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: '1', workspaceId: 'ws-1' },
+        }),
+      );
     });
   });
 
@@ -252,10 +272,17 @@ describe('TransactionsService', () => {
         ...updateDto,
       } as Transaction);
 
-      const result = await service.update('1', '1', updateDto);
+      const result = await service.update('1', 'ws-1', '1', updateDto);
 
       expect(result.categoryId).toBe(updateDto.categoryId);
       expect(transactionRepository.save).toHaveBeenCalled();
+      expect(auditService.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: AuditAction.UPDATE,
+          entityType: EntityType.TRANSACTION,
+          entityId: '1',
+        }),
+      );
     });
 
     it('should check permissions before update', async () => {
@@ -265,13 +292,17 @@ describe('TransactionsService', () => {
       } as WorkspaceMember;
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(restrictedMember);
 
-      await expect(service.update('1', '1', updateDto)).rejects.toThrow(ForbiddenException);
+      await expect(service.update('1', 'ws-1', '1', updateDto)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should throw NotFoundException if transaction not found', async () => {
       jest.spyOn(transactionRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.update('999', '1', updateDto)).rejects.toThrow(NotFoundException);
+      await expect(service.update('999', 'ws-1', '1', updateDto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should validate category belongs to user workspace', async () => {
@@ -299,7 +330,7 @@ describe('TransactionsService', () => {
         .mockResolvedValue(mockTransaction as Transaction);
       jest.spyOn(transactionRepository, 'save').mockResolvedValue(mockTransaction as Transaction);
 
-      const result = await service.bulkUpdate('1', bulkUpdateDto);
+      const result = await service.bulkUpdate('ws-1', '1', bulkUpdateDto);
 
       expect(Array.isArray(result)).toBe(true);
       expect(result.length).toBeGreaterThan(0);
@@ -312,7 +343,7 @@ describe('TransactionsService', () => {
         .mockResolvedValueOnce(null);
       jest.spyOn(transactionRepository, 'save').mockResolvedValue(mockTransaction as Transaction);
 
-      const result = await service.bulkUpdate('1', bulkUpdateDto);
+      const result = await service.bulkUpdate('ws-1', '1', bulkUpdateDto);
 
       expect(result.length).toBe(1);
     });
@@ -324,7 +355,9 @@ describe('TransactionsService', () => {
       } as WorkspaceMember;
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(restrictedMember);
 
-      await expect(service.bulkUpdate('1', bulkUpdateDto)).rejects.toThrow(ForbiddenException);
+      await expect(service.bulkUpdate('ws-1', '1', bulkUpdateDto)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -344,9 +377,16 @@ describe('TransactionsService', () => {
         .spyOn(transactionRepository, 'delete')
         .mockResolvedValue({ affected: 1, raw: [] });
 
-      await service.remove('1', '1');
+      await service.remove('1', 'ws-1', '1');
 
       expect(deleteSpy).toHaveBeenCalledWith('1');
+      expect(auditService.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: AuditAction.DELETE,
+          entityType: EntityType.TRANSACTION,
+          entityId: '1',
+        }),
+      );
     });
 
     it('should check permissions before delete', async () => {
@@ -356,13 +396,13 @@ describe('TransactionsService', () => {
       } as WorkspaceMember;
       jest.spyOn(workspaceMemberRepository, 'findOne').mockResolvedValue(restrictedMember);
 
-      await expect(service.remove('1', '1')).rejects.toThrow(ForbiddenException);
+      await expect(service.remove('1', 'ws-1', '1')).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw NotFoundException if transaction not found', async () => {
       jest.spyOn(transactionRepository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.remove('999', '1')).rejects.toThrow(NotFoundException);
+      await expect(service.remove('999', 'ws-1', '1')).rejects.toThrow(NotFoundException);
     });
   });
 });
