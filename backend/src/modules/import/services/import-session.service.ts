@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import {
@@ -17,6 +17,7 @@ import {
   IntelligentDeduplicationService,
 } from '../../parsing/services/intelligent-deduplication.service';
 import { TransactionFingerprintService } from '../../transactions/services/transaction-fingerprint.service';
+import { ImportConfigService } from '../config/import.config';
 import {
   ImportConflictError,
   ImportFatalError,
@@ -100,6 +101,7 @@ export class ImportSessionService {
     private readonly dataSource: DataSource,
     private readonly fingerprintService: TransactionFingerprintService,
     private readonly deduplicationService: IntelligentDeduplicationService,
+    private readonly importConfigService: ImportConfigService,
     private readonly retryService: ImportRetryService,
   ) {}
 
@@ -162,11 +164,11 @@ export class ImportSessionService {
       where: {
         workspaceId,
         fileHash,
-        status: ImportSessionStatus.COMPLETED,
       },
+      order: { createdAt: 'DESC' },
     });
 
-    if (existingSession) {
+    if (existingSession && existingSession.status !== ImportSessionStatus.CANCELLED) {
       this.logger.warn(
         `Import session already exists for file hash ${fileHash}, returning existing session`,
       );
@@ -385,14 +387,50 @@ export class ImportSessionService {
     }
 
     // Step 4: Detect conflicts using tolerant matching for non-matched transactions
-    // Note: IntelligentDeduplicationService uses ImportConfigService internally
-    // for tolerance thresholds (date, amount, text similarity)
+    // Expand candidate set by date/amount windows instead of only exact fingerprints
     const unmatchedClassifications = classifications.filter(c => c.status === 'new');
     const unmatchedTransactions = unmatchedClassifications.map(c => c.transaction);
 
+    const dateToleranceDays = this.importConfigService.getDedupDateToleranceDays();
+    const amountTolerancePercent = this.importConfigService.getDedupAmountTolerancePercent();
+
+    const transactionDates = transactions
+      .map(tx => tx.transactionDate)
+      .filter((date): date is Date => date instanceof Date && !Number.isNaN(date.getTime()));
+
+    const minDateValue =
+      transactionDates.length > 0
+        ? Math.min(...transactionDates.map(d => d.getTime()))
+        : Date.now();
+    const maxDateValue =
+      transactionDates.length > 0
+        ? Math.max(...transactionDates.map(d => d.getTime()))
+        : Date.now();
+
+    const minDate = new Date(minDateValue - dateToleranceDays * 24 * 60 * 60 * 1000);
+    const maxDate = new Date(maxDateValue + dateToleranceDays * 24 * 60 * 60 * 1000);
+
+    const amountRangesMap = new Map<string, { min: number; max: number }>();
+    for (const tx of transactions) {
+      const amount = (tx.debit ?? tx.credit ?? 0) as number;
+      const tolerance = Math.abs(amount) * (amountTolerancePercent / 100);
+      const minAmount = amount - tolerance;
+      const maxAmount = amount + tolerance;
+      const key = `${minAmount.toFixed(2)}:${maxAmount.toFixed(2)}`;
+      if (!amountRangesMap.has(key)) {
+        amountRangesMap.set(key, { min: minAmount, max: maxAmount });
+      }
+    }
+
+    const candidateExisting = await this.fingerprintService.findCandidatesByWindow(
+      session.workspaceId,
+      { start: minDate, end: maxDate },
+      Array.from(amountRangesMap.values()),
+    );
+
     const conflicts = await this.deduplicationService.detectConflicts(
       unmatchedTransactions,
-      existingTransactions,
+      candidateExisting,
     );
 
     // Map conflicts to classifications
@@ -499,6 +537,21 @@ export class ImportSessionService {
       const accountNumber = session.statement?.accountNumber || '';
       const savedTransactions: Transaction[] = [];
       const classifications: TransactionClassification[] = [];
+      const existingById = new Map<string, Transaction>();
+
+      const loadExisting = async (id?: string | null): Promise<Transaction | undefined> => {
+        if (!id) return undefined;
+        if (existingById.has(id)) {
+          return existingById.get(id);
+        }
+        const existing = await queryRunner.manager.findOne(Transaction, {
+          where: { id },
+        });
+        if (existing) {
+          existingById.set(id, existing);
+        }
+        return existing;
+      };
 
       for (let i = 0; i < transactions.length; i++) {
         const tx = transactions[i];
@@ -542,6 +595,12 @@ export class ImportSessionService {
               accountNumber,
               queryRunner,
             );
+            const existing = await loadExisting(previewData.existingTransactionId);
+            if (existing) {
+              newTransaction.categoryId = existing.categoryId;
+              newTransaction.branchId = existing.branchId;
+              newTransaction.walletId = existing.walletId;
+            }
             newTransaction.isDuplicate = true;
             newTransaction.duplicateOfId = previewData.existingTransactionId;
             newTransaction.duplicateConfidence = previewData.conflictConfidence || null;
@@ -564,6 +623,12 @@ export class ImportSessionService {
               accountNumber,
               queryRunner,
             );
+            const existing = await loadExisting(previewData.existingTransactionId);
+            if (existing) {
+              newTransaction.categoryId = existing.categoryId;
+              newTransaction.branchId = existing.branchId;
+              newTransaction.walletId = existing.walletId;
+            }
             const saved = await queryRunner.manager.save(newTransaction);
             savedTransactions.push(saved);
 
@@ -732,6 +797,25 @@ export class ImportSessionService {
     }
 
     return summary;
+  }
+
+  /**
+   * Get full import session entity.
+   *
+   * @param sessionId Import session ID
+   * @returns Import session
+   * @throws ImportValidationError if session not found
+   */
+  async getSession(sessionId: string): Promise<ImportSession> {
+    const session = await this.importSessionRepository.findOne({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new ImportValidationError(`Import session not found: ${sessionId}`, { sessionId });
+    }
+
+    return session;
   }
 
   /**

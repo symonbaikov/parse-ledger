@@ -1,0 +1,303 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { Interval } from '@nestjs/schedule';
+import { InjectRepository } from '@nestjs/typeorm';
+import { LessThan, Repository } from 'typeorm';
+import {
+  ActorType,
+  AuditAction,
+  EntityType,
+  Integration,
+  Receipt,
+  ReceiptJobStatus,
+  ReceiptProcessingJob,
+  ReceiptStatus,
+  Workspace,
+} from '../../entities';
+import { AuditService } from '../audit/audit.service';
+import { GmailReceiptCategoryService } from './services/gmail-receipt-category.service';
+import { GmailReceiptDuplicateService } from './services/gmail-receipt-duplicate.service';
+import { GmailReceiptParserService } from './services/gmail-receipt-parser.service';
+import { GmailService } from './services/gmail.service';
+
+const JOB_LOCK_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+const WORKER_ID = `worker-${process.pid}-${Math.random().toString(36).substr(2, 9)}`;
+
+@Injectable()
+export class GmailReceiptProcessor {
+  private readonly logger = new Logger(GmailReceiptProcessor.name);
+  private processing = false;
+
+  constructor(
+    @InjectRepository(ReceiptProcessingJob)
+    private readonly jobRepository: Repository<ReceiptProcessingJob>,
+    @InjectRepository(Receipt)
+    private readonly receiptRepository: Repository<Receipt>,
+    @InjectRepository(Integration)
+    private readonly integrationRepository: Repository<Integration>,
+    private readonly gmailService: GmailService,
+    private readonly parserService: GmailReceiptParserService,
+    private readonly duplicateService: GmailReceiptDuplicateService,
+    private readonly categoryService: GmailReceiptCategoryService,
+    private readonly auditService: AuditService,
+  ) {}
+
+  @Interval(3000)
+  async processJobs(): Promise<void> {
+    if (this.processing) {
+      return;
+    }
+
+    this.processing = true;
+
+    try {
+      const now = new Date();
+      const lockTimeout = new Date(now.getTime() - JOB_LOCK_TIMEOUT_MS);
+
+      // Find pending jobs or stale locked jobs
+      const job = await this.jobRepository
+        .createQueryBuilder('job')
+        .where('job.status = :status', { status: ReceiptJobStatus.PENDING })
+        .orWhere('job.status = :processing AND job.lockedAt < :lockTimeout', {
+          processing: ReceiptJobStatus.PROCESSING,
+          lockTimeout,
+        })
+        .orderBy('job.createdAt', 'ASC')
+        .limit(1)
+        .getOne();
+
+      if (!job) {
+        return;
+      }
+
+      // Lock the job
+      const lockResult = await this.jobRepository
+        .createQueryBuilder()
+        .update(ReceiptProcessingJob)
+        .set({
+          status: ReceiptJobStatus.PROCESSING,
+          lockedAt: now,
+          lockedBy: WORKER_ID,
+        })
+        .where('id = :id', { id: job.id })
+        .andWhere('status = :status', { status: job.status })
+        .execute();
+
+      if (lockResult.affected === 0) {
+        return;
+      }
+
+      // Process the job
+      await this.processJob(job);
+    } catch (error) {
+      this.logger.error('Error in job processor', error);
+    } finally {
+      this.processing = false;
+    }
+  }
+
+  private async processJob(job: ReceiptProcessingJob): Promise<void> {
+    try {
+      this.logger.log(`Processing job ${job.id} for message ${job.payload.gmailMessageId}`);
+
+      // Get integration
+      const integration = await this.integrationRepository.findOne({
+        where: { id: job.payload.integrationId },
+        relations: ['workspace'],
+      });
+
+      if (!integration) {
+        throw new Error('Integration not found');
+      }
+
+      // Check if receipt already exists
+      const existing = await this.receiptRepository.findOne({
+        where: { gmailMessageId: job.payload.gmailMessageId },
+      });
+
+      if (existing) {
+        this.logger.log(`Receipt already exists for message ${job.payload.gmailMessageId}`);
+        job.status = ReceiptJobStatus.COMPLETED;
+        job.receiptId = existing.id;
+        await this.jobRepository.save(job);
+        return;
+      }
+
+      // Fetch message from Gmail
+      const message = await this.gmailService.getMessage(job.userId, job.payload.gmailMessageId);
+
+      // Extract metadata
+      const headers = message.payload.headers || [];
+      const getHeader = (name: string) =>
+        headers.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value || '';
+
+      const subject = getHeader('Subject');
+      const sender = getHeader('From');
+      const dateHeader = getHeader('Date');
+      const receivedAt = dateHeader ? new Date(dateHeader) : new Date();
+
+      // Find attachments
+      const attachments: any[] = [];
+      const findAttachments = (part: any) => {
+        if (part.filename && part.body?.attachmentId) {
+          attachments.push({
+            id: part.body.attachmentId,
+            filename: part.filename,
+            mimeType: part.mimeType,
+            size: part.body.size,
+          });
+        }
+        if (part.parts) {
+          part.parts.forEach(findAttachments);
+        }
+      };
+      findAttachments(message.payload);
+
+      // Download attachments
+      const attachmentPaths: string[] = [];
+      for (const attachment of attachments) {
+        try {
+          const filePath = await this.gmailService.downloadAttachment(
+            job.userId,
+            job.payload.gmailMessageId,
+            attachment.id,
+            attachment.filename,
+          );
+          attachmentPaths.push(filePath);
+        } catch (error) {
+          this.logger.error(`Failed to download attachment ${attachment.filename}`, error);
+        }
+      }
+
+      // Parse receipts from attachments
+      let parsedData = null;
+      let initialStatus = ReceiptStatus.NEW;
+
+      if (attachmentPaths.length > 0) {
+        try {
+          parsedData = await this.parserService.parseReceipt(attachmentPaths[0]);
+          job.progress = 60;
+          await this.jobRepository.save(job);
+
+          if (parsedData) {
+            initialStatus = ReceiptStatus.PARSED;
+          }
+        } catch (error) {
+          this.logger.error('Failed to parse receipt', error);
+          initialStatus = ReceiptStatus.FAILED;
+        }
+      }
+
+      // Get workspace ID
+      const workspaceId = integration.workspaceId || integration.workspace?.id || null;
+
+      if (!workspaceId) {
+        throw new Error('No workspace found for integration');
+      }
+
+      // Create receipt
+      const receipt = this.receiptRepository.create({
+        userId: job.userId,
+        workspaceId,
+        gmailMessageId: job.payload.gmailMessageId,
+        gmailThreadId: message.threadId || '',
+        subject,
+        sender,
+        receivedAt,
+        status: initialStatus,
+        metadata: {
+          attachments,
+          labels: message.labelIds || [],
+          snippet: message.snippet,
+        },
+        parsedData,
+        attachmentPaths,
+        taxAmount: parsedData?.tax || null,
+        isDuplicate: false,
+      });
+
+      const savedReceipt = await this.receiptRepository.save(receipt);
+      job.progress = 70;
+      await this.jobRepository.save(job);
+
+      // Audit: record receipt import from Gmail.
+      await this.auditService.createEvent({
+        workspaceId,
+        actorType: ActorType.INTEGRATION,
+        actorId: integration.connectedByUserId || job.userId,
+        actorLabel: 'Gmail Import',
+        entityType: EntityType.RECEIPT,
+        entityId: savedReceipt.id,
+        action: AuditAction.IMPORT,
+        diff: { before: null, after: savedReceipt },
+        meta: {
+          integrationId: integration.id,
+          gmailMessageId: job.payload.gmailMessageId,
+          provider: 'gmail',
+        },
+      });
+
+      // Check for duplicates
+      if (parsedData && savedReceipt.status === ReceiptStatus.PARSED) {
+        try {
+          const potentialDuplicates =
+            await this.duplicateService.findPotentialDuplicates(savedReceipt);
+
+          if (potentialDuplicates.length > 0) {
+            savedReceipt.metadata = {
+              ...savedReceipt.metadata,
+              potentialDuplicates: potentialDuplicates.map(d => d.id),
+            };
+            savedReceipt.status = ReceiptStatus.NEEDS_REVIEW;
+          } else {
+            savedReceipt.status = ReceiptStatus.DRAFT;
+          }
+
+          job.progress = 85;
+          await this.jobRepository.save(job);
+        } catch (error) {
+          this.logger.error('Failed to check duplicates', error);
+        }
+      }
+
+      // Suggest category
+      if (parsedData && savedReceipt.status !== ReceiptStatus.FAILED) {
+        try {
+          const suggestedCategory = await this.categoryService.suggestCategory(savedReceipt);
+
+          if (suggestedCategory) {
+            savedReceipt.parsedData = {
+              ...savedReceipt.parsedData,
+              category: suggestedCategory.name,
+              categoryId: suggestedCategory.id,
+            };
+          }
+
+          job.progress = 95;
+          await this.jobRepository.save(job);
+        } catch (error) {
+          this.logger.error('Failed to suggest category', error);
+        }
+      }
+
+      // Save final receipt state
+      await this.receiptRepository.save(savedReceipt);
+
+      // Mark job as completed
+      job.status = ReceiptJobStatus.COMPLETED;
+      job.progress = 100;
+      job.receiptId = savedReceipt.id;
+      job.result = { receiptId: savedReceipt.id };
+      await this.jobRepository.save(job);
+
+      this.logger.log(
+        `Successfully processed receipt ${savedReceipt.id} for message ${job.payload.gmailMessageId}`,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to process job ${job.id}`, error);
+
+      job.status = ReceiptJobStatus.FAILED;
+      job.error = error instanceof Error ? error.message : String(error);
+      await this.jobRepository.save(job);
+    }
+  }
+}

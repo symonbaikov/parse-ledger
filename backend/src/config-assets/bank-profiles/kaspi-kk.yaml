@@ -1,0 +1,117 @@
+# Kaspi Bank (Kazakhstan)
+name: "Kaspi Bank"
+country: "KZ"
+language: "kk"
+locale: "kk-KZ"
+domain: "kaspi.kz"
+encoding: "UTF-8"
+
+# Language patterns
+patterns:
+  date:
+    formats:
+      - "dd.MM.yyyy"
+      - "yyyy-MM-dd"
+    separators: [".", "-"]
+    monthNames: ["қаңтар", "ақпан", "наурыз", "сәуір", "мамыр", "маусым", "шілде", "тамыз", "қыркүйек", "қазан", "қараша", "желтоқсан"]
+  
+  number:
+    decimalSeparator: ","
+    thousandsSeparator: " "
+    currencySymbols: ["₸", "KZT"]
+    negativeFormat: "prefix"
+    
+  amount:
+    patterns:
+      - "\\d{1,3} \\d{3},\\d{2}"
+      - "\\d+,\\d{2}"
+    keywords: ["сома", "сумма", "көлемі"]
+
+# Column mapping (Kazakh headers)
+columns:
+  date:
+    keywords: ["күн", "дата", "күні", "операция күні"]
+    position: 0
+    required: true
+  
+  description:
+    keywords: ["сипаттама", "түсіндірме", "ақпарат", "операция"]
+    position: 1
+    required: true
+  
+  amount:
+    keywords: ["сома", "сан", "құны", "көлем", "мөлшер"]
+    position: 2
+    required: true
+    
+  currency:
+    keywords: ["валюта", "теңге"]
+    position: 3
+    required: false
+    
+  counterparty:
+    keywords: ["қаржы алушы", "алушы", "төлеуші", "контрагент"]
+    position: 4
+    required: false
+
+# Transaction type patterns
+transactionTypes:
+  debit:
+    keywords: ["дебет", "шығын", "төлем", "ақша аудару", "списание"]
+    patterns: ["-\\d+", "^(?!\\+).*\\d+"]
+    
+  credit:
+    keywords: ["кредит", "кіріс", "түсу", "келімі", "толықтыру", "поступление"]
+    patterns: ["\\+\\d+", "^\\+.*\\d+"]
+
+# Header extraction
+header:
+  patterns:
+    - "КАСПИ БАНК"
+    - "KASPI BANK"
+    - "Есеп шотының көрсеткіші"
+    - "Выписка по счету"
+    
+  accountNumber:
+    patterns:
+      - "KZ\\d{13,20}"
+      - "счет №\\s*\\d+"
+      - "шот №\\s*\\d+"
+      
+  period:
+    patterns:
+      - "кезең\\s*:\\s*(\\d{2}\\.\\d{2}\\.\\d{4})\\s*[-–—]\\s*(\\d{2}\\.\\d{2}\\.\\d{4})"
+      - "период\\s*:\\s*(\\d{2}\\.\\d{2}\\.\\d{4})\\s*[-–—]\\s*(\\d{2}\\.\\d{2}\\.\\d{4})"
+      
+  balance:
+    patterns:
+      - "қалдық\\s*[:：]\\s*([\\d\\s,]+)"
+      - "баланс\\s*[:：]\\s*([\\d\\s,]+)"
+
+# File detection
+fileDetection:
+  extensions: [".pdf", ".xlsx", ".csv", ".txt"]
+  filenamePatterns:
+    - "kaspi.*"
+    - "каспи.*"
+    - "выписка.*"
+    - "есеп.*"
+    
+  contentMarkers:
+    - "КАСПИ БАНК"
+    - "KASPI"
+    - "KZ"
+    - "қаңтар"
+
+# Processing rules
+processing:
+  trimWhitespace: true
+  normalizeUnicode: true
+  removeEmptyRows: true
+  minConfidence: 0.7
+  
+  # Column alignment rules
+  alignment:
+    strictColumns: false
+    tolerance: 2
+    minColumnWidth: 8

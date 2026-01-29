@@ -1,0 +1,61 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import {
+  Category,
+  GmailSettings,
+  GmailWatchSubscription,
+  Integration,
+  IntegrationToken,
+  Receipt,
+  ReceiptProcessingJob,
+  Transaction,
+  User,
+  Workspace,
+} from '../../entities';
+import { AuditModule } from '../audit/audit.module';
+import { GmailReceiptProcessor } from './gmail-receipt-processor';
+import { GmailWebhookController } from './gmail-webhook.controller';
+import { GmailController } from './gmail.controller';
+import { GmailScheduler } from './gmail.scheduler';
+import { GmailOAuthService } from './services/gmail-oauth.service';
+import { GmailReceiptCategoryService } from './services/gmail-receipt-category.service';
+import { GmailReceiptDuplicateService } from './services/gmail-receipt-duplicate.service';
+import { GmailReceiptExportService } from './services/gmail-receipt-export.service';
+import { GmailReceiptParserService } from './services/gmail-receipt-parser.service';
+import { GmailWatchService } from './services/gmail-watch.service';
+import { GmailWebhookService } from './services/gmail-webhook.service';
+import { GmailService } from './services/gmail.service';
+
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([
+      Integration,
+      IntegrationToken,
+      GmailSettings,
+      GmailWatchSubscription,
+      Receipt,
+      ReceiptProcessingJob,
+      User,
+      Transaction,
+      Workspace,
+      Category,
+    ]),
+    AuditModule,
+    // GoogleDriveModule removed: GmailReceiptExportService now uses GmailOAuthService
+  ],
+  controllers: [GmailController, GmailWebhookController],
+  providers: [
+    GmailOAuthService,
+    GmailService,
+    GmailWatchService,
+    GmailWebhookService,
+    GmailReceiptParserService,
+    GmailReceiptDuplicateService,
+    GmailReceiptCategoryService,
+    GmailReceiptExportService,
+    GmailReceiptProcessor,
+    GmailScheduler,
+  ],
+  exports: [GmailOAuthService, GmailService, GmailWatchService],
+})
+export class GmailModule {}
