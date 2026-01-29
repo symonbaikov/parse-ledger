@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { generateTransactionFingerprint } from '../../../common/utils/fingerprint.util';
 import { Transaction, TransactionType } from '../../../entities/transaction.entity';
 
@@ -10,6 +10,8 @@ import { Transaction, TransactionType } from '../../../entities/transaction.enti
  */
 @Injectable()
 export class TransactionFingerprintService {
+  private readonly logger = new Logger(TransactionFingerprintService.name);
+
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
@@ -102,6 +104,8 @@ export class TransactionFingerprintService {
     >,
     accountNumber: string,
   ): Map<string, string> {
+    this.logger.debug(`Generating ${transactions.length} fingerprints in bulk`);
+
     const fingerprintMap = new Map<string, string>();
 
     for (const transaction of transactions) {
@@ -142,18 +146,31 @@ export class TransactionFingerprintService {
    * Updates the fingerprint for an existing transaction.
    * Useful for backfilling fingerprints on legacy transactions.
    *
+   * @param workspaceId Workspace ID for isolation
    * @param transactionId Transaction ID to update
    * @param fingerprint New fingerprint value
    * @returns Updated transaction
    */
-  async updateFingerprint(transactionId: string, fingerprint: string): Promise<Transaction> {
-    await this.transactionRepository.update(transactionId, { fingerprint });
+  async updateFingerprint(
+    workspaceId: string,
+    transactionId: string,
+    fingerprint: string,
+  ): Promise<Transaction> {
+    const result = await this.transactionRepository.update(
+      { id: transactionId, workspaceId },
+      { fingerprint },
+    );
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Transaction not found: ${transactionId}`);
+    }
+
     const updated = await this.transactionRepository.findOne({
-      where: { id: transactionId },
+      where: { id: transactionId, workspaceId },
     });
 
     if (!updated) {
-      throw new Error(`Transaction not found: ${transactionId}`);
+      throw new NotFoundException(`Transaction not found: ${transactionId}`);
     }
 
     return updated;
@@ -173,15 +190,20 @@ export class TransactionFingerprintService {
     accountNumber: string,
     limit = 1000,
   ): Promise<number> {
+    this.logger.log(`Backfilling fingerprints for workspace ${workspaceId}, limit: ${limit}`);
+
     const transactions = await this.transactionRepository.find({
       where: {
         workspaceId,
-        fingerprint: null as any, // TypeORM type issue workaround
+        fingerprint: IsNull(),
       },
       take: limit,
     });
 
     if (transactions.length === 0) {
+      this.logger.log(
+        `No transactions found requiring fingerprint backfill for workspace ${workspaceId}`,
+      );
       return 0;
     }
 
@@ -191,6 +213,10 @@ export class TransactionFingerprintService {
     }
 
     await this.transactionRepository.save(transactions);
+
+    this.logger.log(
+      `Backfilled ${transactions.length} transaction fingerprints for workspace ${workspaceId}`,
+    );
     return transactions.length;
   }
 }

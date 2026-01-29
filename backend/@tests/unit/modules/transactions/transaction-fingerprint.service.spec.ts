@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { Transaction, TransactionType } from '../../../../src/entities/transaction.entity';
 import { TransactionFingerprintService } from '../../../../src/modules/transactions/services/transaction-fingerprint.service';
 
@@ -381,7 +381,7 @@ describe('TransactionFingerprintService', () => {
   });
 
   describe('updateFingerprint', () => {
-    it('should update fingerprint for a transaction', async () => {
+    it('should update fingerprint for a transaction with workspace isolation', async () => {
       const mockTransaction = createMockTransaction(
         'tx1',
         new Date('2024-01-15'),
@@ -393,20 +393,45 @@ describe('TransactionFingerprintService', () => {
       mockRepository.update.mockResolvedValue({ affected: 1 });
       mockRepository.findOne.mockResolvedValue(mockTransaction);
 
-      const result = await service.updateFingerprint('tx1', 'new-fingerprint');
+      const result = await service.updateFingerprint('workspace-123', 'tx1', 'new-fingerprint');
 
-      expect(mockRepository.update).toHaveBeenCalledWith('tx1', {
-        fingerprint: 'new-fingerprint',
+      expect(mockRepository.update).toHaveBeenCalledWith(
+        { id: 'tx1', workspaceId: 'workspace-123' },
+        { fingerprint: 'new-fingerprint' },
+      );
+      expect(mockRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 'tx1', workspaceId: 'workspace-123' },
       });
       expect(result.fingerprint).toBe('new-fingerprint');
     });
 
-    it('should throw error if transaction not found after update', async () => {
+    it('should throw NotFoundException if no rows affected', async () => {
+      mockRepository.update.mockResolvedValue({ affected: 0 });
+
+      await expect(
+        service.updateFingerprint('workspace-123', 'nonexistent', 'fingerprint'),
+      ).rejects.toThrow('Transaction not found: nonexistent');
+    });
+
+    it('should throw NotFoundException if transaction not found after update', async () => {
       mockRepository.update.mockResolvedValue({ affected: 1 });
       mockRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.updateFingerprint('nonexistent', 'fingerprint')).rejects.toThrow(
-        'Transaction not found: nonexistent',
+      await expect(
+        service.updateFingerprint('workspace-123', 'tx1', 'fingerprint'),
+      ).rejects.toThrow('Transaction not found: tx1');
+    });
+
+    it('should prevent cross-workspace access', async () => {
+      mockRepository.update.mockResolvedValue({ affected: 0 });
+
+      await expect(
+        service.updateFingerprint('workspace-999', 'tx1', 'fingerprint'),
+      ).rejects.toThrow('Transaction not found: tx1');
+
+      expect(mockRepository.update).toHaveBeenCalledWith(
+        { id: 'tx1', workspaceId: 'workspace-999' },
+        { fingerprint: 'fingerprint' },
       );
     });
   });
@@ -427,7 +452,7 @@ describe('TransactionFingerprintService', () => {
       expect(mockRepository.find).toHaveBeenCalledWith({
         where: {
           workspaceId: 'workspace-123',
-          fingerprint: null,
+          fingerprint: IsNull(),
         },
         take: 1000,
       });
@@ -458,7 +483,7 @@ describe('TransactionFingerprintService', () => {
       expect(mockRepository.find).toHaveBeenCalledWith({
         where: {
           workspaceId: 'workspace-123',
-          fingerprint: null,
+          fingerprint: IsNull(),
         },
         take: 500,
       });
