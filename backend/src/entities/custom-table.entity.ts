@@ -13,6 +13,7 @@ import { CustomTableColumn } from './custom-table-column.entity';
 import { CustomTableRow } from './custom-table-row.entity';
 import type { DataEntryType } from './data-entry.entity';
 import { User } from './user.entity';
+import { Workspace } from './workspace.entity';
 
 export enum CustomTableSource {
   MANUAL = 'manual',
@@ -30,6 +31,13 @@ export class CustomTable {
 
   @Column({ name: 'user_id' })
   userId: string;
+
+  @ManyToOne(() => Workspace, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'workspace_id' })
+  workspace: Workspace | null;
+
+  @Column({ name: 'workspace_id', nullable: true })
+  workspaceId: string | null;
 
   @Column({ name: 'name', type: 'varchar' })
   name: string;

@@ -19,6 +19,27 @@ export class Workspace {
   @Column({ type: 'varchar', length: 255 })
   name: string;
 
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  description: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  icon: string | null;
+
+  @Column({ type: 'varchar', length: 7, nullable: true })
+  color: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'background_image' })
+  backgroundImage: string | null;
+
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  currency: string | null;
+
+  @Column({ type: 'boolean', default: false, name: 'is_favorite' })
+  isFavorite: boolean;
+
+  @Column({ type: 'jsonb', nullable: true })
+  settings: Record<string, any> | null;
+
   @Column({ name: 'owner_id', nullable: true })
   ownerId: string | null;
 

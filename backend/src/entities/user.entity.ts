@@ -64,6 +64,9 @@ export class User {
   @Column({ name: 'workspace_id', nullable: true })
   workspaceId: string | null;
 
+  @Column({ name: 'last_workspace_id', nullable: true })
+  lastWorkspaceId: string | null;
+
   @Column({ name: 'google_id', nullable: true })
   googleId: string | null;
 

@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -9,8 +10,10 @@ import {
 } from 'typeorm';
 import { Branch } from './branch.entity';
 import { Category } from './category.entity';
+import { ImportSession } from './import-session.entity';
 import { Statement } from './statement.entity';
 import { Wallet } from './wallet.entity';
+import { Workspace } from './workspace.entity';
 
 export enum TransactionType {
   INCOME = 'income',
@@ -18,19 +21,28 @@ export enum TransactionType {
 }
 
 @Entity('transactions')
+@Index('IDX_transactions_workspace_date_amount', ['workspaceId', 'transactionDate', 'amount'])
 export class Transaction {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @ManyToOne(() => Workspace, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'workspace_id' })
+  workspace: Workspace | null;
+
+  @Column({ name: 'workspace_id', nullable: true })
+  workspaceId: string | null;
+
   @ManyToOne(
     () => Statement,
     statement => statement.transactions,
+    { nullable: true },
   )
   @JoinColumn({ name: 'statement_id' })
-  statement: Statement;
+  statement: Statement | null;
 
-  @Column({ name: 'statement_id' })
-  statementId: string;
+  @Column({ name: 'statement_id', nullable: true })
+  statementId: string | null;
 
   @Column({ name: 'transaction_date', type: 'date' })
   transactionDate: Date;
@@ -110,6 +122,32 @@ export class Transaction {
 
   @Column({ name: 'is_verified', default: false })
   isVerified: boolean;
+
+  @Column({ name: 'is_duplicate', default: false })
+  isDuplicate: boolean;
+
+  @ManyToOne(() => Transaction, { nullable: true })
+  @JoinColumn({ name: 'duplicate_of_id' })
+  duplicateOf: Transaction | null;
+
+  @Column({ name: 'duplicate_of_id', nullable: true })
+  duplicateOfId: string | null;
+
+  @Column({ name: 'duplicate_confidence', type: 'decimal', precision: 3, scale: 2, nullable: true })
+  duplicateConfidence: number | null;
+
+  @Column({ name: 'duplicate_match_type', length: 50, nullable: true })
+  duplicateMatchType: string | null;
+
+  @Column({ name: 'fingerprint', length: 64, nullable: true })
+  fingerprint: string | null;
+
+  @ManyToOne(() => ImportSession, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'import_session_id' })
+  importSession: ImportSession | null;
+
+  @Column({ name: 'import_session_id', nullable: true })
+  importSessionId: string | null;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

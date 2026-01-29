@@ -1,0 +1,64 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+
+export enum ReceiptJobStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
+
+@Entity('receipt_processing_jobs')
+@Index(['status'])
+@Index(['lockedAt'])
+export class ReceiptProcessingJob {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ name: 'user_id', type: 'uuid' })
+  userId: string;
+
+  @Column({ name: 'receipt_id', type: 'uuid', nullable: true })
+  receiptId: string | null;
+
+  @Column({
+    type: 'enum',
+    enum: ReceiptJobStatus,
+    default: ReceiptJobStatus.PENDING,
+  })
+  status: ReceiptJobStatus;
+
+  @Column({ type: 'int', default: 0 })
+  progress: number;
+
+  @Column({ type: 'jsonb' })
+  payload: {
+    integrationId: string;
+    gmailMessageId: string;
+    historyId?: string;
+  };
+
+  @Column({ type: 'jsonb', nullable: true })
+  result: any;
+
+  @Column({ type: 'text', nullable: true })
+  error: string | null;
+
+  @Column({ name: 'locked_at', type: 'timestamp', nullable: true })
+  lockedAt: Date | null;
+
+  @Column({ name: 'locked_by', nullable: true })
+  lockedBy: string | null;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+}

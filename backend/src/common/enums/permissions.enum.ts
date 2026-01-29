@@ -46,6 +46,7 @@ export enum Permission {
   // Admin
   USER_MANAGE = 'user.manage',
   USER_VIEW_ALL = 'user.view_all',
+  AUDIT_VIEW = 'audit_view',
   AUDIT_LOG_VIEW = 'audit_log.view',
 }
 

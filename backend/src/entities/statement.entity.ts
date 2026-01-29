@@ -18,6 +18,7 @@ import { GoogleSheet } from './google-sheet.entity';
 import { Tag } from './tag.entity';
 import { Transaction } from './transaction.entity';
 import { User } from './user.entity';
+import { Workspace } from './workspace.entity';
 
 export enum StatementStatus {
   UPLOADED = 'uploaded',
@@ -57,6 +58,13 @@ export class Statement {
 
   @Column({ name: 'user_id' })
   userId: string;
+
+  @ManyToOne(() => Workspace, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'workspace_id' })
+  workspace: Workspace | null;
+
+  @Column({ name: 'workspace_id', nullable: true })
+  workspaceId: string | null;
 
   @ManyToOne(
     () => GoogleSheet,
@@ -185,6 +193,9 @@ export class Statement {
   @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date | null;
 
+  @Column({ name: 'parsing_attempts', default: 0 })
+  parsingAttempts: number;
+
   @Column({ name: 'parsing_details', type: 'jsonb', nullable: true })
   parsingDetails: {
     detectedBank?: string;
@@ -224,6 +235,12 @@ export class Statement {
       reason: string;
       transaction?: Record<string, any>;
     }>;
+    crossStatementDuplicates?: {
+      groups: number;
+      marked: number;
+    };
+    importPreview?: Record<string, any>;
+    importCommit?: Record<string, any>;
     processingTime?: number; // milliseconds
     logEntries?: Array<{ timestamp: string; level: string; message: string }>;
   } | null;

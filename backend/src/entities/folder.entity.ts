@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Statement } from './statement.entity';
 import { Tag } from './tag.entity';
+import { Workspace } from './workspace.entity';
 
 @Entity('folders')
 export class Folder {
@@ -21,6 +22,13 @@ export class Folder {
 
   @Column({ name: 'user_id', nullable: true })
   userId: string | null;
+
+  @ManyToOne(() => Workspace, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'workspace_id' })
+  workspace: Workspace | null;
+
+  @Column({ name: 'workspace_id', nullable: true })
+  workspaceId: string | null;
 
   @Column({ name: 'tag_id', nullable: true })
   tagId: string | null;

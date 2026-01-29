@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Transaction } from './transaction.entity';
 import { User } from './user.entity';
+import { Workspace } from './workspace.entity';
 
 export enum CategoryType {
   INCOME = 'income',
@@ -31,6 +32,13 @@ export class Category {
 
   @Column({ name: 'user_id', nullable: true })
   userId: string | null;
+
+  @ManyToOne(() => Workspace, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'workspace_id' })
+  workspace: Workspace | null;
+
+  @Column({ name: 'workspace_id', nullable: true })
+  workspaceId: string | null;
 
   @Column()
   name: string;

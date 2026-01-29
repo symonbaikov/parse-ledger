@@ -11,6 +11,7 @@ import {
 import { GoogleSheetRow } from './google-sheet-row.entity';
 import { Statement } from './statement.entity';
 import { User } from './user.entity';
+import { Workspace } from './workspace.entity';
 
 @Entity('google_sheets')
 export class GoogleSheet {
@@ -26,6 +27,13 @@ export class GoogleSheet {
 
   @Column({ name: 'user_id' })
   userId: string;
+
+  @ManyToOne(() => Workspace, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'workspace_id' })
+  workspace: Workspace | null;
+
+  @Column({ name: 'workspace_id', nullable: true })
+  workspaceId: string | null;
 
   @Column({ name: 'sheet_id' })
   sheetId: string;

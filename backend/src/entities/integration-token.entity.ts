@@ -25,11 +25,17 @@ export class IntegrationToken {
   @Column({ name: 'integration_id' })
   integrationId: string;
 
-  @Column({ name: 'access_token', type: 'text' })
-  accessToken: string;
+  @Column({ name: 'access_token', type: 'text', nullable: true })
+  accessToken: string | null;
 
-  @Column({ name: 'refresh_token', type: 'text' })
-  refreshToken: string;
+  @Column({ name: 'refresh_token', type: 'text', nullable: true })
+  refreshToken: string | null;
+
+  @Column({ name: 'encrypted_access_token', type: 'text', nullable: true })
+  encryptedAccessToken: string | null;
+
+  @Column({ name: 'encrypted_refresh_token', type: 'text', nullable: true })
+  encryptedRefreshToken: string | null;
 
   @Column({ name: 'expires_at', type: 'timestamp', nullable: true })
   expiresAt: Date | null;

@@ -15,6 +15,7 @@ export enum WorkspaceRole {
   OWNER = 'owner',
   ADMIN = 'admin',
   MEMBER = 'member',
+  VIEWER = 'viewer',
 }
 
 export type WorkspaceMemberPermissions = {
@@ -67,6 +68,12 @@ export class WorkspaceMember {
 
   @Column({ name: 'permissions', type: 'jsonb', nullable: true })
   permissions: WorkspaceMemberPermissions | null;
+
+  @Column({ name: 'last_accessed_at', type: 'timestamp', nullable: true })
+  lastAccessedAt: Date | null;
+
+  @Column({ name: 'access_count', type: 'int', default: 0 })
+  accessCount: number;
 
   @Column({ name: 'invited_by_id', nullable: true })
   invitedById: string | null;

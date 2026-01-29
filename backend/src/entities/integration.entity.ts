@@ -10,6 +10,8 @@ import {
 } from 'typeorm';
 import { DriveSettings } from '../entities/drive-settings.entity';
 import { DropboxSettings } from '../entities/dropbox-settings.entity';
+import { GmailSettings } from '../entities/gmail-settings.entity';
+import { GmailWatchSubscription } from '../entities/gmail-watch-subscription.entity';
 import { IntegrationToken } from '../entities/integration-token.entity';
 import { User } from '../entities/user.entity';
 import { Workspace } from '../entities/workspace.entity';
@@ -17,6 +19,7 @@ import { Workspace } from '../entities/workspace.entity';
 export enum IntegrationProvider {
   GOOGLE_DRIVE = 'google_drive',
   DROPBOX = 'dropbox',
+  GMAIL = 'gmail',
 }
 
 export enum IntegrationStatus {
@@ -76,4 +79,16 @@ export class Integration {
     settings => settings.integration,
   )
   dropboxSettings: DropboxSettings | null;
+
+  @OneToOne(
+    () => GmailSettings,
+    settings => settings.integration,
+  )
+  gmailSettings: GmailSettings | null;
+
+  @OneToOne(
+    () => GmailWatchSubscription,
+    subscription => subscription.integration,
+  )
+  gmailWatchSubscription: GmailWatchSubscription | null;
 }
