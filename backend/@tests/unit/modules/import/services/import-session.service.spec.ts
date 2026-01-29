@@ -11,7 +11,6 @@ import { Statement } from '../../../../../src/entities/statement.entity';
 import { Transaction } from '../../../../../src/entities/transaction.entity';
 import { User } from '../../../../../src/entities/user.entity';
 import { Workspace } from '../../../../../src/entities/workspace.entity';
-import { ImportConfigService } from '../../../../../src/modules/import/config/import.config';
 import {
   ImportConflictError,
   ImportValidationError,
@@ -35,7 +34,6 @@ describe('ImportSessionService', () => {
   let dataSource: jest.Mocked<DataSource>;
   let fingerprintService: jest.Mocked<TransactionFingerprintService>;
   let deduplicationService: jest.Mocked<IntelligentDeduplicationService>;
-  let importConfigService: jest.Mocked<ImportConfigService>;
   let retryService: jest.Mocked<ImportRetryService>;
   let queryRunner: jest.Mocked<QueryRunner>;
 
@@ -134,15 +132,6 @@ describe('ImportSessionService', () => {
           },
         },
         {
-          provide: ImportConfigService,
-          useValue: {
-            getDedupDateToleranceDays: jest.fn().mockReturnValue(3),
-            getDedupAmountTolerancePercent: jest.fn().mockReturnValue(2),
-            getDedupTextSimilarityThreshold: jest.fn().mockReturnValue(0.75),
-            getConflictAutoResolveThreshold: jest.fn().mockReturnValue(0.95),
-          },
-        },
-        {
           provide: ImportRetryService,
           useValue: {
             shouldRetry: jest.fn(),
@@ -164,7 +153,6 @@ describe('ImportSessionService', () => {
     dataSource = module.get(DataSource);
     fingerprintService = module.get(TransactionFingerprintService);
     deduplicationService = module.get(IntelligentDeduplicationService);
-    importConfigService = module.get(ImportConfigService);
     retryService = module.get(ImportRetryService);
   });
 
@@ -242,6 +230,42 @@ describe('ImportSessionService', () => {
 
       expect(result).toEqual(existingSession);
       expect(importSessionRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('should create session with default fileSize when not provided', async () => {
+      importSessionRepository.findOne.mockResolvedValueOnce(null);
+      workspaceRepository.findOne.mockResolvedValue(mockWorkspace);
+      userRepository.findOne.mockResolvedValue(mockUser);
+
+      const mockSession: ImportSession = {
+        id: 'session-2',
+        workspaceId: 'workspace-1',
+        userId: 'user-1',
+        fileHash: 'xyz789',
+        fileName: 'test.pdf',
+        fileSize: 0, // Default value
+        status: ImportSessionStatus.PENDING,
+      } as ImportSession;
+
+      importSessionRepository.create.mockReturnValue(mockSession);
+      importSessionRepository.save.mockResolvedValue(mockSession);
+
+      const result = await service.createSession(
+        'workspace-1',
+        'user-1',
+        null,
+        ImportSessionMode.PREVIEW,
+        'xyz789',
+        'test.pdf',
+        // fileSize not provided
+      );
+
+      expect(result).toEqual(mockSession);
+      expect(importSessionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fileSize: 0, // Should default to 0
+        }),
+      );
     });
 
     it('should throw ImportValidationError if workspace not found', async () => {

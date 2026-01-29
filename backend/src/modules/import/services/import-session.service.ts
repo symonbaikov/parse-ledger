@@ -17,7 +17,6 @@ import {
   IntelligentDeduplicationService,
 } from '../../parsing/services/intelligent-deduplication.service';
 import { TransactionFingerprintService } from '../../transactions/services/transaction-fingerprint.service';
-import { ImportConfigService } from '../config/import.config';
 import {
   ImportConflictError,
   ImportFatalError,
@@ -101,7 +100,6 @@ export class ImportSessionService {
     private readonly dataSource: DataSource,
     private readonly fingerprintService: TransactionFingerprintService,
     private readonly deduplicationService: IntelligentDeduplicationService,
-    private readonly importConfigService: ImportConfigService,
     private readonly retryService: ImportRetryService,
   ) {}
 
@@ -115,7 +113,7 @@ export class ImportSessionService {
    * @param mode Import mode (preview or commit)
    * @param fileHash Hash of the file being imported (for idempotency)
    * @param fileName Original filename
-   * @param fileSize File size in bytes
+   * @param fileSize File size in bytes (optional, defaults to 0 if not provided)
    * @returns Created import session
    * @throws ImportValidationError if workspace/user/statement not found
    */
@@ -126,7 +124,7 @@ export class ImportSessionService {
     mode: ImportSessionMode,
     fileHash: string,
     fileName: string,
-    fileSize: number,
+    fileSize?: number,
   ): Promise<ImportSession> {
     this.logger.log(
       `Creating import session: workspace=${workspaceId}, user=${userId}, mode=${mode}, file=${fileName}`,
@@ -183,7 +181,7 @@ export class ImportSessionService {
       mode,
       fileHash,
       fileName,
-      fileSize,
+      fileSize: fileSize ?? 0,
       status: ImportSessionStatus.PENDING,
       sessionMetadata: null,
     });
@@ -387,6 +385,8 @@ export class ImportSessionService {
     }
 
     // Step 4: Detect conflicts using tolerant matching for non-matched transactions
+    // Note: IntelligentDeduplicationService uses ImportConfigService internally
+    // for tolerance thresholds (date, amount, text similarity)
     const unmatchedClassifications = classifications.filter(c => c.status === 'new');
     const unmatchedTransactions = unmatchedClassifications.map(c => c.transaction);
 
