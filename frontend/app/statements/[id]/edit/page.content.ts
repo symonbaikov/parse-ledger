@@ -187,6 +187,13 @@ const content = {
       }),
       cancel: t({ ru: 'Отмена', en: 'Cancel', kk: 'Бас тарту' }),
       apply: t({ ru: 'Применить', en: 'Apply', kk: 'Қолдану' }),
+      exportButton: t({ ru: 'Экспорт в таблицу', en: 'Export to table', kk: 'Кестеге экспорттау' }),
+      exportLoading: t({ ru: 'Экспорт в таблицу...', en: 'Exporting to table...', kk: 'Кестеге экспортталуда...' }),
+      exportSuccess: t({ ru: 'Таблица создана успешно', en: 'Table created successfully', kk: 'Кесте сәтті құрылды' }),
+      exportFailure: t({ ru: 'Не удалось экспортировать в таблицу', en: 'Failed to export to table', kk: 'Кестеге экспорттау мүмкін болмады' }),
+      exportConfirmTitle: t({ ru: 'Подтвердите экспорт', en: 'Confirm export', kk: 'Экспортты растау' }),
+      exportConfirmBody: t({ ru: 'Вы уверены, что хотите экспортировать эту выписку в пользовательскую таблицу?', en: 'Are you sure you want to export this statement to a custom table?', kk: 'Бұл үзіндіді пайдаланушы кестесіне экспорттағыңыз келетініне сенімдісіз бе?' }),
+      exportConfirmConfirm: t({ ru: 'Экспортировать', en: 'Export', kk: 'Экспорттау' }),
     },
     columns: {
       transactionDate: t({ ru: 'Дата операции', en: 'Transaction date', kk: 'Операция күні' }),

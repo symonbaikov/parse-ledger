@@ -111,6 +111,10 @@ const content = {
       validUntil: t({ ru: 'Действительно до', en: 'Valid until', kk: 'Мерзімі' }),
       copyLink: t({ ru: 'Копировать ссылку', en: 'Copy link', kk: 'Сілтемені көшіру' }),
     },
+    backgrounds: {
+      showMore: t({ ru: 'Показать еще', en: 'Show more', kk: 'Көбірек көрсету' }),
+      showLess: t({ ru: 'Скрыть', en: 'Show less', kk: 'Азырақ көрсету' }),
+    },
   },
 } satisfies Dictionary;
 

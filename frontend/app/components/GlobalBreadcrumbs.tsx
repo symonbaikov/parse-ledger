@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useMemo } from 'react';
 import Breadcrumbs from './Breadcrumbs';
 
-const HIDDEN_PATHS = new Set<string>(['/login', '/register', '/auth', '/auth/callback']);
+const HIDDEN_PATHS = new Set<string>(['/login', '/register', '/auth', '/auth/callback', '/workspaces']);
 
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
@@ -40,7 +40,7 @@ export default function GlobalBreadcrumbs() {
   if (!items.length) return null;
 
   return (
-    <div data-global-breadcrumbs className="bg-card/70 backdrop-blur-sm border-b border-border">
+    <div data-global-breadcrumbs className="sticky top-14 z-40 bg-card border-b border-border shadow-sm">
       <div className="container-shared px-4 sm:px-6 lg:px-8 py-3">
         <Breadcrumbs items={items} />
       </div>

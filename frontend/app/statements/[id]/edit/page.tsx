@@ -20,6 +20,7 @@ import {
   TrendingDown,
   TrendingUp,
   Warning,
+  TableChart,
 } from '@mui/icons-material';
 import {
   Alert,
@@ -51,10 +52,12 @@ import {
 } from '@mui/material';
 
 import { useIntlayer, useLocale } from 'next-intlayer';
+import { toast } from 'react-hot-toast';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import CustomDatePicker from '@/app/components/CustomDatePicker';
+import { ModalShell } from '@/app/components/ui/modal-shell';
 
 interface CategoryOption {
   id: string;
@@ -174,6 +177,7 @@ export default function EditStatementPage() {
 
   const [statement, setStatement] = useState<Statement | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [exportingToTable, setExportingToTable] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -196,6 +200,7 @@ export default function EditStatementPage() {
     statementDateTo: '',
   });
   const [metadataSaving, setMetadataSaving] = useState(false);
+  const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (user && statementId) {
@@ -244,6 +249,57 @@ export default function EditStatementPage() {
     } finally {
       setLoading(false);
       setOptionsLoading(false);
+    }
+  };
+
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toLocaleDateString('ru-RU');
+    } catch (err) {
+      return String(dateString);
+    }
+  };
+
+  const handleExportToCustomTable = async () => {
+    if (!statementId) return;
+    setExportingToTable(true);
+    const toastId = toast.loading(t.labels.exportLoading.value);
+
+    if (!statement) {
+      toast.error(t.labels.exportFailure.value, { id: toastId });
+      setExportingToTable(false);
+      return;
+    }
+
+    try {
+      const rawName = `Выписка — ${statement.fileName}`;
+      const MAX_NAME_LENGTH = 120;
+      const name = rawName.length > MAX_NAME_LENGTH ? rawName.slice(0, MAX_NAME_LENGTH) : rawName;
+
+      const payload = {
+        statementIds: [statementId],
+        name,
+        description: `Экспорт из выписки от ${formatDate(statement.statementDateFrom)} - ${formatDate(
+          statement.statementDateTo,
+        )}`,
+      };
+
+      const response = await apiClient.post('/custom-tables/from-statements', payload);
+      const tableId = response?.data?.tableId || response?.data?.id;
+
+      if (tableId) {
+        toast.success(t.labels.exportSuccess.value, { id: toastId });
+        router.push(`/custom-tables/${tableId}`);
+      } else {
+        toast.error(t.labels.exportFailure.value, { id: toastId });
+        router.push('/custom-tables');
+      }
+    } catch (err) {
+      console.error('Export to custom table failed:', err);
+      toast.error(t.labels.exportFailure.value, { id: toastId });
+    } finally {
+      setExportingToTable(false);
     }
   };
 
@@ -604,6 +660,7 @@ export default function EditStatementPage() {
                 />
               )}
             </Box>
+          {/* small header icon removed: export available via the main Export button */}
           </Box>
         </Box>
       </Box>
@@ -891,22 +948,39 @@ export default function EditStatementPage() {
             >
               Данные выписки
             </Typography>
-            <Button
-              variant="contained"
-              startIcon={metadataSaving ? <CircularProgress size={18} /> : <Save />}
-              onClick={handleMetadataSave}
-              disabled={metadataSaving}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-                '&:hover': {
-                  boxShadow: '0 4px 12px 0 rgba(0, 0, 0, 0.15)',
-                },
-              }}
-            >
-              Сохранить
-            </Button>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                startIcon={exportingToTable ? <CircularProgress size={18} /> : <TableChart />}
+                onClick={() => setExportConfirmOpen(true)}
+                disabled={exportingToTable || !transactions.length}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderColor: 'primary.300',
+                  color: 'primary.700',
+                  '&:hover': { bgcolor: 'primary.50' },
+                }}
+              >
+                {t.labels.exportButton.value}
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={metadataSaving ? <CircularProgress size={18} /> : <Save />}
+                onClick={handleMetadataSave}
+                disabled={metadataSaving}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                  '&:hover': {
+                    boxShadow: '0 4px 12px 0 rgba(0, 0, 0, 0.15)',
+                  },
+                }}
+              >
+                Сохранить
+              </Button>
+            </Box>
           </Box>
 
           <Box
@@ -1088,6 +1162,40 @@ export default function EditStatementPage() {
           )}
         </CardContent>
       </Card>
+
+      <ModalShell
+        isOpen={exportConfirmOpen}
+        onClose={() => setExportConfirmOpen(false)}
+        size="sm"
+        title={t.labels.exportConfirmTitle.value}
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setExportConfirmOpen(false)}
+              className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+            >
+              {t.labels.cancel.value}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setExportConfirmOpen(false);
+                handleExportToCustomTable();
+              }}
+              disabled={exportingToTable || !transactions.length}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {exportingToTable ? <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" /> : null}
+              {t.labels.exportConfirmConfirm.value}
+            </button>
+          </div>
+        }
+      >
+        <div>
+          <p className="text-sm text-gray-700">{t.labels.exportConfirmBody.value}</p>
+        </div>
+      </ModalShell>
 
       {/* Bulk Actions */}
       {selectedRows.size > 0 && (

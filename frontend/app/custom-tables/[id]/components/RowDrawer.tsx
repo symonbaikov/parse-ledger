@@ -1,6 +1,10 @@
 'use client';
 
 import { DrawerShell } from '@/app/components/ui/drawer-shell';
+import { AuditEventDrawer } from '@/app/audit/components/AuditEventDrawer';
+import { EntityHistoryTimeline } from '@/app/audit/components/EntityHistoryTimeline';
+import type { AuditEvent } from '@/lib/api/audit';
+import { fetchEntityHistory } from '@/lib/api/audit';
 import { useEffect, useMemo, useState } from 'react';
 import type { ColumnType, CustomTableColumn, CustomTableGridRow } from '../utils/stylingUtils';
 
@@ -66,6 +70,11 @@ export function RowDrawer({
   const [baseData, setBaseData] = useState<Record<string, any>>({});
   const [draft, setDraft] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
+  const [historyEvents, setHistoryEvents] = useState<AuditEvent[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [selectedHistoryEvent, setSelectedHistoryEvent] = useState<AuditEvent | null>(null);
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
 
   useEffect(() => {
     if (!row) {
@@ -80,6 +89,26 @@ export function RowDrawer({
     setBaseData(initial);
     setDraft(initial);
   }, [row?.id, orderedColumns]);
+
+  useEffect(() => {
+    if (!open || !row) return;
+    setHistoryLoading(true);
+    Promise.all([
+      fetchEntityHistory('table_row', row.id),
+      fetchEntityHistory('table_cell', row.id),
+    ])
+      .then(([rowEvents, cellEvents]) => {
+        const combined = [...(rowEvents || []), ...(cellEvents || [])].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        );
+        setHistoryEvents(combined);
+      })
+      .catch(error => {
+        console.error('Failed to load row history:', error);
+        setHistoryEvents([]);
+      })
+      .finally(() => setHistoryLoading(false));
+  }, [open, row?.id]);
 
   const patch = useMemo(() => {
     const next: Record<string, any> = {};
@@ -135,6 +164,28 @@ export function RowDrawer({
   return (
     <DrawerShell isOpen={open} onClose={onClose} title={title} position="right" width="lg">
       <div className="space-y-6">
+        <div className="flex items-center gap-2 border-b border-gray-200 pb-2 text-sm font-semibold">
+          <button
+            type="button"
+            onClick={() => setActiveTab('details')}
+            className={`rounded-md px-3 py-1 ${
+              activeTab === 'details' ? 'bg-gray-900 text-white' : 'text-gray-600'
+            }`}
+          >
+            Details
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            className={`rounded-md px-3 py-1 ${
+              activeTab === 'history' ? 'bg-gray-900 text-white' : 'text-gray-600'
+            }`}
+          >
+            History
+          </button>
+        </div>
+
+        <div className={activeTab === 'details' ? 'space-y-6' : 'hidden'}>
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
           <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Meta</div>
           <div className="mt-2 grid grid-cols-1 gap-2 text-sm">
@@ -327,7 +378,32 @@ export function RowDrawer({
             </div>
           </div>
         )}
+        </div>
+
+        {activeTab === 'history' && (
+          <div className="space-y-4">
+            {historyLoading ? (
+              <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-500">
+                Loading history...
+              </div>
+            ) : (
+              <EntityHistoryTimeline
+                events={historyEvents}
+                onSelect={event => {
+                  setSelectedHistoryEvent(event);
+                  setHistoryDrawerOpen(true);
+                }}
+              />
+            )}
+          </div>
+        )}
       </div>
+
+      <AuditEventDrawer
+        event={selectedHistoryEvent}
+        open={historyDrawerOpen}
+        onClose={() => setHistoryDrawerOpen(false)}
+      />
     </DrawerShell>
   );
 }

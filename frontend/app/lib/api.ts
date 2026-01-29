@@ -10,13 +10,20 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
-// Request interceptor for adding auth token
+// Request interceptor for adding auth token and workspace context
 apiClient.interceptors.request.use(
   config => {
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Add workspace context header
+    const workspaceId = localStorage.getItem('currentWorkspaceId');
+    if (workspaceId) {
+      config.headers['X-Workspace-Id'] = workspaceId;
+    }
+
     return config;
   },
   error => {
@@ -29,6 +36,14 @@ apiClient.interceptors.response.use(
   response => response,
   async error => {
     const originalRequest = error.config;
+
+    // Handle 403 Forbidden - workspace access denied
+    if (error.response?.status === 403 && error.response?.data?.message?.includes('workspace')) {
+      // Clear current workspace and redirect to workspace selector
+      localStorage.removeItem('currentWorkspaceId');
+      window.location.href = '/workspaces';
+      return Promise.reject(error);
+    }
 
     // Handle 401 Unauthorized - refresh token
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -66,4 +81,39 @@ apiClient.interceptors.response.use(
   },
 );
 
+// Gmail Receipts API
+export const gmailReceiptsApi = {
+  getReceipt: (id: string) => apiClient.get(`/integrations/gmail/receipts/${id}`),
+
+  updateReceiptParsedData: (id: string, data: any) =>
+    apiClient.patch(`/integrations/gmail/receipts/${id}/parsed-data`, data),
+
+  markDuplicate: (id: string, originalId: string) =>
+    apiClient.post(`/integrations/gmail/receipts/${id}/mark-duplicate`, { originalReceiptId: originalId }),
+
+  unmarkDuplicate: (id: string) =>
+    apiClient.post(`/integrations/gmail/receipts/${id}/unmark-duplicate`),
+
+  bulkApproveReceipts: (receiptIds: string[], categoryId?: string) =>
+    apiClient.post('/integrations/gmail/receipts/bulk-approve', { receiptIds, categoryId }),
+
+  exportReceiptsToSheets: (receiptIds: string[], spreadsheetId?: string) =>
+    apiClient.post('/integrations/gmail/receipts/export-sheets', { receiptIds, spreadsheetId }),
+
+  getReceiptPreview: (id: string) =>
+    apiClient.get(`/integrations/gmail/receipts/${id}/preview`),
+
+  listReceipts: (params?: { status?: string; limit?: number; offset?: number }) =>
+    apiClient.get('/integrations/gmail/receipts', { params }),
+
+  approveReceipt: (id: string, data: any) =>
+    apiClient.post(`/integrations/gmail/receipts/${id}/approve`, data),
+
+  updateReceipt: (id: string, data: any) =>
+    apiClient.patch(`/integrations/gmail/receipts/${id}`, data),
+
+  getStatus: () => apiClient.get('/integrations/gmail/status'),
+};
+
+export const api = apiClient;
 export default apiClient;

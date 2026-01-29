@@ -23,7 +23,7 @@
   --secondary: #666666;
   --secondary-foreground: #ffffff;
   --muted: #e9e9e9;
-  --muted-foreground: #515151;
+  --muted-foreground: #666666;
   --card-bg: #ffffff;
   --card-foreground: #191919;
   --border-color: #e0e0e0;
@@ -31,6 +31,8 @@
   --ring: #0a66c2;
   --destructive: #dc2626;
   --destructive-foreground: #fef2f2;
+  --font-family-sans: "Nunitoga", "Helvetica Neue", Arial, Helvetica, sans-serif !important;
+  --font-family-mono: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace !important;
 }
 
 .dark {
@@ -319,4 +321,17 @@ body.ff-table-fullscreen > main {
 /* Custom Tables: disable selection while resizing columns. */
 body.ff-col-resizing {
   user-select: none;
+}
+
+/* Custom logo styling based on user parameters */
+.ff-logo {
+  font-family: var(--font-family-sans);
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: 3.5px !important;
+  line-height: 50px !important;
+  text-transform: uppercase !important;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
 }

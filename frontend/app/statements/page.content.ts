@@ -23,6 +23,11 @@ const content = {
       en: 'All statements',
       kk: 'Барлық үзінділер',
     }),
+    adjustments: t({
+      ru: 'Корректировки',
+      en: 'Adjustments',
+      kk: 'Түзетулер',
+    }),
     table: {
       file: t({ ru: 'Файл', en: 'File', kk: 'Файл' }),
       status: t({ ru: 'Статус', en: 'Status', kk: 'Күйі' }),

@@ -137,6 +137,12 @@ const content = {
         kk: 'Құпиясөзді жаңарту мүмкін болмады.',
       }),
     },
+    appearanceCard: {
+      title: t({ ru: 'Внешний вид', en: 'Appearance', kk: 'Көрініс' }),
+      description: t({ ru: 'Настройте тему приложения', en: 'Configure application theme', kk: 'Қолданба тақырыбын баптаңыз' }),
+      themeLabel: t({ ru: 'Тема', en: 'Theme', kk: 'Тақырып' }),
+      themeHelp: t({ ru: 'Выберите светлую или тёмную тему.', en: 'Choose light or dark theme.', kk: 'Ашық немесе қараңғы тақырыпты таңдаңыз.' }),
+    },
   },
 } satisfies Dictionary;
 

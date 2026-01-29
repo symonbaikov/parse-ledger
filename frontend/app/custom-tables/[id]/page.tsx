@@ -2552,7 +2552,8 @@ export default function CustomTableDetailPage() {
             setNewColumnOpen(false);
             setNewColumn({ title: '', type: 'text' });
           }}
-          size="sm"
+          size="xl"
+          className="rounded-2xl"
           title={(t as any).addColumn.modalTitle?.value ?? t.addColumn.titleLabel}
           footer={
             <div className="flex w-full items-center justify-between">
@@ -2578,10 +2579,10 @@ export default function CustomTableDetailPage() {
             </div>
           }
         >
-          <div className="space-y-4">
-            <div>
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
+            <div className="md:col-span-4">
               <label
-                className="block text-xs font-semibold text-gray-600 mb-2"
+                className="block text-sm font-semibold text-gray-700 mb-2"
                 htmlFor="new-column-title"
               >
                 {t.addColumn.titleLabel}
@@ -2597,12 +2598,12 @@ export default function CustomTableDetailPage() {
                   }
                 }}
                 placeholder={t.addColumn.titlePlaceholder.value ?? ''}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50/40 px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition shadow-sm"
               />
             </div>
-            <div>
+            <div className="md:col-span-2">
               <label
-                className="block text-xs font-semibold text-gray-600 mb-2"
+                className="block text-sm font-semibold text-gray-700 mb-2"
                 htmlFor="new-column-type"
               >
                 {t.addColumn.typeLabel}
@@ -2616,7 +2617,7 @@ export default function CustomTableDetailPage() {
                     type: e.target.value as ColumnType,
                   }))
                 }
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition"
               >
                 {columnTypes.map(typeItem => (
                   <option key={typeItem.value} value={typeItem.value}>

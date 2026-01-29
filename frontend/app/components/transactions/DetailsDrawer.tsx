@@ -2,9 +2,13 @@
 
 import { Building2, Calendar, FileText, Tag, TrendingDown, TrendingUp } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DrawerShell } from '../ui/drawer-shell';
 import type { Category, Transaction } from './types';
+import type { AuditEvent } from '@/lib/api/audit';
+import { fetchEntityHistory } from '@/lib/api/audit';
+import { EntityHistoryTimeline } from '@/app/audit/components/EntityHistoryTimeline';
+import { AuditEventDrawer } from '@/app/audit/components/AuditEventDrawer';
 
 interface DetailsDrawerProps {
   open: boolean;
@@ -30,6 +34,11 @@ export default function DetailsDrawer({
   const t = useIntlayer('transactionsDrawer');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [updating, setUpdating] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
+  const [historyEvents, setHistoryEvents] = useState<AuditEvent[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const [selectedHistoryEvent, setSelectedHistoryEvent] = useState<AuditEvent | null>(null);
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
@@ -73,6 +82,20 @@ export default function DetailsDrawer({
     }
   };
 
+  useEffect(() => {
+    if (!open || !transaction) return;
+    setHistoryLoading(true);
+    fetchEntityHistory('transaction', transaction.id)
+      .then(events => {
+        setHistoryEvents(events || []);
+      })
+      .catch(error => {
+        console.error('Failed to load history:', error);
+        setHistoryEvents([]);
+      })
+      .finally(() => setHistoryLoading(false));
+  }, [open, transaction?.id]);
+
   if (!transaction) return null;
 
   return (
@@ -85,6 +108,29 @@ export default function DetailsDrawer({
       lockScroll={false}
     >
       <div className="space-y-6">
+        <div className="flex items-center gap-2 border-b border-gray-200 pb-2 text-sm font-semibold">
+          <button
+            type="button"
+            onClick={() => setActiveTab('details')}
+            className={`rounded-md px-3 py-1 ${
+              activeTab === 'details' ? 'bg-gray-900 text-white' : 'text-gray-600'
+            }`}
+          >
+            Details
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('history')}
+            className={`rounded-md px-3 py-1 ${
+              activeTab === 'history' ? 'bg-gray-900 text-white' : 'text-gray-600'
+            }`}
+          >
+            History
+          </button>
+        </div>
+
+        {activeTab === 'details' ? (
+          <div className="space-y-6">
         {/* Date and Document */}
         <div className="space-y-3">
           <div className="flex items-start gap-3">
@@ -321,7 +367,31 @@ export default function DetailsDrawer({
             </button>
           )}
         </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {historyLoading ? (
+              <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-500">
+                Loading history...
+              </div>
+            ) : (
+              <EntityHistoryTimeline
+                events={historyEvents}
+                onSelect={event => {
+                  setSelectedHistoryEvent(event);
+                  setHistoryDrawerOpen(true);
+                }}
+              />
+            )}
+          </div>
+        )}
       </div>
+
+      <AuditEventDrawer
+        event={selectedHistoryEvent}
+        open={historyDrawerOpen}
+        onClose={() => setHistoryDrawerOpen(false)}
+      />
     </DrawerShell>
   );
 }

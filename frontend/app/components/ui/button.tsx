@@ -3,7 +3,7 @@
 import { cn } from '@/app/lib/utils';
 import * as React from 'react';
 
-export type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+export type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'soft';
 export type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -12,11 +12,12 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  default: 'bg-primary text-primary-foreground hover:bg-primary-hover',
+  default: 'bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm',
   secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/90',
-  outline: 'border border-border bg-card text-foreground hover:bg-muted',
+  outline: 'border border-primary text-primary hover:bg-primary/10 bg-transparent',
   ghost: 'text-foreground hover:bg-muted',
   destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+  soft: 'bg-primary/10 text-primary hover:bg-primary/20',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -32,7 +33,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       type={type ?? 'button'}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors',
+        'inline-flex items-center justify-center gap-2 rounded-full text-sm font-semibold transition-all duration-200',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:ring-offset-2',
         'disabled:pointer-events-none disabled:opacity-50 ring-offset-background',
         variantClasses[variant],

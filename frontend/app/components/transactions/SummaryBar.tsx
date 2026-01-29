@@ -4,6 +4,8 @@ import { resolveBankLogo } from '@bank-logos';
 import { Download, FileText, FileUp, TrendingDown, TrendingUp } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
 import React, { useMemo } from 'react';
+import { Button } from '@/app/components/ui/button';
+import { Loader2 } from 'lucide-react';
 import type { StatementDetails, Transaction } from './types';
 
 interface SummaryBarProps {
@@ -87,13 +89,13 @@ export default function SummaryBar({
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left section: File metadata and parsing status */}
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 space-y-2">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
+              <div className="flex items-center gap-2 text-sm text-foreground">
                 <FileText className="h-4 w-4" />
                 <span className="font-semibold">{getBankDisplayName(statement.bankName)}</span>
                 {statement.metadata?.accountNumber && (
@@ -103,7 +105,7 @@ export default function SummaryBar({
                   </>
                 )}
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-muted-foreground">
                 {t.uploadedAt.value}: {formatDate(statement.createdAt)}
               </div>
             </div>
@@ -165,41 +167,16 @@ export default function SummaryBar({
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-2">
             {(stats.totalErrors > 0 || stats.uncategorized > 0) && (
-              <button
-                type="button"
+              <Button
+                variant={stats.totalErrors > 0 ? "destructive" : "secondary"}
+                size="sm"
                 onClick={onFixIssues}
                 disabled={fixing}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  stats.totalErrors > 0
-                    ? 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'
-                    : 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
-                }`}
+                className={fixing ? "opacity-70 cursor-not-allowed" : ""}
               >
                 {fixing ? (
                   <>
-                    <svg
-                      className="animate-spin h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      role="img"
-                      aria-label={t.fixIssues.value}
-                    >
-                      <title>{t.fixIssues.value}</title>
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     {t.fixIssues.value}
                   </>
                 ) : stats.totalErrors > 0 ? (
@@ -207,26 +184,26 @@ export default function SummaryBar({
                 ) : (
                   t.fixIssues.value
                 )}
-              </button>
+              </Button>
             )}
             {onDownload && (
-              <button
-                type="button"
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={onDownload}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
               >
-                <Download className="h-4 w-4" />
+                <Download className="mr-2 h-4 w-4" />
                 {t.download?.value || 'Download'}
-              </button>
+              </Button>
             )}
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={onExport}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
             >
-              <FileUp className="h-4 w-4" />
+              <FileUp className="mr-2 h-4 w-4" />
               {t.export.value}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

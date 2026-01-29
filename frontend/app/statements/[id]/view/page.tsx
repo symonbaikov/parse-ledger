@@ -1,16 +1,27 @@
-'use client';
+"use client";
 
-import TransactionDocumentViewer from '@/app/components/TransactionDocumentViewer';
-import api from '@/app/lib/api';
+import TransactionDocumentViewer from "@/app/components/TransactionDocumentViewer";
+import api from "@/app/lib/api";
 import {
   ArrowBack as ArrowBackIcon,
   Download as DownloadIcon,
   Edit as EditIcon,
   Print as PrintIcon,
-} from '@mui/icons-material';
-import { Alert, Box, Button, CircularProgress, IconButton, Stack, Tooltip } from '@mui/material';
-import { useRouter, useSearchParams } from 'next/navigation';
-import React, { use, useEffect, useState } from 'react';
+  TableChart as TableChartIcon,
+} from "@mui/icons-material";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  Stack,
+  Tooltip,
+} from "@mui/material";
+import { toast } from "react-hot-toast";
+import { useIntlayer } from "next-intlayer";
+import { useRouter, useSearchParams } from "next/navigation";
+import React, { use, useEffect, useState } from "react";
 
 interface Transaction {
   id: string;
@@ -31,7 +42,7 @@ interface Transaction {
   walletId?: string;
   article?: string;
   comments?: string;
-  transactionType: 'income' | 'expense';
+  transactionType: "income" | "expense";
   category?: { id: string; name: string };
   branch?: { id: string; name: string };
   wallet?: { id: string; name: string };
@@ -72,6 +83,7 @@ export default function ViewStatementPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const t: any = useIntlayer("statementEditPage" as any) as any;
   const router = useRouter();
   const [statement, setStatement] = useState<Statement | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -94,8 +106,8 @@ export default function ViewStatementPage({
         setStatement(statement);
         setTransactions(transactions);
       } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Не удалось загрузить данные выписки');
+        console.error("Error fetching data:", err);
+        setError("Не удалось загрузить данные выписки");
       } finally {
         setLoading(false);
       }
@@ -105,7 +117,7 @@ export default function ViewStatementPage({
   }, [statementId]);
 
   const searchParams = useSearchParams();
-  const shouldAutoPrint = searchParams.get('print') === 'true';
+  const shouldAutoPrint = searchParams.get("print") === "true";
 
   useEffect(() => {
     if (shouldAutoPrint && !loading && statement && transactions.length > 0) {
@@ -125,6 +137,65 @@ export default function ViewStatementPage({
     }
   };
 
+  const [exportingToTable, setExportingToTable] = useState(false);
+
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) return "";
+    try {
+      return new Date(dateString).toLocaleDateString("ru-RU");
+    } catch (err) {
+      return String(dateString);
+    }
+  };
+
+  const handleExportToCustomTable = async () => {
+    if (!statementId) return;
+    setExportingToTable(true);
+    const toastId = toast.loading(t.labels.exportLoading.value);
+
+    if (!statement) {
+      toast.error(t.labels.exportFailure.value, { id: toastId });
+      setExportingToTable(false);
+      return;
+    }
+
+    try {
+      const rawName = `Выписка — ${statement.fileName}`;
+      const MAX_NAME_LENGTH = 120;
+      const name =
+        rawName.length > MAX_NAME_LENGTH
+          ? rawName.slice(0, MAX_NAME_LENGTH)
+          : rawName;
+
+      const payload = {
+        statementIds: [statementId],
+        name,
+        description: `Экспорт из выписки от ${formatDate(statement.statementDateFrom)} - ${formatDate(
+          statement.statementDateTo,
+        )}`,
+      };
+
+      const response = await api.post(
+        "/custom-tables/from-statements",
+        payload,
+      );
+      const tableId = response?.data?.tableId || response?.data?.id;
+
+      if (tableId) {
+        toast.success(t.labels.exportSuccess.value, { id: toastId });
+        router.push(`/custom-tables/${tableId}`);
+      } else {
+        toast.error(t.labels.exportFailure.value, { id: toastId });
+        router.push("/custom-tables");
+      }
+    } catch (err) {
+      console.error("Export to custom table failed:", err);
+      toast.error(t.labels.exportFailure.value, { id: toastId });
+    } finally {
+      setExportingToTable(false);
+    }
+  };
+
   const handleBack = () => {
     router.back();
   };
@@ -133,10 +204,10 @@ export default function ViewStatementPage({
     return (
       <Box
         sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '100vh',
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
         }}
       >
         <CircularProgress />
@@ -148,9 +219,13 @@ export default function ViewStatementPage({
     return (
       <Box sx={{ p: 4 }}>
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error || 'Выписка не найдена'}
+          {error || "Выписка не найдена"}
         </Alert>
-        <Button variant="contained" startIcon={<ArrowBackIcon />} onClick={handleBack}>
+        <Button
+          variant="contained"
+          startIcon={<ArrowBackIcon />}
+          onClick={handleBack}
+        >
           Назад
         </Button>
       </Box>
@@ -158,34 +233,38 @@ export default function ViewStatementPage({
   }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f5f5f5' }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f5f5" }}>
       {/* Action Bar - Hidden on print */}
       <Box
         sx={{
-          position: 'sticky',
+          position: "sticky",
           top: 0,
           zIndex: 1000,
-          bgcolor: 'white',
-          borderBottom: '1px solid',
-          borderBottomColor: 'grey.200',
+          bgcolor: "white",
+          borderBottom: "1px solid",
+          borderBottomColor: "grey.200",
           py: 2,
-          '@media print': {
-            display: 'none',
+          "@media print": {
+            display: "none",
           },
         }}
       >
         <Box
           sx={{
-            width: '100%',
-            maxWidth: '100%',
-            margin: '0 auto',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            width: "100%",
+            maxWidth: "100%",
+            margin: "0 auto",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
             px: { xs: 2, sm: 3, lg: 4 },
           }}
         >
-          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={handleBack}>
+          <Button
+            variant="outlined"
+            startIcon={<ArrowBackIcon />}
+            onClick={handleBack}
+          >
             Назад
           </Button>
 
@@ -193,6 +272,19 @@ export default function ViewStatementPage({
             <Tooltip title="Редактировать">
               <IconButton onClick={handleEdit} color="primary">
                 <EditIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t.labels.exportButton.value}>
+              <IconButton
+                onClick={handleExportToCustomTable}
+                color="primary"
+                disabled={exportingToTable || !transactions.length}
+              >
+                {exportingToTable ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <TableChartIcon />
+                )}
               </IconButton>
             </Tooltip>
             <Tooltip title="Печать">
@@ -205,7 +297,11 @@ export default function ViewStatementPage({
       </Box>
 
       {/* Document Content */}
-      <TransactionDocumentViewer statement={statement} transactions={transactions} locale="ru" />
+      <TransactionDocumentViewer
+        statement={statement}
+        transactions={transactions}
+        locale="ru"
+      />
     </Box>
   );
 }

@@ -32,6 +32,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'google_sheet.sync',
     'user.manage',
     'user.view_all',
+    'audit_view',
     'audit_log.view',
     'telegram.view',
     'telegram.connect',
@@ -78,7 +79,14 @@ export function usePermissions() {
     const customPermissions = user.permissions || [];
 
     // Merge and deduplicate
-    return [...new Set([...rolePermissions, ...customPermissions])];
+    const merged = [...new Set([...rolePermissions, ...customPermissions])];
+    if (merged.includes('audit_log.view') && !merged.includes('audit_view')) {
+      merged.push('audit_view');
+    }
+    if (merged.includes('audit_view') && !merged.includes('audit_log.view')) {
+      merged.push('audit_log.view');
+    }
+    return merged;
   };
 
   const hasPermission = (permission: string): boolean => {

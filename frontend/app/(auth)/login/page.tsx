@@ -94,7 +94,13 @@ function LoginPageContent() {
       localStorage.setItem('refresh_token', refresh_token);
       localStorage.setItem('user', JSON.stringify(user));
 
-      window.location.href = nextPath || '/';
+      // Handle workspace selection
+      if (user.lastWorkspaceId) {
+        localStorage.setItem('currentWorkspaceId', user.lastWorkspaceId);
+        window.location.href = nextPath || '/';
+      } else {
+        window.location.href = '/workspaces';
+      }
     } catch (err: any) {
       setError(
         err.response?.data?.message || err.response?.data?.error?.message || t.loginFailed.value,

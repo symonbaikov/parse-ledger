@@ -5,7 +5,7 @@
 'use client';
 
 import { Button, Divider, ListItemIcon, ListItemText, Menu, MenuItem } from '@mui/material';
-import { CheckCircle, Circle, Disc, PlayCircle } from 'lucide-react';
+import { CheckCircle, Circle, Disc, HelpCircle } from 'lucide-react';
 import { useIntlayer } from 'next-intlayer';
 import { useRouter } from 'next/navigation';
 import { cloneElement, isValidElement, useEffect, useState } from 'react';
@@ -267,16 +267,14 @@ export function TourMenu({ trigger, className = '' }: TourMenuProps) {
   };
 
   const defaultTrigger = (
-    <Button
-      variant="outlined"
-      size="small"
-      startIcon={<PlayCircle size={16} />}
+    <button
+      type="button"
       onClick={handleClick}
-      className={className}
-      sx={{ textTransform: 'none', fontWeight: 500 }}
+      aria-label={navigationTexts.tour.menuLabel?.value ?? 'Туры'}
+      className={`h-9 w-9 rounded-full flex items-center justify-center shadow-sm ${className} bg-primary text-white`}
     >
-      {navigationTexts.tour.menuLabel?.value ?? 'Туры'}
-    </Button>
+      <HelpCircle size={16} />
+    </button>
   );
 
   return (

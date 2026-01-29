@@ -40,13 +40,14 @@ interface Statement {
   errorMessage: string | null;
 }
 
-interface AuditLog {
+interface AuditEvent {
   id: string;
   action: string;
-  description: string | null;
-  metadata: Record<string, unknown> | null;
+  entityType: string;
+  entityId: string;
+  actorLabel: string;
+  meta: Record<string, unknown> | null;
   createdAt: string;
-  userEmail?: string | null;
 }
 
 export default function AdminPage() {
@@ -54,7 +55,7 @@ export default function AdminPage() {
   const { locale } = useLocale();
   const [tab, setTab] = useState(0);
   const [statements, setStatements] = useState<Statement[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditEvent[]>([]);
   const [statementsLoading, setStatementsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,8 +88,8 @@ export default function AdminPage() {
     setStatementsLoading(true);
     setError(null);
     try {
-      const response = await apiClient.get<{ data: AuditLog[] }>('/audit-logs');
-      setAuditLogs(response.data.data || []);
+      const response = await apiClient.get<{ data: AuditEvent[] }>('/audit-events');
+      setAuditLogs((response.data as any).data || response.data || []);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || t.errors.loadAudit.value);
@@ -294,10 +295,12 @@ export default function AdminPage() {
                     </TableHead>
                     <TableBody>
                       {auditLogs.map(log => (
-                        <TableRow key={log.id}>
+                      <TableRow key={log.id}>
                           <TableCell>{log.action}</TableCell>
-                          <TableCell>{log.description || '-'}</TableCell>
-                          <TableCell>{log.userEmail || '—'}</TableCell>
+                          <TableCell>
+                            {log.entityType} • {log.entityId}
+                          </TableCell>
+                          <TableCell>{log.actorLabel || '—'}</TableCell>
                           <TableCell>{new Date(log.createdAt).toLocaleString(locale)}</TableCell>
                         </TableRow>
                       ))}

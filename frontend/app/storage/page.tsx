@@ -25,6 +25,7 @@ import {
   FileText,
   FileX,
   Filter,
+  
   Folder,
   GripVertical,
   Loader2,
@@ -40,6 +41,7 @@ import {
   X,
 } from 'lucide-react';
 import { useIntlayer, useLocale } from 'next-intlayer';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { HexColorPicker } from 'react-colorful';
@@ -48,6 +50,7 @@ import { BankLogoAvatar } from '../components/BankLogoAvatar';
 import ConfirmModal from '../components/ConfirmModal';
 import { DocumentTypeIcon } from '../components/DocumentTypeIcon';
 import { GoogleDriveStorageWidget } from '../components/GoogleDriveStorageWidget';
+import { DropboxStorageWidget } from '../components/DropboxStorageWidget';
 import { PDFPreviewModal } from '../components/PDFPreviewModal';
 import { useLockBodyScroll } from '../hooks/useLockBodyScroll';
 import api from '../lib/api';
@@ -695,6 +698,28 @@ export default function StoragePage() {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewFileId, setPreviewFileId] = useState<string | null>(null);
   const [previewFileName, setPreviewFileName] = useState<string>('');
+  const [gmailStatus, setGmailStatus] = useState<{ connected?: boolean } | null>(null);
+  const [gmailLoading, setGmailLoading] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        setGmailLoading(true);
+        const resp = await api.get('/integrations/gmail/status');
+        if (!mounted) return;
+        setGmailStatus(resp.data || null);
+      } catch (err) {
+        // ignore
+      } finally {
+        if (mounted) setGmailLoading(false);
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+  const [selectedStorageProvider, setSelectedStorageProvider] = useState<'google' | 'dropbox'>('google');
 
   const selectAllTrashRef = useRef<HTMLInputElement | null>(null);
 
@@ -1973,7 +1998,78 @@ export default function StoragePage() {
         </div>
 
         <div className="mb-6">
-          <GoogleDriveStorageWidget locale={locale} />
+          <div className="flex items-center gap-2 mb-4">
+            <div className="inline-flex rounded-full bg-gray-100 dark:bg-slate-800 p-1">
+              <button
+                type="button"
+                onClick={() => setSelectedStorageProvider('google')}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedStorageProvider === 'google'
+                    ? 'bg-white dark:bg-slate-700 shadow-sm'
+                    : 'bg-transparent'
+                }`}
+              >
+                <Image src="/icons/google-drive-icon.png" alt="Google Drive" width={18} height={18} />
+                <span className="whitespace-nowrap">Google Drive</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedStorageProvider('dropbox')}
+                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedStorageProvider === 'dropbox'
+                    ? 'bg-white dark:bg-slate-700 shadow-sm'
+                    : 'bg-transparent'
+                }`}
+              >
+                <Image src="/icons/dropbox-icon.png" alt="Dropbox" width={18} height={18} />
+                <span className="whitespace-nowrap">Dropbox</span>
+              </button>
+            </div>
+          </div>
+
+          {selectedStorageProvider === 'google' ? (
+            <GoogleDriveStorageWidget locale={locale} />
+          ) : (
+            <DropboxStorageWidget locale={locale} />
+          )}
+        </div>
+
+        {/* Gmail Receipts Section */}
+        <div className="rounded-lg border border-gray-200 dark:border-slate-700/60 bg-white dark:bg-slate-800 p-4 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 dark:bg-red-900/20 text-red-600 rounded-lg flex items-center justify-center">
+                <Image src="/icons/gmail.png" alt="Gmail" width={20} height={20} />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 dark:text-gray-300">Gmail Receipts</p>
+                <p className="font-semibold text-gray-900 dark:text-white">Auto-imported receipts from Gmail</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {/** View button disabled when Gmail not connected */}
+              <button
+                onClick={() => router.push('/storage/gmail-receipts')}
+                disabled={!(gmailStatus?.connected === true) || gmailLoading}
+                aria-disabled={!(gmailStatus?.connected === true) || gmailLoading}
+                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                  gmailStatus?.connected === true && !gmailLoading
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-blue-600 text-white opacity-50 cursor-not-allowed'
+                }`}
+              >
+                {(t as any).gmail?.viewReceipts ?? 'View Receipts'}
+              </button>
+
+              <button
+                onClick={() => router.push('/integrations/gmail')}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 dark:border-slate-600 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+              >
+                {gmailStatus?.connected === true ? ((t as any).gmail?.settings ?? 'Settings') : ((t as any).gmail?.connect ?? 'Connect')}
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-4">

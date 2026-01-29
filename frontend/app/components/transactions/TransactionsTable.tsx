@@ -310,6 +310,7 @@ export default function TransactionsTable({
                   <input
                     type="checkbox"
                     checked={allSelected}
+                    onChange={e => handleSelectAll(e.target.checked)}
                     ref={input => {
                       if (input) {
                         input.indeterminate = someSelected && !allSelected;
@@ -439,6 +440,7 @@ export default function TransactionsTable({
                           <input
                             type="checkbox"
                             checked={selectedIds.includes(tx.id)}
+                            onChange={e => handleSelectRow(tx.id, e.target.checked)}
                             className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary/20"
                           />
                         </td>

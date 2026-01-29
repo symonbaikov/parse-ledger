@@ -17,7 +17,8 @@ import { useAuth } from '@/app/hooks/useAuth';
 import apiClient from '@/app/lib/api';
 import { cn } from '@/app/lib/utils';
 import type { AxiosError } from 'axios';
-import { KeyRound, Loader2, LogOut, Mail, Shield, UserRound } from 'lucide-react';
+import { KeyRound, Loader2, LogOut, Mail, Shield, UserRound, Sun } from 'lucide-react';
+import { ModeToggle } from '@/components/mode-toggle';
 import { useIntlayer, useLocale } from 'next-intlayer';
 import { useRouter } from 'next/navigation';
 import { type ComponentType, useEffect, useMemo, useState } from 'react';
@@ -25,7 +26,7 @@ import { type ComponentType, useEffect, useMemo, useState } from 'react';
 type AppLocale = 'ru' | 'en' | 'kk';
 type ApiErrorResponse = { message?: string; error?: { message?: string } };
 
-const sections = ['profile', 'sessions', 'email', 'password'] as const;
+const sections = ['profile', 'sessions', 'email', 'password', 'appearance'] as const;
 type SectionId = (typeof sections)[number];
 
 const normalizeLocale = (value: unknown): AppLocale => {
@@ -212,6 +213,7 @@ export default function ProfileSettingsPage() {
     },
     email: { title: t.emailCard.title.value, icon: Mail },
     password: { title: t.passwordCard.title.value, icon: KeyRound },
+    appearance: { title: (t as any).appearanceCard?.title?.value ?? 'Appearance', icon: Sun },
   };
 
   const renderSection = () => {
@@ -356,6 +358,33 @@ export default function ProfileSettingsPage() {
                 </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (activeSection === 'appearance') {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sun className="h-5 w-5 text-primary" />
+              {(t as any).appearanceCard?.title?.value ?? 'Appearance'}
+            </CardTitle>
+            <CardDescription>{(t as any).appearanceCard?.description?.value ?? ''}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium text-gray-900">{(t as any).appearanceCard?.themeLabel?.value ?? 'Theme'}</div>
+                  <div className="text-xs text-gray-500">{(t as any).appearanceCard?.themeHelp?.value ?? ''}</div>
+                </div>
+                <div>
+                  <ModeToggle />
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       );

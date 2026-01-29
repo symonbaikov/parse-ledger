@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Clock,
   Download,
+  Edit3,
   Eye,
   File,
   FileText,
@@ -126,6 +127,8 @@ export default function StatementsPage() {
     statementsRef.current = statements;
   }, [statements]);
 
+  const lastAutoOpenedIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!user) return;
     loadStatements({ page, search });
@@ -187,6 +190,7 @@ export default function StatementsPage() {
 
       if (notifyOnCompletion && Array.isArray(statementsWithFileType)) {
         const processedStatuses = new Set(['parsed', 'validated', 'completed']);
+        const finishedList: Statement[] = [];
         for (const next of statementsWithFileType) {
           const prevStatus = prevStatusById.get(next.id);
           if (!prevStatus) continue;
@@ -195,12 +199,34 @@ export default function StatementsPage() {
           const finished = next.status !== 'processing' && next.status !== 'uploaded';
           if (!startedButNotFinished || !finished) continue;
 
+          // collect for toasts and auto-open decision
+          finishedList.push(next);
+
           if (processedStatuses.has(next.status)) {
             toast.success(`${t.notify.donePrefix.value}: ${next.fileName}`);
           } else if (next.status === 'error') {
             toast.error(`${t.notify.errorPrefix.value}: ${next.fileName}`);
           } else {
             toast.success(`${t.notify.donePrefix.value}: ${next.fileName}`);
+          }
+        }
+
+        if (finishedList.length > 0) {
+          // pick the earliest uploaded/created statement among finished ones
+          const firstFinished = finishedList.sort((a, b) => {
+            const ta = Date.parse(a.createdAt || '');
+            const tb = Date.parse(b.createdAt || '');
+            return (isNaN(ta) ? 0 : ta) - (isNaN(tb) ? 0 : tb);
+          })[0];
+
+          if (firstFinished && lastAutoOpenedIdRef.current !== firstFinished.id) {
+            lastAutoOpenedIdRef.current = firstFinished.id;
+            // navigate to the same page as the blue eye button
+            try {
+              router.push(`/statements/${firstFinished.id}/edit`);
+            } catch (err) {
+              // ignore navigation errors
+            }
           }
         }
       }
@@ -483,6 +509,13 @@ export default function StatementsPage() {
               className="w-full rounded-full border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
+          <button
+            onClick={() => router.push('/data-entry')}
+            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-full shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors"
+          >
+            <Edit3 className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
+            {t.adjustments}
+          </button>
           <button
             onClick={() => setUploadModalOpen(true)}
             data-tour-id="upload-statement-button"
