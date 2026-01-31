@@ -342,3 +342,32 @@ body.ff-col-resizing {
   display: flex;
   align-items: center;
 }
+
+/* Disable all shadows globally */
+.shadow-sm,
+.shadow,
+.shadow-md,
+.shadow-lg,
+.shadow-xl,
+.shadow-2xl,
+.shadow-inner,
+.hover\:shadow-sm:hover,
+.hover\:shadow-md:hover,
+.hover\:shadow-lg:hover,
+.hover\:shadow-xl:hover,
+.drop-shadow,
+.drop-shadow-sm,
+.drop-shadow-md,
+.drop-shadow-lg,
+.drop-shadow-xl,
+.drop-shadow-2xl,
+.dark .shadow-sm,
+.dark .shadow,
+.dark .shadow-md,
+.dark .shadow-lg,
+.dark .shadow-xl,
+.dark .shadow-2xl,
+.dark .shadow-inner {
+  box-shadow: none !important;
+  filter: none !important;
+}

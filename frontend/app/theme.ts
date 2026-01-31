@@ -59,7 +59,7 @@ const paletteByMode: Record<ThemeMode, ThemeOptions['palette']> = {
       contrastText: '#ffffff',
     },
     background: {
-      default: '#f3f2ef',
+      default: '#fcfbf9',
       paper: '#ffffff',
     },
     text: {

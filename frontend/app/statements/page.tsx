@@ -407,7 +407,7 @@ export default function StatementsPage() {
               onChange={e => setSearchInput(e.target.value)}
               placeholder={searchPlaceholder}
               aria-label={searchPlaceholder}
-              className="w-full rounded-full border border-border bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full rounded-lg border border-border bg-background py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <button
@@ -475,6 +475,7 @@ export default function StatementsPage() {
               <div className="hidden md:flex items-center gap-3 px-4 text-xs font-medium uppercase tracking-wide text-gray-500">
                 <div className="w-4" />
                 <div className="w-11">{listHeaderLabels.receipt}</div>
+                <div className="w-3" />
                 <div className="w-16">{listHeaderLabels.type}</div>
                 <div className="flex items-center gap-1 w-28">
                   {listHeaderLabels.date}
@@ -496,7 +497,7 @@ export default function StatementsPage() {
                 return (
                   <div
                     key={statement.id}
-                    className="flex items-center gap-3 rounded-2xl border border-border bg-white px-4 py-3 shadow-sm transition-colors hover:bg-muted"
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-[#f8f4f0] px-4 py-3 shadow-sm transition-colors hover:bg-muted"
                   >
                     <input
                       type="checkbox"
@@ -515,6 +516,7 @@ export default function StatementsPage() {
                     >
                       {getFileIcon(statement.fileType, statement.fileName, statement.id)}
                     </button>
+                    <div className="w-3 shrink-0" />
                     <span className="w-16 text-xs font-semibold text-gray-500 uppercase tracking-wide shrink-0">
                       {fileTypeLabel}
                     </span>
