@@ -10,7 +10,14 @@ export class WorkspaceContextGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
-      .getRequest<Request & { workspace?: any; user?: any; workspaceRole?: string }>();
+      .getRequest<
+        Request & {
+          workspace?: any;
+          user?: any;
+          workspaceRole?: string;
+          workspaceMemberPermissions?: any;
+        }
+      >();
     const workspaceId = request.headers['x-workspace-id'] as string;
     const user = request.user;
 
@@ -33,6 +40,7 @@ export class WorkspaceContextGuard implements CanActivate {
 
     request.workspace = membership.workspace;
     request.workspaceRole = membership.role;
+    request.workspaceMemberPermissions = membership.permissions;
 
     return true;
   }
