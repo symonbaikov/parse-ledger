@@ -25,10 +25,10 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install Python + pdfplumber for PDF parsing
+# Install Python + pdfplumber for PDF parsing + pdf2image for thumbnails
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
-RUN apk add --no-cache python3 py3-pip py3-pillow && \
-  pip3 install --no-cache-dir --break-system-packages pdfplumber==0.11.4
+RUN apk add --no-cache python3 py3-pip py3-pillow poppler-utils && \
+  pip3 install --no-cache-dir --break-system-packages pdfplumber==0.11.4 pdf2image==1.17.0
 
 # Runtime dependencies from builder (already pruned)
 COPY --from=builder /app/package*.json ./

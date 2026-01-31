@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { getWorkspaceHeaders } from '@/app/lib/workspace-headers';
 import pdfIcon from '../../public/images/pdf.png';
 
 interface PDFThumbnailProps {
@@ -39,9 +40,9 @@ export function PDFThumbnail({ fileId, fileName, size = 40, className = '' }: PD
       }
 
       try {
-        const token = localStorage.getItem('access_token');
+        const headers = getWorkspaceHeaders();
 
-        if (!token) {
+        if (!headers.Authorization) {
           setError(true);
           setLoading(false);
           return;
@@ -51,9 +52,7 @@ export function PDFThumbnail({ fileId, fileName, size = 40, className = '' }: PD
 
         const response = await fetch(thumbnailUrl, {
           method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
           credentials: 'include',
           cache: 'default',
         });

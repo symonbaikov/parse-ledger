@@ -26,6 +26,15 @@ const content = {
       filters: t({ ru: 'Фильтры', en: 'Filters', kk: 'Сүзгілер' }),
       columns: t({ ru: 'Колонки', en: 'Columns', kk: 'Бағандар' }),
     },
+    listHeader: {
+      receipt: t({ ru: 'Чек', en: 'Receipt', kk: 'Чек' }),
+      type: t({ ru: 'Тип', en: 'Type', kk: 'Түрі' }),
+      date: t({ ru: 'Дата', en: 'Date', kk: 'Күні' }),
+      merchant: t({ ru: 'Мерчант', en: 'Merchant', kk: 'Саудагер' }),
+      amount: t({ ru: 'Сумма', en: 'Amount', kk: 'Сома' }),
+      action: t({ ru: 'Действие', en: 'Action', kk: 'Әрекет' }),
+      scanning: t({ ru: 'Сканирование...', en: 'Scanning...', kk: 'Сканерлеу...' }),
+    },
     uploadStatement: t({
       ru: 'Загрузить выписку',
       en: 'Upload statement',

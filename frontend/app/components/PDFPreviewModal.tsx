@@ -2,6 +2,7 @@
 
 import { Download, ExternalLink, FileText, Printer, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { getWorkspaceHeaders } from '@/app/lib/workspace-headers';
 import { ModalShell } from './ui/modal-shell';
 
 interface PDFPreviewModalProps {
@@ -35,8 +36,8 @@ export function PDFPreviewModal({ isOpen, onClose, fileId, fileName }: PDFPrevie
         setLoading(true);
         setError(null);
 
-        const token = localStorage.getItem('access_token');
-        if (!token) {
+        const headers = getWorkspaceHeaders();
+        if (!headers.Authorization) {
           setError('Необходима авторизация');
           setLoading(false);
           return;
@@ -44,9 +45,7 @@ export function PDFPreviewModal({ isOpen, onClose, fileId, fileName }: PDFPrevie
 
         const response = await fetch(`${apiBaseUrl}/statements/${fileId}/view`, {
           method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers,
           credentials: 'include',
         });
 
@@ -76,17 +75,15 @@ export function PDFPreviewModal({ isOpen, onClose, fileId, fileName }: PDFPrevie
 
   const handleDownload = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
+      const headers = getWorkspaceHeaders();
+      if (!headers.Authorization) {
         alert('Необходима авторизация');
         return;
       }
 
       const response = await fetch(`${apiBaseUrl}/statements/${fileId}/file`, {
         method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         credentials: 'include',
       });
 

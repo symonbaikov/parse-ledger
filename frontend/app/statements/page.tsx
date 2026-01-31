@@ -6,9 +6,14 @@ import { PDFPreviewModal } from '@/app/components/PDFPreviewModal';
 import { useAuth } from '@/app/hooks/useAuth';
 import { useLockBodyScroll } from '@/app/hooks/useLockBodyScroll';
 import apiClient from '@/app/lib/api';
+import {
+  getStatementMerchantLabel,
+  isStatementProcessingStatus,
+} from '@/app/lib/statement-status';
 import { resolveBankLogo } from '@bank-logos';
 import {
   AlertCircle,
+  ArrowDown,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -86,10 +91,36 @@ export default function StatementsPage() {
     filters: resolveLabel(t.filters?.filters, 'Фильтры'),
     columns: resolveLabel(t.filters?.columns, 'Колонки'),
   };
+  const listHeaderLabels = {
+    receipt: resolveLabel(t.listHeader?.receipt, 'Receipt'),
+    type: resolveLabel(t.listHeader?.type, 'Type'),
+    date: resolveLabel(t.listHeader?.date, 'Date'),
+    merchant: resolveLabel(t.listHeader?.merchant, 'Merchant'),
+    amount: resolveLabel(t.listHeader?.amount, 'Amount'),
+    action: resolveLabel(t.listHeader?.action, 'Action'),
+    scanning: resolveLabel(t.listHeader?.scanning, 'Scanning...'),
+  };
   const viewLabel = resolveLabel(t.actions?.view, 'View');
   const uploadLabel = resolveLabel(t.uploadStatement, 'Upload');
-  const allowDuplicatesLabel =
-    (t.uploadModal as any)?.allowDuplicates?.value ?? 'Разрешить загрузку дубликатов';
+  const allowDuplicatesLabel = resolveLabel(
+    (t.uploadModal as any)?.allowDuplicates,
+    'Разрешить загрузку дубликатов',
+  );
+  const uploadModalLabels = {
+    title: resolveLabel(t.uploadModal?.title, 'Upload files'),
+    subtitle: resolveLabel(t.uploadModal?.subtitle, 'PDF, Excel, CSV and images are supported'),
+    dropHint1: resolveLabel(t.uploadModal?.dropHint1, 'Click to select'),
+    dropHint2: resolveLabel(t.uploadModal?.dropHint2, 'or drag and drop files'),
+    maxHint: resolveLabel(t.uploadModal?.maxHint, 'Up to 5 files, 10 MB each'),
+    mbShort: resolveLabel(t.uploadModal?.mbShort, 'MB'),
+    cancel: resolveLabel(t.uploadModal?.cancel, 'Cancel'),
+    uploadFiles: resolveLabel(t.uploadModal?.uploadFiles, 'Upload files'),
+    uploading: resolveLabel(t.uploadModal?.uploading, 'Uploading...'),
+  };
+  const emptyLabels = {
+    title: resolveLabel(t.empty?.title, 'No statements yet'),
+    description: resolveLabel(t.empty?.description, 'Upload your first statement to get started'),
+  };
   const filterChipClassName =
     'inline-flex items-center gap-2 rounded-full bg-[#e6e1da] px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-muted';
   const filterLinkClassName =
@@ -295,11 +326,12 @@ export default function StatementsPage() {
       await apiClient.post('/statements/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      toast.success(t.uploadModal.uploadedProcessing.value);
       setUploadFiles([]);
       setUploadModalOpen(false);
       setAllowDuplicates(false);
+      setUploadError(null);
       setPage(1);
+      toast.success(t.uploadModal.uploadedProcessing.value);
       await loadStatements({ page: 1, search });
     } catch (err: any) {
       const message =
@@ -425,35 +457,55 @@ export default function StatementsPage() {
             <div className="mx-auto h-16 w-16 text-gray-300 mb-4 bg-muted rounded-full flex items-center justify-center">
               <File className="h-8 w-8" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900">{t.empty.title}</h3>
-            <p className="mt-1 text-gray-500">{t.empty.description}</p>
+            <h3 className="text-lg font-medium text-gray-900">{emptyLabels.title}</h3>
+            <p className="mt-1 text-gray-500">{emptyLabels.description}</p>
             <div className="mt-6">
               <button
                 onClick={() => setUploadModalOpen(true)}
                 className="inline-flex items-center px-4 py-2 border border-border shadow-sm text-sm font-medium rounded-full text-gray-700 bg-white hover:bg-muted focus:outline-none"
               >
                 <UploadCloud className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
-                {t.uploadModal.uploadFiles}
+                {uploadModalLabels.uploadFiles}
               </button>
             </div>
           </div>
         ) : (
           <>
             <div className="space-y-3">
-              {filteredStatements.map(statement => (
-                <div
-                  key={statement.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-border bg-white px-4 py-3 shadow-sm transition-colors hover:bg-muted sm:flex-row sm:items-center"
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div className="hidden md:flex items-center gap-3 px-4 text-xs font-medium uppercase tracking-wide text-gray-500">
+                <div className="w-4" />
+                <div className="w-11">{listHeaderLabels.receipt}</div>
+                <div className="w-16">{listHeaderLabels.type}</div>
+                <div className="flex items-center gap-1 w-28">
+                  {listHeaderLabels.date}
+                  <ArrowDown className="h-3 w-3 text-gray-400" />
+                </div>
+                <div className="flex-1">{listHeaderLabels.merchant}</div>
+                <div className="w-32 text-right">{listHeaderLabels.amount}</div>
+                <div className="w-28 text-right">{listHeaderLabels.action}</div>
+              </div>
+              {filteredStatements.map(statement => {
+                const isProcessing = isStatementProcessingStatus(statement.status);
+                const merchantLabel = getStatementMerchantLabel(
+                  statement.status,
+                  getBankDisplayName(statement.bankName),
+                  listHeaderLabels.scanning,
+                );
+                const fileTypeLabel = (statement.fileType || 'pdf').toUpperCase();
+
+                return (
+                  <div
+                    key={statement.id}
+                    className="flex items-center gap-3 rounded-2xl border border-border bg-white px-4 py-3 shadow-sm transition-colors hover:bg-muted"
+                  >
                     <input
                       type="checkbox"
                       aria-label={statement.fileName}
-                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary shrink-0"
                     />
                     <button
                       type="button"
-                      className="shrink-0 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                      className="w-11 shrink-0 flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
                       onClick={() => {
                         setPreviewFileId(statement.id);
                         setPreviewFileName(statement.fileName);
@@ -463,36 +515,45 @@ export default function StatementsPage() {
                     >
                       {getFileIcon(statement.fileType, statement.fileName, statement.id)}
                     </button>
-                    <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                      <span className="text-sm font-semibold text-gray-900 whitespace-nowrap">
-                        {formatStatementDate(statement)}
-                      </span>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <BankLogoAvatar
-                          bankName={statement.bankName}
-                          size={24}
-                          className="shrink-0"
-                        />
-                        <span className="text-sm text-gray-700 truncate">
-                          {getBankDisplayName(statement.bankName)}
+                    <span className="w-16 text-xs font-semibold text-gray-500 uppercase tracking-wide shrink-0">
+                      {fileTypeLabel}
+                    </span>
+                    <span className="w-28 text-sm font-semibold text-gray-900 whitespace-nowrap shrink-0">
+                      {formatStatementDate(statement)}
+                    </span>
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      {isProcessing ? (
+                        <span className="text-sm font-semibold text-emerald-700">
+                          {merchantLabel}
                         </span>
-                      </div>
+                      ) : (
+                        <>
+                          <BankLogoAvatar
+                            bankName={statement.bankName}
+                            size={24}
+                            className="shrink-0"
+                          />
+                          <span className="text-sm text-gray-700 truncate">
+                            {merchantLabel}
+                          </span>
+                        </>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 sm:justify-end">
-                    <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                    <span className="w-32 text-sm font-semibold text-gray-900 tabular-nums text-right shrink-0">
                       {formatStatementAmount(statement)}
                     </span>
-                    <button
-                      onClick={() => router.push(`/statements/${statement.id}/view`)}
-                      className="rounded-full bg-[#e6e1da] px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-muted"
-                    >
-                      {viewLabel}
-                    </button>
-                    <ChevronRight className="h-5 w-5 text-gray-400" />
+                    <div className="flex items-center justify-end gap-2 w-28 shrink-0">
+                      <button
+                        onClick={() => router.push(`/statements/${statement.id}/view`)}
+                        className="rounded-full bg-[#e6e1da] px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-muted"
+                      >
+                        {viewLabel}
+                      </button>
+                      <ChevronRight className="h-5 w-5 text-gray-400" />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div
@@ -500,7 +561,9 @@ export default function StatementsPage() {
               data-tour-id="pagination"
             >
               <div className="text-sm text-gray-600">
-                {total === 0 ? t.empty.title : `Показано ${rangeStart}–${rangeEnd} из ${total}`}
+                {total === 0
+                  ? emptyLabels.title
+                  : `Показано ${rangeStart}–${rangeEnd} из ${total}`}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -560,8 +623,8 @@ export default function StatementsPage() {
             {/* Header */}
             <div className="px-8 pt-8 pb-4 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-gray-900">{t.uploadModal.title}</h3>
-                <p className="text-sm text-gray-500 mt-1">{t.uploadModal.subtitle}</p>
+                <h3 className="text-xl font-bold text-gray-900">{uploadModalLabels.title}</h3>
+                <p className="text-sm text-gray-500 mt-1">{uploadModalLabels.subtitle}</p>
               </div>
               <button
                 onClick={() => {
@@ -602,10 +665,10 @@ export default function StatementsPage() {
                     <UploadCloud className="h-8 w-8 text-primary" />
                   </div>
                   <p className="text-base font-medium text-gray-900">
-                    {t.uploadModal.dropHint1}{' '}
-                    <span className="font-normal text-gray-500">{t.uploadModal.dropHint2}</span>
+                    {uploadModalLabels.dropHint1}{' '}
+                    <span className="font-normal text-gray-500">{uploadModalLabels.dropHint2}</span>
                   </p>
-                  <p className="mt-2 text-xs text-gray-400">{t.uploadModal.maxHint}</p>
+                  <p className="mt-2 text-xs text-gray-400">{uploadModalLabels.maxHint}</p>
                 </div>
               </div>
 
@@ -641,7 +704,7 @@ export default function StatementsPage() {
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-gray-900">{file.name}</p>
                           <p className="text-xs text-gray-500">
-                            {(file.size / 1024 / 1024).toFixed(2)} {t.uploadModal.mbShort}
+                            {(file.size / 1024 / 1024).toFixed(2)} {uploadModalLabels.mbShort}
                           </p>
                         </div>
                       </div>
@@ -669,7 +732,7 @@ export default function StatementsPage() {
                 className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
                 disabled={uploading}
               >
-                {t.uploadModal.cancel}
+                  {uploadModalLabels.cancel}
               </button>
               <button
                 onClick={handleUpload}
@@ -677,7 +740,7 @@ export default function StatementsPage() {
                 className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/30 hover:bg-primary-hover hover:shadow-primary/40 focus:ring-4 focus:ring-primary/20 disabled:opacity-50 disabled:shadow-none transition-all"
               >
                 {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
-                {uploading ? t.uploadModal.uploading : t.uploadModal.uploadFiles}
+                {uploading ? uploadModalLabels.uploading : uploadModalLabels.uploadFiles}
               </button>
             </div>
           </div>
