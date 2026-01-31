@@ -13,6 +13,19 @@ const content = {
       en: 'Manage uploaded files, track processing status, and export data.',
       kk: 'Жүктелген файлдарды басқарыңыз, өңдеу күйін бақылаңыз және деректерді экспорттаңыз.',
     }),
+    searchPlaceholder: t({
+      ru: 'Поиск по выпискам',
+      en: 'Search for something',
+      kk: 'Үзінділерді іздеу',
+    }),
+    filters: {
+      type: t({ ru: 'Тип', en: 'Type', kk: 'Түрі' }),
+      status: t({ ru: 'Статус', en: 'Status', kk: 'Күйі' }),
+      date: t({ ru: 'Дата', en: 'Date', kk: 'Күні' }),
+      from: t({ ru: 'От', en: 'From', kk: 'Бастап' }),
+      filters: t({ ru: 'Фильтры', en: 'Filters', kk: 'Сүзгілер' }),
+      columns: t({ ru: 'Колонки', en: 'Columns', kk: 'Бағандар' }),
+    },
     uploadStatement: t({
       ru: 'Загрузить выписку',
       en: 'Upload statement',

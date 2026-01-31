@@ -78,7 +78,7 @@ export class AddDataEntrySyncToCustomTables1735100000000 implements MigrationInt
           data_entry_type = COALESCE(t.data_entry_type, l.metadata->>'type'),
           data_entry_synced_at = COALESCE(t.data_entry_synced_at, t.created_at)
       FROM audit_logs l
-      WHERE l.action = 'custom_table.create'
+      WHERE l.action::text = 'custom_table.create'
         AND l.metadata->>'source' = 'data_entry_export'
         AND l.metadata->>'tableId' = t.id::text
     `);
@@ -88,7 +88,7 @@ export class AddDataEntrySyncToCustomTables1735100000000 implements MigrationInt
       SET data_entry_custom_tab_id = COALESCE(t.data_entry_custom_tab_id, (l.metadata->>'customTabId')::uuid),
           data_entry_synced_at = COALESCE(t.data_entry_synced_at, t.created_at)
       FROM audit_logs l
-      WHERE l.action = 'custom_table.create'
+      WHERE l.action::text = 'custom_table.create'
         AND l.metadata->>'source' = 'data_entry_custom_tab_export'
         AND l.metadata->>'tableId' = t.id::text
         AND l.metadata->>'customTabId' IS NOT NULL

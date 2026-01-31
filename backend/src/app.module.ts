@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import * as redisStore from 'cache-manager-redis-store';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { CommonModule } from './common/common.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
@@ -126,6 +127,7 @@ import { WorkspacesModule } from './modules/workspaces/workspaces.module';
       Receipt,
       ReceiptProcessingJob,
     ]),
+    CommonModule,
     AuthModule,
     AuditModule,
     UsersModule,

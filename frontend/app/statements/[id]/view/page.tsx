@@ -1,12 +1,18 @@
 "use client";
 
-import TransactionDocumentViewer from "@/app/components/TransactionDocumentViewer";
-import api from "@/app/lib/api";
+import ConfirmModal from '@/app/components/ConfirmModal';
+import TransactionDocumentViewer from '@/app/components/TransactionDocumentViewer';
+import { useLockBodyScroll } from '@/app/hooks/useLockBodyScroll';
+import api from '@/app/lib/api';
 import {
   ArrowBack as ArrowBackIcon,
+  Close as CloseIcon,
   Download as DownloadIcon,
+  Delete as DeleteIcon,
   Edit as EditIcon,
+  ListAlt as ListAltIcon,
   Print as PrintIcon,
+  Refresh as RefreshIcon,
   TableChart as TableChartIcon,
 } from "@mui/icons-material";
 import {
@@ -78,19 +84,48 @@ interface Statement {
   } | null;
 }
 
+const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '/api/v1').replace(/\/$/, '');
+
+const extractErrorMessage = async (response: Response) => {
+  try {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const payload = await response.json();
+      return (
+        payload?.error?.message ||
+        payload?.message ||
+        (typeof payload === 'string' ? payload : null)
+      );
+    }
+    const text = await response.text();
+    return text?.slice(0, 200) || null;
+  } catch {
+    return null;
+  }
+};
+
 export default function ViewStatementPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const t: any = useIntlayer("statementEditPage" as any) as any;
+  const t: any = useIntlayer('statementEditPage' as any) as any;
+  const statementsText: any = useIntlayer('statementsPage' as any) as any;
   const router = useRouter();
   const [statement, setStatement] = useState<Statement | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [logsOpen, setLogsOpen] = useState(false);
+  const [logEntries, setLogEntries] = useState<
+    Array<{ timestamp: string; level: string; message: string }>
+  >([]);
+  const [logLoading, setLogLoading] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const resolvedParams = use(params);
   const statementId = resolvedParams.id;
+
+  useLockBodyScroll(logsOpen || deleteModalOpen);
 
   useEffect(() => {
     if (!statementId) return;
@@ -127,6 +162,28 @@ export default function ViewStatementPage({
     }
   }, [shouldAutoPrint, loading, statement, transactions]);
 
+  useEffect(() => {
+    if (!logsOpen || !statementId) return;
+    let mounted = true;
+    const tick = async () => {
+      try {
+        const res = await api.get(`/statements/${statementId}`);
+        const details = res.data.parsingDetails || res.data.parsing_details;
+        if (mounted) {
+          setLogEntries(details?.logEntries || details?.log_entries || []);
+        }
+      } catch (err) {
+        console.error('Failed to refresh logs:', err);
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [logsOpen, statementId]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -134,6 +191,87 @@ export default function ViewStatementPage({
   const handleEdit = () => {
     if (statementId) {
       router.push(`/statements/${statementId}/edit`);
+    }
+  };
+
+  const handleDownloadFile = async () => {
+    if (!statementId) return;
+    const toastId = toast.loading(statementsText.download.loading.value);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`${apiBaseUrl}/statements/${statementId}/file`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = statement?.fileName || 'statement';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success(statementsText.download.success.value, { id: toastId });
+      } else {
+        const message = await extractErrorMessage(response);
+        throw new Error(message || 'Download failed');
+      }
+    } catch (error) {
+      console.error('Failed to download file:', error);
+      toast.error((error as Error).message || statementsText.download.failed.value, {
+        id: toastId,
+      });
+    }
+  };
+
+  const openLogs = async () => {
+    if (!statementId) return;
+    setLogsOpen(true);
+    setLogLoading(true);
+    try {
+      const res = await api.get(`/statements/${statementId}`);
+      const details = res.data.parsingDetails || res.data.parsing_details;
+      setLogEntries(details?.logEntries || details?.log_entries || []);
+    } catch (err) {
+      console.error('Failed to load logs:', err);
+      toast.error(statementsText.logs.openFailed.value);
+    } finally {
+      setLogLoading(false);
+    }
+  };
+
+  const closeLogs = () => {
+    setLogsOpen(false);
+    setLogEntries([]);
+  };
+
+  const handleReprocess = async () => {
+    if (!statementId) return;
+    const toastId = toast.loading(statementsText.reprocessStart.value);
+    try {
+      await api.post(`/statements/${statementId}/reprocess`);
+      toast.success(statementsText.reprocessSuccess.value, { id: toastId });
+    } catch (err) {
+      console.error('Failed to reprocess statement:', err);
+      toast.error(statementsText.reprocessError.value, { id: toastId });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!statementId) return;
+    const toastId = toast.loading(statementsText.deleteLoading.value);
+    try {
+      await api.post(`/statements/${statementId}/trash`);
+      toast.success(statementsText.deleteSuccess.value, { id: toastId });
+      setDeleteModalOpen(false);
+      router.push('/statements');
+    } catch (err) {
+      console.error('Failed to delete statement:', err);
+      toast.error(statementsText.deleteError.value, { id: toastId });
     }
   };
 
@@ -233,7 +371,7 @@ export default function ViewStatementPage({
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#f5f5f5" }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "var(--background)" }}>
       {/* Action Bar - Hidden on print */}
       <Box
         sx={{
@@ -287,6 +425,28 @@ export default function ViewStatementPage({
                 )}
               </IconButton>
             </Tooltip>
+            <Tooltip title={statementsText.actions.download.value}>
+              <IconButton onClick={handleDownloadFile} color="primary">
+                <DownloadIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={statementsText.actions.logs.value}>
+              <IconButton onClick={openLogs} color="primary">
+                <ListAltIcon />
+              </IconButton>
+            </Tooltip>
+            {statement.status === 'error' && (
+              <Tooltip title={statementsText.actions.retry.value}>
+                <IconButton onClick={handleReprocess} color="primary">
+                  <RefreshIcon />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Tooltip title={statementsText.actions.delete.value}>
+              <IconButton onClick={() => setDeleteModalOpen(true)} color="error">
+                <DeleteIcon />
+              </IconButton>
+            </Tooltip>
             <Tooltip title="Печать">
               <IconButton onClick={handlePrint} color="primary">
                 <PrintIcon />
@@ -301,6 +461,79 @@ export default function ViewStatementPage({
         statement={statement}
         transactions={transactions}
         locale="ru"
+      />
+
+      {logsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col">
+            <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between bg-muted">
+              <div>
+                <div className="text-sm text-gray-500">{statementsText.logs.title}</div>
+                <div className="text-lg font-semibold text-gray-900">{statement.fileName}</div>
+              </div>
+              <button
+                onClick={closeLogs}
+                className="p-2 rounded-full hover:bg-muted text-gray-500 transition-colors"
+              >
+                <CloseIcon fontSize="small" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {logLoading ? (
+                <div className="flex items-center justify-center py-10">
+                  <CircularProgress size={20} />
+                </div>
+              ) : logEntries.length === 0 ? (
+                <div className="py-8 text-center text-gray-500">{statementsText.logs.empty}</div>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {logEntries.map((entry, idx) => (
+                    <li
+                      key={`${entry.timestamp}-${idx}`}
+                      className="px-5 py-3 flex items-start space-x-3"
+                    >
+                      <div className="text-xs text-gray-400 w-32 shrink-0">
+                        {new Date(entry.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </div>
+                      <span
+                        className={`text-[11px] uppercase tracking-wide px-2 py-0.5 rounded-full ${
+                          entry.level === 'error'
+                            ? 'bg-red-100 text-red-700'
+                            : entry.level === 'warn'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-blue-100 text-blue-700'
+                        }`}
+                      >
+                        {entry.level}
+                      </span>
+                      <div className="text-sm text-gray-800 whitespace-pre-wrap flex-1">
+                        {entry.message}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-gray-200 bg-white text-sm text-gray-500">
+              {statementsText.logs.autoRefresh}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <ConfirmModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title={statementsText.confirmDelete.title.value}
+        message={statementsText.confirmDelete.message.value}
+        confirmText={statementsText.confirmDelete.confirm.value}
+        cancelText={statementsText.confirmDelete.cancel.value}
+        isDestructive={true}
       />
     </Box>
   );

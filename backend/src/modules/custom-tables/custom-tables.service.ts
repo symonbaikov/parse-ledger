@@ -1084,13 +1084,15 @@ export class CustomTablesService {
     });
 
     const syncedAt = new Date();
+    const createdRows: CustomTableRow[] = [];
     await this.customTableRepository.manager.transaction(async manager => {
       await manager.delete(CustomTableRow, { tableId: table.id });
       const chunkSize = 500;
       for (let i = 0; i < rowsToInsert.length; i += chunkSize) {
         const chunk = rowsToInsert.slice(i, i + chunkSize);
         if (chunk.length) {
-          await manager.save(CustomTableRow, chunk);
+          const savedChunk = await manager.save(CustomTableRow, chunk);
+          createdRows.push(...savedChunk);
         }
       }
       await manager.update(CustomTable, { id: table.id }, {
@@ -1102,7 +1104,7 @@ export class CustomTablesService {
       userId,
       workspaceId,
       tableId: table.id,
-      rows: rowsToInsert,
+      rows: createdRows,
       meta: {
         rowsCreated: rowsToInsert.length,
         source: 'data_entry_sync',

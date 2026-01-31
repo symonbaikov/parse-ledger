@@ -15,14 +15,14 @@
 }
 
 :root {
-  --background: #f3f2ef;
+  --background: #fcfbf9;
   --foreground: #191919;
   --primary: #0a66c2;
   --primary-hover: #004182;
   --primary-foreground: #ffffff;
   --secondary: #666666;
   --secondary-foreground: #ffffff;
-  --muted: #e9e9e9;
+  --muted: #f8f4f0;
   --muted-foreground: #666666;
   --card-bg: #ffffff;
   --card-foreground: #191919;
@@ -89,6 +89,13 @@ body {
   padding: 0;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+.hover\:bg-gray-50:hover,
+.hover\:bg-gray-100:hover,
+.hover\:bg-gray-200:hover,
+.hover\:bg-white:hover {
+  background-color: var(--muted);
 }
 
 /* Container for shared layout alignment (Full Width) */

@@ -1,0 +1,16 @@
+{
+  "enabledPlugins": {
+    "feature-dev@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "explanatory-output-style@claude-plugins-official": true,
+    "hookify@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "cloud-infrastructure@claude-code-workflows": true,
+    "security-scanning@claude-code-workflows": true,
+    "code-review-ai@claude-code-workflows": true,
+    "full-stack-orchestration@claude-code-workflows": true
+  }
+}

@@ -1,15 +1,11 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import type { Request } from 'express';
-import type { Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { WorkspaceMember } from '../../entities/workspace-member.entity';
 
 @Injectable()
 export class WorkspaceContextGuard implements CanActivate {
-  constructor(
-    @InjectRepository(WorkspaceMember)
-    private readonly workspaceMemberRepository: Repository<WorkspaceMember>,
-  ) {}
+  constructor(private readonly dataSource: DataSource) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
@@ -26,7 +22,7 @@ export class WorkspaceContextGuard implements CanActivate {
       throw new ForbiddenException('User not authenticated');
     }
 
-    const membership = await this.workspaceMemberRepository.findOne({
+    const membership = await this.dataSource.getRepository(WorkspaceMember).findOne({
       where: { workspaceId, userId: user.id },
       relations: ['workspace'],
     });

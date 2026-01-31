@@ -339,6 +339,7 @@ export class ImportSessionService {
             ...tx,
             workspaceId: session.workspaceId,
             amount: tx.debit || tx.credit || null,
+            currency: tx.currency || session.statement?.currency || 'KZT',
           },
           accountNumber,
         );
@@ -719,6 +720,7 @@ export class ImportSessionService {
         ...parsed,
         workspaceId: session.workspaceId,
         amount: parsed.debit || parsed.credit || null,
+        currency: parsed.currency || session.statement?.currency || 'KZT',
       },
       accountNumber,
     );

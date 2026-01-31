@@ -2,7 +2,12 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, type Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
-import { ActorType, AuditAction, EntityType } from '../../entities/audit-event.entity';
+import {
+  ActorType,
+  AuditAction,
+  type AuditEventDiff,
+  EntityType,
+} from '../../entities/audit-event.entity';
 import { Category } from '../../entities/category.entity';
 import { CustomTableCellStyle } from '../../entities/custom-table-cell-style.entity';
 import { CustomTableColumnStyle } from '../../entities/custom-table-column-style.entity';
@@ -380,7 +385,7 @@ export class CustomTablesImportService {
     entityId: string;
     action: AuditAction;
     meta?: Record<string, any> | null;
-    diff?: Record<string, any> | null;
+    diff?: AuditEventDiff | null;
     batchId?: string | null;
   }) {
     try {

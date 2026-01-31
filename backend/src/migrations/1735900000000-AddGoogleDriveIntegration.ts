@@ -59,7 +59,7 @@ export class AddGoogleDriveIntegration1735900000000 implements MigrationInterfac
     `);
 
     await queryRunner.query(`
-      ALTER TYPE "statements_file_type_enum"
+      ALTER TYPE "file_type_enum"
       ADD VALUE IF NOT EXISTS 'docx'
     `);
   }
